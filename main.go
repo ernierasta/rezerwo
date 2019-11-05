@@ -29,7 +29,7 @@ func main() {
 	http.HandleFunc("/api/furdel", DesignerDeleteObject(db))
 	http.HandleFunc("/api/renumber", DesignerRenumberType(db))
 
-	log.Fatal(http.ListenAndServe(":8888", nil))
+	log.Fatal(http.ListenAndServe(":3002", nil))
 }
 
 func initDB() *DB {

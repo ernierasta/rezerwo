@@ -1,0 +1,33 @@
+{{define "head"}}<title>{{.LBLTitle}}</title>
+<script type="text/javascript" src="/js/admin.js"></script>
+<link href="/css/admin.css" rel="stylesheet" type="text/css">
+<link href="/css/quill.snow.css" rel="stylesheet">
+<script src="/js/quill.min.js"></script>
+{{end}}
+{{define "body"}}
+  <form action="/admin/" method="POST">
+    <div class="form-group">
+      <label for="from-date">{{.LBLID}}</label>
+      <input type="text" class="form-control" id="id"  name="id" value="{{.LBLIDValue}}" readonly>
+    </div>
+    <div class="form-group">
+      <input type="hidden" name="type" value="event">
+      <label for="name">{{.LBLName}}</label>
+      <input class="form-control" id="name" aria-describedby="nameHelp" value="{{.LBLNameValue}}">
+      <small id="nameHelp" class="form-text text-muted">{{.NameHelpText}}</small>
+    </div>
+    <div class="form-group">
+      <label for="from-date">{{.LBLFromDate}}</label>
+      <input type="date" class="form-control" id="from-date" value="{{.LBLFromDateValue}}">
+    </div>
+
+    <div class="form-group">
+      <div id="editor">
+        {{.HTMLHowTo}}
+      </div>
+    </div>
+    <button id="save-event" type="submit" class="btn btn-primary">{{.BTNSave}}</button>
+    <button id="cancel" type="button" class="btn btn-secondary" onclick="GoBack()">{{.BTNCancel}}</button>
+
+  </form>
+{{end}}

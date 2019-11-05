@@ -1,0 +1,66 @@
+@import 'variables';
+
+.table { 
+	padding: 0.5em; 
+	float: left; 
+	margin: 10px 10px 10px 0; 
+	background: $table-color; 
+}
+
+.chair {
+	float: left;
+	background: $chair-color;
+	width: $table;
+	height: $table;
+	text-align: center;
+	margin: 2px;
+}
+
+.hidden {
+	display: none;
+}
+.chair-vert {
+	width: 20px;
+	height: 25px;
+}
+
+.chair-horiz {
+	width: 25px;
+	height: 20px;
+}
+
+%table-horiz {
+	width: $table;
+}
+
+.vertical-2 {
+	@extend %table-horiz;
+	height: $table-2;
+}
+
+.vertical-4 {
+	@extend %table-horiz;
+	height: $table-4;
+}
+
+.vertical-6 {
+	@extend %table-horiz;
+	height: $table-6;
+}
+
+.vertical-8 {
+	@extend %table-horiz;
+	height: $table-8;
+}
+
+.mouseover {
+	width: $table-mouseover;
+}
+
+#table-storage .ui-selecting {background: #FECA40;}
+#table-storage .ui-selected {background: #F39814; color: white;}
+#table-storage {margin: 0; padding: 0; height: 300px; position: relative; padding:0; border:solid 1px #DDD;}
+#table-storage > div {position: absolute; margin: 0; padding:10px; border:solid 1px #CCC; width: 100px;}
+.ui-selectable-helper {position: absolute; z-index: 100; border:1px dotted black;}
+
+#droppable { width: 500px; height: 500px; padding: 0.5em; float: left; margin: 10px; border: 3px dashed black; }

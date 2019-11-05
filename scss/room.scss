@@ -1,0 +1,262 @@
+@import 'variables';
+
+#page {
+	position: relative;
+	min-height: 100vh;
+}
+
+#content-wrap {
+  padding-bottom: 2.5rem;    /* Footer height */
+}
+
+#footer {
+	background: $footer-color;
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+  	height: 2.5rem;
+}
+.table { 
+	//padding: 0.5em; 
+	float: left; 
+	margin: 10px; 
+	background: $table-color; 
+}
+
+.chair {
+	float: left;
+	background: $chair-color;
+	width: $table;
+	height: $table;
+	text-align: center;
+	margin: 2px;
+}
+
+.column {
+  float: left;
+  margin: 10px;
+}
+
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.right {
+	left: 1020px;
+	position: absolute;
+}
+.input-group{
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+#controls {
+	width: 800px;
+}
+
+#right-col {
+	float: right;
+}
+
+#objects-actions {
+	width: 300px;
+	//float: right;
+}
+
+#inline {
+	display: inline;
+}
+
+#room-controls {
+	width: 300px;
+	border: medium dashed lightgrey;
+	margin: 10px;
+	padding: 5px;
+}
+
+#furniture-actions {
+	width: 300px;
+	//margin: 50px 10px 10px 10px;
+	//float: right;
+}
+
+%table-horiz {
+	width: $table;
+}
+
+.vertical-2 {
+	@extend %table-horiz;
+	height: $table-2;
+}
+
+.vertical-4 {
+	@extend %table-horiz;
+	height: $table-4;
+}
+
+.vertical-6 {
+	@extend %table-horiz;
+	height: $table-6;
+}
+
+.vertical-8 {
+	@extend %table-horiz;
+	height: $table-8;
+}
+
+.vertical-10 {
+	@extend %table-horiz;
+	height: $table-10;
+}
+.vertical-12 {
+	@extend %table-horiz;
+	height: $table-12;
+}
+
+.vertical-14 {
+	@extend %table-horiz;
+	height: $table-14;
+}
+
+.vertical-16 {
+	@extend %table-horiz;
+	height: $table-16;
+}
+
+.vertical-18 {
+	@extend %table-horiz;
+	height: $table-18;
+}
+
+.vertical-20 {
+	@extend %table-horiz;
+	height: $table-20;
+}
+
+.vertical-10 {
+	@extend %table-horiz;
+	height: $table-10;
+}
+.vertical-22 {
+	@extend %table-horiz;
+	height: $table-22;
+}
+
+.vertical-24 {
+	@extend %table-horiz;
+	height: $table-24;
+}
+
+.vertical-26 {
+	@extend %table-horiz;
+	height: $table-26;
+}
+
+.vertical-28 {
+	@extend %table-horiz;
+	height: $table-28;
+}
+
+.vertical-30 {
+	@extend %table-horiz;
+	height: $table-30;
+}
+
+%table-vert {
+	height: $table;
+}
+
+.horizontal-2 {
+	@extend %table-vert;
+	width: $table-2;
+}
+
+.horizontal-4 {
+	@extend %table-vert;
+	width: $table-4;
+}
+
+.horizontal-6 {
+	@extend %table-vert;
+	width: $table-6;
+}
+
+.horizontal-8 {
+	@extend %table-vert;
+	width: $table-8;
+}
+
+.horizontal-10 {
+	@extend %table-vert;
+	width: $table-10;
+}
+.horizontal-12 {
+	@extend %table-vert;
+	width: $table-12;
+}
+
+.horizontal-14 {
+	@extend %table-vert;
+	width: $table-14;
+}
+
+.horizontal-16 {
+	@extend %table-vert;
+	width: $table-16;
+}
+
+.horizontal-18 {
+	@extend %table-vert;
+	width: $table-18;
+}
+
+.horizontal-20 {
+	@extend %table-vert;
+	width: $table-20;
+}
+
+.horizontal-10 {
+	@extend %table-vert;
+	width: $table-10;
+}
+.horizontal-22 {
+	@extend %table-vert;
+	width: $table-22;
+}
+
+.horizontal-24 {
+	@extend %table-vert;
+	width: $table-24;
+}
+
+.horizontal-26 {
+	@extend %table-vert;
+	width: $table-26;
+}
+
+.horizontal-28 {
+	@extend %table-vert;
+	width: $table-28;
+}
+
+.horizontal-30 {
+	@extend %table-vert;
+	width: $table-30;
+}
+
+#room, #room-view { 
+	width: $room-width;
+	height: $room-height;
+	//padding: 0.5em;
+	float: left;
+	margin: 10px;
+	border: 3px dashed black;
+}
+
+#room .ui-selecting, #room-view .ui-selecting {background: #FECA40;}
+#room .ui-selected, #room-view .ui-selected {background: #F39814; color: white;}
+//#room {margin: 0; padding: 0; height: 300px; position: relative; padding:0; border:solid 1px #DDD;}
+//#room > div {position: absolute; margin: 0; padding:10px; border:solid 1px #CCC; width: 100px;}
+.ui-selectable-helper {position: absolute; z-index: 100; border:1px dotted black;}

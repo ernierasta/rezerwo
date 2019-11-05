@@ -1,0 +1,38 @@
+$table-gap: 5px;
+$table: 20px;
+$table-mouseover: $table+100px;
+$table-2: $table;
+$table-4: 2*$table+$table-gap;
+$table-6: 3*$table+2*$table-gap;
+$table-8: 4*$table+3*$table-gap;
+$table-10: 5*$table+4*$table-gap;
+$table-12: 6*$table+5*$table-gap;
+$table-14: 7*$table+6*$table-gap;
+$table-16: 8*$table+7*$table-gap;
+$table-18: 9*$table+2*$table-gap;
+$table-20: 10*$table+9*$table-gap;
+$table-22: 11*$table+10*$table-gap;
+$table-24: 12*$table+11*$table-gap;
+$table-26: 13*$table+12*$table-gap;
+$table-28: 14*$table+13*$table-gap;
+$table-30: 15*$table+14*$table-gap;
+$table-32: 16*$table+15*$table-gap;
+$table-34: 17*$table+16*$table-gap;
+$table-36: 18*$table+17*$table-gap;
+$table-38: 19*$table+18*$table-gap;
+$table-40: 20*$table+19*$table-gap;
+$table-42: 21*$table+20*$table-gap;
+$table-44: 22*$table+21*$table-gap;
+
+// room defaults
+$room-width: 1000px;
+$room-height: 1000px;
+
+// colors:
+$header-color: lightgrey;
+$footer-color: lightgrey;
+$table-color: grey;
+$chair-color: red;
+
+
+

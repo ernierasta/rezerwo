@@ -1,0 +1,30 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <!-- jquery & bootstrap -->
+  <script type="text/javascript" src="/js/jquery.min.js"></script>
+  <script type="text/javascript" src="/js/jquery-ui.min.js"></script>
+  <script src="/js/popper.min.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
+  <link rel="stylesheet" href="/css/bootstrap.min.css">
+  <link href="/css/base.css" rel="stylesheet" type="text/css">
+  {{template "head" .}}
+</head>
+<body>
+    <div id="page">
+    <div id="content-wrap">
+      <header>
+        <h1>REZERWO</h1>
+      </header>
+      {{template "body" .}}
+    </div>
+    <!--
+    <footer id="footer">
+      <div>(c)2019 ernierasta</div>
+    </footer>
+    -->
+  </div>
+</body>
+</html>{{end}}

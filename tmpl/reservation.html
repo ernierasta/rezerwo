@@ -1,0 +1,45 @@
+{{define "head"}}  <link href="/css/room.css" rel="stylesheet" type="text/css">
+  <script type="text/javascript" src="/js/room.js"></script>
+  <link href="/css/room.css" rel="stylesheet" type="text/css">
+  <title>{{.LBLTitle}}</title>
+{{end}}
+{{define "body"}}
+  <script>
+    // setting current table and chair nrs based on db
+    window.Designer = {}
+    Designer.tableNr = {{.TableNr}};
+    Designer.chairNr =  {{.ChairNr}};
+    Designer.objectNr = {{.ObjectNr}};
+    Designer.labelNr = {{.LabelNr}};
+    Designer.defaultPrice = {{.DefaultPrice}};
+    Designer.defaultCurrency = {{.DefaultCurrency}};
+  </script>
+  <div id="meta">
+    <h1>{{.Room.Name}}</h1>
+    <p>{{.Room.Description.String}}</p>
+  </div>
+  <div class="row">
+    <div class="column" style="width: {{.Room.Width}}px;">
+      <div id="room-view" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;" class="ui-widget-header selectable">
+      {{range .Tables}}
+      <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+      {{end}}
+      {{range .Chairs}}
+      <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" price="{{.AdminPrice.Int64}}" currency="{{.AdminCurrency.String}}" orderstatus="{{.Status.String}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+      {{end}}
+      {{range .Objects}}
+      <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; background: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
+      {{end}}
+      {{range .Labels}}
+      <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; color: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
+      {{end}}
+      </div>
+    </div>
+
+    <div class="column right">
+      <div id="select-result"></div>
+      <div id="how-to">{{.HTMLHowTo}}</div>
+      <div id="controls"><button id="order" class="btn btn-primary" onclick="Order()">{{.BTNOrder}}</button>
+</div>
+    </div>
+  </div>{{end}}

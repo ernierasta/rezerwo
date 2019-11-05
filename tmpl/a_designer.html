@@ -1,0 +1,91 @@
+{{define "head"}}  <link href="/css/room.css" rel="stylesheet" type="text/css">
+  <script type="text/javascript" src="/js/room.js"></script>
+  <title>{{.LBLTitle}}</title>
+{{end}}
+{{define "body"}}
+  <script>
+    // setting current table and chair nrs based on db
+    window.Designer = {}
+    Designer.tableNr = {{.TableNr}};
+    Designer.chairNr =  {{.ChairNr}};
+    Designer.objectNr = {{.ObjectNr}};
+    Designer.labelNr = {{.LabelNr}};
+  </script>
+  <div id="meta">
+    <input id="room-id" type="hidden" value={{.Room.ID}}>
+    <h1 id="room-name">{{.Room.Name}}</h1>
+    <p id="room-desc">{{.Room.Description.String}}</p>
+  </div>
+  <div id="controls">
+
+    <div id="right-col">
+      <div id="objects-actions">
+        <div class="input-group">
+          <input id="chairs-ammount" type="number" value="6">
+          <button id="add-table" class="btn btn-primary">{{.BTNAddTable}}</button>
+        </div>
+        <div class="input-group">
+          <button id="add-chair" class="btn btn-primary">{{.BTNAddChair}}</button>
+        </div>
+        <div class="input-group">
+          <input id="label-title" class="form-control inline" type="text">
+          <input id="label-color" type="color" class="form-control" value="#000000" />
+          <button id="add-label" class="btn btn-primary" onclick="AddLabel()">{{.BTNAddLabel}}</button>
+        </div>
+        <div class="input-group">
+          <input id="object-width" type="number" value="20">
+          <input id="object-height" type="number" value="20">
+          <input id="object-color" type="color" class="form-control" value="#aaaaaa" />
+          <input id="object-label" type="text" placeholder="{{.LBLLabelPlaceholder}}"/>
+          <button id="add-object" class="btn btn-primary" onclick="AddObject()">{{.BTNAddObject}}</button>
+        </div>
+        <div class="input-group">
+          <button id="rotate" class="btn btn-primary" onclick="Rotate()">{{.BTNRotate}}</button>
+        </div>
+        <div class="input-group">
+          <button id="renumber-chairs" class="btn btn-primary" onclick="Renumber('chair')">{{.BTNRenumberChairs}}</button>
+          <button id="renumber-tables" class="btn btn-primary" onclick="Renumber('table')">{{.BTNRenumberTables}}</button>
+        </div>
+      </div>
+  
+      <div id="furniture-actions">
+        <button id="select" class="btn btn-info" onclick="SpawnChairs()" >{{.BTNSpawnChairs}}</button>
+        <button id="save" class="btn btn-success" onclick="SaveRoom()" >{{.BTNSave}}</button>
+        <button id="delete" class="btn btn-danger" onclick="DeleteFurnitures()" >{{.BTNDelete}}</button>
+      </div>
+    </div>
+
+    <div id="room-controls" class="abc">
+      <div class="input-group input-group-sm mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">{{.LBLWidth}}</span>
+        </div>
+        <input id="room-width" class="form-control" type="number" value="500" max="1000">
+      </div>
+      <div class="input-group input-group-sm mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">{{.LBLHeight}}</span>
+        </div>
+        <input id="room-height" class="form-control" type="number" value="1000" max="1000">
+      </div>
+      <button id="set-room-size" class="btn btn-primary" onclick="SetRoomSize()">{{.BTNSetSize}}</button>
+    </div>  
+  </div>
+  <div style="width: 100%;">
+    <div id="room" class="ui-widget-header" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;">
+      <p>{{.LBLDropHere}}</p>
+      {{range .Tables}}
+      <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+      {{end}}
+      {{range .Chairs}}
+      <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" price="{{.AdminPrice.Int64}}" currency="{{.AdminCurrency.String}}" orderstatus="{{.Status.String}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+      {{end}}
+      {{range .Objects}}
+      <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; background: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
+      {{end}}
+      {{range .Labels}}
+      <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; color: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
+      {{end}}
+    </div>
+  </div>
+{{end}}

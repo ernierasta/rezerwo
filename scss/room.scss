@@ -32,6 +32,11 @@
 	margin: 2px;
 }
 
+.disabled {
+	color: $chair-color-disabled-text;
+	background: $chair-color-disabled-background;
+}
+
 .column {
   float: left;
   margin: 10px;

@@ -83,10 +83,37 @@ function Post(path, params, method='post') {
   form.submit();
 }
 
+function GetOrderedAndCountPrice() {
+  var selected = [];
+  var price = 0;
+  $(".ui-selected").each(function(i, obj) {
+    if ($(this).hasClass("chair")) {
+      selected.push($(this).attr('name'));
+      if ($(this).attr('price') != 0 && $(this).attr('price') != "") {
+        price += Number($(this).attr('price'));
+      } else {
+        price += Number(Designer.defaultPrice);
+      }
+    }
+  });
+  return {"sits": selected, "total-price": price, "default-currency": Designer.defaultCurrency}
+}
+
 function Order() {
-  console.log("clicked!")
   $(".ui-selected.chair, .ui-selecting.chair").each(function(i, obj) {
     console.log($(this));
+  });
+  Post("/order", GetOrderedAndCountPrice());
+}
+
+function ToggleDisable() {
+  $(".ui-selected.chair, .ui-selecting.chair").each(function(i, obj) {
+    var chair = $(this)
+    if (chair.hasClass("disabled")) {
+      chair.removeClass("disabled");
+    } else {
+      chair.addClass("disabled");
+    }
   });
 }
 
@@ -100,7 +127,7 @@ function SaveRoom() {
     if (child.attr('furniture') == "table") {
       current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 13), y: Math.round(child.offset().top - parent.offset().top - 13)};
     } else if (child.attr('furniture') == "chair") {
-      current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 5), y: Math.round(child.offset().top - parent.offset().top - 5)};
+      current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), disabled: child.hasClass("disabled"), x: Math.round(child.offset().left - parent.offset().left - 5), y: Math.round(child.offset().top - parent.offset().top - 5)};
     } else if (child.attr('furniture') == "object") {
       current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), width: child.width(), height: child.height(), color: getHexColor(child.css("backgroundColor")), label: child.children().text()};
     } else if (child.attr('furniture') == "label") {
@@ -254,7 +281,7 @@ function MakeSelectable() {
       selected = [];
       price = 0;
       $(".ui-selected").each(function(i, obj) {
-        if ($(this).hasClass("chair")) {
+        if ($(this).hasClass("chair") && !$(this).hasClass("disabled")) {
           selected.push($(this).attr('name'));
           if ($(this).attr('price') != 0 && $(this).attr('price') != "") {
             price += Number($(this).attr('price'));
@@ -295,7 +322,6 @@ $(function() {
   //room-view
   MakeSelectable();
 
-  $("#Parent").on("DOMNodeInserted", ".ChildClass", function() { $(this).draggable(); });
   $( "#room > div" ).draggable({
     draggies
   });

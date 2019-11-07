@@ -51,12 +51,12 @@ var (
 		Capacity:    sql.NullInt64{9, true},
 	}
 	event1 = &Event{
-		Name:           "Balik malik",
-		FromDate:       12345,
-		ToDate:         23456,
-		DefaultPrice:   300,
-		DefaltCurrency: "Kč",
-		HowTo:          "here is description",
+		Name:            "Balik malik",
+		FromDate:        12345,
+		ToDate:          23456,
+		DefaultPrice:    300,
+		DefaultCurrency: "Kč",
+		HowTo:           "here is description",
 	}
 )
 

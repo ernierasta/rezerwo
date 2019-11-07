@@ -28,6 +28,9 @@
           <button id="add-chair" class="btn btn-primary">{{.BTNAddChair}}</button>
         </div>
         <div class="input-group">
+          <button id="chair-toggle-disabled" class="btn btn-danger" onclick="ToggleDisable()">{{.BTNChairDisToggle}}</button>
+        </div>
+        <div class="input-group">
           <input id="label-title" class="form-control inline" type="text">
           <input id="label-color" type="color" class="form-control" value="#000000" />
           <button id="add-label" class="btn btn-primary" onclick="AddLabel()">{{.BTNAddLabel}}</button>

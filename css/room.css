@@ -31,6 +31,11 @@
   margin: 2px;
 }
 
+.disabled {
+  color: lightgrey;
+  background: black;
+}
+
 .column {
   float: left;
   margin: 10px;

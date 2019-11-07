@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -15,15 +21,27 @@ func main() {
 	roomName := "Sala na dole"
 	eventName := "Balik maskowy"
 
+	mailpass, err := ioutil.ReadFile(".mailpass")
+	if err != nil {
+		log.Fatalf("can not read mail password from .mailpass file, err: %v", err)
+	}
+
 	db := initDB()
 	defer db.Close()
+
+	rtr := mux.NewRouter()
+	rtr.HandleFunc("/res/{user}", ReservationHTML(db, roomName, eventName))
+
 	handleStatic("js")
 	handleStatic("css")
-	http.HandleFunc("/", DesignerOrg)
-	http.HandleFunc("/admin/", AdminMainPage(db))
+	//http.HandleFunc("/", DesignerOrg)
+	http.Handle("/", rtr)
+	http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
+	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
+	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, strings.TrimSpace(string(mailpass))))
+	http.HandleFunc("/admin", AdminMainPage(db))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, roomName, eventName))
 	http.HandleFunc("/admin/event", EventEditor(db))
-	http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
 	http.HandleFunc("/api/furnit", DesignerMoveObject(db))
 	http.HandleFunc("/api/furdel", DesignerDeleteObject(db))
@@ -47,12 +65,25 @@ func initDB() *DB {
 		<li>Smaczna kolacja</li>
 		<li>Woda i mały poczęstunek na stole</li>
 	</ul>`
+	mailText := `Dziękujemy za zamówienie!
+Niniejszym mailem potwierdzamy zamówienie krzeseł:
+{{.Sits}}
+w cenie {{.TotalPrice}}.
+Prosimy o przesłanie kwoty na rachunek:
+1234567/6200
+
+Do zobaczenia!
+
+---
+Macierz Szkolna
+Karwina
+`
 	db := DBInit("db.sql")
 	db.MustConnect()
 	db.StructureCreate()
 	db.UserAdd(&User{Email: "sales@a.com", Passwd: "a"})
 	db.RoomAdd(&Room{ID: 1, Name: "Sala na dole", Description: ToNS("Tako fajno sala na dole."), Width: 1000, Height: 1000})
-	db.EventAddOrUpdate(&Event{Name: "Balik maskowy", FromDate: 1569888000, ToDate: 1572601325, DefaultPrice: 500, DefaultCurrency: "Kč", HowTo: howto, UserID: 1})
+	db.EventAddOrUpdate(&Event{Name: "Balik maskowy", Date: 1572601325, FromDate: 1569888000, ToDate: 1572601325, DefaultPrice: 500, DefaultCurrency: "Kč", OrderedNote: "Dziękujemy. Dostaną państwo maila z informacją.", MailSubject: "Zamówienie biletów", MailText: mailText, HowTo: howto, UserID: 1})
 	return db
 }
 
@@ -75,6 +106,7 @@ type DesignerPage struct {
 	LBLLabelPlaceholder                  string
 	BTNSetSize                           string
 	BTNAddTable, BTNAddChair             string
+	BTNChairDisToggle                    string
 	BTNAddLabel, BTNAddObject            string
 	LBLDropHere                          string
 	BTNSpawnChairs, BTNSave              string
@@ -120,6 +152,7 @@ func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter
 				BTNSetSize:          "Set size",
 				BTNAddTable:         "Add table",
 				BTNAddChair:         "Add chair",
+				BTNChairDisToggle:   "Chair disable/enable",
 				BTNAddLabel:         "Add label",
 				BTNAddObject:        "Add object",
 				LBLLabelPlaceholder: "Object label ...",
@@ -143,6 +176,7 @@ func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter
 
 func ReservationHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println(mux.Vars(r))
 		p := GetPageVarsFromDB(db, roomName, eventName)
 		enPM := PageMeta{
 			LBLTitle: "Reservation",
@@ -154,6 +188,64 @@ func ReservationHTML(db *DB, roomName, eventName string) func(w http.ResponseWri
 		p.PageMeta = enPM
 		t := template.Must(template.ParseFiles("tmpl/reservation.html", "tmpl/base.html"))
 		err := t.ExecuteTemplate(w, "base", p)
+		if err != nil {
+			log.Print("Reservation template executing error: ", err)
+		}
+	}
+}
+
+type ReservationOrderStatusVars struct {
+	LBLTitle                 string
+	LBLStatus, LBLStatusText string
+	BTNOk                    string
+}
+
+func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		o := Order{}
+		event, err := db.EventGetByName(eventName)
+		if err != nil {
+			log.Printf("error getting event by name: %q, err: %v", eventName, err)
+		}
+
+		if r.Method == "POST" {
+			err := r.ParseForm()
+			if err != nil {
+				log.Printf("error parsing form data:, err: %v", err)
+			}
+			o.Sits = r.Form["sits"][0]
+			o.TotalPrice = r.Form["total-price"][0]
+			o.Email = r.Form["email"][0]
+			o.Password = r.Form["password"][0]
+			o.Name = r.Form["name"][0]
+			o.Surname = r.Form["surname"][0]
+			o.Phone = r.Form["phone"][0]
+			o.Notes = r.Form["notes"][0]
+
+			client := MailConfig{
+				Server:  "magikinfo.cz",
+				Port:    587,
+				User:    "rezerwo@zori.cz",
+				Pass:    mailpass,
+				From:    "rezerwo@zori.cz",
+				To:      []string{o.Email},
+				Subject: event.MailSubject,
+				Text:    ParseTmpl(event.MailText, o),
+			}
+			err = MailSend(client)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+
+		p := ReservationOrderStatusVars{
+			LBLTitle:      "Order status",
+			LBLStatus:     "TODO: status name " + event.Name,
+			LBLStatusText: event.OrderedNote,
+			BTNOk:         "Ok",
+		}
+		t := template.Must(template.ParseFiles("tmpl/order-status.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", p)
 		if err != nil {
 			log.Print("Reservation template executing error: ", err)
 		}
@@ -195,19 +287,70 @@ func GetPageVarsFromDB(db *DB, roomName, eventName string) Page {
 	}
 }
 
-func ReservationOrderHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter, r *http.Request) {
+type ReservationOrderVars struct {
+	Event                               Event
+	LBLTitle                            string
+	LBLEmail, LBLEmailPlaceholder       string
+	LBLEmailHelp                        string
+	LBLPassword, LBLPasswordPlaceholder string
+	LBLPasswordHelp                     string
+	LBLName, LBLNamePlaceholder         string
+	LBLSurname, LBLSurnamePlaceholder   string
+	LBLPhone, LBLPhonePlaceholder       string
+	LBLPhoneHelp                        string
+	LBLNotes, LBLNotesPlaceholder       string
+	LBLNotesHelp                        string
+	LBLSits, LBLSitsValue               string
+	LBLTotalPrice, LBLTotalPriceValue   string
+	BTNSubmit                           string
+}
+
+func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		p := GetPageVarsFromDB(db, roomName, eventName)
-		enPM := PageMeta{
-			LBLTitle: "Reservation Order",
-			ReservationPage: ReservationPage{
-				HTMLHowTo: template.HTML(p.Event.HowTo),
-				BTNOrder:  "Order",
-			},
+		sits := ""
+		totalPrice := ""
+		defaultCurrency := ""
+
+		event, err := db.EventGetByName(eventName)
+		if err != nil {
+			log.Printf("error getting event by name: %q, err: %v", eventName, err)
 		}
-		p.PageMeta = enPM
-		t := template.Must(template.ParseFiles("tmpl/reservation.html", "tmpl/base.html"))
-		err := t.ExecuteTemplate(w, "base", p)
+
+		if r.Method == "POST" {
+			err := r.ParseForm()
+			if err != nil {
+				log.Printf("error parsing form data:, err: %v", err)
+			}
+			sits = r.Form["sits"][0]
+			totalPrice = r.Form["total-price"][0]
+			defaultCurrency = r.Form["default-currency"][0]
+		}
+		//p := GetPageVarsFromDB(db, roomName, eventName)
+		p := ReservationOrderVars{
+			Event:                 event,
+			LBLTitle:              "Order",
+			LBLEmail:              "Email",
+			LBLEmailHelp:          "Email is also login",
+			LBLEmailPlaceholder:   "email",
+			LBLPassword:           "Password",
+			LBLPasswordHelp:       "Optional password",
+			LBLName:               "Name",
+			LBLNamePlaceholder:    "name",
+			LBLSurname:            "Surname",
+			LBLSurnamePlaceholder: "surname",
+			LBLPhone:              "Phone",
+			LBLPhonePlaceholder:   "00420 ",
+			LBLNotes:              "Notes",
+			LBLNotesPlaceholder:   "Notes",
+			LBLNotesHelp:          "Additional notes",
+			LBLSits:               "Sits",
+			LBLSitsValue:          sits,
+			LBLTotalPrice:         "Total price",
+			LBLTotalPriceValue:    totalPrice + " " + defaultCurrency,
+			BTNSubmit:             "Confirm order",
+		}
+		t := template.Must(template.ParseFiles("tmpl/order.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", p)
 		if err != nil {
 			log.Print("Reservation template executing error: ", err)
 		}
@@ -386,6 +529,7 @@ type MoveMsg struct {
 	Number      int64  `json:"name"`
 	Type        string `json:"type"`
 	Orientation string `json:"orientation"`
+	Disabled    bool   `json:"disabled"`
 	X           int64  `json:"x"`
 	Y           int64  `json:"y"`
 	Width       int64  `json:"width"`
@@ -411,6 +555,7 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println(err)
 			}
+			fmt.Printf("%+v", m)
 			f := Furniture{
 				Number:      m.Number,
 				X:           m.X,
@@ -425,19 +570,29 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				RoomID:      roomID,
 			}
 
-			log.Printf("write to db: %+v\n", f)
 			fID, err := db.FurnitureAddOrUpdate(&f)
 			if err != nil {
 				log.Println(err)
 			}
 
+			// only for logging
+			f.ID = fID
+			//log.Printf("write to db: %+v\n", f)
+
+			dis := int64(0)
+			if m.Disabled {
+				dis = 1
+			}
+
 			p := Price{
 				Price:       m.Price,
 				Currency:    m.Currency,
+				Disabled:    dis,
 				EventID:     eventID,
 				FurnitureID: fID,
 			}
 			_, err = db.PriceAddOrUpdate(&p)
+			//log.Printf("write PRICE to db: %+v", p)
 			if err != nil {
 				log.Println(err)
 			}
@@ -504,6 +659,30 @@ func DesignerRenumberType(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+type Order struct {
+	TotalPrice    string
+	Sits, Room    string
+	Email         string
+	Password      string
+	Name, Surname string
+	Phone, Notes  string
+}
+
+func ParseTmpl(t string, o Order) string {
+	var buf bytes.Buffer
+	tmpl, err := template.New("test").Parse(t)
+	if err != nil {
+		log.Println("error parsing template %q, order %+v, err: %v", t, o, err)
+		return t
+	}
+	err = tmpl.Execute(&buf, o)
+	if err != nil {
+		log.Println("error executing template %q, order %+v, err: %v", t, o, err)
+		return t
+	}
+	return buf.String()
 }
 
 func ToNS(s string) sql.NullString {

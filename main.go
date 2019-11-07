@@ -19,24 +19,23 @@ import (
 func main() {
 
 	roomName := "Sala na dole"
-	eventName := "Balik maskowy"
+	eventName := "Bal MS Karwina"
 
 	mailpass, err := ioutil.ReadFile(".mailpass")
 	if err != nil {
 		log.Fatalf("can not read mail password from .mailpass file, err: %v", err)
 	}
-
 	db := initDB()
 	defer db.Close()
 
 	rtr := mux.NewRouter()
-	rtr.HandleFunc("/res/{user}", ReservationHTML(db, roomName, eventName))
+	rtr.HandleFunc("/res/{user}", ReservationHTML(db))
 
 	handleStatic("js")
 	handleStatic("css")
 	//http.HandleFunc("/", DesignerOrg)
 	http.Handle("/", rtr)
-	http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
+	//http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
 	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, strings.TrimSpace(string(mailpass))))
 	http.HandleFunc("/admin", AdminMainPage(db))
@@ -80,10 +79,31 @@ Karwina
 `
 	db := DBInit("db.sql")
 	db.MustConnect()
+
 	db.StructureCreate()
-	db.UserAdd(&User{Email: "sales@a.com", Passwd: "a"})
-	db.RoomAdd(&Room{ID: 1, Name: "Sala na dole", Description: ToNS("Tako fajno sala na dole."), Width: 1000, Height: 1000})
-	db.EventAddOrUpdate(&Event{Name: "Balik maskowy", Date: 1572601325, FromDate: 1569888000, ToDate: 1572601325, DefaultPrice: 500, DefaultCurrency: "Kč", OrderedNote: "Dziękujemy. Dostaną państwo maila z informacją.", MailSubject: "Zamówienie biletów", MailText: mailText, HowTo: howto, UserID: 1})
+
+	uID, err := db.UserAdd(&User{ID: 1, Email: "pspmacierzkarwina@seznam.cz", URL: "mskarwina", Passwd: "MagikINFO2019"})
+	if err != nil {
+		log.Println(err)
+	}
+
+	r1ID, err := db.RoomAdd(&Room{ID: 1, Name: "Sala na dole", Description: ToNS("Tako fajno sala na dole."), Width: 1000, Height: 1000})
+	if err != nil {
+		log.Println(err)
+	}
+	err = db.RoomAssignToUser(uID, r1ID)
+	if err != nil {
+		log.Println(err)
+	}
+	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 500, DefaultCurrency: "Kč", OrderedNote: "Dziękujemy. Dostaną państwo maila z informacją.", MailSubject: "Zamówienie biletów", MailText: mailText, HowTo: howto, UserID: 1})
+	if err != nil {
+		log.Println(err)
+	}
+	err = db.EventAddRoom(eID, r1ID)
+	if err != nil {
+		log.Println(err)
+	}
+
 	return db
 }
 
@@ -174,22 +194,44 @@ func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter
 	}
 }
 
-func ReservationHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter, r *http.Request) {
+func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println(mux.Vars(r))
-		p := GetPageVarsFromDB(db, roomName, eventName)
-		enPM := PageMeta{
-			LBLTitle: "Reservation",
-			ReservationPage: ReservationPage{
-				HTMLHowTo: template.HTML(p.Event.HowTo),
-				BTNOrder:  "Order",
-			},
-		}
-		p.PageMeta = enPM
-		t := template.Must(template.ParseFiles("tmpl/reservation.html", "tmpl/base.html"))
-		err := t.ExecuteTemplate(w, "base", p)
+		v := mux.Vars(r)
+		u, err := db.UserGetByURL(v["user"])
 		if err != nil {
-			log.Print("Reservation template executing error: ", err)
+			log.Printf("error getting user %q, err: %v", v["user"], err)
+			http.Error(w, fmt.Sprintf("<html><body><b>User %q not found! Check You have correct URL!<br />If problem persists, contact me at: ernierasta (at) zori.cz</b></body></html>", v["user"]), 500)
+			return
+		}
+		e, err := EventGetCurrent(db, u.ID)
+		if err != nil {
+			log.Printf("error getting current event for userID: %d, err: %v", u.ID, err)
+			http.Error(w, "<html><body><b>User have no active events! Come back later, when reservations will be opened!</b></body></html>", 500) //TODO: inform about closest user event and when it is
+			return
+		}
+		fmt.Println(e.ID)
+		rr, err := db.EventGetRooms(e.ID)
+		if err != nil {
+			log.Printf("error getting rooms for eventID: %d, err: %v", e.ID, err)
+			http.Error(w, fmt.Sprintf("<html><body><b>Rooms for user: %q, event: %q not found!<br />If problem persists, contact me at: ernierasta (at) zori.cz</b></body></html>", v["user"], e.Name), 500)
+			return
+		}
+		log.Println(rr)
+		for i := range rr { // TODO: remake it, GetPageVarsFromDB call the same again, move previous lines there
+			p := GetPageVarsFromDB(db, rr[i].Name, e.Name)
+			enPM := PageMeta{
+				LBLTitle: "Reservation",
+				ReservationPage: ReservationPage{
+					HTMLHowTo: template.HTML(p.Event.HowTo),
+					BTNOrder:  "Order",
+				},
+			}
+			p.PageMeta = enPM
+			t := template.Must(template.ParseFiles("tmpl/reservation.html", "tmpl/base.html"))
+			err := t.ExecuteTemplate(w, "base", p)
+			if err != nil {
+				log.Print("Reservation template executing error: ", err)
+			}
 		}
 	}
 }
@@ -207,6 +249,11 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 		if err != nil {
 			log.Printf("error getting event by name: %q, err: %v", eventName, err)
 		}
+		// TODO: this will be different
+		user, err := db.UserGetByID(event.UserID)
+		if err != nil {
+			log.Println(err)
+		}
 
 		if r.Method == "POST" {
 			err := r.ParseForm()
@@ -222,17 +269,62 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 			o.Phone = r.Form["phone"][0]
 			o.Notes = r.Form["notes"][0]
 
-			client := MailConfig{
+			sits := strings.Split(o.Sits, ",")
+
+			for i := range sits {
+				chairNumber, err := strconv.ParseInt(strings.TrimSpace(sits[i]), 10, 64)
+				if err != nil {
+					log.Println(err)
+				}
+
+				chair, err := db.FurnitureGetByTypeNumber("chair", chairNumber)
+				if err != nil {
+					log.Println(err)
+				}
+
+				reservation, err := db.ReservationGet(chair.ID, event.ID)
+				if err != nil {
+					log.Printf("error retrieving reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
+				}
+
+				err = db.ReservationMod(&reservation)
+				if err != nil {
+					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
+					http.Error(w, fmt.Sprintf("<html><body><b>Can not update reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
+					return
+				}
+
+			}
+
+			custMail := MailConfig{
+				Server:  "magikinfo.cz",
+				Port:    587,
+				User:    "rezerwo@zori.cz",
+				Pass:    mailpass,
+				From:    user.Email,
+				ReplyTo: user.Email,
+				Sender:  "rezerwo@zori.cz",
+				To:      []string{o.Email},
+				Subject: event.MailSubject,
+				Text:    ParseTmpl(event.MailText, o),
+			}
+			err = MailSend(custMail)
+			if err != nil {
+				log.Println(err)
+			}
+			userMail := MailConfig{
 				Server:  "magikinfo.cz",
 				Port:    587,
 				User:    "rezerwo@zori.cz",
 				Pass:    mailpass,
 				From:    "rezerwo@zori.cz",
-				To:      []string{o.Email},
+				ReplyTo: "rezerwo@zori.cz",
+				Sender:  "rezerwo@zori.cz",
+				To:      []string{user.Email},
 				Subject: event.MailSubject,
-				Text:    ParseTmpl(event.MailText, o),
+				Text:    ParseTmpl("{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}", o), //TODO
 			}
-			err = MailSend(client)
+			err = MailSend(userMail)
 			if err != nil {
 				log.Println(err)
 			}
@@ -240,7 +332,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 
 		p := ReservationOrderStatusVars{
 			LBLTitle:      "Order status",
-			LBLStatus:     "TODO: status name " + event.Name,
+			LBLStatus:     "Tickets for " + event.Name + " ordered!",
 			LBLStatusText: event.OrderedNote,
 			BTNOk:         "Ok",
 		}
@@ -308,6 +400,7 @@ type ReservationOrderVars struct {
 func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sits := ""
+		prices := ""
 		totalPrice := ""
 		defaultCurrency := ""
 
@@ -322,8 +415,42 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 				log.Printf("error parsing form data:, err: %v", err)
 			}
 			sits = r.Form["sits"][0]
+			prices = r.Form["prices"][0]
 			totalPrice = r.Form["total-price"][0]
 			defaultCurrency = r.Form["default-currency"][0]
+
+			ss := strings.Split(sits, ",")
+			pp := strings.Split(prices, ",")
+
+			for i := range ss {
+				chairNumber, err := strconv.ParseInt(strings.TrimSpace(ss[i]), 10, 64)
+				if err != nil {
+					log.Println(err)
+				}
+				chair, err := db.FurnitureGetByTypeNumber("chair", chairNumber)
+				if err != nil {
+					log.Println(err)
+				}
+				chairPrice, err := strconv.ParseInt(strings.TrimSpace(pp[i]), 10, 64)
+				if err != nil {
+					log.Println(err)
+				}
+
+				_, err = db.ReservationAdd(&Reservation{
+					OrderedDate: ToNI(time.Now().Unix()),
+					Price:       ToNI(chairPrice),
+					Currency:    ToNS(defaultCurrency),
+					Status:      "marked", // this is very important
+					FurnitureID: chair.ID,
+					EventID:     event.ID,
+					CustomerID:  -1, // this will be updated when customer is created
+				})
+				if err != nil {
+					log.Printf("error adding reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
+					http.Error(w, fmt.Sprintf("<html><body><b>Can not add reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
+					return
+				}
+			}
 		}
 		//p := GetPageVarsFromDB(db, roomName, eventName)
 		p := ReservationOrderVars{
@@ -659,6 +786,21 @@ func DesignerRenumberType(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+func EventGetCurrent(db *DB, userID int64) (Event, error) {
+	events, err := db.EventGetAllByUserID(userID)
+	if err != nil {
+		return Event{}, err
+	}
+	now := time.Now().Unix()
+	for i := range events {
+		// return first active user event
+		if events[i].FromDate < now && events[i].ToDate > now {
+			return events[i], nil
+		}
+	}
+	return Event{}, fmt.Errorf("no active event found for userID: %d", userID)
 }
 
 type Order struct {

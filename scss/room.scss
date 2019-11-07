@@ -25,11 +25,15 @@
 
 .chair {
 	float: left;
-	background: $chair-color;
+	background: $chair-color-free;
 	width: $table;
 	height: $table;
 	text-align: center;
 	margin: 2px;
+}
+
+.marked {
+	background: $chair-color-marked;
 }
 
 .disabled {

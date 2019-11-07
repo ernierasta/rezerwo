@@ -86,17 +86,20 @@ function Post(path, params, method='post') {
 function GetOrderedAndCountPrice() {
   var selected = [];
   var price = 0;
+  var prices = [];
   $(".ui-selected").each(function(i, obj) {
     if ($(this).hasClass("chair")) {
       selected.push($(this).attr('name'));
       if ($(this).attr('price') != 0 && $(this).attr('price') != "") {
         price += Number($(this).attr('price'));
+        prices.push($(this).attr('price'));
       } else {
         price += Number(Designer.defaultPrice);
+        prices.push(Designer.defaultPrice);
       }
     }
   });
-  return {"sits": selected, "total-price": price, "default-currency": Designer.defaultCurrency}
+  return {"sits": selected, "prices": prices, "total-price": price, "default-currency": Designer.defaultCurrency}
 }
 
 function Order() {

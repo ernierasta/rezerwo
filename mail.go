@@ -20,6 +20,8 @@ type MailConfig struct {
 	User, Pass string
 	IgnoreCert bool
 	From       string
+	Sender     string
+	ReplyTo    string
 	To         []string
 	Subject    string
 	Text       string
@@ -31,7 +33,6 @@ type MailConfig struct {
 func MailSend(n MailConfig) error {
 	if (n.User != "" && n.Pass == "") ||
 		(n.Pass != "" && n.User == "") ||
-  $("#Parent").on("DOMNodeInserted", ".ChildClass", function() { $(this).draggable(); });
 		n.Server == "" {
 		pass := ""
 		if len(n.Pass) > 3 {

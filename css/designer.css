@@ -1,94 +1,17 @@
-.table {
-  padding: 0.5em;
-  float: left;
-  margin: 10px 10px 10px 0;
-  background: grey;
-}
+/* Error: Undefined variable.
+ *    ,
+ * 12 |     background: $chair-color;
+ *    |                 ^^^^^^^^^^^^
+ *    '
+ *   scss/designer.scss 12:14  root stylesheet */
 
-.chair {
-  float: left;
-  background: red;
-  width: 20px;
-  height: 20px;
-  text-align: center;
-  margin: 2px;
-}
-
-.hidden {
-  display: none;
-}
-
-.chair-vert {
-  width: 20px;
-  height: 25px;
-}
-
-.chair-horiz {
-  width: 25px;
-  height: 20px;
-}
-
-.vertical-8, .vertical-6, .vertical-4, .vertical-2 {
-  width: 20px;
-}
-
-.vertical-2 {
-  height: 20px;
-}
-
-.vertical-4 {
-  height: 45px;
-}
-
-.vertical-6 {
-  height: 70px;
-}
-
-.vertical-8 {
-  height: 95px;
-}
-
-.mouseover {
-  width: 120px;
-}
-
-#table-storage .ui-selecting {
-  background: #FECA40;
-}
-
-#table-storage .ui-selected {
-  background: #F39814;
-  color: white;
-}
-
-#table-storage {
-  margin: 0;
-  padding: 0;
-  height: 300px;
-  position: relative;
-  padding: 0;
-  border: solid 1px #DDD;
-}
-
-#table-storage > div {
-  position: absolute;
-  margin: 0;
-  padding: 10px;
-  border: solid 1px #CCC;
-  width: 100px;
-}
-
-.ui-selectable-helper {
-  position: absolute;
-  z-index: 100;
-  border: 1px dotted black;
-}
-
-#droppable {
-  width: 500px;
-  height: 500px;
-  padding: 0.5em;
-  float: left;
-  margin: 10px;
-  border: 3px dashed black;
+body::before {
+  font-family: "Source Code Pro", "SF Mono", Monaco, Inconsolata, "Fira Mono",
+      "Droid Sans Mono", monospace, monospace;
+  white-space: pre;
+  display: block;
+  padding: 1em;
+  margin-bottom: 1em;
+  border-bottom: 2px solid black;
+  content: "Error: Undefined variable.\a    \2577 \a 12 \2502      background: $chair-color;\a    \2502                  ^^^^^^^^^^^^\a    \2575 \a   scss/designer.scss 12:14  root stylesheet";
 }

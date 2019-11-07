@@ -284,7 +284,7 @@ function MakeSelectable() {
       selected = [];
       price = 0;
       $(".ui-selected").each(function(i, obj) {
-        if ($(this).hasClass("chair") && !$(this).hasClass("disabled")) {
+        if ($(this).hasClass("chair") && !$(this).hasClass("disabled") && !$(this).hasClass("marked")) {
           selected.push($(this).attr('name'));
           if ($(this).attr('price') != 0 && $(this).attr('price') != "") {
             price += Number($(this).attr('price'));

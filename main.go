@@ -91,7 +91,16 @@ Karwina
 	if err != nil {
 		log.Println(err)
 	}
+	r2ID, err := db.RoomAdd(&Room{ID: 2, Name: "Balkón", Description: ToNS("Na balkón bez dzieci."), Width: 500, Height: 500})
+	if err != nil {
+		log.Println(err)
+	}
 	err = db.RoomAssignToUser(uID, r1ID)
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = db.RoomAssignToUser(uID, r2ID)
 	if err != nil {
 		log.Println(err)
 	}
@@ -100,6 +109,10 @@ Karwina
 		log.Println(err)
 	}
 	err = db.EventAddRoom(eID, r1ID)
+	if err != nil {
+		log.Println(err)
+	}
+	err = db.EventAddRoom(eID, r2ID)
 	if err != nil {
 		log.Println(err)
 	}
@@ -154,6 +167,22 @@ type Page struct {
 	Chairs  []FurnitureFull
 	Objects []Furniture
 	Labels  []Furniture
+}
+
+type ReservationPageVars struct {
+	LBLTitle string
+	Event
+	Rooms []RoomVars
+}
+
+type RoomVars struct {
+	Room
+	HTMLHowTo template.HTML
+	BTNOrder  string
+	Tables    []Furniture
+	Chairs    []FurnitureFull
+	Objects   []Furniture
+	Labels    []Furniture
 }
 
 func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter, r *http.Request) {
@@ -217,21 +246,24 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Println(rr)
-		for i := range rr { // TODO: remake it, GetPageVarsFromDB call the same again, move previous lines there
-			p := GetPageVarsFromDB(db, rr[i].Name, e.Name)
-			enPM := PageMeta{
-				LBLTitle: "Reservation",
-				ReservationPage: ReservationPage{
-					HTMLHowTo: template.HTML(p.Event.HowTo),
-					BTNOrder:  "Order",
-				},
-			}
-			p.PageMeta = enPM
-			t := template.Must(template.ParseFiles("tmpl/reservation.html", "tmpl/base.html"))
-			err := t.ExecuteTemplate(w, "base", p)
-			if err != nil {
-				log.Print("Reservation template executing error: ", err)
-			}
+		p := ReservationPageVars{
+			LBLTitle: "Reservation",
+			Event:    e,
+			Rooms:    []RoomVars{},
+		}
+		for i := range rr {
+			// TODO: remake it, GetPageVarsFromDB call the same again, move previous lines there
+			rv := GetFurnituresFromDB(db, rr[i].Name, e.ID)
+			rv.Room = rr[i]
+			rv.HTMLHowTo = template.HTML(e.HowTo)
+			rv.BTNOrder = "Order"
+
+			p.Rooms = append(p.Rooms, rv)
+		}
+		t := template.Must(template.ParseFiles("tmpl/reservation.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", p)
+		if err != nil {
+			log.Print("Reservation template executing error: ", err)
 		}
 	}
 }
@@ -341,6 +373,31 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 		if err != nil {
 			log.Print("Reservation template executing error: ", err)
 		}
+	}
+}
+
+func GetFurnituresFromDB(db *DB, roomName string, eventID int64) RoomVars {
+	chairs, err := db.FurnitureFullGetChairs(eventID, roomName)
+	if err != nil {
+		log.Printf("error getting chairs(FurnitureFull) for room %q, err: %v", roomName, err)
+	}
+	tables, err := db.FurnitureGetAllByRoomNameOfType(roomName, "table")
+	if err != nil {
+		log.Printf("error getting 'tables' for room %q, err: %v", roomName, err)
+	}
+	objects, err := db.FurnitureGetAllByRoomNameOfType(roomName, "object")
+	if err != nil {
+		log.Printf("error getting 'objects' for room %q, err: %v", roomName, err)
+	}
+	labels, err := db.FurnitureGetAllByRoomNameOfType(roomName, "label")
+	if err != nil {
+		log.Printf("error getting 'labels' for room %q, err: %v", roomName, err)
+	}
+	return RoomVars{
+		Tables:  tables,
+		Chairs:  chairs,
+		Objects: objects,
+		Labels:  labels,
 	}
 }
 

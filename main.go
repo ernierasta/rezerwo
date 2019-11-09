@@ -293,6 +293,8 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 				log.Printf("error parsing form data:, err: %v", err)
 			}
 			o.Sits = r.Form["sits"][0]
+			o.Prices = r.Form["prices"][0]
+			o.Rooms = r.Form["rooms"][0]
 			o.TotalPrice = r.Form["total-price"][0]
 			o.Email = r.Form["email"][0]
 			o.Password = r.Form["password"][0]
@@ -301,15 +303,25 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 			o.Phone = r.Form["phone"][0]
 			o.Notes = r.Form["notes"][0]
 
-			sits := strings.Split(o.Sits, ",")
+			ss := strings.Split(o.Sits, ",")
+			pp := strings.Split(o.Prices, ",") // unused here, price is written to DB in INSERT
+			rr := strings.Split(o.Rooms, ",")
 
-			for i := range sits {
-				chairNumber, err := strconv.ParseInt(strings.TrimSpace(sits[i]), 10, 64)
+			if len(ss) != len(pp) || len(ss) != len(rr) {
+				log.Println("ReservationOrderHTML: error, POST - wrong lenght, ss: %q, pp: %q, rr: %q",
+					o.Sits, o.Prices, o.Rooms)
+			}
+
+			for i := range ss {
+				chairNumber, err := strconv.ParseInt(strings.TrimSpace(ss[i]), 10, 64)
 				if err != nil {
 					log.Println(err)
 				}
-
-				chair, err := db.FurnitureGetByTypeNumber("chair", chairNumber)
+				roomID, err := strconv.ParseInt(strings.TrimSpace(rr[i]), 10, 64)
+				if err != nil {
+					log.Println(err)
+				}
+				chair, err := db.FurnitureGetByTypeNumberRoom("chair", chairNumber, roomID)
 				if err != nil {
 					log.Println(err)
 				}
@@ -318,7 +330,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 				if err != nil {
 					log.Printf("error retrieving reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
 				}
-
+				reservation.Status = "ordered"
 				err = db.ReservationMod(&reservation)
 				if err != nil {
 					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
@@ -449,6 +461,7 @@ type ReservationOrderVars struct {
 	LBLPhoneHelp                        string
 	LBLNotes, LBLNotesPlaceholder       string
 	LBLNotesHelp                        string
+	LBLPricesValue, LBLRoomsValue       string
 	LBLSits, LBLSitsValue               string
 	LBLTotalPrice, LBLTotalPriceValue   string
 	BTNSubmit                           string
@@ -458,6 +471,7 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 	return func(w http.ResponseWriter, r *http.Request) {
 		sits := ""
 		prices := ""
+		rooms := ""
 		totalPrice := ""
 		defaultCurrency := ""
 
@@ -473,18 +487,29 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 			}
 			sits = r.Form["sits"][0]
 			prices = r.Form["prices"][0]
+			rooms = r.Form["rooms"][0]
 			totalPrice = r.Form["total-price"][0]
 			defaultCurrency = r.Form["default-currency"][0]
 
 			ss := strings.Split(sits, ",")
 			pp := strings.Split(prices, ",")
+			rr := strings.Split(rooms, ",")
+
+			if len(ss) != len(pp) || len(ss) != len(rr) {
+				log.Println("ReservationOrderHTML: error, POST - wrong lenght, ss: %q, pp: %q, rr: %q",
+					sits, prices, rooms)
+			}
 
 			for i := range ss {
 				chairNumber, err := strconv.ParseInt(strings.TrimSpace(ss[i]), 10, 64)
 				if err != nil {
 					log.Println(err)
 				}
-				chair, err := db.FurnitureGetByTypeNumber("chair", chairNumber)
+				roomID, err := strconv.ParseInt(strings.TrimSpace(rr[i]), 10, 64)
+				if err != nil {
+					log.Println(err)
+				}
+				chair, err := db.FurnitureGetByTypeNumberRoom("chair", chairNumber, roomID)
 				if err != nil {
 					log.Println(err)
 				}
@@ -527,6 +552,8 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 			LBLNotes:              "Notes",
 			LBLNotesPlaceholder:   "Notes",
 			LBLNotesHelp:          "Additional notes",
+			LBLPricesValue:        prices,
+			LBLRoomsValue:         rooms,
 			LBLSits:               "Sits",
 			LBLSitsValue:          sits,
 			LBLTotalPrice:         "Total price",
@@ -754,9 +781,13 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				RoomID:      roomID,
 			}
 
-			fID, err := db.FurnitureAddOrUpdate(&f)
+			fID, err := db.FurnitureAdd(&f)
 			if err != nil {
-				log.Println(err)
+				log.Printf("info: inserting furniture failed, trying to update, err: %v", err)
+				err := db.FurnitureModByNumberTypeRoom(&f)
+				if err != nil {
+					log.Printf("error: furniture insert failed, now also update failed, f: %+v, err: %v", f, err)
+				}
 			}
 
 			// only for logging
@@ -775,10 +806,14 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				EventID:     eventID,
 				FurnitureID: fID,
 			}
-			_, err = db.PriceAddOrUpdate(&p)
-			//log.Printf("write PRICE to db: %+v", p)
+			_, err = db.PriceAdd(&p)
 			if err != nil {
-				log.Println(err)
+				log.Printf("info: price inserting failed, trying update, err: %v", err)
+				err = db.PriceMod(&p)
+				if err != nil {
+					log.Printf("error: price insert failed, now also update failed, p: %+v, err: %v", p, err)
+				}
+
 			}
 		}
 	}
@@ -833,7 +868,10 @@ func DesignerRenumberType(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				log.Printf("error retrieving %q for room %v, err: %s", m.Type, m.RoomID, err)
 			}
 			log.Println(ff)
-			ff = FurnitureRenumber(ff)
+			ff, err = FurnitureRenumber(ff)
+			if err != nil {
+				log.Println(err)
+			}
 			log.Println(ff)
 			for i := range ff {
 				err := db.FurnitureMod(&ff[i])
@@ -861,12 +899,13 @@ func EventGetCurrent(db *DB, userID int64) (Event, error) {
 }
 
 type Order struct {
-	TotalPrice    string
-	Sits, Room    string
-	Email         string
-	Password      string
-	Name, Surname string
-	Phone, Notes  string
+	TotalPrice          string
+	Sits, Prices, Rooms string
+	Room                string
+	Email               string
+	Password            string
+	Name, Surname       string
+	Phone, Notes        string
 }
 
 func ParseTmpl(t string, o Order) string {

@@ -35,6 +35,14 @@
   background: yellow;
 }
 
+.ordered {
+  background: orange;
+}
+
+.payed {
+  background: red;
+}
+
 .disabled {
   color: lightgrey;
   background: black;
@@ -59,10 +67,6 @@
 .input-group {
   margin-top: 5px;
   margin-bottom: 5px;
-}
-
-#controls {
-  width: 800px;
 }
 
 #right-col {
@@ -224,7 +228,7 @@
   width: 370px;
 }
 
-#room, #room-view {
+#room, .room-view {
   width: 1000px;
   height: 1000px;
   float: left;
@@ -232,11 +236,11 @@
   border: 3px dashed black;
 }
 
-#room .ui-selecting, #room-view .ui-selecting {
+#room .ui-selecting, .room-view .ui-selecting {
   background: #FECA40;
 }
 
-#room .ui-selected, #room-view .ui-selected {
+#room .ui-selected, .room-view .ui-selected {
   background: #F39814;
   color: white;
 }

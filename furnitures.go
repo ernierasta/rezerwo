@@ -1,6 +1,9 @@
 package main
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 func TableNr(ff []Furniture) int64 {
 	i := int64(0)
@@ -42,17 +45,25 @@ func LabelNr(ff []Furniture) int64 {
 	return i
 }
 
-// FurnitureRenumber works only for filtered Furnitures, only
-// chairs f.e.
-func FurnitureRenumber(ff []Furniture) []Furniture {
-	//TODO: sort objects, than assign numbers from 1:len(ff) to it
+// FurnitureRenumber works only for filtered Furnitures, f.e. only
+// chairs for given room
+func FurnitureRenumber(ff []Furniture) ([]Furniture, error) {
+	roomID := int64(-2)
+	ftype := "init"
+
+	// sort numbers, than assign numbers from 1:len(ff) to it
 	sort.Slice(ff, func(i, j int) bool {
 		return ff[i].Number < ff[j].Number
 	})
 	for i := range ff {
 		ff[i].Number = int64(i + 1)
+		err := protectFurnitureTypeRoom(ftype, ff[i].Type, roomID, ff[i].RoomID)
+		if err != nil {
+			return ff, err
+		}
+
 	}
-	return ff
+	return ff, nil
 }
 
 // FurnitureFull
@@ -97,15 +108,36 @@ func LabelNrFull(ff []FurnitureFull) int64 {
 	return i
 }
 
-// FurnitureRenumber works only for filtered Furnitures, only
-// chairs f.e.
-func FurnitureRenumberFull(ff []Furniture) []Furniture {
-	//TODO: sort objects, than assign numbers from 1:len(ff) to it
+// FurnitureRenumber works only for filtered Furnitures, f.e. only
+// chairs for given room
+func FurnitureRenumberFull(ff []Furniture) ([]Furniture, error) {
+	roomID := int64(-2)
+	ftype := "init"
+
+	// sort numbers, than assign numbers from 1:len(ff) to it
 	sort.Slice(ff, func(i, j int) bool {
 		return ff[i].Number < ff[j].Number
 	})
 	for i := range ff {
 		ff[i].Number = int64(i + 1)
+		err := protectFurnitureTypeRoom(ftype, ff[i].Type, roomID, ff[i].RoomID)
+		if err != nil {
+			return ff, err
+		}
 	}
-	return ff
+	return ff, nil
+}
+
+func protectFurnitureTypeRoom(newType, oldType string, newRoom, oldRoom int64) error {
+	if oldRoom != newRoom && oldRoom != -2 {
+		return fmt.Errorf("FurnitureRenumberFull: mixed rooms given, previous: %d, current: %d",
+			oldRoom, newRoom)
+	}
+	oldRoom = newRoom
+	if oldType != newType && oldType != "init" {
+		return fmt.Errorf("FurnitureRenumberFull: mixed furniture types given, previous: %s, current: %s",
+			oldType, newType)
+	}
+	oldType = newType
+	return nil
 }

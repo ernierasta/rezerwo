@@ -87,25 +87,26 @@ function GetOrderedAndCountPrice() {
   var selected = [];
   var price = 0;
   var prices = [];
+  var rooms = [];
+
   $(".ui-selected").each(function(i, obj) {
     if ($(this).hasClass("chair")) {
       selected.push($(this).attr('name'));
+      rooms.push($(this).attr('room'));
       if ($(this).attr('price') != 0 && $(this).attr('price') != "") {
         price += Number($(this).attr('price'));
         prices.push($(this).attr('price'));
       } else {
-        price += Number(Designer.defaultPrice);
-        prices.push(Designer.defaultPrice);
+        price += Number(Price.defaultPrice);
+        prices.push(Price.defaultPrice);
       }
     }
   });
-  return {"sits": selected, "prices": prices, "total-price": price, "default-currency": Designer.defaultCurrency}
+  console.log({"sits": selected, "prices": prices, "rooms": rooms, "total-price": price, "default-currency": Price.defaultCurrency});
+  return {"sits": selected, "prices": prices, "rooms": rooms, "total-price": price, "default-currency": Price.defaultCurrency}
 }
 
 function Order() {
-  $(".ui-selected.chair, .ui-selecting.chair").each(function(i, obj) {
-    console.log($(this));
-  });
   Post("/order", GetOrderedAndCountPrice());
 }
 
@@ -275,21 +276,21 @@ function MakeSelectable() {
   var selected;
   var price;
 
-  $( "#room-view" ).bind("mousedown", function(event, ui) {
+  $( ".room-view" ).bind("mousedown", function(event, ui) {
       //var result = $( "#select-result" ).empty();
       event.ctrlKey = true;
     });
-  $( "#room-view" ).selectable({
+  $( ".room-view" ).selectable({
     selected: function (e, ui) {
       selected = [];
       price = 0;
       $(".ui-selected").each(function(i, obj) {
-        if ($(this).hasClass("chair") && !$(this).hasClass("disabled") && !$(this).hasClass("marked")) {
+        if ($(this).hasClass("chair") && !$(this).hasClass("disabled") && !$(this).hasClass("marked") && !$(this).hasClass("ordered")) {
           selected.push($(this).attr('name'));
           if ($(this).attr('price') != 0 && $(this).attr('price') != "") {
             price += Number($(this).attr('price'));
           } else {
-            price += Number(Designer.defaultPrice);
+            price += Number(Price.defaultPrice);
           }
         } else {
           $(this).removeClass("ui-selecting");
@@ -307,7 +308,7 @@ function MakeSelectable() {
           if ($(this).attr('price') != 0 && $(this).attr('price') != "") {
             price += Number($(this).attr('price'));
           } else {
-            price += Number(Designer.defaultPrice);
+            price += Number(Price.defaultPrice);
           }
         }
       });
@@ -318,12 +319,26 @@ function MakeSelectable() {
 
 
 $(function() {
+  if (typeof Designer === 'undefined') {
+    Designer = {};
+  }
+    
   var table_nr=Designer.tableNr;
   var chair_nr=Designer.chairNr;
   var orientation="vertical";
 
   //room-view
   MakeSelectable();
+  // set first room as active tab
+  $('.nav-tabs a:first').tab('show');
+
+  // trigger on tab change
+  $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+    // set current-roomID hidden div content
+    $("#current-roomID").html($(e.target).attr("name")) // unused
+    // make chairs selectable on active tab
+    MakeSelectable();
+  });
 
   $( "#room > div" ).draggable({
     draggies
@@ -333,37 +348,7 @@ $(function() {
     draggies
   })});
 
-  $("#roomaaaa").on("DOMNodeInserted", ".ui-widget-content", function() { $(this).draggable({
-  //$( "#room > div" ).draggable({
-      start: function(ev, ui) {
-          if ($(this).hasClass("ui-selected")){
-              selected = $(".ui-selected").each(function() {
-                 var el = $(this);
-                 el.data("offset", el.offset());
-              });
-          }
-          else {
-              selected = $([]);
-              $("#room > div").removeClass("ui-selected");
-          }
-          offset = $(this).offset();
-      },
-      drag: function(ev, ui) {
-          var dt = ui.position.top - offset.top, dl = ui.position.left - offset.left;
-          // take all the elements that are selected expect $("this"), which is the element being dragged and loop through each.
-          selected.not(this).each(function() {
-               // create the variable for we don't need to keep calling $("this")
-               // el = current element we are on
-               // off = what position was this element at when it was selected, before drag
-               var el = $(this), off = el.data("offset");
-              el.css({top: off.top + dt, left: off.left + dl});
-          });
-      }
-
-  }); });
-  //});
-  
-  $( "#room" ).selectable();
+    $( "#room" ).selectable();
   
   // manually trigger the "select" of clicked elements
   $( "#room > div" ).click(TriggerSelect());
@@ -376,10 +361,6 @@ $(function() {
     var capacity = $("#chairs-ammount").val();
     table = '<div id="table-'+table_nr+'" name='+table_nr+' furniture="table" orientation="'+orientation+'" class="ui-widget-content table '+orientation+'-'+capacity+'" capacity='+capacity+'><p>Table nr '+table_nr+'</p></div>';
     $("#room").append(table);
-    // set draggable function for every new table
-    //MakeSelectableDraggable(parent);
-    //MakeDraggable(parent);
-    //MakeSelectable();
     table_nr++;
   });
 

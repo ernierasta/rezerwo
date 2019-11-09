@@ -296,7 +296,17 @@ func (db *DB) RoomUnassignUser(userID, roomID int64) error {
 	return err
 }
 
-func (db *DB) FurnitureAddOrUpdate(f *Furniture) (int64, error) {
+func (db *DB) FurnitureAdd(f *Furniture) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk) 
+VALUES(:number, :type, :orientation, :x, :y, :width, :height, :color, :label, :capacity, :rooms_id_fk)`, f)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) FurnitureAddOrUpdateUnsafe(f *Furniture) (int64, error) {
+	log.Println("Do NOT use FurnitureAddOrUpdate - messes with ID's")
 	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk) 
 VALUES(:number, :type, :orientation, :x, :y, :width, :height, :color, :label, :capacity, :rooms_id_fk)`, f)
 	if err != nil {
@@ -304,9 +314,10 @@ VALUES(:number, :type, :orientation, :x, :y, :width, :height, :color, :label, :c
 	}
 	return ret.LastInsertId()
 }
-func (db *DB) FurnitureGetByTypeNumber(ftype string, number int64) (Furniture, error) {
+
+func (db *DB) FurnitureGetByTypeNumberRoom(ftype string, number int64, roomID int64) (Furniture, error) {
 	furniture := Furniture{}
-	err := db.DB.Get(&furniture, `SELECT * FROM furnitures WHERE type=$1 AND number=$2`, ftype, number)
+	err := db.DB.Get(&furniture, `SELECT * FROM furnitures WHERE type=$1 AND number=$2 AND rooms_id_fk=$3`, ftype, number, roomID)
 	return furniture, err
 }
 
@@ -359,8 +370,16 @@ func (db *DB) FurnitureGetAll() ([]Furniture, error) {
 }
 
 func (db *DB) FurnitureMod(furniture *Furniture) error {
+	if furniture.ID == 0 {
+		return fmt.Errorf("FurnitureMod: cannot update when ID is 0")
+	}
 	_, err := db.DB.NamedExec(`UPDATE furnitures SET number=:number, type=:type, orientation=:orientation,
 		x=:x, y=:y, width=:width, height=:height, color=:color, label=:label, capacity=:capacity WHERE id=:id`, furniture)
+	return err
+}
+
+func (db *DB) FurnitureModByNumberTypeRoom(furniture *Furniture) error {
+	_, err := db.DB.NamedExec(`UPDATE furnitures SET orientation=:orientation, x=:x, y=:y, width=:width, height=:height, color=:color, label=:label, capacity=:capacity WHERE number=:number AND type=:type AND rooms_id_fk=:rooms_id_fk`, furniture)
 	return err
 }
 
@@ -387,7 +406,16 @@ func (db *DB) FurnitureDelByNumberType(number int64, ftype string) error {
 	return err
 }
 
-func (db *DB) PriceAddOrUpdate(p *Price) (int64, error) {
+func (db *DB) PriceAdd(p *Price) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk) 
+VALUES(:price, :currency, :disabled, :events_id_fk, :furnitures_id_fk)`, p)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) PriceAddOrUpdateUnsafe(p *Price) (int64, error) {
 	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk) 
 VALUES(:price, :currency, :disabled, :events_id_fk, :furnitures_id_fk)`, p)
 	if err != nil {
@@ -408,12 +436,13 @@ func (db *DB) PriceGetByID(id int64) (Price, error) {
 	err := db.DB.Get(&price, `SELECT * FROM prices WHERE id=$1`, id)
 	return price, err
 }
+
 func (db *DB) PriceMod(price *Price) error {
 	if price.ID == 0 {
 		return fmt.Errorf("can not modify price if ID is 0")
 	}
 
-	_, err := db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, orientation=:orientation WHERE id=:id`, price)
+	_, err := db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE id=:id`, price)
 	return err
 }
 
@@ -422,7 +451,7 @@ func (db *DB) PriceModByEventIDFurnID(price *Price) error {
 		return fmt.Errorf("can not modify price if EventID or FurnitureID is 0, %+v", price)
 	}
 
-	_, err := db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled, orientation=:orientation WHERE events_id_fk=:events_id_fk and furnitures_id_fk=:furnitures_id_fk`, price)
+	_, err := db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE events_id_fk=:events_id_fk and furnitures_id_fk=:furnitures_id_fk`, price)
 	return err
 }
 
@@ -463,7 +492,7 @@ VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :o
 }
 
 // EventAddOrUpdate will increase id every update!!!
-func (db *DB) EventAddOrUpdate(e *Event) (int64, error) {
+func (db *DB) EventAddOrUpdateUnsafe(e *Event) (int64, error) {
 	log.Println("EventAddOrUpdate: probably wrong idea to use this func!")
 	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO events (name, date, from_date, to_date, default_price, default_currency, ordered_note, how_to, mail_subject, mail_text, users_id_fk) 
 VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :ordered_note, :how_to, :mail_subject, :mail_text, :users_id_fk)`, e)

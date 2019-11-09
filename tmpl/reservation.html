@@ -12,26 +12,26 @@
 <ul class="nav nav-tabs">
 {{range .Rooms}}
   <li class="nav-item" id="roomsTabs" role="tablist">
-    <a class="nav-link" href="#room-{{.Room.ID}}"id="room-{{.Room.ID}}-tab" data-toggle="tab" role="tab" aria-controls="room-{{.Room.ID}}">{{.Room.Name}}</a>
+    <a class="nav-link" href="#room-{{.Room.ID}}"id="room-{{.Room.ID}}-tab" name="{{.Room.ID}}" data-toggle="tab" role="tab" aria-controls="room-{{.Room.ID}}">{{.Room.Name}}</a>
   </li>
 {{end}}
 </ul>
+<div id="current-roomID" hidden></div>
 <div class="tab-content" id="roomsTabContent">
 {{range .Rooms}}
   <div class="tab-pane fade show" id="room-{{.Room.ID}}" role="tabpanel" aria-labelledby="room-{{.Room.ID}}-tab">
     <div id="meta">
-      <div id="roomID" hidden>{{.Room.ID}}</div>
       <h1>{{.Room.Name}}</h1>
       <p>{{.Room.Description.String}}</p>
     </div>
     <div class="row">
       <div class="column" style="width: {{.Room.Width}}px;">
-        <div id="room-view" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;" class="ui-widget-header selectable">
+        <div id="room-view-{{.Room.ID}}" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;" class="room-view ui-widget-header selectable">
         {{range .Tables}}
           <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
         {{end}}
         {{range .Chairs}}
-          <div class="{{.Type}} {{if and .AdminDisabled.Valid (eq .AdminDisabled.Int64 1)}}disabled{{end}} {{.Status.String}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" price="{{.AdminPrice.Int64}}" currency="{{.AdminCurrency.String}}" orderstatus="{{.Status.String}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+        <div class="{{.Type}} {{if and .AdminDisabled.Valid (eq .AdminDisabled.Int64 1)}}disabled{{end}} {{.Status.String}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" room="{{.RoomID}}" furniture="{{.Type}}" price="{{.AdminPrice.Int64}}" currency="{{.AdminCurrency.String}}" orderstatus="{{.Status.String}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
         {{end}}
         {{range .Objects}}
           <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; background: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>

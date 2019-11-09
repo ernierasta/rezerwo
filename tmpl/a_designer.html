@@ -4,6 +4,12 @@
 {{end}}
 {{define "body"}}
   <script>
+    window.Price = {}
+    Price.defaultPrice = {{.DefaultPrice}};
+    Price.defaultCurrency = {{.DefaultCurrency}};
+  </script>
+
+  <script>
     // setting current table and chair nrs based on db
     window.Designer = {}
     Designer.tableNr = {{.TableNr}};

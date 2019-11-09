@@ -35,6 +35,12 @@
 .marked {
 	background: $chair-color-marked;
 }
+.ordered {
+	background: $chair-color-ordered;
+}
+.payed {
+	background: $chair-color-payed;
+}
 
 .disabled {
 	color: $chair-color-disabled-text;
@@ -61,9 +67,9 @@
 	margin-bottom: 5px;
 }
 
-#controls {
-	width: 800px;
-}
+//#controls {
+//	width: 800px;
+//}
 
 #right-col {
 	float: right;
@@ -255,7 +261,7 @@
 	width: $table-30;
 }
 
-#room, #room-view { 
+#room, .room-view { 
 	width: $room-width;
 	height: $room-height;
 	//padding: 0.5em;
@@ -264,8 +270,8 @@
 	border: 3px dashed black;
 }
 
-#room .ui-selecting, #room-view .ui-selecting {background: #FECA40;}
-#room .ui-selected, #room-view .ui-selected {background: #F39814; color: white;}
+#room .ui-selecting, .room-view .ui-selecting {background: #FECA40;}
+#room .ui-selected, .room-view .ui-selected {background: #F39814; color: white;}
 //#room {margin: 0; padding: 0; height: 300px; position: relative; padding:0; border:solid 1px #DDD;}
 //#room > div {position: absolute; margin: 0; padding:10px; border:solid 1px #CCC; width: 100px;}
 .ui-selectable-helper {position: absolute; z-index: 100; border:1px dotted black;}

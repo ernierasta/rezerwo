@@ -69,18 +69,20 @@ type Price struct {
 }
 
 type Event struct {
-	ID              int64  `db:"id"`
-	Name            string `db:"name"`
-	Date            int64  `db:"date"`
-	FromDate        int64  `db:"from_date"`
-	ToDate          int64  `db:"to_date"`
-	DefaultPrice    int64  `db:"default_price"`
-	DefaultCurrency string `db:"default_currency"`
-	OrderedNote     string `db:"ordered_note"`
-	MailSubject     string `db:"mail_subject"`
-	MailText        string `db:"mail_text"`
-	HowTo           string `db:"how_to"`
-	UserID          int64  `db:"users_id_fk"`
+	ID               int64  `db:"id"`
+	Name             string `db:"name"`
+	Date             int64  `db:"date"`
+	FromDate         int64  `db:"from_date"`
+	ToDate           int64  `db:"to_date"`
+	DefaultPrice     int64  `db:"default_price"`
+	DefaultCurrency  string `db:"default_currency"`
+	OrderedNote      string `db:"ordered_note"`
+	MailSubject      string `db:"mail_subject"`
+	MailText         string `db:"mail_text"`
+	AdminMailSubject string `db:"admin_mail_subject"`
+	AdminMailText    string `db:"admin_mail_text"`
+	HowTo            string `db:"how_to"`
+	UserID           int64  `db:"users_id_fk"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -143,7 +145,7 @@ func (db *DB) StructureCreate() {
 	CREATE TABLE IF NOT EXISTS furnitures (id INTEGER NOT NULL PRIMARY KEY, number INTEGER NOT NULL, type TEXT NOT NULL, orientation TEXT, x INTEGER NOT NULL, y INTEGER NOT NULL, width INTEGER, height INTEGER, color TEXT, label TEXT, capacity INTEGER, rooms_id_fk INTEGER NOT NULL, UNIQUE(number, type, rooms_id_fk) ON CONFLICT ROLLBACK,FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS prices (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT REPLACE);
 	CREATE TABLE IF NOT EXISTS customers (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwd TEXT NOT NULL, name TEXT, surname TEXT, address TEXT, notes TEXT);
-	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, how_to TEXT NOT NULL, ordered_note TEXT NOT NULL, mail_subject INTEGER NOT NULL, mail_text INTEGER NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
+	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, how_to TEXT NOT NULL, ordered_note TEXT NOT NULL, mail_subject TEXT NOT NULL, mail_text TEXT NOT NULL, admin_mail_subject TEXT NOT NULL, admin_mail_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS events_rooms (events_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id), UNIQUE(events_id_fk, rooms_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER, payed_date INTEGER, price INTEGER, currency TEXT, status TEXT NOT NULL, furnitures_id_fk INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(customers_id_fk) REFERENCES curstomers(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
 	`
@@ -483,8 +485,8 @@ func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) err
 }
 
 func (db *DB) EventAdd(e *Event) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, ordered_note, how_to, mail_subject, mail_text, users_id_fk) 
-VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :ordered_note, :how_to, :mail_subject, :mail_text, :users_id_fk)`, e)
+	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, ordered_note, how_to, mail_subject, mail_text, admin_mail_subject, admin_mail_text, users_id_fk) 
+VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :ordered_note, :how_to, :mail_subject, :mail_text, :admin_mail_subject, :admin_mail_text, :users_id_fk)`, e)
 	if err != nil {
 		return -1, err
 	}
@@ -526,7 +528,7 @@ func (db *DB) EventGetAll() ([]Event, error) {
 	return events, err
 }
 
-func (db *DB) RoomAddToEvent(roomID int64, eventID int64) error {
+func (db *DB) RoomAddToEventUnsafe(roomID int64, eventID int64) error {
 	_, err := db.DB.Exec("INSERT OR REPLACE INTO events_rooms (events_id_fk, rooms_id_fk) VALUES ($1, $2)", eventID, roomID)
 	return err
 }
@@ -561,7 +563,7 @@ func (db *DB) EventMod(event *Event) error {
 	if event.ID == 0 {
 		return fmt.Errorf("can not modify event if ID is 0")
 	}
-	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date,default_price=:default_price, default_currency=:default_currency, ordered_note=:ordered_note, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text WHERE id=:id`, event)
+	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date,default_price=:default_price, default_currency=:default_currency, ordered_note=:ordered_note, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text, admin_mail_subject=:admin_mail_subject, admin_mail_text=:admin_mail_text WHERE id=:id`, event)
 	return err
 }
 

@@ -5,7 +5,7 @@
 <script src="/js/quill.min.js"></script>
 {{end}}
 {{define "body"}}
-  <form action="/admin" method="POST">
+  <form id="event-form" action="/admin" method="POST">
     <div class="form-group">
       <label for="from-date">{{.LBLID}}</label>
       <input type="text" class="form-control" id="id"  name="id" value="{{.LBLIDValue}}" readonly>
@@ -13,19 +13,60 @@
     <div class="form-group">
       <input type="hidden" name="type" value="event">
       <label for="name">{{.LBLName}}</label>
-      <input class="form-control" id="name" aria-describedby="nameHelp" value="{{.LBLNameValue}}">
+      <input class="form-control" id="name" name="name" aria-describedby="nameHelp" value="{{.LBLNameValue}}">
       <small id="nameHelp" class="form-text text-muted">{{.NameHelpText}}</small>
     </div>
     <div class="form-group">
+      <label for="date">{{.LBLDate}}</label>
+      <input type="date" class="form-control" id="date" name="date" value="{{.LBLDateValue}}">
+    </div>
+    <div class="form-group">
       <label for="from-date">{{.LBLFromDate}}</label>
-      <input type="date" class="form-control" id="from-date" value="{{.LBLFromDateValue}}">
+      <input type="date" class="form-control" id="from-date" name="from-date" value="{{.LBLFromDateValue}}">
+    </div>
+    <div class="form-group">
+      <label for="to-date">{{.LBLToDate}}</label>
+      <input type="date" class="form-control" id="to-date" name="to-date" value="{{.LBLToDateValue}}">
+    </div>
+    <div class="form-group">
+      <label for="default-price">{{.LBLDefaultPrice}}</label>
+      <input type="number" class="form-control" id="default-price" name="default-price" value="{{.LBLDefaultPriceValue}}">
+    </div>
+    <div class="form-group">
+      <label for="default-currency">{{.LBLDefaultCurrency}}</label>
+      <input type="text" class="form-control" id="default-currency" name="default-currency" value="{{.LBLDefaultCurrencyValue}}">
+    </div>
+    <div class="form-group">
+      <label for="mail-subject">{{.LBLMailSubject}}</label>
+      <input type="text" class="form-control" id="mail-subject" name="mail-subject" value="{{.LBLMailSubjectValue}}">
+    </div>
+    <div class="form-group">
+      <label for="mail-text">{{.LBLMailText}}</label>
+      <textarea rows="3" class="form-control" id="mail-text" name="mail-text">{{.LBLMailTextValue}}</textarea>
+    </div>
+    <div class="form-group">
+      <label for="admin-mail-subject">{{.LBLAdminMailSubject}}</label>
+      <input type="text" class="form-control" id="admin-mail-subject" name="admin-mail-subject" value="{{.LBLAdminMailSubjectValue}}">
+    </div>
+    <div class="form-group">
+      <label for="admin-mail-text">{{.LBLAdminMailText}}</label>
+      <textarea rows="3" class="form-control" id="admin-mail-text" name="admin-mail-text">{{.LBLAdminMailTextValue}}</textarea>
     </div>
 
     <div class="form-group">
-      <div id="editor">
+      <p id="order-note-editor-label">{{.LBLOrderNote}}</p>
+      <div id="order-note-editor">
+        {{.HTMLOrderNote}}
+      </div>
+    </div>
+    <div class="form-group">
+      <p id="howto-editor-label">{{.LBLHowto}}</p>
+      <div id="howto-editor">
         {{.HTMLHowTo}}
       </div>
     </div>
+    <textarea name="html-order-note" hidden></textarea>
+    <textarea name="html-howto" hidden></textarea>
     <button id="save-event" type="submit" class="btn btn-primary">{{.BTNSave}}</button>
     <button id="cancel" type="button" class="btn btn-secondary" onclick="GoBack()">{{.BTNCancel}}</button>
 

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,12 @@ import (
 )
 
 func main() {
+
+	loc, err := time.LoadLocation("Europe/Prague")
+	if err != nil {
+		log.Println(err)
+	}
+	dateFormat := "2006-01-02"
 
 	roomName := "Sala na dole"
 	eventName := "Bal MS Karwina"
@@ -38,7 +45,7 @@ func main() {
 	//http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
 	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, strings.TrimSpace(string(mailpass))))
-	http.HandleFunc("/admin", AdminMainPage(db))
+	http.HandleFunc("/admin", AdminMainPage(db, loc, dateFormat))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, roomName, eventName))
 	http.HandleFunc("/admin/event", EventEditor(db))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
@@ -585,7 +592,7 @@ type MainAdminPage struct {
 	LBLMsgTitle            string
 }
 
-func AdminMainPage(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func AdminMainPage(db *DB, loc *time.Location, dateFormat string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		dtype := ""
@@ -602,12 +609,45 @@ func AdminMainPage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Printf("problem converting %q to number, err: %v", r.Form["id"][0], err)
 				}
+				d, err := time.ParseInLocation(dateFormat, r.Form["date"][0], loc)
+				if err != nil {
+					log.Println(err)
+				}
+
+				fd, err := time.ParseInLocation(dateFormat, r.Form["from-date"][0], loc)
+				if err != nil {
+					log.Println(err)
+				}
+				td, err := time.ParseInLocation(dateFormat, r.Form["to-date"][0], loc)
+				if err != nil {
+					log.Println(err)
+				}
+				dp, err := strconv.Atoi(r.Form["default-price"][0])
+				if err != nil {
+					log.Println(err)
+				}
+
 				e := Event{
 					ID: int64(id),
 				}
 				_ = e //TODO
+				e.Name = r.Form["name"][0]
+				e.Date = d.Unix()
+				e.FromDate = fd.Unix()
+				e.ToDate = td.Unix()
+				e.DefaultPrice = int64(dp)
+				e.DefaultCurrency = r.Form["default-currency"][0]
+				e.MailSubject = r.Form["mail-subject"][0]
+				e.AdminMailSubject = r.Form["admin-mail-subject"][0]
+				e.AdminMailText = r.Form["admin-mail-text"][0]
+				e.HowTo = r.Form["html-howto"][0]
+				e.OrderedNote = r.Form["html-order-note"][0]
+
+				log.Printf("%+v", e)
+				org, _ := db.EventGetByID(e.ID)
+				log.Printf("org: %+v", org)
+				log.Println("test equal, is:", reflect.DeepEqual(e, org))
 			}
-			log.Println(dtype)
 		}
 
 		rooms, err := db.RoomGetAll()
@@ -645,19 +685,25 @@ func AdminMainPage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 type EventEditorVars struct {
-	LBLTitle         string
-	LBLID            string
-	LBLIDValue       int64
-	LBLName          string
-	LBLNameValue     string
-	NameHelpText     string
-	LBLFromDate      string
-	LBLFromDateValue string
-	LBLToDate        string
-	LBLToDateValue   string
-	HTMLHowTo        template.HTML
-	BTNSave          string
-	BTNCancel        string
+	LBLTitle                                      string
+	LBLID                                         string
+	LBLIDValue                                    int64
+	LBLName, LBLNameValue                         string
+	NameHelpText                                  string
+	LBLDate, LBLDateValue                         string
+	LBLFromDate, LBLFromDateValue                 string
+	LBLToDate, LBLToDateValue                     string
+	LBLDefaultPrice                               string
+	LBLDefaultPriceValue                          int64
+	LBLDefaultCurrency, LBLDefaultCurrencyValue   string
+	LBLMailSubject, LBLMailSubjectValue           string
+	LBLMailText, LBLMailTextValue                 string
+	LBLAdminMailSubject, LBLAdminMailSubjectValue string
+	LBLAdminMailText, LBLAdminMailTextValue       string
+	LBLOrderNote, LBLHowto                        string
+	HTMLOrderNote, HTMLHowTo                      template.HTML
+	BTNSave                                       string
+	BTNCancel                                     string
 }
 
 func EventEditor(db *DB) func(w http.ResponseWriter, r *http.Request) {
@@ -678,31 +724,42 @@ func EventEditor(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 			rp := EventEditorVars{
-				LBLTitle:         "Event details",
-				LBLID:            "ID",
-				LBLIDValue:       event.ID,
-				LBLName:          "Name",
-				LBLNameValue:     event.Name,
-				LBLFromDate:      "From date",
-				LBLFromDateValue: ToDate(event.FromDate),
-				NameHelpText:     "Name help text",
-				LBLToDate:        "To date",
-				LBLToDateValue:   ToDate(event.ToDate),
-				BTNSave:          "Save",
-				BTNCancel:        "Cancel",
-				HTMLHowTo:        template.HTML(event.HowTo),
+				LBLTitle:                 "Event details",
+				LBLID:                    "ID",
+				LBLIDValue:               event.ID,
+				LBLName:                  "Name",
+				LBLNameValue:             event.Name,
+				NameHelpText:             "Name help text",
+				LBLDate:                  "Date",
+				LBLDateValue:             ToDate(event.Date),
+				LBLFromDate:              "Reservation starts",
+				LBLFromDateValue:         ToDate(event.FromDate),
+				LBLToDate:                "Reservation ends",
+				LBLToDateValue:           ToDate(event.ToDate),
+				LBLDefaultPrice:          "Default chair price",
+				LBLDefaultPriceValue:     event.DefaultPrice,
+				LBLDefaultCurrency:       "Default currency",
+				LBLDefaultCurrencyValue:  event.DefaultCurrency,
+				LBLMailSubject:           "Customer mail subject",
+				LBLMailSubjectValue:      event.MailSubject,
+				LBLMailText:              "Customer mail text",
+				LBLMailTextValue:         event.MailText,
+				LBLAdminMailSubject:      "Admin mail subject",
+				LBLAdminMailSubjectValue: event.AdminMailSubject,
+				LBLAdminMailText:         "Admin mail text",
+				LBLAdminMailTextValue:    event.AdminMailText,
+				BTNSave:                  "Save",
+				BTNCancel:                "Cancel",
+				LBLHowto:                 "Howto room legend",
+				HTMLHowTo:                template.HTML(event.HowTo),
+				LBLOrderNote:             "After ordered note",
+				HTMLOrderNote:            template.HTML(event.OrderedNote),
 			}
 			t := template.Must(template.ParseFiles("tmpl/a_event.html", "tmpl/base.html"))
 			err = t.ExecuteTemplate(w, "base", rp)
 			if err != nil {
 				log.Print("AdminEventEditor template executing error: ", err)
 			}
-			//b, err := ioutil.ReadAll(r.Body)
-			//if err != nil {
-			//	log.Println(err)
-			//}
-			//log.Println(b)
-			w.Write([]byte("bla bla"))
 		}
 	}
 }

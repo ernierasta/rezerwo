@@ -82,7 +82,6 @@
   </div>
   <div style="width: 100%;">
     <div id="room" class="ui-widget-header" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;">
-      <p>{{.LBLDropHere}}</p>
       {{range .Tables}}
       <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
       {{end}}

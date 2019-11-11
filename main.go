@@ -313,6 +313,24 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 			o.Phone = r.Form["phone"][0]
 			o.Notes = r.Form["notes"][0]
 
+			c := Customer{
+				Email:   o.Email,
+				Passwd:  o.Password,
+				Name:    ToNS(o.Name),
+				Surname: ToNS(o.Surname),
+				Phone:   ToNS(o.Phone),
+			}
+			cID, err := db.CustomerAdd(&c)
+			if err != nil {
+				log.Printf("error adding customer: %+v, err: %v", c, err)
+				c, err = db.CustomerGetByEmail(o.Email)
+				cID = c.ID
+				//TODO: if user exists, ask/compare password if not logged in
+				//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
+				//return
+			}
+			err := db.CustomerAppendToUser(user.ID, cID)
+
 			ss := strings.Split(o.Sits, ",")
 			pp := strings.Split(o.Prices, ",") // unused here, price is written to DB in INSERT
 			rr := strings.Split(o.Rooms, ",")
@@ -341,6 +359,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 					log.Printf("error retrieving reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
 				}
 				reservation.Status = "ordered"
+				reservation.CustomerID = cID
 				err = db.ReservationMod(&reservation)
 				if err != nil {
 					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)

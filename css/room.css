@@ -29,6 +29,7 @@
   height: 20px;
   text-align: center;
   margin: 2px;
+  font-size: x-small;
 }
 
 .object, .table, .chair {

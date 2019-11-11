@@ -25,7 +25,10 @@ func main() {
 	}
 	dateFormat := "2006-01-02"
 
-	roomName := "Sala na dole"
+	//roomName := "Sala główna - parter"
+	//roomName := "Sala na dole"
+	roomNameB := "Balkon - 1. piętro"
+	_ = roomNameB
 	eventName := "Bal MS Karwina"
 
 	mailpass, err := ioutil.ReadFile(".mailpass")
@@ -46,7 +49,7 @@ func main() {
 	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, strings.TrimSpace(string(mailpass))))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, dateFormat))
-	http.HandleFunc("/admin/designer", DesignerHTML(db, roomName, eventName))
+	http.HandleFunc("/admin/designer", DesignerHTML(db, roomNameB, eventName))
 	http.HandleFunc("/admin/event", EventEditor(db))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
 	http.HandleFunc("/api/furnit", DesignerMoveObject(db))
@@ -94,11 +97,11 @@ Karwina
 		log.Println(err)
 	}
 
-	r1ID, err := db.RoomAdd(&Room{ID: 1, Name: "Sala na dole", Description: ToNS("Tako fajno sala na dole."), Width: 1000, Height: 1000})
+	r1ID, err := db.RoomAdd(&Room{ID: 1, Name: "Sala główna - parter", Description: ToNS("Tako fajno sala na dole."), Width: 1000, Height: 1000})
 	if err != nil {
 		log.Println(err)
 	}
-	r2ID, err := db.RoomAdd(&Room{ID: 2, Name: "Balkón", Description: ToNS("Na balkón bez dzieci."), Width: 500, Height: 500})
+	r2ID, err := db.RoomAdd(&Room{ID: 2, Name: "Balkon - 1. piętro", Description: ToNS("Na balkón bez dzieci."), Width: 500, Height: 500})
 	if err != nil {
 		log.Println(err)
 	}
@@ -924,12 +927,13 @@ func DesignerRenumberType(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("error retrieving %q for room %v, err: %s", m.Type, m.RoomID, err)
 			}
-			log.Println(ff)
+			fmt.Printf("%+v", ff)
 			ff, err = FurnitureRenumber(ff)
 			if err != nil {
 				log.Println(err)
 			}
-			log.Println(ff)
+			log.Println("after")
+			fmt.Printf("%+v", ff)
 			for i := range ff {
 				err := db.FurnitureMod(&ff[i])
 				if err != nil {

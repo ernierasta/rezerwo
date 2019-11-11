@@ -129,12 +129,12 @@ func FurnitureRenumberFull(ff []Furniture) ([]Furniture, error) {
 }
 
 func protectFurnitureTypeRoom(newType, oldType string, newRoom, oldRoom int64) error {
-	if oldRoom != newRoom && oldRoom != -2 {
+	if oldRoom != newRoom && oldRoom != -2 && newRoom != -2 {
 		return fmt.Errorf("FurnitureRenumberFull: mixed rooms given, previous: %d, current: %d",
 			oldRoom, newRoom)
 	}
 	oldRoom = newRoom
-	if oldType != newType && oldType != "init" {
+	if oldType != newType && oldType != "init" && newType != "init" {
 		return fmt.Errorf("FurnitureRenumberFull: mixed furniture types given, previous: %s, current: %s",
 			oldType, newType)
 	}

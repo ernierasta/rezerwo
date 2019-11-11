@@ -199,10 +199,10 @@ func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter
 		enPM := PageMeta{
 			LBLTitle: "Designer",
 			DesignerPage: DesignerPage{
-				TableNr:             int64(len(p.Tables)) + 1,
-				ChairNr:             int64(len(p.Chairs)) + 1,
-				ObjectNr:            int64(len(p.Objects)) + 1,
-				LabelNr:             int64(len(p.Labels)) + 1,
+				TableNr:             TableNr(p.Tables) + 1,
+				ChairNr:             ChairNrFull(p.Chairs) + 1,
+				ObjectNr:            ObjectNr(p.Objects) + 1,
+				LabelNr:             LabelNr(p.Labels) + 1,
 				LBLWidth:            "Width",
 				LBLHeight:           "Height",
 				BTNSetSize:          "Set size",

@@ -32,6 +32,15 @@
 	margin: 2px;
 }
 
+.object, .table, .chair {
+	text-align: center;
+}
+.object > p, .table > p, .chair > p {
+	position: relative;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
 .marked {
 	background: $chair-color-marked;
 }

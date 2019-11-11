@@ -197,7 +197,22 @@ type RoomVars struct {
 
 func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		p := GetPageVarsFromDB(db, roomName, eventName)
+		roomID := int64(-1)
+		if r.Method == "POST" {
+			err := r.ParseForm()
+			if err != nil {
+				log.Printf("DesignerHTML: error parsing form, err: %v", err)
+			}
+			roomID, err = strconv.ParseInt(r.FormValue("rooms-select"), 10, 64)
+			if err != nil {
+				log.Printf("error converting roomID to int, err: %v", err)
+			}
+		} else {
+			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+			//return
+		}
+
+		p := GetPageVarsFromDB(db, roomID, eventName)
 		log.Printf("%+v", p)
 		enPM := PageMeta{
 			LBLTitle: "Designer",
@@ -329,7 +344,10 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 				//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
 				//return
 			}
-			err := db.CustomerAppendToUser(user.ID, cID)
+			err = db.CustomerAppendToUser(user.ID, cID)
+			if err != nil {
+				log.Println(err)
+			}
 
 			ss := strings.Split(o.Sits, ",")
 			pp := strings.Split(o.Prices, ",") // unused here, price is written to DB in INSERT
@@ -338,6 +356,14 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 			if len(ss) != len(pp) || len(ss) != len(rr) {
 				log.Println("ReservationOrderHTML: error, POST - wrong lenght, ss: %q, pp: %q, rr: %q",
 					o.Sits, o.Prices, o.Rooms)
+			}
+
+			noteID := int64(0)
+			if o.Notes != "" {
+				noteID, err = db.NoteAdd(o.Notes)
+				if err != nil {
+					log.Println(err)
+				}
 			}
 
 			for i := range ss {
@@ -360,13 +386,15 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 				}
 				reservation.Status = "ordered"
 				reservation.CustomerID = cID
+				if noteID != 0 {
+					reservation.NoteID = ToNI(noteID)
+				}
 				err = db.ReservationMod(&reservation)
 				if err != nil {
 					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
 					http.Error(w, fmt.Sprintf("<html><body><b>Can not update reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
 					return
 				}
-
 			}
 
 			custMail := MailConfig{
@@ -442,30 +470,31 @@ func GetFurnituresFromDB(db *DB, roomName string, eventID int64) RoomVars {
 	}
 }
 
-func GetPageVarsFromDB(db *DB, roomName, eventName string) Page {
-	room, err := db.RoomGetByName(roomName)
+// TODO: switch to room.ID in all db funcs
+func GetPageVarsFromDB(db *DB, roomID int64, eventName string) Page {
+	room, err := db.RoomGetByID(roomID)
 	if err != nil {
-		log.Printf("error getting room by name %q, err: %v", roomName, err)
+		log.Printf("error getting room by ID %d, err: %v", roomID, err)
 	}
 	event, err := db.EventGetByName(eventName)
 	if err != nil {
 		log.Printf("error getting event by name: %q, err: %v", eventName, err)
 	}
-	chairs, err := db.FurnitureFullGetChairs(event.ID, roomName)
+	chairs, err := db.FurnitureFullGetChairs(event.ID, room.Name)
 	if err != nil {
-		log.Printf("error getting chairs(FurnitureFull) for room %q, err: %v", roomName, err)
+		log.Printf("error getting chairs(FurnitureFull) for room %q, err: %v", room.Name, err)
 	}
-	tables, err := db.FurnitureGetAllByRoomNameOfType(roomName, "table")
+	tables, err := db.FurnitureGetAllByRoomNameOfType(room.Name, "table")
 	if err != nil {
-		log.Printf("error getting 'tables' for room %q, err: %v", roomName, err)
+		log.Printf("error getting 'tables' for room %q, err: %v", room.Name, err)
 	}
-	objects, err := db.FurnitureGetAllByRoomNameOfType(roomName, "object")
+	objects, err := db.FurnitureGetAllByRoomNameOfType(room.Name, "object")
 	if err != nil {
-		log.Printf("error getting 'objects' for room %q, err: %v", roomName, err)
+		log.Printf("error getting 'objects' for room %q, err: %v", room.Name, err)
 	}
-	labels, err := db.FurnitureGetAllByRoomNameOfType(roomName, "label")
+	labels, err := db.FurnitureGetAllByRoomNameOfType(room.Name, "label")
 	if err != nil {
-		log.Printf("error getting 'labels' for room %q, err: %v", roomName, err)
+		log.Printf("error getting 'labels' for room %q, err: %v", room.Name, err)
 	}
 	return Page{
 		Room:    room,
@@ -607,6 +636,9 @@ type AdminPage struct {
 type MainAdminPage struct {
 	BTNAddRoom             string
 	BTNAddEvent            string
+	LBLSelectRoom          string
+	BTNRoomEdit            string
+	BTNRoomDelete          string
 	LBLNewEventPlaceholder string
 	LBLSelectEvent         string
 	BTNEventEdit           string
@@ -615,6 +647,10 @@ type MainAdminPage struct {
 }
 
 func AdminMainPage(db *DB, loc *time.Location, dateFormat string) func(w http.ResponseWriter, r *http.Request) {
+
+	// TODO: get user from auth data
+	userID := int64(1)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		dtype := ""
@@ -672,11 +708,12 @@ func AdminMainPage(db *DB, loc *time.Location, dateFormat string) func(w http.Re
 			}
 		}
 
-		rooms, err := db.RoomGetAll()
+		// Prepare form with rooms and events
+		rooms, err := db.RoomGetAllByUserID(userID)
 		if err != nil {
 			log.Printf("error getting all rooms, err: %q", err)
 		}
-		events, err := db.EventGetAll()
+		events, err := db.EventGetAllByUserID(userID)
 		if err != nil {
 			log.Printf("error getting event by name: %q, err: %v", "TODO", err)
 		}
@@ -687,6 +724,9 @@ func AdminMainPage(db *DB, loc *time.Location, dateFormat string) func(w http.Re
 				BTNAddEvent:            "Add event",
 				BTNEventEdit:           "Edit",
 				LBLNewEventPlaceholder: "New event name",
+				LBLSelectRoom:          "Select room ...",
+				BTNRoomEdit:            "Edit",
+				BTNRoomDelete:          "Delete",
 				LBLSelectEvent:         "Select event ...",
 				BTNEventDelete:         "Delete",
 				LBLMsgTitle:            dtype,
@@ -734,7 +774,7 @@ func EventEditor(db *DB) func(w http.ResponseWriter, r *http.Request) {
 
 			err := r.ParseForm()
 			if err != nil {
-				log.Printf("problem parsing form data, err: %v", err)
+				log.Printf("EventEditor: problem parsing form data, err: %v", err)
 			}
 			eventID, err := strconv.Atoi(r.FormValue("events-select"))
 			if err != nil {
@@ -787,9 +827,9 @@ func EventEditor(db *DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 type RoomMsg struct {
-	Name   string `json:"name"`
-	Width  int64  `json:"width"`
-	Height int64  `json:"height"`
+	RoomID int64 `json:"room_id"`
+	Width  int64 `json:"width"`
+	Height int64 `json:"height"`
 }
 
 func DesignerSetRoomSize(db *DB) func(w http.ResponseWriter, r *http.Request) {
@@ -802,12 +842,12 @@ func DesignerSetRoomSize(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				log.Println(err)
 			}
 			room := Room{
-				Name:   m.Name,
+				ID:     m.RoomID,
 				Height: m.Height,
 				Width:  m.Width,
 			}
 			log.Printf("write to db: %+v\n", room)
-			err = db.RoomModSizeByName(&room)
+			err = db.RoomModSizeByID(&room)
 			if err != nil {
 				log.Println(err)
 			}
@@ -816,6 +856,7 @@ func DesignerSetRoomSize(db *DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 type MoveMsg struct {
+	RoomID      int64  `json:"room_id"`
 	Number      int64  `json:"name"`
 	Type        string `json:"type"`
 	Orientation string `json:"orientation"`
@@ -834,7 +875,6 @@ type MoveMsg struct {
 func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: RoomID and EventID should be something real
-	roomID := int64(4)
 	eventID := int64(1)
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -857,7 +897,7 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				Color:       ToNS(m.Color),
 				Label:       ToNS(m.Label),
 				Capacity:    ToNI(m.Capacity),
-				RoomID:      roomID,
+				RoomID:      m.RoomID,
 			}
 
 			fID, err := db.FurnitureAdd(&f)
@@ -899,6 +939,7 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 type DeleteMsg struct {
+	RoomID int64  `json:"room_id"`
 	Number int64  `json:"name"`
 	Type   string `json:"type"`
 }
@@ -917,7 +958,7 @@ func DesignerDeleteObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				log.Println(err)
 			}
 			log.Printf("deleting from db: %+v\n", m)
-			err = db.FurnitureDelByNumberType(m.Number, m.Type)
+			err = db.FurnitureDelByNumberTypeRoom(m.Number, m.Type, m.RoomID)
 			if err != nil {
 				log.Println(err)
 			}

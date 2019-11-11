@@ -21,6 +21,21 @@
   </div>
 
   <div class="input-group">
+    <form id="rooms-select-form" action="/admin/designer" method="POST">
+    <select name="rooms-select" id="rooms-select" class="custom-select">
+      <option value="0" selected>{{.LBLSelectRoom}}</option>
+      {{range .Rooms}}
+      <option value="{{.ID}}">{{.Name}}</option>
+      {{end}}
+    </select>
+    </form>
+    <div class="input-group-append">
+      <button id="edit-room" class="btn btn-outline-secondary" type="button" onclick="RoomEdit()" >{{.BTNRoomEdit}}</button>
+      <button class="btn btn-outline-secondary" type="button">{{.BTNRoomDelete}}</button>
+    </div>
+  </div>
+
+  <div class="input-group">
     <form id="events-select-form" action="/admin/event" method="POST">
     <select name="events-select" id="events-select" class="custom-select">
       <option value="0" selected>{{.LBLSelectEvent}}</option>
@@ -30,7 +45,7 @@
     </select>
     </form>
     <div class="input-group-append">
-      <button id="edit-room" class="btn btn-outline-secondary" type="button" onclick="EventEdit()" >{{.BTNEventEdit}}</button>
+      <button id="edit-event" class="btn btn-outline-secondary" type="button" onclick="EventEdit()" >{{.BTNEventEdit}}</button>
       <button class="btn btn-outline-secondary" type="button">{{.BTNEventDelete}}</button>
     </div>
   </div>

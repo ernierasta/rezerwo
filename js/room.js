@@ -126,19 +126,17 @@ function SaveRoom() {
   console.log("parent: " + parent.offset().top)
   $(".table, .chair, .object, .label").each(function(i, obj) {
     var child = $(this);
-    console.log("current top: "+ (child.offset().top - parent.offset().top))
-    console.log("current left: "+ (child.offset().left - parent.offset().left))
     if (child.attr('furniture') == "table") {
-      current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 13), y: Math.round(child.offset().top - parent.offset().top - 13)};
+      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 13), y: Math.round(child.offset().top - parent.offset().top - 13)};
     } else if (child.attr('furniture') == "chair") {
-      current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), disabled: child.hasClass("disabled"), x: Math.round(child.offset().left - parent.offset().left - 5), y: Math.round(child.offset().top - parent.offset().top - 5)};
+      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), disabled: child.hasClass("disabled"), x: Math.round(child.offset().left - parent.offset().left - 5), y: Math.round(child.offset().top - parent.offset().top - 5)};
     } else if (child.attr('furniture') == "object") {
-      current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), width: child.width(), height: child.height(), color: getHexColor(child.css("backgroundColor")), label: child.children().text()};
+      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), width: child.width(), height: child.height(), color: getHexColor(child.css("backgroundColor")), label: child.children().text()};
     } else if (child.attr('furniture') == "label") {
-      current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), color: getHexColor(child.css("color")), label: child.children().text()};
+      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), color: getHexColor(child.css("color")), label: child.children().text()};
     } else {
       console.log("this should not run, type: ", child.attr('furniture'))
-      current = {name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3)};
+      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3)};
     }
 
 
@@ -159,7 +157,7 @@ function SetRoomSize() {
   $.ajax({
     method: "POST",
     url: "/api/room",
-    data: JSON.stringify({name:$('#room-name').text(), width: $("#room").width(), height: $("#room").height()})
+    data: JSON.stringify({name:Number($('#room-id').val()), width: $("#room").width(), height: $("#room").height()})
   })
 }
 
@@ -219,9 +217,9 @@ function DeleteFurnitures() {
     $.ajax({
       method: "POST",
       url: "/api/furdel",
-      data: JSON.stringify({name: Number($(this).attr('name')), type: $(this).attr('furniture')})
+      data: JSON.stringify({room_id: Number($("#room-id").val()),name: Number($(this).attr('name')), type: $(this).attr('furniture')})
     })
-    console.log(JSON.stringify({id: $(this).attr('name'), type: $(this).attr('furniture')}))
+    console.log(JSON.stringify({room_id: Number($("#room-id").val()), id: $(this).attr('name'), type: $(this).attr('furniture')}))
 
   });
 

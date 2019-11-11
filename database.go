@@ -108,10 +108,11 @@ type Reservation struct {
 	Price       sql.NullInt64  `db:"price"`
 	Currency    sql.NullString `db:"currency"`
 	// Status: free, marked, ordered, confirmed, disabled
-	Status      string `db:"status"`
-	FurnitureID int64  `db:"furnitures_id_fk"`
-	EventID     int64  `db:"events_id_fk"`
-	CustomerID  int64  `db:"customers_id_fk"`
+	Status      string        `db:"status"`
+	NoteID      sql.NullInt64 `db:"notes_id_fk"`
+	FurnitureID int64         `db:"furnitures_id_fk"`
+	EventID     int64         `db:"events_id_fk"`
+	CustomerID  int64         `db:"customers_id_fk"`
 }
 
 type FurnitureFull struct {
@@ -153,7 +154,8 @@ func (db *DB) StructureCreate() {
 	CREATE TABLE IF NOT EXISTS users_customers (users_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id));
 	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, how_to TEXT NOT NULL, ordered_note TEXT NOT NULL, mail_subject TEXT NOT NULL, mail_text TEXT NOT NULL, admin_mail_subject TEXT NOT NULL, admin_mail_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS events_rooms (events_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id), UNIQUE(events_id_fk, rooms_id_fk) ON CONFLICT ROLLBACK);
-	CREATE TABLE IF NOT EXISTS reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER, payed_date INTEGER, price INTEGER, currency TEXT, status TEXT NOT NULL, furnitures_id_fk INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(customers_id_fk) REFERENCES curstomers(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
+	CREATE TABLE IF NOT EXISTS reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER, payed_date INTEGER, price INTEGER, currency TEXT, status TEXT NOT NULL, notes_id_fk INTEGER, furnitures_id_fk INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(notes_id_fk) REFERENCES notes(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(customers_id_fk) REFERENCES curstomers(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
+	CREATE TABLE IF NOT EXISTS notes (id INTEGER NOT NULL PRIMARY KEY, text TEXT NOT NULL);
 	`
 	if _, err := db.DB.Exec(structure); err != nil {
 		log.Fatalf("error creating db structure in %s: %v", db.FileName, err)
@@ -249,6 +251,12 @@ func (db *DB) RoomGetAll() ([]Room, error) {
 	return rooms, err
 }
 
+func (db *DB) RoomGetAllByUserID(userID int64) ([]Room, error) {
+	rooms := []Room{}
+	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN users_rooms ur ON r.id = ur.rooms_id_fk WHERE ur.users_id_fk = $1`, userID)
+	return rooms, err
+}
+
 func (db *DB) RoomMod(room *Room) error {
 	_, err := db.DB.NamedExec(`UPDATE rooms SET name=:name, width=:width, height=:height WHERE id=:id`, room)
 	return err
@@ -256,6 +264,11 @@ func (db *DB) RoomMod(room *Room) error {
 
 func (db *DB) RoomModSizeByName(room *Room) error {
 	_, err := db.DB.NamedExec(`UPDATE rooms SET width=:width, height=:height WHERE name=:name`, room)
+	return err
+}
+
+func (db *DB) RoomModSizeByID(room *Room) error {
+	_, err := db.DB.NamedExec(`UPDATE rooms SET width=:width, height=:height WHERE id=:id`, room)
 	return err
 }
 
@@ -405,11 +418,11 @@ func (db *DB) FurnitureDel(id int64) error {
 	return err
 }
 
-func (db *DB) FurnitureDelByNumberType(number int64, ftype string) error {
-	ret, err := db.DB.Exec(`DELETE FROM furnitures WHERE number=$1 AND type=$2`, number, ftype)
+func (db *DB) FurnitureDelByNumberTypeRoom(number int64, ftype string, roomID int64) error {
+	ret, err := db.DB.Exec(`DELETE FROM furnitures WHERE number=$1 AND type=$2 AND rooms_id_fk=$3`, number, ftype, roomID)
 	affected, err := ret.RowsAffected()
 	if affected == 0 {
-		return fmt.Errorf("furniture with number and type: %q and %q not found", number, ftype)
+		return fmt.Errorf("furniture with number: %d and type: %q not found", number, ftype)
 	}
 	return err
 }
@@ -632,8 +645,10 @@ VALUES(:email, :passwd, :name, :surname, :phone, :notes)`, c)
 	return ret.LastInsertId()
 }
 
-func (db *DB) CustomerGetByEmail(c *Customer) error {
-	return fmt.Errorf("unimplemented!!!")
+func (db *DB) CustomerGetByEmail(email string) (Customer, error) {
+	c := Customer{}
+	err := db.DB.Get(&c, `SELECT * FROM customers WHERE email=$1`, email)
+	return c, err
 }
 
 func (db *DB) CustomerAppendToUser(userID, customerID int64) error {
@@ -652,6 +667,15 @@ VALUES($1, $2)`, userID, customerID)
 		return fmt.Errorf("no users_customers entry added for userID: %v, customerID: %v", userID, customerID)
 	}
 	return err
+}
+
+func (db *DB) NoteAdd(note string) (int64, error) {
+	ret, err := db.DB.Exec(`INSERT INTO notes (note) 
+VALUES($1)`, note)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
 }
 
 func (db *DB) Close() {

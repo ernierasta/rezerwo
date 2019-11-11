@@ -4,6 +4,13 @@ function EventEdit() {
   $("#events-select-form").submit()
 }
 
+function RoomEdit() {
+
+  console.log($("#rooms-select :selected").val());
+  $("#rooms-select-form").submit()
+}
+
+
 function GoBack() {
   window.history.back();
 }

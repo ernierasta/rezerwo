@@ -815,7 +815,7 @@ type MoveMsg struct {
 func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: RoomID and EventID should be something real
-	roomID := int64(1)
+	roomID := int64(4)
 	eventID := int64(1)
 
 	return func(w http.ResponseWriter, r *http.Request) {

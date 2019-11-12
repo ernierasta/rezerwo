@@ -157,7 +157,7 @@ function SetRoomSize() {
   $.ajax({
     method: "POST",
     url: "/api/room",
-    data: JSON.stringify({name:Number($('#room-id').val()), width: $("#room").width(), height: $("#room").height()})
+    data: JSON.stringify({room_id: Number($('#room-id').val()), width: $("#room").width(), height: $("#room").height()})
   })
 }
 

@@ -31,10 +31,17 @@ func main() {
 	_ = roomNameB
 	eventName := "Bal MS Karwina"
 
-	mailpass, err := ioutil.ReadFile(".mailpass")
+	mailpassf, err := ioutil.ReadFile(".mailpass")
 	if err != nil {
 		log.Fatalf("can not read mail password from .mailpass file, err: %v", err)
 	}
+	mailfsplit := strings.Split(string(mailpassf), "\n")
+	if len(mailfsplit) < 2 {
+		log.Fatal("missing second line (mail server name/address) in .mailpass file!")
+	}
+	mailpass := mailfsplit[0]
+	mailserv := mailfsplit[1]
+
 	db := initDB()
 	defer db.Close()
 
@@ -47,7 +54,7 @@ func main() {
 	http.Handle("/", rtr)
 	//http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
 	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
-	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, strings.TrimSpace(string(mailpass))))
+	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, strings.TrimSpace(mailpass), strings.TrimSpace(mailserv)))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, dateFormat))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, roomNameB, eventName))
 	http.HandleFunc("/admin/event", EventEditor(db))
@@ -333,7 +340,7 @@ type ReservationOrderStatusVars struct {
 	BTNOk                    string
 }
 
-func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.ResponseWriter, r *http.Request) {
+func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		o := Order{}
 		event, err := db.EventGetByName(eventName)
@@ -429,7 +436,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 			}
 
 			custMail := MailConfig{
-				Server:  "magikinfo.cz",
+				Server:  mailsrv,
 				Port:    587,
 				User:    "rezerwo@zori.cz",
 				Pass:    mailpass,
@@ -445,7 +452,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 				log.Println(err)
 			}
 			userMail := MailConfig{
-				Server:  "magikinfo.cz",
+				Server:  mailsrv,
 				Port:    587,
 				User:    "rezerwo@zori.cz",
 				Pass:    mailpass,

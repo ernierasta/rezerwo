@@ -1,0 +1,14 @@
+{{define "head"}}
+  <title>{{.LBLTitle}}</title>
+{{end}}
+{{define "body"}}
+  <div class="row d-flex justify-content-center">
+    <div class="alert alert-danger" role="alert">
+      <h4 class="alert-heading">{{.LBLAlertTitle}}</h4>
+      <p>{{.LBLAlertText}}</p>
+    </div>
+  </div>
+  <div class="row justify-content-center">
+    <button type="submit" class="btn btn-primary" onclick="window.history.back()">{{.BTNBack}}</button>
+  </div>
+{{end}}

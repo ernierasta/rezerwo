@@ -6,7 +6,11 @@
 }
 
 #content-wrap {
-  padding-bottom: 2.5rem;    /* Footer height */
+	padding-bottom: 2.5rem;    /* Footer height */
+}
+
+#meta {
+	padding: 10px;
 }
 
 #footer {
@@ -25,7 +29,9 @@
 
 .chair {
 	float: left;
-	background: $chair-color-free;
+	color: $chair-color-free;
+	background-color: $chair-bg-color-free;
+	border-color: $chair-bg-color-free;
 	width: $table;
 	height: $table;
 	text-align: center;
@@ -42,19 +48,41 @@
 	transform: translateY(-50%);
 }
 
-.marked {
-	background: $chair-color-marked;
+// Text colors for legend/howto
+.free-text {
+	color: $chair-bg-color-free;
 }
+.marked-text {
+	color: $chair-bg-color-marked;
+}
+.ordered-text {
+	color: $chair-bg-color-ordered;
+}
+.payed-text {
+	color: $chair-bg-color-payed;
+}
+
+.marked {
+	color: $chair-color-marked;
+	background-color: $chair-bg-color-marked;
+	border-color: $chair-bg-color-marked;
+}
+
 .ordered {
-	background: $chair-color-ordered;
+	color: $chair-color-ordered;
+	background-color: $chair-bg-color-ordered;
+	border-color: $chair-bg-color-ordered;
 }
 .payed {
-	background: $chair-color-payed;
+	color: $chair-color-payed;
+	background-color: $chair-bg-color-payed;
+	border-color: $chair-bg-color-payed;
 }
 
 .disabled {
-	color: $chair-color-disabled-text;
-	background: $chair-color-disabled-background;
+	color: $chair-color-disabled;
+	background-color: $chair-bg-color-disabled;
+	border-color: $chair-bg-color-disabled;
 }
 
 .column {
@@ -280,8 +308,18 @@
 	border: 3px dashed black;
 }
 
-#room .ui-selecting, .room-view .ui-selecting {background: #FECA40;}
-#room .ui-selected, .room-view .ui-selected {background: #F39814; color: white;}
-//#room {margin: 0; padding: 0; height: 300px; position: relative; padding:0; border:solid 1px #DDD;}
-//#room > div {position: absolute; margin: 0; padding:10px; border:solid 1px #CCC; width: 100px;}
+#room .ui-selecting, .room-view .ui-selecting {
+	//background: #FECA40;
+	filter: brightness(125%);
+	box-shadow: 0 0 0 .2rem rgba(72,180,97,.5);
+}
+#room .ui-selected, .room-view .ui-selected {
+	//filter: background(70%);
+	//box-shadow: 0 0 0 .2rem rgba(72,180,97,.5);
+	//color: white;
+	box-shadow: 0px 0px 20px yellow;
+	border: 1px solid yellow;
+	background: rgba(255, 225, 0, 0.64);
+}
+
 .ui-selectable-helper {position: absolute; z-index: 100; border:1px dotted black;}

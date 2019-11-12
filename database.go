@@ -29,7 +29,7 @@ type User struct {
 type Customer struct {
 	ID      int64          `db:"id"`
 	Email   string         `db:"email"`
-	Passwd  string         `db:"passwd"`
+	Passwd  sql.NullString `db:"passwd"`
 	Name    sql.NullString `db:"name"`
 	Surname sql.NullString `db:"surname"`
 	Phone   sql.NullString `db:"phone"`
@@ -74,20 +74,22 @@ type Price struct {
 }
 
 type Event struct {
-	ID               int64  `db:"id"`
-	Name             string `db:"name"`
-	Date             int64  `db:"date"`
-	FromDate         int64  `db:"from_date"`
-	ToDate           int64  `db:"to_date"`
-	DefaultPrice     int64  `db:"default_price"`
-	DefaultCurrency  string `db:"default_currency"`
-	OrderedNote      string `db:"ordered_note"`
-	MailSubject      string `db:"mail_subject"`
-	MailText         string `db:"mail_text"`
-	AdminMailSubject string `db:"admin_mail_subject"`
-	AdminMailText    string `db:"admin_mail_text"`
-	HowTo            string `db:"how_to"`
-	UserID           int64  `db:"users_id_fk"`
+	ID                    int64  `db:"id"`
+	Name                  string `db:"name"`
+	Date                  int64  `db:"date"`
+	FromDate              int64  `db:"from_date"`
+	ToDate                int64  `db:"to_date"`
+	DefaultPrice          int64  `db:"default_price"`
+	DefaultCurrency       string `db:"default_currency"`
+	OrderHowto            string `db:"order_howto"`
+	OrderNotesDescription string `db:"order_notes_desc"`
+	OrderedNote           string `db:"ordered_note"`
+	MailSubject           string `db:"mail_subject"`
+	MailText              string `db:"mail_text"`
+	AdminMailSubject      string `db:"admin_mail_subject"`
+	AdminMailText         string `db:"admin_mail_text"`
+	HowTo                 string `db:"how_to"`
+	UserID                int64  `db:"users_id_fk"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -149,10 +151,10 @@ func (db *DB) StructureCreate() {
 	CREATE TABLE IF NOT EXISTS rooms (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT, width INTEGER NOT NULL, height INTEGER NOT NULL);
 	CREATE TABLE IF NOT EXISTS users_rooms (users_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL UNIQUE, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS furnitures (id INTEGER NOT NULL PRIMARY KEY, number INTEGER NOT NULL, type TEXT NOT NULL, orientation TEXT, x INTEGER NOT NULL, y INTEGER NOT NULL, width INTEGER, height INTEGER, color TEXT, label TEXT, capacity INTEGER, rooms_id_fk INTEGER NOT NULL, UNIQUE(number, type, rooms_id_fk) ON CONFLICT ROLLBACK, FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
-	CREATE TABLE IF NOT EXISTS prices (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT REPLACE);
-	CREATE TABLE IF NOT EXISTS customers (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwd TEXT NOT NULL, name TEXT, surname TEXT, address TEXT, notes TEXT);
+	CREATE TABLE IF NOT EXISTS prices (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
+	CREATE TABLE IF NOT EXISTS customers (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwd TEXT, name TEXT, surname TEXT, address TEXT, phone TEXT, notes TEXT);
 	CREATE TABLE IF NOT EXISTS users_customers (users_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id));
-	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, how_to TEXT NOT NULL, ordered_note TEXT NOT NULL, mail_subject TEXT NOT NULL, mail_text TEXT NOT NULL, admin_mail_subject TEXT NOT NULL, admin_mail_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
+	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note TEXT NOT NULL, mail_subject TEXT NOT NULL, mail_text TEXT NOT NULL, admin_mail_subject TEXT NOT NULL, admin_mail_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS events_rooms (events_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id), UNIQUE(events_id_fk, rooms_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER, payed_date INTEGER, price INTEGER, currency TEXT, status TEXT NOT NULL, notes_id_fk INTEGER, furnitures_id_fk INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(notes_id_fk) REFERENCES notes(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(customers_id_fk) REFERENCES curstomers(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS notes (id INTEGER NOT NULL PRIMARY KEY, text TEXT NOT NULL);
@@ -471,8 +473,16 @@ func (db *DB) PriceModByEventIDFurnID(price *Price) error {
 	if price.EventID == 0 || price.FurnitureID == 0 {
 		return fmt.Errorf("can not modify price if EventID or FurnitureID is 0, %+v", price)
 	}
+	err := NoMinus("eventID", price.EventID)
+	if err != nil {
+		return err
+	}
+	err = NoMinus("furnitureID", price.FurnitureID)
+	if err != nil {
+		return err
+	}
 
-	_, err := db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE events_id_fk=:events_id_fk and furnitures_id_fk=:furnitures_id_fk`, price)
+	_, err = db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE events_id_fk=:events_id_fk and furnitures_id_fk=:furnitures_id_fk`, price)
 	return err
 }
 
@@ -504,8 +514,8 @@ func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) err
 }
 
 func (db *DB) EventAdd(e *Event) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, ordered_note, how_to, mail_subject, mail_text, admin_mail_subject, admin_mail_text, users_id_fk) 
-VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :ordered_note, :how_to, :mail_subject, :mail_text, :admin_mail_subject, :admin_mail_text, :users_id_fk)`, e)
+	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, order_howto, order_notes_desc, ordered_note, how_to, mail_subject, mail_text, admin_mail_subject, admin_mail_text, users_id_fk) 
+VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :order_howto, :order_notes_desc, :ordered_note, :how_to, :mail_subject, :mail_text, :admin_mail_subject, :admin_mail_text, :users_id_fk)`, e)
 	if err != nil {
 		return -1, err
 	}
@@ -582,7 +592,7 @@ func (db *DB) EventMod(event *Event) error {
 	if event.ID == 0 {
 		return fmt.Errorf("can not modify event if ID is 0")
 	}
-	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date,default_price=:default_price, default_currency=:default_currency, ordered_note=:ordered_note, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text, admin_mail_subject=:admin_mail_subject, admin_mail_text=:admin_mail_text WHERE id=:id`, event)
+	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note=:ordered_note, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text, admin_mail_subject=:admin_mail_subject, admin_mail_text=:admin_mail_text WHERE id=:id`, event)
 	return err
 }
 
@@ -633,6 +643,15 @@ VALUES(:ordered_date, :payed_date, :price, :currency, :status, :furnitures_id_fk
 
 func (db *DB) ReservationMod(r *Reservation) error {
 	_, err := db.DB.NamedExec(`UPDATE reservations SET ordered_date=:ordered_date, payed_date=:payed_date, price=:price, currency=:currency, status=:status, customers_id_fk=:customers_id_fk WHERE furnitures_id_fk=:furnitures_id_fk AND events_id_fk=:events_id_fk`, r)
+	return err
+}
+
+func (db *DB) ReservationDel(id int64) error {
+	ret, err := db.DB.Exec(`DELETE FROM reservations WHERE id=$1`, id)
+	affected, err := ret.RowsAffected()
+	if affected == 0 {
+		return fmt.Errorf("reservation with: %d", id)
+	}
 	return err
 }
 

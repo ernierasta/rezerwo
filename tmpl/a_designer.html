@@ -86,7 +86,7 @@
       <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
       {{end}}
       {{range .Chairs}}
-      <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" price="{{.AdminPrice.Int64}}" currency="{{.AdminCurrency.String}}" orderstatus="{{.Status.String}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+      <div class="{{.Type}} {{if eq .AdminDisabled.Int64 1}}disabled{{end}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" price="{{.AdminPrice.Int64}}" currency="{{.AdminCurrency.String}}" orderstatus="{{.Status.String}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
       {{end}}
       {{range .Objects}}
       <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; background: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>

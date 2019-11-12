@@ -32,11 +32,21 @@ $room-height: 1000px;
 $header-color: lightgrey;
 $footer-color: lightgrey;
 $table-color: grey;
-$chair-color-free: green;
-$chair-color-marked: yellow;
-$chair-color-ordered: orange;
-$chair-color-payed: red;
-$chair-color-disabled-text: lightgrey;
-$chair-color-disabled-background: black;
+//$chair-color-free: green;
+// colors taken from bootstrap buttons
+$chair-color-free: white;
+$chair-bg-color-free: #28a745; //green
+
+$chair-color-marked: white;
+$chair-bg-color-marked: #ffc107; //yellow 
+
+$chair-color-ordered: black;
+$chair-bg-color-ordered: #fd7e14; // orange
+
+$chair-color-payed: white;
+$chair-bg-color-payed: #dc3545; // red
+
+$chair-color-disabled: lightgrey;
+$chair-bg-color-disabled: #403734; //dark grey
 
 

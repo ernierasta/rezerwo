@@ -54,6 +54,7 @@ func main() {
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
 	http.HandleFunc("/api/furnit", DesignerMoveObject(db))
 	http.HandleFunc("/api/furdel", DesignerDeleteObject(db))
+	http.HandleFunc("/api/ordercancel", OrderCancel(db))
 	http.HandleFunc("/api/renumber", DesignerRenumberType(db))
 
 	log.Fatal(http.ListenAndServe(":3002", nil))
@@ -62,31 +63,48 @@ func main() {
 func initDB() *DB {
 	howto := `<h1>Legenda:</h1>
 	<ul>
-		<li>Zielony = możliwa rezerwacja.</li>
-		<li>Pomarańczowy = zarezerowane.</li>
-		<li>Czerwony = zapłacona rezerwacja.</li>
+		<li><span class="free-text">Zielony</span> = możliwa rezerwacja.</li>
+		<li><span class="marked-text">Żółty</span> = ktoś wybrał miejsce, ale jeszcze nie dokonał rezerwacji.
+		<li><span class="ordered-text">Pomarańczowy</span> = zarezerowane.</li>
+		<li><span class="payed-text">Czerwony</span> = zapłacono.</li>
 	</ul>
-	<p>Cena biletu: 300 Kč. W cenie biletu:</p>
+	<p>Cena biletu: <b>400 Kč</b>. W cenie biletu:</p>
 	<ul>
-		<li>Miejscówka</li>
-		<li>Wstęp na bal</li>
-		<li>Welcome drink</li>
-		<li>Smaczna kolacja</li>
-		<li>Woda i mały poczęstunek na stole</li>
+		<li>Wstęp na bal.</li>
+		<li>Miejscówka.</li>
+		<li>Welcome drink.</li>
+		<li>Smaczna kolacja.</li>
+		<li>Woda i mały poczęstunek na stole.</li>
+		<li>Super muzyka.</li>
+		<li>Ciekawy program.</li>
 	</ul>`
-	mailText := `Dziękujemy za zamówienie!
-Niniejszym mailem potwierdzamy zamówienie krzeseł:
-{{.Sits}}
-w cenie {{.TotalPrice}}.
-Prosimy o przesłanie kwoty na rachunek:
-1234567/6200
 
-Do zobaczenia!
+	mailText := `Szanowni Państwo,
+dziękujemy za dokonanie rezerwacji biletów na Bal Macierzy Szkolnej przy PSP w Karwinie-Frysztacie.
+Niniejszym mailem potwierdzamy zamówienie miejsc: {{.Sits}}.
+Łączna kwota biletów wynosi: {{.TotalPrice}}.
+Bal odbędzie się w piątek 7 lutego 2020 od godziny 19:00 w Domu Przyjaźni w Karwinie.
 
----
-Macierz Szkolna
-Karwina
+Uwaga! Dokonali Państwo tylko rezerwacji biletów.
+Sprzedaż biletów odbędzie się w czwartek 21. 11. 2019 w budynku szkolnym od godziny 16:00 (przed zebraniami klasowymi) do godziny 17:30 (lub dłużej, o ile zebrania się przeciągną).
+Dodatkowy termin zakupu biletów to wtorek 26. 11. 2019 (16:00 – 16:45) przy wejściu do szkoły.
+W obu wymienionych terminach można również przekazać deklarację.
+
+Zarezerwowane miejsca, które po 26. 11. 2019 nie zostaną opłacone, zostaną zwolnione.
+W przypadku pytań lub wątpliwości prosimy o kontakt mailowy - pspmacierzkarwina@seznam.cz
+
+Dziękujemy serdecznie!
+
+Zarząd MSz przy PSP w Karwinie-Frysztacie
 `
+	roomDescription := `Koło Macierzy Szkolnej zaprasza wszystkich na bal pt. „ROZTAŃCZMY PRZYJAŹŃ …”, który odbędzie się w piątek 7 lutego 2020 od godziny 19:00 w Domu Przyjaźni w Karwinie.
+W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.
+W górnej części ekranu wybrać można zakładkę "Sala główna - parter" lub "Balkon - 1. piętro".
+Proszę wybrać wolne miejsce (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
+	orderHowto := `W celu dokonania rezerwacji prosimy o wypełnienie poniższych danych. W przypadku kiedy Państwo dokonują rezerwacji większej ilości biletów, prosimy o podanie nazwisk osób, dla których są miejsca przeznaczone (wystarczy 1 nazwisko na 2 bilety).
+Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz z informacją na temat zakupu biletów.`
+	orderedNote := `Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz z informacją na temat zakupu biletów.`
+
 	db := DBInit("db.sql")
 	db.MustConnect()
 
@@ -97,11 +115,11 @@ Karwina
 		log.Println(err)
 	}
 
-	r1ID, err := db.RoomAdd(&Room{ID: 1, Name: "Sala główna - parter", Description: ToNS("Tako fajno sala na dole."), Width: 1000, Height: 1000})
+	r1ID, err := db.RoomAdd(&Room{ID: 1, Name: "Sala główna - parter", Description: ToNS(roomDescription), Width: 1000, Height: 1000})
 	if err != nil {
 		log.Println(err)
 	}
-	r2ID, err := db.RoomAdd(&Room{ID: 2, Name: "Balkon - 1. piętro", Description: ToNS("Na balkón bez dzieci."), Width: 500, Height: 500})
+	r2ID, err := db.RoomAdd(&Room{ID: 2, Name: "Balkon - 1. piętro", Description: ToNS(roomDescription), Width: 500, Height: 500})
 	if err != nil {
 		log.Println(err)
 	}
@@ -114,7 +132,7 @@ Karwina
 	if err != nil {
 		log.Println(err)
 	}
-	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 500, DefaultCurrency: "Kč", OrderedNote: "Dziękujemy. Dostaną państwo maila z informacją.", MailSubject: "Zamówienie biletów", MailText: mailText, HowTo: howto, UserID: 1})
+	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNote: orderedNote, MailSubject: "Rezerwacja biletów na Bal Macierzy", MailText: mailText, HowTo: howto, UserID: 1})
 	if err != nil {
 		log.Println(err)
 	}
@@ -213,7 +231,7 @@ func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter
 		}
 
 		p := GetPageVarsFromDB(db, roomID, eventName)
-		log.Printf("%+v", p)
+		//log.Printf("%+v", p)
 		enPM := PageMeta{
 			LBLTitle: "Designer",
 			DesignerPage: DesignerPage{
@@ -252,27 +270,42 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := mux.Vars(r)
 		u, err := db.UserGetByURL(v["user"])
+
+		plErr := map[string]string{
+			"title": "Nie znaleziono organizacji!",
+			"text":  "W bazie nie istnieje organizacja: %q\nProszę sprawdzić poprawność linka.\nJeżeli organizator twierdzi, że jest ok, to proszę o kontakt pod: admin (at) zori.cz.",
+		}
+
 		if err != nil {
 			log.Printf("error getting user %q, err: %v", v["user"], err)
-			http.Error(w, fmt.Sprintf("<html><body><b>User %q not found! Check You have correct URL!<br />If problem persists, contact me at: ernierasta (at) zori.cz</b></body></html>", v["user"]), 500)
+
+			ErrorHTML(plErr["title"], plErr["text"], w, r)
+			//http.Error(w, fmt.Sprintf("User %q not found! Check You have correct URL!", v["user"]), 500)
 			return
 		}
 		e, err := EventGetCurrent(db, u.ID)
 		if err != nil {
 			log.Printf("error getting current event for userID: %d, err: %v", u.ID, err)
-			http.Error(w, "<html><body><b>User have no active events! Come back later, when reservations will be opened!</b></body></html>", 500) //TODO: inform about closest user event and when it is
+			ErrorHTML("Nie obecnie aktywnych imprez!", "Administrator nie obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", w, r)
+			//http.Error(w, "User have no active events! Come back later, when reservations will be opened!", 500) //TODO: inform about closest user event and when it is
 			return
 		}
 		fmt.Println(e.ID)
 		rr, err := db.EventGetRooms(e.ID)
 		if err != nil {
 			log.Printf("error getting rooms for eventID: %d, err: %v", e.ID, err)
-			http.Error(w, fmt.Sprintf("<html><body><b>Rooms for user: %q, event: %q not found!<br />If problem persists, contact me at: ernierasta (at) zori.cz</b></body></html>", v["user"], e.Name), 500)
+			plErr := map[string]string{
+				"title": "Brak aktywnych sal dla tej imprezy!",
+				"text":  "Administrator nie powiązał żadnej sali z wydarzeniem.\nJeżeli po stronie administracji wszystko wygląda ok, to prosimy o informację o tym zdarzeniu na mail: admin (at) zori.cz.\nProsimy o wysłanie nazwy organizacji, której dotyczy problem.",
+			}
+			ErrorHTML(plErr["title"], plErr["text"], w, r)
+			//http.Error(w, fmt.Sprintf("Rooms for user: %q, event: %q not found!", v["user"], e.Name), 500)
 			return
 		}
 		log.Println(rr)
 		p := ReservationPageVars{
-			LBLTitle: "Reservation",
+			//EN: LBLTitle: "Reservation",
+			LBLTitle: "Rezerwacja",
 			Event:    e,
 			Rooms:    []RoomVars{},
 		}
@@ -281,7 +314,8 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			rv := GetFurnituresFromDB(db, rr[i].Name, e.ID)
 			rv.Room = rr[i]
 			rv.HTMLHowTo = template.HTML(e.HowTo)
-			rv.BTNOrder = "Order"
+			// EN: rv.BTNOrder = "Order"
+			rv.BTNOrder = "Zamów"
 
 			p.Rooms = append(p.Rooms, rv)
 		}
@@ -330,7 +364,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 
 			c := Customer{
 				Email:   o.Email,
-				Passwd:  o.Password,
+				Passwd:  ToNS(o.Password),
 				Name:    ToNS(o.Name),
 				Surname: ToNS(o.Surname),
 				Phone:   ToNS(o.Phone),
@@ -341,21 +375,21 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 				c, err = db.CustomerGetByEmail(o.Email)
 				cID = c.ID
 				//TODO: if user exists, ask/compare password if not logged in
+				plErr := map[string]string{
+					"title": "Nie można zapisać osoby!",
+					"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy podać poprawne hasło.",
+				}
+				ErrorHTML(plErr["title"], plErr["text"], w, r)
 				//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
-				//return
+				return
 			}
 			err = db.CustomerAppendToUser(user.ID, cID)
 			if err != nil {
 				log.Println(err)
 			}
-
-			ss := strings.Split(o.Sits, ",")
-			pp := strings.Split(o.Prices, ",") // unused here, price is written to DB in INSERT
-			rr := strings.Split(o.Rooms, ",")
-
-			if len(ss) != len(pp) || len(ss) != len(rr) {
-				log.Println("ReservationOrderHTML: error, POST - wrong lenght, ss: %q, pp: %q, rr: %q",
-					o.Sits, o.Prices, o.Rooms)
+			ss, rr, err := SplitSitsRooms(o.Sits, o.Rooms)
+			if err != nil {
+				log.Printf("ReservationOrderStatusHTML: %v", err)
 			}
 
 			noteID := int64(0)
@@ -367,15 +401,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 			}
 
 			for i := range ss {
-				chairNumber, err := strconv.ParseInt(strings.TrimSpace(ss[i]), 10, 64)
-				if err != nil {
-					log.Println(err)
-				}
-				roomID, err := strconv.ParseInt(strings.TrimSpace(rr[i]), 10, 64)
-				if err != nil {
-					log.Println(err)
-				}
-				chair, err := db.FurnitureGetByTypeNumberRoom("chair", chairNumber, roomID)
+				chair, err := db.FurnitureGetByTypeNumberRoom("chair", ss[i], rr[i])
 				if err != nil {
 					log.Println(err)
 				}
@@ -392,7 +418,12 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 				err = db.ReservationMod(&reservation)
 				if err != nil {
 					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
-					http.Error(w, fmt.Sprintf("<html><body><b>Can not update reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
+					plErr := map[string]string{
+						"title": "Nie można zmienić stutusu zamówienia!",
+						"text":  "Wystąpił problem ze zmianą stutusu zamówienia, przepraszamy za kłopot i prosimy o informację na\nmail: admin (at) zori.cz.\nProsimy o przesłanie info: email zamawiającego, numery zamawianych siedzień, nazwa sali/imprezy.",
+					}
+					ErrorHTML(plErr["title"], plErr["text"], w, r)
+					//http.Error(w, fmt.Sprintf("Can not update reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err), 500)
 					return
 				}
 			}
@@ -431,12 +462,21 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass string) func(w http.
 			}
 		}
 
-		p := ReservationOrderStatusVars{
+		pEN := ReservationOrderStatusVars{
 			LBLTitle:      "Order status",
 			LBLStatus:     "Tickets for " + event.Name + " ordered!",
 			LBLStatusText: event.OrderedNote,
-			BTNOk:         "Ok",
+			BTNOk:         "OK",
 		}
+		_ = pEN
+
+		p := ReservationOrderStatusVars{
+			LBLTitle:      "Zamówiono bilety!",
+			LBLStatus:     "Dziękujemy za dokonanie rezerwacji biletów.",
+			LBLStatusText: event.OrderedNote,
+			BTNOk:         "OK",
+		}
+
 		t := template.Must(template.ParseFiles("tmpl/order-status.html", "tmpl/base.html"))
 		err = t.ExecuteTemplate(w, "base", p)
 		if err != nil {
@@ -508,6 +548,7 @@ func GetPageVarsFromDB(db *DB, roomID int64, eventName string) Page {
 
 type ReservationOrderVars struct {
 	Event                               Event
+	LBLOrderHowto                       string
 	LBLTitle                            string
 	LBLEmail, LBLEmailPlaceholder       string
 	LBLEmailHelp                        string
@@ -522,7 +563,7 @@ type ReservationOrderVars struct {
 	LBLPricesValue, LBLRoomsValue       string
 	LBLSits, LBLSitsValue               string
 	LBLTotalPrice, LBLTotalPriceValue   string
-	BTNSubmit                           string
+	BTNSubmit, BTNCancel                string
 }
 
 func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, r *http.Request) {
@@ -535,13 +576,13 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 
 		event, err := db.EventGetByName(eventName)
 		if err != nil {
-			log.Printf("error getting event by name: %q, err: %v", eventName, err)
+			log.Printf("ReservationOrderHTML: error getting event by name: %q, err: %v", eventName, err)
 		}
 
 		if r.Method == "POST" {
 			err := r.ParseForm()
 			if err != nil {
-				log.Printf("error parsing form data:, err: %v", err)
+				log.Printf("ReservationOrderStatusHTML: error parsing form data:, err: %v", err)
 			}
 			sits = r.Form["sits"][0]
 			prices = r.Form["prices"][0]
@@ -549,36 +590,19 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 			totalPrice = r.Form["total-price"][0]
 			defaultCurrency = r.Form["default-currency"][0]
 
-			ss := strings.Split(sits, ",")
-			pp := strings.Split(prices, ",")
-			rr := strings.Split(rooms, ",")
-
-			if len(ss) != len(pp) || len(ss) != len(rr) {
-				log.Println("ReservationOrderHTML: error, POST - wrong lenght, ss: %q, pp: %q, rr: %q",
-					sits, prices, rooms)
+			ss, rr, pp, err := SplitSitsRoomsPrices(sits, rooms, prices)
+			if err != nil {
+				log.Printf("ReservationOrderHTML: %v", err)
 			}
 
 			for i := range ss {
-				chairNumber, err := strconv.ParseInt(strings.TrimSpace(ss[i]), 10, 64)
+				chair, err := db.FurnitureGetByTypeNumberRoom("chair", ss[i], rr[i])
 				if err != nil {
 					log.Println(err)
 				}
-				roomID, err := strconv.ParseInt(strings.TrimSpace(rr[i]), 10, 64)
-				if err != nil {
-					log.Println(err)
-				}
-				chair, err := db.FurnitureGetByTypeNumberRoom("chair", chairNumber, roomID)
-				if err != nil {
-					log.Println(err)
-				}
-				chairPrice, err := strconv.ParseInt(strings.TrimSpace(pp[i]), 10, 64)
-				if err != nil {
-					log.Println(err)
-				}
-
 				_, err = db.ReservationAdd(&Reservation{
 					OrderedDate: ToNI(time.Now().Unix()),
-					Price:       ToNI(chairPrice),
+					Price:       ToNI(pp[i]),
 					Currency:    ToNS(defaultCurrency),
 					Status:      "marked", // this is very important
 					FurnitureID: chair.ID,
@@ -587,14 +611,20 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 				})
 				if err != nil {
 					log.Printf("error adding reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
-					http.Error(w, fmt.Sprintf("<html><body><b>Can not add reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
+					errPL := map[string]string{
+						"title": "Nie udało się zarezerwować miejsca!",
+						"text":  "Nie można zarezerwować wybranych miejsc, zostały one już zablokowane przez innego zamawiającego.\nProsimy o wybranie innych miejsc, lub poczekanie 5 minut. Po 5 minutach niezrealizowane zamówiania są automatycznie anulowane.",
+					}
+					ErrorHTML(errPL["title"], errPL["text"], w, r)
+					//http.Error(w, fmt.Sprintf("<html><body><b>Can not add reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
 					return
 				}
 			}
 		}
 		//p := GetPageVarsFromDB(db, roomName, eventName)
-		p := ReservationOrderVars{
+		pEN := ReservationOrderVars{
 			Event:                 event,
+			LBLOrderHowto:         event.OrderHowto,
 			LBLTitle:              "Order",
 			LBLEmail:              "Email",
 			LBLEmailHelp:          "Email is also login",
@@ -609,7 +639,7 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 			LBLPhonePlaceholder:   "00420 ",
 			LBLNotes:              "Notes",
 			LBLNotesPlaceholder:   "Notes",
-			LBLNotesHelp:          "Additional notes",
+			LBLNotesHelp:          event.OrderNotesDescription,
 			LBLPricesValue:        prices,
 			LBLRoomsValue:         rooms,
 			LBLSits:               "Sits",
@@ -617,7 +647,38 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 			LBLTotalPrice:         "Total price",
 			LBLTotalPriceValue:    totalPrice + " " + defaultCurrency,
 			BTNSubmit:             "Confirm order",
+			BTNCancel:             "Cancel",
 		}
+		_ = pEN
+
+		p := ReservationOrderVars{
+			Event:                 event,
+			LBLOrderHowto:         event.OrderHowto,
+			LBLTitle:              "Zamówienie",
+			LBLEmail:              "Email",
+			LBLEmailHelp:          "Na podany email zostanie wysłane potwierdzenie. Proszę sprawdzić, że podano poprawny!",
+			LBLEmailPlaceholder:   "email",
+			LBLPassword:           "Hasło",
+			LBLPasswordHelp:       "Hasło jest opcjonalne, ale gorąco polecamy podanie go! Umożliwi to zmiany w zamówieniu oraz sprawdzenie stutusu zamówienia.",
+			LBLName:               "Imię",
+			LBLNamePlaceholder:    "imię",
+			LBLSurname:            "Nazwisko",
+			LBLSurnamePlaceholder: "nazwisko",
+			LBLPhone:              "Nr telefonu",
+			LBLPhonePlaceholder:   "00420 ",
+			LBLNotes:              "Notatki",
+			LBLNotesPlaceholder:   "notatki",
+			LBLNotesHelp:          event.OrderNotesDescription,
+			LBLPricesValue:        prices,
+			LBLRoomsValue:         rooms,
+			LBLSits:               "Numery krzeseł",
+			LBLSitsValue:          sits,
+			LBLTotalPrice:         "Łączna suma",
+			LBLTotalPriceValue:    totalPrice + " " + defaultCurrency,
+			BTNSubmit:             "Zamawiam",
+			BTNCancel:             "Anuluj zamówienie",
+		}
+
 		t := template.Must(template.ParseFiles("tmpl/order.html", "tmpl/base.html"))
 		err = t.ExecuteTemplate(w, "base", p)
 		if err != nil {
@@ -826,6 +887,36 @@ func EventEditor(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type ErrorVars struct {
+	LBLTitle      string
+	LBLAlertTitle string
+	LBLAlertText  string
+	BTNBack       string
+}
+
+func ErrorHTML(errorTitle, errorText string, w http.ResponseWriter, r *http.Request) {
+	errEN := ErrorVars{
+		LBLTitle:      "Error",
+		LBLAlertTitle: errorTitle,
+		LBLAlertText:  errorText,
+		BTNBack:       "OK",
+	}
+	_ = errEN
+	errPL := ErrorVars{
+		LBLTitle:      "Błąd",
+		LBLAlertTitle: errorTitle,
+		LBLAlertText:  errorText,
+		BTNBack:       "OK",
+	}
+
+	t := template.Must(template.ParseFiles("tmpl/error.html", "tmpl/base.html"))
+	err := t.ExecuteTemplate(w, "base", errPL)
+	if err != nil {
+		log.Print("ErrorHTML: template executing error: ", err) //log it
+	}
+
+}
+
 type RoomMsg struct {
 	RoomID int64 `json:"room_id"`
 	Width  int64 `json:"width"`
@@ -846,7 +937,7 @@ func DesignerSetRoomSize(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				Height: m.Height,
 				Width:  m.Width,
 			}
-			log.Printf("write to db: %+v\n", room)
+			//log.Printf("write to db: %+v\n", room)
 			err = db.RoomModSizeByID(&room)
 			if err != nil {
 				log.Println(err)
@@ -900,7 +991,7 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				RoomID:      m.RoomID,
 			}
 
-			fID, err := db.FurnitureAdd(&f)
+			_, err = db.FurnitureAdd(&f)
 			if err != nil {
 				log.Printf("info: inserting furniture failed, trying to update, err: %v", err)
 				err := db.FurnitureModByNumberTypeRoom(&f)
@@ -909,8 +1000,10 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// only for logging
-			f.ID = fID
+			furn, err := db.FurnitureGetByTypeNumberRoom(m.Type, m.Number, m.RoomID)
+			if err != nil {
+				log.Printf("error: furniture get failed %+v, err:%v", f, err)
+			}
 			//log.Printf("write to db: %+v\n", f)
 
 			dis := int64(0)
@@ -923,12 +1016,12 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				Currency:    m.Currency,
 				Disabled:    dis,
 				EventID:     eventID,
-				FurnitureID: fID,
+				FurnitureID: furn.ID,
 			}
 			_, err = db.PriceAdd(&p)
 			if err != nil {
 				log.Printf("info: price inserting failed, trying update, err: %v", err)
-				err = db.PriceMod(&p)
+				err = db.PriceModByEventIDFurnID(&p)
 				if err != nil {
 					log.Printf("error: price insert failed, now also update failed, p: %+v, err: %v", p, err)
 				}
@@ -1004,6 +1097,46 @@ func DesignerRenumberType(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type OrderCancelMsg struct {
+	Sits    string `json:"sits"`
+	Rooms   string `json:"rooms"`
+	EventID int64  `json:"event-id"`
+}
+
+func OrderCancel(db *DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var m OrderCancelMsg
+		if r.Method == "POST" {
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&m)
+			//log.Printf("%+v", m)
+			if err != nil {
+				log.Println(err)
+			}
+			ss, rr, err := SplitSitsRooms(m.Sits, m.Rooms)
+			if err != nil {
+				log.Printf("OrderCancel: %v", err)
+			}
+
+			for i := range ss {
+				chair, err := db.FurnitureGetByTypeNumberRoom("chair", ss[i], rr[i])
+				if err != nil {
+					log.Println(err)
+				}
+
+				reservation, err := db.ReservationGet(chair.ID, m.EventID)
+				if err != nil {
+					log.Printf("OrderCancel: error retrieving reservation for chair: %d, eventID: %d, err: %v", chair.ID, m.EventID, err)
+				}
+				err = db.ReservationDel(reservation.ID)
+				if err != nil {
+					log.Printf("OrderCancel: error deleting reservation to %q status, err: %v", "free", err)
+				}
+			}
+		}
+	}
+}
+
 func EventGetCurrent(db *DB, userID int64) (Event, error) {
 	events, err := db.EventGetAllByUserID(userID)
 	if err != nil {
@@ -1045,6 +1178,11 @@ func ParseTmpl(t string, o Order) string {
 }
 
 func ToNS(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{
+			Valid: false,
+		}
+	}
 	return sql.NullString{
 		String: s,
 		Valid:  true,
@@ -1052,6 +1190,11 @@ func ToNS(s string) sql.NullString {
 }
 
 func ToNI(i int64) sql.NullInt64 {
+	if i == 0 {
+		return sql.NullInt64{
+			Valid: false,
+		}
+	}
 	return sql.NullInt64{
 		Int64: i,
 		Valid: true,
@@ -1061,4 +1204,63 @@ func ToNI(i int64) sql.NullInt64 {
 func ToDate(unix int64) string {
 	t := time.Unix(unix, 0)
 	return t.Format("2006-01-02")
+}
+
+func SplitSitsRoomsPrices(sits, rooms, prices string) ([]int64, []int64, []int64, error) {
+	var ssi, rri, ppi []int64
+	ss := strings.Split(sits, ",")
+	rr := strings.Split(rooms, ",")
+	pp := strings.Split(prices, ",")
+
+	if len(ss) != len(pp) || len(ss) != len(rr) {
+		return ssi, rri, ppi, fmt.Errorf("error sits/rooms/prices POST - wrong lenght, ss: %q, pp: %q, rr: %q",
+			sits, prices, rooms)
+	}
+	for i := range ss {
+		sit, err := strconv.ParseInt(strings.TrimSpace(ss[i]), 10, 64)
+		if err != nil {
+			return ssi, rri, ppi, fmt.Errorf("SplitSitsRoomsPrices: error converting sit ID %q to int64, err: %v", ss[i], err)
+		}
+		ssi = append(ssi, sit)
+
+		room, err := strconv.ParseInt(strings.TrimSpace(rr[i]), 10, 64)
+		if err != nil {
+			return ssi, rri, ppi, fmt.Errorf("SplitSitsRoomsPrices: error converting room ID %q to int64, err: %v", rr[i], err)
+		}
+		rri = append(rri, room)
+
+		price, err := strconv.ParseInt(strings.TrimSpace(pp[i]), 10, 64)
+		if err != nil {
+			return ssi, rri, ppi, fmt.Errorf("SplitSitsRoomsPrices: error converting price %q to int64, err: %v", pp[i], err)
+		}
+		ppi = append(ppi, price)
+
+	}
+	return ssi, rri, ppi, nil
+}
+
+func SplitSitsRooms(sits, rooms string) ([]int64, []int64, error) {
+	var ssi, rri []int64
+	ss := strings.Split(sits, ",")
+	rr := strings.Split(rooms, ",")
+
+	if len(ss) != len(rr) {
+		return ssi, rri, fmt.Errorf("error sits/rooms POST - wrong lenght, ss: %q, rr: %q",
+			sits, rooms)
+	}
+	for i := range ss {
+		sit, err := strconv.ParseInt(strings.TrimSpace(ss[i]), 10, 64)
+		if err != nil {
+			return ssi, rri, fmt.Errorf("SplitSitsRoomsPrices: error converting sit ID %q to int64, err: %v", ss[i], err)
+		}
+		ssi = append(ssi, sit)
+
+		room, err := strconv.ParseInt(strings.TrimSpace(rr[i]), 10, 64)
+		if err != nil {
+			return ssi, rri, fmt.Errorf("SplitSitsRoomsPrices: error converting room ID %q to int64, err: %v", rr[i], err)
+		}
+		rri = append(rri, room)
+	}
+
+	return ssi, rri, nil
 }

@@ -1,12 +1,17 @@
 {{define "head"}}  <link href="/css/room.css" rel="stylesheet" type="text/css">
+  <script type="text/javascript" src="/js/order.js"></script>
   <title>{{.LBLTitle}}</title>
 {{end}}
 {{define "body"}}
   <div class="row d-flex justify-content-center">
     <div class="col-md-6">
-      <form action="/order/status" method="POST">
-        <input id="prices" name="prices" value="{{.LBLPricesValue}}" hidden>
-        <input id="rooms" name="rooms" value="{{.LBLRoomsValue}}" hidden>
+      <form action="/order/status" method="POST" class="needs-validation">
+      <input id="prices" name="prices" value="{{.LBLPricesValue}}" hidden>
+      <input id="rooms" name="rooms" value="{{.LBLRoomsValue}}" hidden>
+      <input id="event-id" name="event-id" value="{{.Event.ID}}" hidden>
+      <div class="row">
+      <p>{{.LBLOrderHowto}}</p>
+      </div>
       <div class="row">
         <div class="col">
           <div class="form-group">
@@ -23,9 +28,12 @@
       </div>
  
       <div class="form-group">
-        <label for="email">{{.LBLEmail}}</label>
+        <label for="email">{{.LBLEmail}}<span style="color: red;"> *</span></label>
         <input type="email" class="form-control" id="email" name="email" aria-describedby="emailHelp" placeholder="{{.LBLEmailPlaceholder}}" required>
         <small id="emailHelp" class="form-text text-muted">{{.LBLEmailHelp}}</small>
+        <div class="invalid-feedback">
+          Email jest konieczny, jednak jako login, jednak otrzymają Państwo na niego potwierdzenie.
+        </div>
       </div>
       <div class="form-group">
         <label for="password">{{.LBLPassword}}</label>
@@ -35,13 +43,13 @@
       <div class="row">
         <div class="col">
           <div class="form-group">
-            <label for="name">{{.LBLName}}</label>
+            <label for="name">{{.LBLName}}<span style="color: red;"> *</span></label>
             <input type="text" class="form-control" id="name" name="name" placeholder="{{.LBLNamePlaceholder}}" required>
           </div>
         </div>
         <div class="col">
           <div class="form-group">
-            <label for="surname">{{.LBLSurname}}</label>
+            <label for="surname">{{.LBLSurname}}<span style="color: red;"> *</span></label>
             <input type="text" class="form-control" id="surname" name="surname" placeholder="{{.LBLSurnamePlaceholder}}" required>
           </div>
         </div>
@@ -56,8 +64,8 @@
         <textarea class="form-control" id="notes" name="notes" aria-describedby="notesHelp" rows="3" placeholder="{{.LBLNotesPlaceholder}}"></textarea>
         <small id="notesHelp" class="form-text text-muted">{{.LBLNotesHelp}}</small>
       </div>
-
       <button type="submit" class="btn btn-primary">{{.BTNSubmit}}</button>
+      <button class="btn btn-secondary" onclick="GoBackToRoom()">{{.BTNCancel}}</button>
     </form> 
     </div>
   </div>

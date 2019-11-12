@@ -8,6 +8,10 @@
   /* Footer height */
 }
 
+#meta {
+  padding: 10px;
+}
+
 #footer {
   background: lightgrey;
   position: absolute;
@@ -24,7 +28,9 @@
 
 .chair {
   float: left;
-  background: green;
+  color: white;
+  background-color: #28a745;
+  border-color: #28a745;
   width: 20px;
   height: 20px;
   text-align: center;
@@ -42,21 +48,44 @@
   transform: translateY(-50%);
 }
 
+.free-text {
+  color: #28a745;
+}
+
+.marked-text {
+  color: #ffc107;
+}
+
+.ordered-text {
+  color: #fd7e14;
+}
+
+.payed-text {
+  color: #dc3545;
+}
+
 .marked {
-  background: yellow;
+  color: white;
+  background-color: #ffc107;
+  border-color: #ffc107;
 }
 
 .ordered {
-  background: orange;
+  color: black;
+  background-color: #fd7e14;
+  border-color: #fd7e14;
 }
 
 .payed {
-  background: red;
+  color: white;
+  background-color: #dc3545;
+  border-color: #dc3545;
 }
 
 .disabled {
   color: lightgrey;
-  background: black;
+  background-color: #403734;
+  border-color: #403734;
 }
 
 .column {
@@ -248,12 +277,14 @@
 }
 
 #room .ui-selecting, .room-view .ui-selecting {
-  background: #FECA40;
+  filter: brightness(125%);
+  box-shadow: 0 0 0 0.2rem rgba(72, 180, 97, 0.5);
 }
 
 #room .ui-selected, .room-view .ui-selected {
-  background: #F39814;
-  color: white;
+  box-shadow: 0px 0px 20px yellow;
+  border: 1px solid yellow;
+  background: rgba(255, 225, 0, 0.64);
 }
 
 .ui-selectable-helper {

@@ -50,7 +50,7 @@ func main() {
 
 	handleStatic("js")
 	handleStatic("css")
-	//http.HandleFunc("/", DesignerOrg)
+	//http.HandleFunc("/", About(db))
 	http.Handle("/", rtr)
 	//http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
 	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
@@ -74,6 +74,7 @@ func initDB() *DB {
 		<li><span class="marked-text">Żółty</span> = ktoś wybrał miejsce, ale jeszcze nie dokonał rezerwacji.
 		<li><span class="ordered-text">Pomarańczowy</span> = zarezerowane.</li>
 		<li><span class="payed-text">Czerwony</span> = zapłacono.</li>
+		<li><span class="disabled-text">Czarny</span> = aktualnie miejsca niedostępne.</li>
 	</ul>
 	<p>Cena biletu: <b>400 Kč</b>. W cenie biletu:</p>
 	<ul>
@@ -104,13 +105,14 @@ Dziękujemy serdecznie!
 
 Zarząd MSz przy PSP w Karwinie-Frysztacie
 `
-	roomDescription := `Koło Macierzy Szkolnej zaprasza wszystkich na bal pt. „ROZTAŃCZMY PRZYJAŹŃ …”, który odbędzie się w piątek 7 lutego 2020 od godziny 19:00 w Domu Przyjaźni w Karwinie.
-W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.
-W górnej części ekranu wybrać można zakładkę "Sala główna - parter" lub "Balkon - 1. piętro".
+	roomDescription := `Koło Macierzy Szkolnej zaprasza wszystkich na bal pt. <b>„ROZTAŃCZMY PRZYJAŹŃ …”</b>,<br />
+który odbędzie się w piątek <b>7 lutego 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.<br />
+W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.<br />
+W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub <b>"Balkon - 1. piętro"</b>.<br />
 Proszę wybrać wolne miejsce (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
 	orderHowto := `W celu dokonania rezerwacji prosimy o wypełnienie poniższych danych. W przypadku kiedy Państwo dokonują rezerwacji większej ilości biletów, prosimy o podanie nazwisk osób, dla których są miejsca przeznaczone (wystarczy 1 nazwisko na 2 bilety).
 Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz z informacją na temat zakupu biletów.`
-	orderedNote := `Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz z informacją na temat zakupu biletów.`
+	orderedNote := `Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz informacja na temat zakupu biletów.`
 
 	db := DBInit("db.sql")
 	db.MustConnect()
@@ -160,14 +162,6 @@ func handleStatic(dir string) {
 	http.Handle("/"+dir+"/", http.StripPrefix("/"+dir+"/", fs))
 }
 
-func DesignerOrg(w http.ResponseWriter, r *http.Request) {
-	t := template.Must(template.ParseFiles("tmpl/a_designer.html"))
-	err := t.Execute(w, nil) //execute the template and pass it the HomePageVars struct to fill in the gaps
-	if err != nil {
-		log.Print("Designer template executing error: ", err) //log it
-	}
-}
-
 type DesignerPage struct {
 	TableNr, ChairNr, ObjectNr, LabelNr  int64
 	LBLWidth, LBLHeight                  string
@@ -212,12 +206,13 @@ type ReservationPageVars struct {
 
 type RoomVars struct {
 	Room
-	HTMLHowTo template.HTML
-	BTNOrder  string
-	Tables    []Furniture
-	Chairs    []FurnitureFull
-	Objects   []Furniture
-	Labels    []Furniture
+	HTMLRoomDescription template.HTML
+	HTMLHowTo           template.HTML
+	BTNOrder            string
+	Tables              []Furniture
+	Chairs              []FurnitureFull
+	Objects             []Furniture
+	Labels              []Furniture
 }
 
 func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter, r *http.Request) {
@@ -297,7 +292,6 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			//http.Error(w, "User have no active events! Come back later, when reservations will be opened!", 500) //TODO: inform about closest user event and when it is
 			return
 		}
-		fmt.Println(e.ID)
 		rr, err := db.EventGetRooms(e.ID)
 		if err != nil {
 			log.Printf("error getting rooms for eventID: %d, err: %v", e.ID, err)
@@ -309,7 +303,6 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			//http.Error(w, fmt.Sprintf("Rooms for user: %q, event: %q not found!", v["user"], e.Name), 500)
 			return
 		}
-		log.Println(rr)
 		p := ReservationPageVars{
 			//EN: LBLTitle: "Reservation",
 			LBLTitle: "Rezerwacja",
@@ -320,6 +313,7 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			// TODO: remake it, GetPageVarsFromDB call the same again, move previous lines there
 			rv := GetFurnituresFromDB(db, rr[i].Name, e.ID)
 			rv.Room = rr[i]
+			rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
 			rv.HTMLHowTo = template.HTML(e.HowTo)
 			// EN: rv.BTNOrder = "Order"
 			rv.BTNOrder = "Zamów"
@@ -436,32 +430,34 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) fun
 			}
 
 			custMail := MailConfig{
-				Server:  mailsrv,
-				Port:    587,
-				User:    "rezerwo@zori.cz",
-				Pass:    mailpass,
-				From:    user.Email,
-				ReplyTo: user.Email,
-				Sender:  "rezerwo@zori.cz",
-				To:      []string{o.Email},
-				Subject: event.MailSubject,
-				Text:    ParseTmpl(event.MailText, o),
+				Server:     mailsrv,
+				Port:       587,
+				User:       "rezerwo@zori.cz",
+				Pass:       mailpass,
+				From:       user.Email,
+				ReplyTo:    user.Email,
+				Sender:     "rezerwo@zori.cz",
+				To:         []string{o.Email},
+				Subject:    event.MailSubject,
+				Text:       ParseTmpl(event.MailText, o),
+				IgnoreCert: true,
 			}
 			err = MailSend(custMail)
 			if err != nil {
 				log.Println(err)
 			}
 			userMail := MailConfig{
-				Server:  mailsrv,
-				Port:    587,
-				User:    "rezerwo@zori.cz",
-				Pass:    mailpass,
-				From:    "rezerwo@zori.cz",
-				ReplyTo: "rezerwo@zori.cz",
-				Sender:  "rezerwo@zori.cz",
-				To:      []string{user.Email},
-				Subject: event.MailSubject,
-				Text:    ParseTmpl("{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}", o), //TODO
+				Server:     mailsrv,
+				Port:       587,
+				User:       "rezerwo@zori.cz",
+				Pass:       mailpass,
+				From:       "rezerwo@zori.cz",
+				ReplyTo:    "rezerwo@zori.cz",
+				Sender:     "rezerwo@zori.cz",
+				To:         []string{user.Email},
+				Subject:    event.MailSubject,
+				Text:       ParseTmpl("{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}", o), //TODO
+				IgnoreCert: true,
 			}
 			err = MailSend(userMail)
 			if err != nil {

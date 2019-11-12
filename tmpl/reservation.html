@@ -22,7 +22,7 @@
   <div class="tab-pane fade show" id="room-{{.Room.ID}}" role="tabpanel" aria-labelledby="room-{{.Room.ID}}-tab">
     <div id="meta">
       <h1>{{.Room.Name}}</h1>
-      <p>{{.Room.Description.String}}</p>
+      <p>{{.HTMLRoomDescription}}</p>
     </div>
     <div class="row">
       <div class="column" style="width: {{.Room.Width}}px;">

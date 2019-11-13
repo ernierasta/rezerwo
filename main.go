@@ -45,6 +45,10 @@ func main() {
 	db := initDB()
 	defer db.Close()
 
+	stop := make(chan bool)
+	Ticker5min(db, stop)
+	defer TickerStop(stop)
+
 	rtr := mux.NewRouter()
 	rtr.HandleFunc("/res/{user}", ReservationHTML(db))
 	rtr.HandleFunc("/", AboutHTML())

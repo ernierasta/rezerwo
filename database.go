@@ -696,6 +696,12 @@ func (db *DB) ReservationGet(furnitureID, eventID int64) (Reservation, error) {
 	return r, err
 }
 
+func (db *DB) ReservationGetInStatus(status string) ([]Reservation, error) {
+	reservations := []Reservation{}
+	err := db.DB.Select(&reservations, `SELECT * FROM reservations WHERE status=$1`, status)
+	return reservations, err
+}
+
 func (db *DB) ReservationAdd(r *Reservation) (int64, error) {
 	ret, err := db.DB.NamedExec(`INSERT INTO reservations (ordered_date, payed_date, price, currency, status, notes_id_fk, furnitures_id_fk, events_id_fk, customers_id_fk) 
 VALUES(:ordered_date, :payed_date, :price, :currency, :status, :notes_id_fk, :furnitures_id_fk, :events_id_fk, :customers_id_fk)`, r)

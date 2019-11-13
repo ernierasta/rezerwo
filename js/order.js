@@ -10,7 +10,10 @@ function CancelOrder() {
   });
 }
 
-function GoBackToRoom() {
-  CancelOrder();
-  window.history.back();
+function GoBackToRoom(event) {
+  $.when(
+    CancelOrder()
+  ).then(function() {
+    window.location.replace("/res/"+$("#user-url").val());
+  });
 }

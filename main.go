@@ -581,6 +581,7 @@ type ReservationOrderVars struct {
 	LBLNotesHelp                        string
 	LBLPricesValue, LBLRoomsValue       string
 	LBLSits, LBLSitsValue               string
+	LBLUserURL                          string
 	LBLTotalPrice, LBLTotalPriceValue   string
 	BTNSubmit, BTNCancel                string
 }
@@ -596,6 +597,10 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 		event, err := db.EventGetByName(eventName)
 		if err != nil {
 			log.Printf("ReservationOrderHTML: error getting event by name: %q, err: %v", eventName, err)
+		}
+		user, err := db.UserGetByID(event.UserID) //TODO: this will be different
+		if err != nil {
+			log.Println(err)
 		}
 
 		if r.Method == "POST" {
@@ -694,6 +699,7 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 			LBLSitsValue:          sits,
 			LBLTotalPrice:         "Łączna suma",
 			LBLTotalPriceValue:    totalPrice + " " + defaultCurrency,
+			LBLUserURL:            user.URL,
 			BTNSubmit:             "Zamawiam",
 			BTNCancel:             "Anuluj zamówienie",
 		}

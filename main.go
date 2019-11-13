@@ -472,7 +472,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) fun
 				Sender:     "rezerwo@zori.cz",
 				To:         []string{user.Email},
 				Subject:    event.MailSubject,
-				Text:       ParseTmpl("{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}", o), //TODO
+				Text:       ParseTmpl("{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}} sale: {{.Rooms}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}", o), //TODO
 				IgnoreCert: true,
 			}
 			err = MailSend(userMail)

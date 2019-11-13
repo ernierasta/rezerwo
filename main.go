@@ -80,7 +80,7 @@ func initDB() *DB {
 	<ul>
 		<li>Wstęp na bal.</li>
 		<li>Miejscówka.</li>
-		<li>Welcome drink.</li>
+	<li>Welcome drink.</li>
 		<li>Smaczna kolacja.</li>
 		<li>Woda i mały poczęstunek na stole.</li>
 		<li>Super muzyka.</li>
@@ -105,11 +105,18 @@ Dziękujemy serdecznie!
 
 Zarząd MSz przy PSP w Karwinie-Frysztacie
 `
-	roomDescription := `Koło Macierzy Szkolnej zaprasza wszystkich na bal pt. <b>„ROZTAŃCZMY PRZYJAŹŃ …”</b>,<br />
+	roomDescription1 := `<div class="alert alert-warning" role="alert">Zapraszamy również na Balkon na 1. piętrze, tam pozostało jeszcze sporo wolnych miejsc.</div>
+Koło Macierzy Szkolnej zaprasza wszystkich na bal pt. <b>„ROZTAŃCZMY PRZYJAŹŃ …”</b>,<br />
 który odbędzie się w piątek <b>7 lutego 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.<br />
 W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.<br />
 W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub <b>"Balkon - 1. piętro"</b>.<br />
 Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
+	roomDescription2 := `Koło Macierzy Szkolnej zaprasza wszystkich na bal pt. <b>„ROZTAŃCZMY PRZYJAŹŃ …”</b>,<br />
+który odbędzie się w piątek <b>7 lutego 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.<br />
+W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.<br />
+W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub <b>"Balkon - 1. piętro"</b>.<br />
+Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
+
 	orderHowto := `W celu dokonania rezerwacji prosimy o wypełnienie poniższych danych. W przypadku kiedy Państwo dokonują rezerwacji większej ilości biletów, prosimy o podanie nazwisk osób, dla których są miejsca przeznaczone (wystarczy 1 nazwisko na 2 bilety).
 Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz z informacją na temat zakupu biletów.`
 	orderedNote := `Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz informacja na temat zakupu biletów.`
@@ -124,11 +131,11 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 		log.Println(err)
 	}
 
-	r1ID, err := db.RoomAdd(&Room{ID: 1, Name: "Sala główna - parter", Description: ToNS(roomDescription), Width: 1000, Height: 1000})
+	r1ID, err := db.RoomAdd(&Room{ID: 1, Name: "Sala główna - parter", Description: ToNS(roomDescription1), Width: 1000, Height: 1000})
 	if err != nil {
 		log.Println(err)
 	}
-	r2ID, err := db.RoomAdd(&Room{ID: 2, Name: "Balkon - 1. piętro", Description: ToNS(roomDescription), Width: 500, Height: 500})
+	r2ID, err := db.RoomAdd(&Room{ID: 2, Name: "Balkon - 1. piętro", Description: ToNS(roomDescription2), Width: 500, Height: 500})
 	if err != nil {
 		log.Println(err)
 	}

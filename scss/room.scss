@@ -106,6 +106,15 @@
 	//position: absolute;
 }
 
+.nav-link {
+	color: firebrick;
+	font-weight: bold;
+}
+
+.nav-link.active {
+	font-weight: normal;
+}
+
 #selected-chairs {
 	width: 400px;
 	display: flex;

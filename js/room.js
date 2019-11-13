@@ -295,7 +295,8 @@ function MakeSelectable() {
           $(this).removeClass("ui-selected");
         }
       });
-      $("#select-result").html("selected: "+selected+", price: "+price);
+      $("#selected-chairs").html(selected.join(", "));
+      $("#total-price").html(price);
     },
     unselected: function (e, ui) {
       selected = [];
@@ -310,7 +311,8 @@ function MakeSelectable() {
           }
         }
       });
-      $("#select-result").html("selected: "+selected+", price: "+price);
+      $("#selected-chairs").html(String(selected));
+      $("#total-price").html(price);
     }
   });
 }

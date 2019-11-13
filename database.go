@@ -152,8 +152,8 @@ func (db *DB) StructureCreate() {
 	CREATE TABLE IF NOT EXISTS users_rooms (users_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL UNIQUE, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS furnitures (id INTEGER NOT NULL PRIMARY KEY, number INTEGER NOT NULL, type TEXT NOT NULL, orientation TEXT, x INTEGER NOT NULL, y INTEGER NOT NULL, width INTEGER, height INTEGER, color TEXT, label TEXT, capacity INTEGER, rooms_id_fk INTEGER NOT NULL, UNIQUE(number, type, rooms_id_fk) ON CONFLICT ROLLBACK, FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS prices (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
-	CREATE TABLE IF NOT EXISTS customers (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwd TEXT, name TEXT, surname TEXT, address TEXT, phone TEXT, notes TEXT);
-	CREATE TABLE IF NOT EXISTS users_customers (users_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id));
+	CREATE TABLE IF NOT EXISTS customers (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwd TEXT, name TEXT, surname TEXT, phone TEXT, notes TEXT);
+	CREATE TABLE IF NOT EXISTS users_customers (users_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(users_id_fk, customers_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note TEXT NOT NULL, mail_subject TEXT NOT NULL, mail_text TEXT NOT NULL, admin_mail_subject TEXT NOT NULL, admin_mail_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS events_rooms (events_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id), UNIQUE(events_id_fk, rooms_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER, payed_date INTEGER, price INTEGER, currency TEXT, status TEXT NOT NULL, notes_id_fk INTEGER, furnitures_id_fk INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(notes_id_fk) REFERENCES notes(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
@@ -208,7 +208,13 @@ func (db *DB) UserModByEmail(user *User) error {
 
 func (db *DB) UserDel(email string) error {
 	ret, err := db.DB.Exec(`DELETE FROM users WHERE email=$1`, email)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("user %q not found", email)
 	}
@@ -280,6 +286,9 @@ func (db *DB) RoomDel(id int64) error {
 		return err
 	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("room with ID: %d not found", id)
 	}
@@ -301,6 +310,9 @@ func (db *DB) RoomAssignToUser(userID, roomID int64) error {
 		return err
 	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("no users_rooms entry added for userID: %v, roomID: %v", userID, roomID)
 	}
@@ -313,6 +325,9 @@ func (db *DB) RoomUnassignUser(userID, roomID int64) error {
 		return err
 	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("no users_rooms entry removed for userID: %v, roomID: %v", userID, roomID)
 	}
@@ -413,7 +428,13 @@ func (db *DB) FurnitureChangeRoomByName(number int64, ftype string, roomName str
 
 func (db *DB) FurnitureDel(id int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM furnitures WHERE id=$1`, id)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("furniture with ID: %d not found", id)
 	}
@@ -422,7 +443,13 @@ func (db *DB) FurnitureDel(id int64) error {
 
 func (db *DB) FurnitureDelByNumberTypeRoom(number int64, ftype string, roomID int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM furnitures WHERE number=$1 AND type=$2 AND rooms_id_fk=$3`, number, ftype, roomID)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("furniture with number: %d and type: %q not found", number, ftype)
 	}
@@ -488,7 +515,13 @@ func (db *DB) PriceModByEventIDFurnID(price *Price) error {
 
 func (db *DB) PriceDel(id int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM prices WHERE id=$1`, id)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("price with ID: %d not found", id)
 	}
@@ -497,7 +530,13 @@ func (db *DB) PriceDel(id int64) error {
 
 func (db *DB) PriceDelByEventIDFurn(eventID int64, fnumber int64, ftype string) error {
 	ret, err := db.DB.Exec(`DELETE FROM prices WHERE events_id_fk=$1 AND number=$2 AND type=$3`, eventID, fnumber, ftype)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("price with number and type: %q and %q not found", fnumber, ftype)
 	}
@@ -506,7 +545,13 @@ func (db *DB) PriceDelByEventIDFurn(eventID int64, fnumber int64, ftype string) 
 
 func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) error {
 	ret, err := db.DB.Exec(`DELETE FROM prices WHERE events_id_fk=(SELECT id FROM events where name=$1) AND number=$2 AND type=$3`, event, fnumber, ftype)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("price with number and type: %q and %q not found", fnumber, ftype)
 	}
@@ -576,6 +621,9 @@ func (db *DB) EventAddRoom(eventID, roomID int64) error {
 		return err
 	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("error adding room %d to event %d, err: %v", roomID, eventID, err)
 	}
@@ -602,6 +650,9 @@ func (db *DB) EventDel(id int64) error {
 		return err
 	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("event with ID: %d not found", id)
 	}
@@ -610,7 +661,13 @@ func (db *DB) EventDel(id int64) error {
 
 func (db *DB) EventDelByEventIDFurn(eventID int64, fnumber int64, ftype string) error {
 	ret, err := db.DB.Exec(`DELETE FROM events WHERE events_id_fk=$1 AND number=$2 AND type=$3`, eventID, fnumber, ftype)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("event with number and type: %q and %q not found", fnumber, ftype)
 	}
@@ -619,7 +676,13 @@ func (db *DB) EventDelByEventIDFurn(eventID int64, fnumber int64, ftype string) 
 
 func (db *DB) EventDelByEventFurn(event string, fnumber int64, ftype string) error {
 	ret, err := db.DB.Exec(`DELETE FROM events WHERE events_id_fk=(SELECT id FROM events where name=$1) AND number=$2 AND type=$3`, event, fnumber, ftype)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("event with number and type: %q and %q not found", fnumber, ftype)
 	}
@@ -633,8 +696,8 @@ func (db *DB) ReservationGet(furnitureID, eventID int64) (Reservation, error) {
 }
 
 func (db *DB) ReservationAdd(r *Reservation) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO reservations (ordered_date, payed_date, price, currency, status, furnitures_id_fk, events_id_fk, customers_id_fk) 
-VALUES(:ordered_date, :payed_date, :price, :currency, :status, :furnitures_id_fk, :events_id_fk, :customers_id_fk)`, r)
+	ret, err := db.DB.NamedExec(`INSERT INTO reservations (ordered_date, payed_date, price, currency, status, notes_id_fk, furnitures_id_fk, events_id_fk, customers_id_fk) 
+VALUES(:ordered_date, :payed_date, :price, :currency, :status, :notes_id_fk, :furnitures_id_fk, :events_id_fk, :customers_id_fk)`, r)
 	if err != nil {
 		return -1, err
 	}
@@ -642,13 +705,19 @@ VALUES(:ordered_date, :payed_date, :price, :currency, :status, :furnitures_id_fk
 }
 
 func (db *DB) ReservationMod(r *Reservation) error {
-	_, err := db.DB.NamedExec(`UPDATE reservations SET ordered_date=:ordered_date, payed_date=:payed_date, price=:price, currency=:currency, status=:status, customers_id_fk=:customers_id_fk WHERE furnitures_id_fk=:furnitures_id_fk AND events_id_fk=:events_id_fk`, r)
+	_, err := db.DB.NamedExec(`UPDATE reservations SET ordered_date=:ordered_date, payed_date=:payed_date, price=:price, currency=:currency, status=:status, notes_id_fk=:notes_id_fk, customers_id_fk=:customers_id_fk WHERE furnitures_id_fk=:furnitures_id_fk AND events_id_fk=:events_id_fk`, r)
 	return err
 }
 
 func (db *DB) ReservationDel(id int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM reservations WHERE id=$1`, id)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("reservation with: %d", id)
 	}
@@ -681,7 +750,13 @@ func (db *DB) CustomerAppendToUser(userID, customerID int64) error {
 	}
 	ret, err := db.DB.Exec(`INSERT INTO users_customers (users_id_fk, customers_id_fk) 
 VALUES($1, $2)`, userID, customerID)
+	if err != nil {
+		return err
+	}
 	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if affected == 0 {
 		return fmt.Errorf("no users_customers entry added for userID: %v, customerID: %v", userID, customerID)
 	}
@@ -689,7 +764,7 @@ VALUES($1, $2)`, userID, customerID)
 }
 
 func (db *DB) NoteAdd(note string) (int64, error) {
-	ret, err := db.DB.Exec(`INSERT INTO notes (note) 
+	ret, err := db.DB.Exec(`INSERT INTO notes (text) 
 VALUES($1)`, note)
 	if err != nil {
 		return -1, err

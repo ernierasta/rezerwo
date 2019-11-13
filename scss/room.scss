@@ -61,6 +61,9 @@
 .payed-text {
 	color: $chair-bg-color-payed;
 }
+.disabled-text {
+	color: $chair-bg-color-disabled;
+}
 
 .marked {
 	color: $chair-color-marked;
@@ -97,9 +100,17 @@
 }
 
 .right {
-	left: 1020px;
-	position: absolute;
+	position: inherit;
+	padding: 10px;
+	//left: 1020px;
+	//position: absolute;
 }
+
+#selected-chairs {
+	width: 400px;
+	display: flex;
+}
+
 .input-group{
 	margin-top: 5px;
 	margin-bottom: 5px;

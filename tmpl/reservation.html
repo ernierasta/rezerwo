@@ -43,7 +43,10 @@
       </div>
   
       <div class="column right">
-        <div id="select-result"></div>
+        <div>
+          {{.LBLSelected}}: <b><span id="selected-chairs"></span></b><br />
+          {{.LBLTotalPrice}}: <b><span id="total-price"></span></b>
+        </div>
         <div id="how-to">{{.HTMLHowTo}}</div>
         <div id="controls"><button id="order" class="btn btn-primary" onclick="Order()">{{.BTNOrder}}</button>
       </div>

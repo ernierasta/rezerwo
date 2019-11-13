@@ -47,10 +47,10 @@ func main() {
 
 	rtr := mux.NewRouter()
 	rtr.HandleFunc("/res/{user}", ReservationHTML(db))
+	rtr.HandleFunc("/", AboutHTML())
 
 	handleStatic("js")
 	handleStatic("css")
-	//http.HandleFunc("/", About(db))
 	http.Handle("/", rtr)
 	//http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
 	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
@@ -109,7 +109,7 @@ Zarząd MSz przy PSP w Karwinie-Frysztacie
 który odbędzie się w piątek <b>7 lutego 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.<br />
 W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.<br />
 W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub <b>"Balkon - 1. piętro"</b>.<br />
-Proszę wybrać wolne miejsce (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
+Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
 	orderHowto := `W celu dokonania rezerwacji prosimy o wypełnienie poniższych danych. W przypadku kiedy Państwo dokonują rezerwacji większej ilości biletów, prosimy o podanie nazwisk osób, dla których są miejsca przeznaczone (wystarczy 1 nazwisko na 2 bilety).
 Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz z informacją na temat zakupu biletów.`
 	orderedNote := `Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz informacja na temat zakupu biletów.`
@@ -208,6 +208,8 @@ type RoomVars struct {
 	Room
 	HTMLRoomDescription template.HTML
 	HTMLHowTo           template.HTML
+	LBLSelected         string
+	LBLTotalPrice       string
 	BTNOrder            string
 	Tables              []Furniture
 	Chairs              []FurnitureFull
@@ -316,6 +318,10 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
 			rv.HTMLHowTo = template.HTML(e.HowTo)
 			// EN: rv.BTNOrder = "Order"
+			// EN: rv.LBLSelected = "Selected"
+			// EN: rv.LBLTotalPrice = "Total price"
+			rv.LBLSelected = "Wybrano"
+			rv.LBLTotalPrice = "Łączna suma"
 			rv.BTNOrder = "Zamów"
 
 			p.Rooms = append(p.Rooms, rv)
@@ -352,17 +358,18 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) fun
 			if err != nil {
 				log.Printf("error parsing form data:, err: %v", err)
 			}
-			o.Sits = r.Form["sits"][0]
-			o.Prices = r.Form["prices"][0]
-			o.Rooms = r.Form["rooms"][0]
-			o.TotalPrice = r.Form["total-price"][0]
-			o.Email = r.Form["email"][0]
-			o.Password = r.Form["password"][0]
-			o.Name = r.Form["name"][0]
-			o.Surname = r.Form["surname"][0]
-			o.Phone = r.Form["phone"][0]
-			o.Notes = r.Form["notes"][0]
+			o.Sits = r.FormValue("sits")
+			o.Prices = r.FormValue("prices")
+			o.Rooms = r.FormValue("rooms")
+			o.TotalPrice = r.FormValue("total-price")
+			o.Email = r.FormValue("email")
+			o.Password = r.FormValue("password")
+			o.Name = r.FormValue("name")
+			o.Surname = r.FormValue("surname")
+			o.Phone = r.FormValue("phone")
+			o.Notes = r.FormValue("notes")
 
+			fmt.Printf("%+v", o)
 			c := Customer{
 				Email:   o.Email,
 				Passwd:  ToNS(o.Password),
@@ -374,20 +381,30 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) fun
 			if err != nil {
 				log.Printf("error adding customer: %+v, err: %v", c, err)
 				c, err = db.CustomerGetByEmail(o.Email)
-				cID = c.ID
-				//TODO: if user exists, ask/compare password if not logged in
-				plErr := map[string]string{
-					"title": "Nie można zapisać osoby!",
-					"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy podać poprawne hasło.",
+				if err != nil {
+					log.Printf("error getting user by mail %q, err: %v", o.Email, err)
 				}
-				ErrorHTML(plErr["title"], plErr["text"], w, r)
-				//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
-				return
+				cID = c.ID
+				fmt.Printf("printing client, maybe? %+v", c)
+				//log.Printf("stare: %v, nowe: %v", c.Passwd.String, o.Password)
+				if c.Passwd.String == "" || c.Passwd.String != o.Password {
+					plErr := map[string]string{
+						"title": "Nie można zapisać osoby!",
+						"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy podać poprawne hasło.",
+					}
+					ErrorHTML(plErr["title"], plErr["text"], w, r)
+					//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
+					return
+				}
 			}
+			// password is correct, so continue
+			fmt.Println("we survived till here!!!")
+			//TODO: this will fail for returning user, maybe check if exist and do not insert?
 			err = db.CustomerAppendToUser(user.ID, cID)
 			if err != nil {
 				log.Println(err)
 			}
+			log.Println("before Splitting")
 			ss, rr, err := SplitSitsRooms(o.Sits, o.Rooms)
 			if err != nil {
 				log.Printf("ReservationOrderStatusHTML: %v", err)
@@ -416,6 +433,7 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) fun
 				if noteID != 0 {
 					reservation.NoteID = ToNI(noteID)
 				}
+				log.Printf("debug: noteID: %v", noteID)
 				err = db.ReservationMod(&reservation)
 				if err != nil {
 					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
@@ -888,6 +906,39 @@ func EventEditor(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+type AboutVars struct {
+	LBLTitle                    string
+	LBLAboutTitle, LBLAboutText template.HTML
+}
+
+func AboutHTML() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		pPL := AboutVars{
+			LBLTitle:      "REZERWO",
+			LBLAboutTitle: template.HTML("REZERWO - Zaolziański system do rezerwacji"),
+			LBLAboutText: template.HTML(`
+		Rezerwo to młody projekt utworzony z myślą o polskich organizacjach w Czechach. Ponieważ projekt powstał
+		za pięć dwunasta, w tym roku działać będą tylko funkcje niezbędne do realizacji rezerwacji, i absolutne 
+		podstawy administracji. Ale planów mam dużo ...<br />
+		<b>Głównym celem projektu jest, by wszystkie bale (i podobne), których organizatorem są polskie organizacje w Czechach,
+		były zarządzane za pomocą REZERWO.</b><br />
+		Docelowo system będzie dostępny również w języku czeskim oraz angielskim. Zamierzam również udostępnić
+		rozwiązanie subjektom komercyjnym jeżeli będą zainteresowane. Ale dla każdej organizacji polskiej w Czechach
+		rozwiązanie zawsze będzie dostępne DARMOWO. <i>Oczywiście na miodule se zaprosić niechóm jeśli kiery beje nalegoł.</i><br />
+		<br />
+		Z góry przepraszam za możliwe niedociągnięcia, będą one stopniowo usuwane, tak by w przyszłym roku zachwyćić. Mam nadzieję.<br />
+		Leszek Cimała, admin (at) zori.cz`),
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/about.html", "tmpl/base.html"))
+		err := t.ExecuteTemplate(w, "base", pPL)
+		if err != nil {
+			log.Print("ErrorHTML: template executing error: ", err) //log it
+		}
+	}
+
 }
 
 type ErrorVars struct {

@@ -1,5 +1,5 @@
 tmp/
-db.sql
+db.sql*
 test_db_sqllite.db
 rezerwo
 .mailpass

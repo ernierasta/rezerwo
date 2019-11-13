@@ -64,6 +64,10 @@
   color: #dc3545;
 }
 
+.disabled-text {
+  color: #403734;
+}
+
 .marked {
   color: white;
   background-color: #ffc107;
@@ -100,8 +104,13 @@
 }
 
 .right {
-  left: 1020px;
-  position: absolute;
+  position: inherit;
+  padding: 10px;
+}
+
+#selected-chairs {
+  width: 400px;
+  display: flex;
 }
 
 .input-group {

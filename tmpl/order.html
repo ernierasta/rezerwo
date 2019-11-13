@@ -38,8 +38,8 @@
         </div>
       </div>
       <div class="form-group">
-        <label for="password">{{.LBLPassword}}</label>
-        <input type="password" class="form-control" id="password" name="password" aria-describedby="passwordHelp" placeholder="{{.LBLPasswordPlaceholder}}">
+        <label for="password">{{.LBLPassword}}<span style="color: red;"> *</span></label>
+        <input type="password" class="form-control" id="password" name="password" aria-describedby="passwordHelp" placeholder="{{.LBLPasswordPlaceholder}}" required>
         <small id="passwordHelp" class="form-text text-muted">{{.LBLPasswordHelp}}</small>
       </div>
       <div class="row">

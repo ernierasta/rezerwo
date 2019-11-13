@@ -385,7 +385,6 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) fun
 					log.Printf("error getting user by mail %q, err: %v", o.Email, err)
 				}
 				cID = c.ID
-				fmt.Printf("printing client, maybe? %+v", c)
 				//log.Printf("stare: %v, nowe: %v", c.Passwd.String, o.Password)
 				if c.Passwd.String == "" || c.Passwd.String != o.Password {
 					plErr := map[string]string{
@@ -398,7 +397,6 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) fun
 				}
 			}
 			// password is correct, so continue
-			fmt.Println("we survived till here!!!")
 			//TODO: this will fail for returning user, maybe check if exist and do not insert?
 			err = db.CustomerAppendToUser(user.ID, cID)
 			if err != nil {
@@ -1163,7 +1161,7 @@ func OrderCancel(db *DB) func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			dec := json.NewDecoder(r.Body)
 			err := dec.Decode(&m)
-			//log.Printf("%+v", m)
+			log.Printf("ordercancel: %+v", m)
 			if err != nil {
 				log.Println(err)
 			}

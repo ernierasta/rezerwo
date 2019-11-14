@@ -23,9 +23,6 @@ jobs:
     - name: Build
       run: go build -v .
 
-    - name: Get ip
-      run: wget -qO- https://ipecho.net/plain ; echo
-
     - uses: actions/checkout@master
     - name: copy file via ssh password
       uses: appleboy/scp-action@master

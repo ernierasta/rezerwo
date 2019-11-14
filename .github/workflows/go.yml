@@ -33,7 +33,7 @@ jobs:
         source: "rezerwo"
         target: "/var/www/zori.cz/rezerwo/githubci"
 
-    - name: pull repo on web serwer
+    - name: upgrade rezerwo
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.HOST }}
@@ -42,4 +42,8 @@ jobs:
         port: ${{ secrets.PORT }}
         script: |
           cd /var/www/zori.cz/rezerwo
-          echo date > githubci.log
+          service rezerwo stop
+          mv githubci/rezerwo .
+          git pull
+          service rezerwo start
+          rmdir githubci

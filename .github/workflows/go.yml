@@ -21,7 +21,7 @@ jobs:
         go get -v -t -d ./...
 
     - name: Build
-      run: go build -o dest/rezerwo -v .
+      run: go build -o dest/rezerwo -v . && pwd && ls -al dest/
 
     - uses: actions/checkout@master
     - name: copy rezerwo bin to web server
@@ -31,9 +31,9 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSHKEY }}
         port: ${{ secrets.PORT }}
-        source: "dest/rezerwo"
+        source: "/github/workspace/dest/rezerwo"
         target: "/var/www/zori.cz/rezerwo/githubci"
-        strip_components: 1
+        strip_components: 3
 
     - name: pull repo on web serwer
       uses: appleboy/ssh-action@master

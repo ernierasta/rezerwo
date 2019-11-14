@@ -1,4 +1,5 @@
 tmp/
+backup/
 db.sql*
 test_db_sqllite.db
 rezerwo

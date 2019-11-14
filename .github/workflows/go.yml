@@ -42,6 +42,7 @@ jobs:
         port: ${{ secrets.PORT }}
         script: |
           cd /var/www/zori.cz/rezerwo
+          cp db.sql backup/db.sql-$(date '+%y%m%d-%H%M%S')
           service rezerwo stop
           mv githubci/rezerwo .
           git pull

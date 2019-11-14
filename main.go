@@ -645,7 +645,7 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 					CustomerID:  -1, // this will be updated when customer is created
 				})
 				if err != nil {
-					log.Printf("error adding reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
+					log.Printf("error adding reservation for chair number: %d, roomID: %d, eventID: %d, err: %v", chair.Number, chair.RoomID, event.ID, err)
 					errPL := map[string]string{
 						"title": "Nie udało się zarezerwować miejsca!",
 						"text":  "Nie można zarezerwować wybranych miejsc, zostały one już zablokowane przez innego zamawiającego.\nProsimy o wybranie innych miejsc, lub poczekanie 5 minut. Po 5 minutach niezrealizowane zamówiania są automatycznie anulowane.",

@@ -31,9 +31,9 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSHKEY }}
         port: ${{ secrets.PORT }}
-        source: "/github/workspace/dest/rezerwo"
-        target: "/var/www/zori.cz/rezerwo/githubci"
-        strip_components: 3
+        source: dest/rezerwo
+        target: /var/www/zori.cz/rezerwo/githubci
+        strip_components: 1
 
     - name: pull repo on web serwer
       uses: appleboy/ssh-action@master

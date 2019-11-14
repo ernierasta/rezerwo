@@ -31,10 +31,10 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSHKEY }}
         port: ${{ secrets.PORT }}
-        source: "rezerwo"
+        source: "_/home/runner/work/rezerwo/rezerwo"
         target: "/var/www/zori.cz/rezerwo/githubci"
 
-    - name: executing remote ssh commands using ssh key
+    - name: pull repo on web serwer
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.HOST }}

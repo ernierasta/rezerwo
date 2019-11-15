@@ -1,6 +1,7 @@
 tmp/
 backup/
 db.sql*
+config.toml
 test_db_sqllite.db
 rezerwo
 .mailpass

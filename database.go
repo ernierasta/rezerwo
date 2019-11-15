@@ -26,6 +26,15 @@ type User struct {
 	Phone        sql.NullString `db:"phone"`
 }
 
+type Admin struct {
+	ID     int64          `db:"id"`
+	Type   string         `db:"type"`
+	Email  string         `db:"email"`
+	Passwd sql.NullString `db:"passwd"`
+	Notes  sql.NullString `db:"notes"`
+	UserID int64          `db:"users_id_fk"`
+}
+
 type Customer struct {
 	ID      int64          `db:"id"`
 	Email   string         `db:"email"`
@@ -148,7 +157,7 @@ func (db *DB) MustConnect() {
 func (db *DB) StructureCreate() {
 	structure := `
 	CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, url TEXT NOT NULL, passwd TEXT NOT NULL, name TEXT, surname TEXT, organization TEXT, phone TEXT);
-	CREATE TABLE IF NOT EXISTS mails (id INTEGER NOT NULL PRIMARY KEY, type TEXT NOT NULL, server TEXT NOT NULL, port INTEGER NOT NULL, user TEXT NOT NULL, from_mail TEXT NOT NULL, password TEXT NOT NULL, sender TEXT NOT NULL, ignore_cert INTEGER NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id));
+	CREATE TABLE IF NOT EXISTS admins (id INTEGER NOT NULL PRIMARY KEY, type TEXT NOT NULL, email TEXT NOT NULL, passwd TEXT, notes TEXT, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id));
 	CREATE TABLE IF NOT EXISTS rooms (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT, width INTEGER NOT NULL, height INTEGER NOT NULL);
 	CREATE TABLE IF NOT EXISTS users_rooms (users_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL UNIQUE, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS furnitures (id INTEGER NOT NULL PRIMARY KEY, number INTEGER NOT NULL, type TEXT NOT NULL, orientation TEXT, x INTEGER NOT NULL, y INTEGER NOT NULL, width INTEGER, height INTEGER, color TEXT, label TEXT, capacity INTEGER, rooms_id_fk INTEGER NOT NULL, UNIQUE(number, type, rooms_id_fk) ON CONFLICT ROLLBACK, FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
@@ -768,6 +777,28 @@ VALUES($1, $2)`, userID, customerID)
 		return fmt.Errorf("no users_customers entry added for userID: %v, customerID: %v", userID, customerID)
 	}
 	return err
+}
+
+func (db *DB) AdminAdd(a *Admin) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO admins (type, email, passwd, notes, users_id_fk) 
+VALUES(:type, :email, :passwd, :notes, :users_id_fk)`, a)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) AdminGetAll(UserID int64) ([]Admin, error) {
+	aa := []Admin{}
+	err := db.DB.Select(&aa, `SELECT * FROM admins WHERE users_id_fk=$1`, UserID)
+	return aa, err
+}
+
+// AdminGetEmails retrieves all mails, TODO: maybe filter by type?
+func (db *DB) AdminGetEmails(UserID int64) ([]string, error) {
+	aa := []string{}
+	err := db.DB.Select(&aa, `SELECT email FROM admins WHERE users_id_fk=$1`, UserID)
+	return aa, err
 }
 
 func (db *DB) NoteAdd(note string) (int64, error) {

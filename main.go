@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"reflect"
@@ -19,7 +18,10 @@ import (
 
 func main() {
 
-	loc, err := time.LoadLocation("Europe/Prague")
+	conf := SettingsNew()
+	conf.Read("config.toml")
+
+	loc, err := time.LoadLocation(conf.Location)
 	if err != nil {
 		log.Println(err)
 	}
@@ -30,17 +32,6 @@ func main() {
 	roomNameB := "Balkon - 1. piętro"
 	_ = roomNameB
 	eventName := "Bal MS Karwina"
-
-	mailpassf, err := ioutil.ReadFile(".mailpass")
-	if err != nil {
-		log.Fatalf("can not read mail password from .mailpass file, err: %v", err)
-	}
-	mailfsplit := strings.Split(string(mailpassf), "\n")
-	if len(mailfsplit) < 2 {
-		log.Fatal("missing second line (mail server name/address) in .mailpass file!")
-	}
-	mailpass := mailfsplit[0]
-	mailserv := mailfsplit[1]
 
 	db := initDB()
 	defer db.Close()
@@ -58,7 +49,7 @@ func main() {
 	http.Handle("/", rtr)
 	//http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
 	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
-	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, strings.TrimSpace(mailpass), strings.TrimSpace(mailserv)))
+	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass}))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, dateFormat))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, roomNameB, eventName))
 	http.HandleFunc("/admin/event", EventEditor(db))
@@ -351,7 +342,7 @@ type ReservationOrderStatusVars struct {
 	BTNOk                    string
 }
 
-func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) func(w http.ResponseWriter, r *http.Request) {
+func ReservationOrderStatusHTML(db *DB, eventName string, mailConf *MailConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		o := Order{}
 		event, err := db.EventGetByName(eventName)
@@ -456,35 +447,42 @@ func ReservationOrderStatusHTML(db *DB, eventName, mailpass, mailsrv string) fun
 				}
 			}
 
+			adminMails, err := db.AdminGetEmails(user.ID)
+			if err != nil {
+				log.Println(err)
+			}
+
 			custMail := MailConfig{
-				Server:     mailsrv,
-				Port:       587,
-				User:       "rezerwo@zori.cz",
-				Pass:       mailpass,
+				Server:     mailConf.Server,
+				Port:       mailConf.Port,
+				User:       mailConf.User,
+				Pass:       mailConf.Pass,
 				From:       user.Email,
 				ReplyTo:    user.Email,
-				Sender:     "rezerwo@zori.cz",
+				Sender:     mailConf.Sender,
 				To:         []string{o.Email},
 				Subject:    event.MailSubject,
 				Text:       ParseTmpl(event.MailText, o),
-				IgnoreCert: true,
+				IgnoreCert: mailConf.IgnoreCert,
 			}
+
 			err = MailSend(custMail)
 			if err != nil {
 				log.Println(err)
 			}
+
 			userMail := MailConfig{
-				Server:     mailsrv,
-				Port:       587,
-				User:       "rezerwo@zori.cz",
-				Pass:       mailpass,
-				From:       "rezerwo@zori.cz",
-				ReplyTo:    "rezerwo@zori.cz",
-				Sender:     "rezerwo@zori.cz",
-				To:         []string{user.Email},
+				Server:     mailConf.Server,
+				Port:       mailConf.Port,
+				User:       mailConf.User,
+				Pass:       mailConf.Pass,
+				From:       mailConf.From,
+				ReplyTo:    mailConf.From,
+				Sender:     mailConf.From,
+				To:         append(adminMails, user.Email),
 				Subject:    event.MailSubject,
 				Text:       ParseTmpl("{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}} sale: {{.Rooms}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}", o), //TODO
-				IgnoreCert: true,
+				IgnoreCert: mailConf.IgnoreCert,
 			}
 			err = MailSend(userMail)
 			if err != nil {

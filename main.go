@@ -40,6 +40,8 @@ func main() {
 		HttpOnly: true,
 	}
 
+	lang := "pl-PL"
+
 	eventName := "Bal MS Karwina"
 
 	db := initDB()
@@ -50,19 +52,19 @@ func main() {
 	defer TickerStop(stop)
 
 	rtr := mux.NewRouter()
-	rtr.HandleFunc("/res/{user}", ReservationHTML(db))
-	rtr.HandleFunc("/", AboutHTML())
+	rtr.HandleFunc("/res/{user}", ReservationHTML(db, lang))
+	rtr.HandleFunc("/", AboutHTML(lang))
 
 	handleStatic("js")
 	handleStatic("css")
 	http.Handle("/", rtr)
-	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
-	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass}))
-	http.HandleFunc("/admin/login", AdminLoginHTML(db, cookieStore))
-	http.HandleFunc("/admin", AdminMainPage(db, loc, dateFormat, cookieStore))
-	http.HandleFunc("/admin/designer", DesignerHTML(db, eventName))
-	http.HandleFunc("/admin/event", EventEditor(db, cookieStore))
-	http.HandleFunc("/admin/reservations", AdminReservations(db, cookieStore))
+	http.HandleFunc("/order", ReservationOrderHTML(db, eventName, lang))
+	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass}))
+	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
+	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
+	http.HandleFunc("/admin/designer", DesignerHTML(db, eventName, lang))
+	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))
+	http.HandleFunc("/admin/reservations", AdminReservations(db, lang, cookieStore))
 	http.HandleFunc("/passreset", PasswdReset(db))
 	http.HandleFunc("/api/login", LoginAPI(db, cookieStore))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
@@ -79,7 +81,7 @@ func initDB() *DB {
 	<ul>
 		<li><span class="free-text">Zielony</span> = możliwa rezerwacja.</li>
 		<li><span class="marked-text">Żółty</span> = ktoś wybrał miejsce, ale jeszcze nie dokonał rezerwacji.
-		<li><span class="ordered-text">Pomarańczowy</span> = zarezerowane.</li>
+		<li><span class="ordered-text">Pomarańczowy</span> = zarezerwowane.</li>
 		<li><span class="payed-text">Czerwony</span> = zapłacono.</li>
 		<li><span class="disabled-text">Czarny</span> = aktualnie miejsca niedostępne.</li>
 	</ul>
@@ -200,6 +202,7 @@ type ReservationPage struct {
 }
 
 type PageMeta struct {
+	LBLLang  string
 	LBLTitle string
 	DesignerPage
 	ReservationPage
@@ -217,6 +220,7 @@ type Page struct {
 }
 
 type ReservationPageVars struct {
+	LBLLang        string
 	LBLTitle       string
 	LBLNoSitsTitle string
 	LBLNoSitsText  template.HTML
@@ -238,7 +242,7 @@ type RoomVars struct {
 	Labels              []Furniture
 }
 
-func DesignerHTML(db *DB, eventName string) func(w http.ResponseWriter, r *http.Request) {
+func DesignerHTML(db *DB, eventName string, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := int64(-1)
 		if r.Method == "POST" {
@@ -258,6 +262,7 @@ func DesignerHTML(db *DB, eventName string) func(w http.ResponseWriter, r *http.
 		p := GetPageVarsFromDB(db, roomID, eventName)
 		//log.Printf("%+v", p)
 		enPM := PageMeta{
+			LBLLang:  lang,
 			LBLTitle: "Designer",
 			DesignerPage: DesignerPage{
 				TableNr:             TableNr(p.Tables) + 1,
@@ -291,7 +296,7 @@ func DesignerHTML(db *DB, eventName string) func(w http.ResponseWriter, r *http.
 	}
 }
 
-func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := mux.Vars(r)
 		user, err := db.UserGetByURL(v["user"])
@@ -304,14 +309,14 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("error getting user %q, err: %v", v["user"], err)
 
-			ErrorHTML(plErr["title"], plErr["text"], w, r)
+			ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
 			//http.Error(w, fmt.Sprintf("User %q not found! Check You have correct URL!", v["user"]), 500)
 			return
 		}
 		event, err := EventGetCurrent(db, user.ID)
 		if err != nil {
 			log.Printf("error getting current event for userID: %d, err: %v", user.ID, err)
-			ErrorHTML("Nie obecnie aktywnych imprez!", "Administrator nie ma obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", w, r)
+			ErrorHTML("Nie obecnie aktywnych imprez!", "Administrator nie ma obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", lang, w, r)
 			//http.Error(w, "User have no active events! Come back later, when reservations will be opened!", 500) //TODO: inform about closest user event and when it is
 			return
 		}
@@ -322,7 +327,7 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				"title": "Brak aktywnych sal dla tej imprezy!",
 				"text":  "Administrator nie powiązał żadnej sali z wydarzeniem.\nJeżeli po stronie administracji wszystko wygląda ok, to prosimy o informację o tym zdarzeniu na mail: admin (at) zori.cz.\nProsimy o wysłanie nazwy organizacji, której dotyczy problem.",
 			}
-			ErrorHTML(plErr["title"], plErr["text"], w, r)
+			ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
 			//http.Error(w, fmt.Sprintf("Rooms for user: %q, event: %q not found!", v["user"], e.Name), 500)
 			return
 		}
@@ -332,6 +337,7 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			//EN: LBLNoSitsTitle: "No sits selected",
 			//EN: LBLNoSitsText: "No sits selected, choose some free chairs and try it again",
 			//EN: BTNNoSitsOK: "OK",
+			LBLLang:        lang,
 			LBLNoSitsTitle: event.NoSitsSelectedTitle,
 			LBLNoSitsText:  template.HTML(event.NoSitsSelectedText),
 			BTNNoSitsOK:    "OK",
@@ -362,12 +368,13 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 type ReservationOrderStatusVars struct {
+	LBLLang                  string
 	LBLTitle                 string
 	LBLStatus, LBLStatusText string
 	BTNOk                    string
 }
 
-func ReservationOrderStatusHTML(db *DB, eventName string, mailConf *MailConfig) func(w http.ResponseWriter, r *http.Request) {
+func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf *MailConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		o := Order{}
 		event, err := db.EventGetByName(eventName)
@@ -418,7 +425,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, mailConf *MailConfig) 
 						"title": "Nie można zapisać osoby!",
 						"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy o podanie poprawnego hasła.",
 					}
-					ErrorHTML(plErr["title"], plErr["text"], w, r)
+					ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
 					//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
 					return
 				}
@@ -466,7 +473,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, mailConf *MailConfig) 
 						"title": "Nie można zmienić stutusu zamówienia!",
 						"text":  "Wystąpił problem ze zmianą stutusu zamówienia, przepraszamy za kłopot i prosimy o informację na\nmail: admin (at) zori.cz.\nProsimy o przesłanie info: email zamawiającego, numery zamawianych siedzień, nazwa sali/imprezy.",
 					}
-					ErrorHTML(plErr["title"], plErr["text"], w, r)
+					ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
 					//http.Error(w, fmt.Sprintf("Can not update reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err), 500)
 					return
 				}
@@ -516,6 +523,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, mailConf *MailConfig) 
 		}
 
 		pEN := ReservationOrderStatusVars{
+			LBLLang:       lang,
 			LBLTitle:      "Order status",
 			LBLStatus:     event.OrderedNoteTitle,
 			LBLStatusText: event.OrderedNoteText,
@@ -524,6 +532,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, mailConf *MailConfig) 
 		_ = pEN
 
 		p := ReservationOrderStatusVars{
+			LBLLang:       lang,
 			LBLTitle:      "Zamówiono bilety!",
 			LBLStatus:     event.OrderedNoteTitle,
 			LBLStatusText: event.OrderedNoteText,
@@ -602,6 +611,7 @@ func GetPageVarsFromDB(db *DB, roomID int64, eventName string) Page {
 type ReservationOrderVars struct {
 	Event                               Event
 	LBLOrderHowto                       string
+	LBLLang                             string
 	LBLTitle                            string
 	LBLEmail, LBLEmailPlaceholder       string
 	LBLEmailHelp                        string
@@ -620,7 +630,7 @@ type ReservationOrderVars struct {
 	BTNSubmit, BTNCancel                string
 }
 
-func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, r *http.Request) {
+func ReservationOrderHTML(db *DB, eventName string, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sits := ""
 		prices := ""
@@ -673,7 +683,7 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 						"title": "Nie udało się zarezerwować miejsca!",
 						"text":  "Nie można zarezerwować wybranych miejsc, zostały one już zablokowane przez innego zamawiającego.\nProsimy o wybranie innych miejsc, lub poczekanie 5 minut. Po 5 minutach niezrealizowane zamówiania są automatycznie anulowane.",
 					}
-					ErrorHTML(errPL["title"], errPL["text"], w, r)
+					ErrorHTML(errPL["title"], errPL["text"], lang, w, r)
 					//http.Error(w, fmt.Sprintf("<html><body><b>Can not add reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
 					return
 				}
@@ -683,6 +693,7 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 		pEN := ReservationOrderVars{
 			Event:                 event,
 			LBLOrderHowto:         event.OrderHowto,
+			LBLLang:               lang,
 			LBLTitle:              "Order",
 			LBLEmail:              "Email",
 			LBLEmailHelp:          "Email is also login",
@@ -712,6 +723,7 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 		p := ReservationOrderVars{
 			Event:                 event,
 			LBLOrderHowto:         event.OrderHowto,
+			LBLLang:               lang,
 			LBLTitle:              "Zamówienie",
 			LBLEmail:              "Email",
 			LBLEmailHelp:          "Na podany email zostanie wysłane potwierdzenie. Proszę sprawdzić, że podano poprawny!",
@@ -747,6 +759,7 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 }
 
 type AdminLoginVars struct {
+	LBLLang                string
 	LBLTitle               string
 	LBLEmail               string
 	LBLEmailPlaceholder    string
@@ -759,10 +772,11 @@ type AdminLoginVars struct {
 	BTNSubmit              string
 }
 
-func AdminLoginHTML(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+func AdminLoginHTML(db *DB, lang string, cookieStore *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		pEN := AdminLoginVars{
+			LBLLang:                lang,
 			LBLTitle:               "Rezerwo admin login",
 			LBLEmail:               "Email",
 			LBLEmailHelp:           "Email is also login",
@@ -804,9 +818,9 @@ type MainAdminPage struct {
 	LBLMsgTitle            string
 }
 
-func AdminMainPage(db *DB, loc *time.Location, dateFormat string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, role, email, err := InitSession(w, r, cs, "/admin/login", true)
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
 		if err != nil {
 			log.Printf("info: EventEditor: %v", err)
 			return
@@ -883,6 +897,7 @@ func AdminMainPage(db *DB, loc *time.Location, dateFormat string, cs *sessions.C
 			log.Printf("error getting event by name: %q, err: %v", "TODO", err)
 		}
 		enPM := PageMeta{
+			LBLLang:  lang,
 			LBLTitle: "Admin main page",
 			MainAdminPage: MainAdminPage{
 				BTNAddRoom:             "Add room",
@@ -903,7 +918,7 @@ func AdminMainPage(db *DB, loc *time.Location, dateFormat string, cs *sessions.C
 			Events:   events,
 			Rooms:    rooms,
 		}
-		t := template.Must(template.ParseFiles("tmpl/a_rooms.html", "tmpl/base.html"))
+		t := template.Must(template.ParseFiles("tmpl/a_main.html", "tmpl/base.html"))
 		err = t.ExecuteTemplate(w, "base", rp)
 		if err != nil {
 			log.Print("AdminMainPage template executing error: ", err)
@@ -912,6 +927,7 @@ func AdminMainPage(db *DB, loc *time.Location, dateFormat string, cs *sessions.C
 }
 
 type EventEditorVars struct {
+	LBLLang                                                  string
 	LBLTitle                                                 string
 	LBLID                                                    string
 	LBLIDValue                                               int64
@@ -934,10 +950,10 @@ type EventEditorVars struct {
 	BTNCancel                                                string
 }
 
-func EventEditor(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			_, role, _, err := InitSession(w, r, cs, "/admin/login", true)
+			_, _, _, err := InitSession(w, r, cs, "/admin/login", true)
 
 			if err != nil {
 				log.Printf("info: EventEditor: %v", err)
@@ -957,6 +973,7 @@ func EventEditor(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 			}
 
 			rp := EventEditorVars{
+				LBLLang:                  lang,
 				LBLTitle:                 "Event details",
 				LBLID:                    "ID",
 				LBLIDValue:               event.ID,
@@ -999,24 +1016,83 @@ func EventEditor(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 	}
 }
 
-func AdminReservations(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+type AdminReservationsVars struct {
+	LBLLang          string
+	LBLTitle         string
+	THChairNumber    string
+	THRoomName       string
+	THCustName       string
+	THCustSurname    string
+	THCustEmail      string
+	THCustPhone      string
+	THPrice          string
+	THCurrency       string
+	THStatus         string
+	THNotes          string
+	THOrderedDate    string
+	THPayedDate      string
+	ReservationsFull []ReservationFull
+}
+
+func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+
+	//TODO
+	eventID := int64(1)
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, role, email, err := InitSession(w, r, cs, "/admin/login", true)
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
 		if err != nil {
 			log.Printf("info: AdminReservations: %v", err)
 			return
 		}
+		_ = email
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("error: AdminReservations: can't get user %q by mail, err: %v", email, err)
+		}
+
+		rf, err := db.ReservationFullGetAll(user.ID, eventID)
+		if err != nil {
+			log.Printf("error: AdminReservations: can not get reservations for event ID: %d and user ID: %d, err: %v", eventID, user.ID, err)
+		}
+
+		enP := AdminReservationsVars{
+			LBLLang:          lang,
+			LBLTitle:         "Reservations",
+			THChairNumber:    "Chair number",
+			THRoomName:       "Room",
+			THCustName:       "Name",
+			THCustSurname:    "Surname",
+			THCustEmail:      "Email",
+			THCustPhone:      "Phone",
+			THPrice:          "Price",
+			THCurrency:       "Currency",
+			THStatus:         "Order status",
+			THNotes:          "Notes",
+			THOrderedDate:    "Ordered",
+			THPayedDate:      "Payed",
+			ReservationsFull: rf,
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/a_reservations.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", enP)
+		if err != nil {
+			log.Print("AdminReservations template executing error: ", err)
+		}
+
 	}
 }
 
 type AboutVars struct {
+	LBLLang                     string
 	LBLTitle                    string
 	LBLAboutTitle, LBLAboutText template.HTML
 }
 
-func AboutHTML() func(w http.ResponseWriter, r *http.Request) {
+func AboutHTML(lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pPL := AboutVars{
+			LBLLang:       lang,
 			LBLTitle:      "REZERWO",
 			LBLAboutTitle: template.HTML("REZERWO - Zaolziański system do rezerwacji"),
 			LBLAboutText: template.HTML(`
@@ -1043,14 +1119,16 @@ func AboutHTML() func(w http.ResponseWriter, r *http.Request) {
 }
 
 type ErrorVars struct {
+	LBLLang       string
 	LBLTitle      string
 	LBLAlertTitle string
 	LBLAlertText  string
 	BTNBack       string
 }
 
-func ErrorHTML(errorTitle, errorText string, w http.ResponseWriter, r *http.Request) {
+func ErrorHTML(errorTitle, errorText, lang string, w http.ResponseWriter, r *http.Request) {
 	errEN := ErrorVars{
+		LBLLang:       lang,
 		LBLTitle:      "Error",
 		LBLAlertTitle: errorTitle,
 		LBLAlertText:  errorText,
@@ -1058,6 +1136,7 @@ func ErrorHTML(errorTitle, errorText string, w http.ResponseWriter, r *http.Requ
 	}
 	_ = errEN
 	errPL := ErrorVars{
+		LBLLang:       lang,
 		LBLTitle:      "Błąd",
 		LBLAlertTitle: errorTitle,
 		LBLAlertText:  errorText,
@@ -1461,18 +1540,18 @@ func InitSession(w http.ResponseWriter, r *http.Request, cookieStore *sessions.C
 	}
 
 	if requiredAdmin {
-		if err := mustBeAdmin(w, r, role, onErrRedir); err != nil {
-			http.Redirect(w, r, onErrRedir, http.StatusSeeOther)
-			return session, "", "", fmt.Errorf("user %q is not admin!, redirecting to %s", email, onErrRedir)
+		if err := mustBeAdmin(w, r, role, email, onErrRedir); err != nil {
+			return session, "", "", err
 		}
 	}
 
 	return session, role, email, nil
 }
 
-func mustBeAdmin(w http.ResponseWriter, r *http.Request, role, onErrRedir string) error {
+func mustBeAdmin(w http.ResponseWriter, r *http.Request, role, email, onErrRedir string) error {
 	if role != "admin" {
-		http.Redirect(r, w, onErrRedir, "user is not admin, redirecting", http.StatusSeeOther)
+		http.Redirect(w, r, onErrRedir, http.StatusSeeOther)
+		return fmt.Errorf("user %q is not admin!, redirecting to %s", email, onErrRedir)
 	}
 	return nil
 }

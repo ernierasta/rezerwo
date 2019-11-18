@@ -9,7 +9,7 @@
             <table class="table table-bordered">
         <thead>
           <tr>
-            <th scope="col">{{.THChairNr}}</th>
+            <th scope="col">{{.THChairNumber}}</th>
             <th scope="col">{{.THRoomName}}</th>
             <th scope="col">{{.THCustName}}</th>
             <th scope="col">{{.THCustSurname}}</th>
@@ -24,7 +24,7 @@
           </tr>
         </thead>
         <tbody>
-          {{range .Reservations}}
+          {{range .ReservationsFull}}
           <tr>
             <td>{{.ChairNumber}}</td>
             <td>{{.RoomName}}</td>
@@ -34,7 +34,7 @@
             <td>{{.CustPhone.String}}</td>
             <td>{{.Price.Int64}}</td>
             <td>{{.Currency.String}}</td>
-            <td>{{.Status.String}}</td>
+            <td>{{.Status}}</td>
             <td>{{.Notes.String}}</td>
             <td>{{.OrderedDate.Int64}}</td>
             <td>{{.PayedDate.Int64}}</td>

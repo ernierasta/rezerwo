@@ -107,7 +107,12 @@ function GetOrderedAndCountPrice() {
 }
 
 function Order() {
-  Post("/order", GetOrderedAndCountPrice());
+  data = GetOrderedAndCountPrice();
+  if (data["sits"] != "") {
+    Post("/order", data);
+  } else {
+    $('#NoSitsSelected').modal()
+  }
 }
 
 function ToggleDisable() {

@@ -1,5 +1,5 @@
 {{define "head"}}<title>{{.LBLTitle}}</title>
-<script type="text/javascript" src="/js/admin.js"></script>
+<script type="text/javascript" src="/js/a_event.js"></script>
 <link href="/css/admin.css" rel="stylesheet" type="text/css">
 <link href="/css/quill.snow.css" rel="stylesheet">
 <script src="/js/quill.min.js"></script>
@@ -52,11 +52,14 @@
       <label for="admin-mail-text">{{.LBLAdminMailText}}</label>
       <textarea rows="3" class="form-control" id="admin-mail-text" name="admin-mail-text">{{.LBLAdminMailTextValue}}</textarea>
     </div>
-
     <div class="form-group">
-      <p id="order-note-editor-label">{{.LBLOrderNote}}</p>
+      <label for="ordered-note-title">{{.LBLOrderedNoteTitle}}</label>
+      <input type="text" class="form-control" id="ordered-note-title" name="ordered-note-title" value="{{.LBLOrderedNoteTitleValue}}">
+    </div>
+    <div class="form-group">
+      <p id="order-note-editor-label">{{.LBLOrderedNoteText}}</p>
       <div id="order-note-editor">
-        {{.HTMLOrderNote}}
+        {{.HTMLOrderedNoteTextValue}}
       </div>
     </div>
     <div class="form-group">
@@ -65,10 +68,9 @@
         {{.HTMLHowTo}}
       </div>
     </div>
-    <textarea name="html-order-note" hidden></textarea>
+    <textarea name="html-ordered-note-text" hidden></textarea>
     <textarea name="html-howto" hidden></textarea>
     <button id="save-event" type="submit" class="btn btn-primary" onsubmit="EventDetailSubmit()">{{.BTNSave}}</button>
     <button id="cancel" type="button" class="btn btn-secondary" onclick="GoBack()">{{.BTNCancel}}</button>
-
   </form>
 {{end}}

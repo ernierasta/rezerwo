@@ -14,6 +14,12 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
+	"golang.org/x/crypto/bcrypt"
+)
+
+const (
+	AUTHCOOKIE = "auth"
 )
 
 func main() {
@@ -27,10 +33,13 @@ func main() {
 	}
 	dateFormat := "2006-01-02"
 
-	//roomName := "Sala główna - parter"
-	//roomName := "Sala na dole"
-	roomNameB := "Balkon - 1. piętro"
-	_ = roomNameB
+	cookieStore := sessions.NewCookieStore(conf.AuthenticationKey, conf.EncryptionKey)
+	cookieStore.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   60 * 60 * 2, //2 hours
+		HttpOnly: true,
+	}
+
 	eventName := "Bal MS Karwina"
 
 	db := initDB()
@@ -47,12 +56,15 @@ func main() {
 	handleStatic("js")
 	handleStatic("css")
 	http.Handle("/", rtr)
-	//http.HandleFunc("/reservation", ReservationHTML(db, roomName, eventName))
 	http.HandleFunc("/order", ReservationOrderHTML(db, eventName))
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass}))
-	http.HandleFunc("/admin", AdminMainPage(db, loc, dateFormat))
-	http.HandleFunc("/admin/designer", DesignerHTML(db, roomNameB, eventName))
-	http.HandleFunc("/admin/event", EventEditor(db))
+	http.HandleFunc("/admin/login", AdminLoginHTML(db, cookieStore))
+	http.HandleFunc("/admin", AdminMainPage(db, loc, dateFormat, cookieStore))
+	http.HandleFunc("/admin/designer", DesignerHTML(db, eventName))
+	http.HandleFunc("/admin/event", EventEditor(db, cookieStore))
+	http.HandleFunc("/admin/reservations", AdminReservations(db, cookieStore))
+	http.HandleFunc("/passreset", PasswdReset(db))
+	http.HandleFunc("/api/login", LoginAPI(db, cookieStore))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
 	http.HandleFunc("/api/furnit", DesignerMoveObject(db))
 	http.HandleFunc("/api/furdel", DesignerDeleteObject(db))
@@ -114,7 +126,11 @@ Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk "Zamów", któr
 
 	orderHowto := `W celu dokonania rezerwacji prosimy o wypełnienie poniższych danych. W przypadku kiedy Państwo dokonują rezerwacji większej ilości biletów, prosimy o podanie nazwisk osób, dla których są miejsca przeznaczone (wystarczy 1 nazwisko na 2 bilety).
 Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz z informacją na temat zakupu biletów.`
-	orderedNote := `Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz informacja na temat zakupu biletów.`
+	orderedNoteTitle := "Pomyślnie zarezerwowano bilety!"
+	orderedNoteText := `Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz informacja na temat zakupu biletów.`
+
+	noSitsSelTitle := "Nie wybrano siedzeń!"
+	noSitsSelText := `Nie wybrano siedzeń. Prosimy kliknąć na wolne krzesła, czyli w kolorze <b class="free-text">zielonym</b> i zamówić ponownie.<br />Jeżeli nie ma wolnych krzeseł na parterze, proszimy sprawdzić na balkonie.`
 
 	db := DBInit("db.sql")
 	db.MustConnect()
@@ -143,7 +159,7 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	if err != nil {
 		log.Println(err)
 	}
-	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNote: orderedNote, MailSubject: "Rezerwacja biletów na Bal Macierzy", MailText: mailText, HowTo: howto, UserID: 1})
+	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", NoSitsSelectedTitle: noSitsSelTitle, NoSitsSelectedText: noSitsSelText, OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNoteTitle: orderedNoteTitle, OrderedNoteText: orderedNoteText, MailSubject: "Rezerwacja biletów na Bal Macierzy", MailText: mailText, HowTo: howto, UserID: 1})
 	if err != nil {
 		log.Println(err)
 	}
@@ -201,7 +217,10 @@ type Page struct {
 }
 
 type ReservationPageVars struct {
-	LBLTitle string
+	LBLTitle       string
+	LBLNoSitsTitle string
+	LBLNoSitsText  template.HTML
+	BTNNoSitsOK    string
 	Event
 	Rooms []RoomVars
 }
@@ -219,7 +238,7 @@ type RoomVars struct {
 	Labels              []Furniture
 }
 
-func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter, r *http.Request) {
+func DesignerHTML(db *DB, eventName string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := int64(-1)
 		if r.Method == "POST" {
@@ -275,7 +294,7 @@ func DesignerHTML(db *DB, roomName, eventName string) func(w http.ResponseWriter
 func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := mux.Vars(r)
-		u, err := db.UserGetByURL(v["user"])
+		user, err := db.UserGetByURL(v["user"])
 
 		plErr := map[string]string{
 			"title": "Nie znaleziono organizacji!",
@@ -289,16 +308,16 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			//http.Error(w, fmt.Sprintf("User %q not found! Check You have correct URL!", v["user"]), 500)
 			return
 		}
-		e, err := EventGetCurrent(db, u.ID)
+		event, err := EventGetCurrent(db, user.ID)
 		if err != nil {
-			log.Printf("error getting current event for userID: %d, err: %v", u.ID, err)
-			ErrorHTML("Nie obecnie aktywnych imprez!", "Administrator nie obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", w, r)
+			log.Printf("error getting current event for userID: %d, err: %v", user.ID, err)
+			ErrorHTML("Nie obecnie aktywnych imprez!", "Administrator nie ma obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", w, r)
 			//http.Error(w, "User have no active events! Come back later, when reservations will be opened!", 500) //TODO: inform about closest user event and when it is
 			return
 		}
-		rr, err := db.EventGetRooms(e.ID)
+		rr, err := db.EventGetRooms(event.ID)
 		if err != nil {
-			log.Printf("error getting rooms for eventID: %d, err: %v", e.ID, err)
+			log.Printf("error getting rooms for eventID: %d, err: %v", event.ID, err)
 			plErr := map[string]string{
 				"title": "Brak aktywnych sal dla tej imprezy!",
 				"text":  "Administrator nie powiązał żadnej sali z wydarzeniem.\nJeżeli po stronie administracji wszystko wygląda ok, to prosimy o informację o tym zdarzeniu na mail: admin (at) zori.cz.\nProsimy o wysłanie nazwy organizacji, której dotyczy problem.",
@@ -310,15 +329,21 @@ func ReservationHTML(db *DB) func(w http.ResponseWriter, r *http.Request) {
 		p := ReservationPageVars{
 			//EN: LBLTitle: "Reservation",
 			LBLTitle: "Rezerwacja",
-			Event:    e,
-			Rooms:    []RoomVars{},
+			//EN: LBLNoSitsTitle: "No sits selected",
+			//EN: LBLNoSitsText: "No sits selected, choose some free chairs and try it again",
+			//EN: BTNNoSitsOK: "OK",
+			LBLNoSitsTitle: event.NoSitsSelectedTitle,
+			LBLNoSitsText:  template.HTML(event.NoSitsSelectedText),
+			BTNNoSitsOK:    "OK",
+			Event:          event,
+			Rooms:          []RoomVars{},
 		}
 		for i := range rr {
 			// TODO: remake it, GetPageVarsFromDB call the same again, move previous lines there
-			rv := GetFurnituresFromDB(db, rr[i].Name, e.ID)
+			rv := GetFurnituresFromDB(db, rr[i].Name, event.ID)
 			rv.Room = rr[i]
 			rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
-			rv.HTMLHowTo = template.HTML(e.HowTo)
+			rv.HTMLHowTo = template.HTML(event.HowTo)
 			// EN: rv.BTNOrder = "Order"
 			// EN: rv.LBLSelected = "Selected"
 			// EN: rv.LBLTotalPrice = "Total price"
@@ -391,7 +416,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, mailConf *MailConfig) 
 				if c.Passwd.String == "" || c.Passwd.String != o.Password {
 					plErr := map[string]string{
 						"title": "Nie można zapisać osoby!",
-						"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy podać poprawne hasło.",
+						"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy o podanie poprawnego hasła.",
 					}
 					ErrorHTML(plErr["title"], plErr["text"], w, r)
 					//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
@@ -492,16 +517,16 @@ func ReservationOrderStatusHTML(db *DB, eventName string, mailConf *MailConfig) 
 
 		pEN := ReservationOrderStatusVars{
 			LBLTitle:      "Order status",
-			LBLStatus:     "Tickets for " + event.Name + " ordered!",
-			LBLStatusText: event.OrderedNote,
+			LBLStatus:     event.OrderedNoteTitle,
+			LBLStatusText: event.OrderedNoteText,
 			BTNOk:         "OK",
 		}
 		_ = pEN
 
 		p := ReservationOrderStatusVars{
 			LBLTitle:      "Zamówiono bilety!",
-			LBLStatus:     "Dziękujemy za dokonanie rezerwacji biletów.",
-			LBLStatusText: event.OrderedNote,
+			LBLStatus:     event.OrderedNoteTitle,
+			LBLStatusText: event.OrderedNoteText,
 			BTNOk:         "OK",
 		}
 
@@ -617,11 +642,11 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 			if err != nil {
 				log.Printf("ReservationOrderStatusHTML: error parsing form data:, err: %v", err)
 			}
-			sits = r.Form["sits"][0]
-			prices = r.Form["prices"][0]
-			rooms = r.Form["rooms"][0]
-			totalPrice = r.Form["total-price"][0]
-			defaultCurrency = r.Form["default-currency"][0]
+			sits = r.FormValue("sits")
+			prices = r.FormValue("prices")
+			rooms = r.FormValue("rooms")
+			totalPrice = r.FormValue("total-price")
+			defaultCurrency = r.FormValue("default-currency")
 
 			ss, rr, pp, err := SplitSitsRoomsPrices(sits, rooms, prices)
 			if err != nil {
@@ -721,6 +746,44 @@ func ReservationOrderHTML(db *DB, eventName string) func(w http.ResponseWriter, 
 	}
 }
 
+type AdminLoginVars struct {
+	LBLTitle               string
+	LBLEmail               string
+	LBLEmailPlaceholder    string
+	LBLEmailHelp           string
+	LBLPassword            string
+	LBLPasswordPlaceholder string
+	LBLPasswordHelp        string
+	LBLRememberMe          string
+	LBLResetPassword       string
+	BTNSubmit              string
+}
+
+func AdminLoginHTML(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		pEN := AdminLoginVars{
+			LBLTitle:               "Rezerwo admin login",
+			LBLEmail:               "Email",
+			LBLEmailHelp:           "Email is also login",
+			LBLEmailPlaceholder:    "email",
+			LBLPassword:            "Password",
+			LBLPasswordHelp:        "Admin login password required",
+			LBLPasswordPlaceholder: "password",
+			LBLRememberMe:          "Remember me",
+			LBLResetPassword:       "Reset forgotten password",
+			BTNSubmit:              "Login",
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/a_login.html", "tmpl/base.html"))
+		err := t.ExecuteTemplate(w, "base", pEN)
+		if err != nil {
+			log.Print("AdminLogin template executing error: ", err)
+		}
+
+	}
+}
+
 type AdminPage struct {
 	PageMeta
 	Events     []Event
@@ -741,12 +804,18 @@ type MainAdminPage struct {
 	LBLMsgTitle            string
 }
 
-func AdminMainPage(db *DB, loc *time.Location, dateFormat string) func(w http.ResponseWriter, r *http.Request) {
-
-	// TODO: get user from auth data
-	userID := int64(1)
-
+func AdminMainPage(db *DB, loc *time.Location, dateFormat string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		_, role, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("info: EventEditor: %v", err)
+			return
+		}
+
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("error: very strange, can not find admin in users table, but is authenticated, err: %v", err)
+		}
 
 		dtype := ""
 		// if event/room detail form sent some data,
@@ -756,26 +825,26 @@ func AdminMainPage(db *DB, loc *time.Location, dateFormat string) func(w http.Re
 			if err != nil {
 				log.Printf("error parsing form data:, err: %v", err)
 			}
-			dtype = r.Form["type"][0]
+			dtype = r.FormValue("type")
 			if dtype == "event" {
-				id, err := strconv.Atoi(r.Form["id"][0])
+				id, err := strconv.Atoi(r.FormValue("id"))
 				if err != nil {
-					log.Printf("problem converting %q to number, err: %v", r.Form["id"][0], err)
+					log.Printf("problem converting %q to number, err: %v", r.FormValue("id"), err)
 				}
-				d, err := time.ParseInLocation(dateFormat, r.Form["date"][0], loc)
+				d, err := time.ParseInLocation(dateFormat, r.FormValue("date"), loc)
 				if err != nil {
 					log.Println(err)
 				}
 
-				fd, err := time.ParseInLocation(dateFormat, r.Form["from-date"][0], loc)
+				fd, err := time.ParseInLocation(dateFormat, r.FormValue("from-date"), loc)
 				if err != nil {
 					log.Println(err)
 				}
-				td, err := time.ParseInLocation(dateFormat, r.Form["to-date"][0], loc)
+				td, err := time.ParseInLocation(dateFormat, r.FormValue("to-date"), loc)
 				if err != nil {
 					log.Println(err)
 				}
-				dp, err := strconv.Atoi(r.Form["default-price"][0])
+				dp, err := strconv.Atoi(r.FormValue("default-price"))
 				if err != nil {
 					log.Println(err)
 				}
@@ -784,31 +853,32 @@ func AdminMainPage(db *DB, loc *time.Location, dateFormat string) func(w http.Re
 					ID: int64(id),
 				}
 				_ = e //TODO
-				e.Name = r.Form["name"][0]
+				e.Name = r.FormValue("name")
 				e.Date = d.Unix()
 				e.FromDate = fd.Unix()
 				e.ToDate = td.Unix()
 				e.DefaultPrice = int64(dp)
-				e.DefaultCurrency = r.Form["default-currency"][0]
-				e.MailSubject = r.Form["mail-subject"][0]
-				e.AdminMailSubject = r.Form["admin-mail-subject"][0]
-				e.AdminMailText = r.Form["admin-mail-text"][0]
-				e.HowTo = r.Form["html-howto"][0]
-				e.OrderedNote = r.Form["html-order-note"][0]
+				e.DefaultCurrency = r.FormValue("default-currency")
+				e.MailSubject = r.FormValue("mail-subject")
+				e.AdminMailSubject = r.FormValue("admin-mail-subject")
+				e.AdminMailText = r.FormValue("admin-mail-text")
+				e.HowTo = r.FormValue("html-howto")
+				e.OrderedNoteTitle = r.FormValue("ordered-note-title")
+				e.OrderedNoteText = r.FormValue("html-ordered-note-text")
 
 				log.Printf("%+v", e)
 				org, _ := db.EventGetByID(e.ID)
 				log.Printf("org: %+v", org)
 				log.Println("test equal, is:", reflect.DeepEqual(e, org))
 			}
-		}
+		} // POST END
 
 		// Prepare form with rooms and events
-		rooms, err := db.RoomGetAllByUserID(userID)
+		rooms, err := db.RoomGetAllByUserID(user.ID)
 		if err != nil {
 			log.Printf("error getting all rooms, err: %q", err)
 		}
-		events, err := db.EventGetAllByUserID(userID)
+		events, err := db.EventGetAllByUserID(user.ID)
 		if err != nil {
 			log.Printf("error getting event by name: %q, err: %v", "TODO", err)
 		}
@@ -842,32 +912,38 @@ func AdminMainPage(db *DB, loc *time.Location, dateFormat string) func(w http.Re
 }
 
 type EventEditorVars struct {
-	LBLTitle                                      string
-	LBLID                                         string
-	LBLIDValue                                    int64
-	LBLName, LBLNameValue                         string
-	NameHelpText                                  string
-	LBLDate, LBLDateValue                         string
-	LBLFromDate, LBLFromDateValue                 string
-	LBLToDate, LBLToDateValue                     string
-	LBLDefaultPrice                               string
-	LBLDefaultPriceValue                          int64
-	LBLDefaultCurrency, LBLDefaultCurrencyValue   string
-	LBLMailSubject, LBLMailSubjectValue           string
-	LBLMailText, LBLMailTextValue                 string
-	LBLAdminMailSubject, LBLAdminMailSubjectValue string
-	LBLAdminMailText, LBLAdminMailTextValue       string
-	LBLOrderNote, LBLHowto                        string
-	HTMLOrderNote, HTMLHowTo                      template.HTML
-	BTNSave                                       string
-	BTNCancel                                     string
+	LBLTitle                                                 string
+	LBLID                                                    string
+	LBLIDValue                                               int64
+	LBLName, LBLNameValue                                    string
+	NameHelpText                                             string
+	LBLDate, LBLDateValue                                    string
+	LBLFromDate, LBLFromDateValue                            string
+	LBLToDate, LBLToDateValue                                string
+	LBLDefaultPrice                                          string
+	LBLDefaultPriceValue                                     int64
+	LBLDefaultCurrency, LBLDefaultCurrencyValue              string
+	LBLMailSubject, LBLMailSubjectValue                      string
+	LBLMailText, LBLMailTextValue                            string
+	LBLAdminMailSubject, LBLAdminMailSubjectValue            string
+	LBLAdminMailText, LBLAdminMailTextValue                  string
+	LBLOrderedNoteTitleValue                                 string
+	LBLOrderedNoteTitle, LBLHowto, LBLOrderedNoteText        string
+	HTMLOrderedNoteText, HTMLHowTo, HTMLOrderedNoteTextValue template.HTML
+	BTNSave                                                  string
+	BTNCancel                                                string
 }
 
-func EventEditor(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func EventEditor(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
+			_, role, _, err := InitSession(w, r, cs, "/admin/login", true)
 
-			err := r.ParseForm()
+			if err != nil {
+				log.Printf("info: EventEditor: %v", err)
+				return
+			}
+			err = r.ParseForm()
 			if err != nil {
 				log.Printf("EventEditor: problem parsing form data, err: %v", err)
 			}
@@ -909,14 +985,26 @@ func EventEditor(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				BTNCancel:                "Cancel",
 				LBLHowto:                 "Howto room legend",
 				HTMLHowTo:                template.HTML(event.HowTo),
-				LBLOrderNote:             "After ordered note",
-				HTMLOrderNote:            template.HTML(event.OrderedNote),
+				LBLOrderedNoteTitle:      "After ordered note title",
+				LBLOrderedNoteTitleValue: event.OrderedNoteTitle,
+				LBLOrderedNoteText:       "After ordered note text",
+				HTMLOrderedNoteTextValue: template.HTML(event.OrderedNoteText),
 			}
 			t := template.Must(template.ParseFiles("tmpl/a_event.html", "tmpl/base.html"))
 			err = t.ExecuteTemplate(w, "base", rp)
 			if err != nil {
 				log.Print("AdminEventEditor template executing error: ", err)
 			}
+		}
+	}
+}
+
+func AdminReservations(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, role, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("info: AdminReservations: %v", err)
+			return
 		}
 	}
 }
@@ -1204,6 +1292,67 @@ func OrderCancel(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type LoginAPIMsg struct {
+	Role     string `json:"role"`
+	Email    string `json:"email"`
+	Pass     string `json:"password"`
+	Remember string `json:"remember-me"`
+}
+
+func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		var m LoginAPIMsg
+		if r.Method == "POST" {
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&m)
+			if err != nil {
+				log.Println(err)
+			}
+
+			// now authentication
+			// generate hash on register: hashedPassword, err := bcrypt.GenerateFromPassword([]byte(m.Pass), 6)
+			if m.Role == "admin" {
+				storedPasswd, err := db.UserGetPass(m.Email)
+				if err != nil {
+					log.Println(err)
+				}
+				hashedPassword, err := bcrypt.GenerateFromPassword([]byte(storedPasswd), 6)
+
+				if err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(m.Pass)); err != nil {
+					log.Println("passwd do not match")
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			// respJSON, err := json.Marshal(m) //if we want to send message back
+			if err != nil {
+				w.Write([]byte(err.Error()))
+			}
+			if m.Remember == "on" {
+				// modify cookie max age
+				cookieStore.Options = &sessions.Options{
+					Path:     "/",
+					MaxAge:   86400 * 14, //2 weeks
+					HttpOnly: true,
+				}
+			}
+			session, err := cookieStore.Get(r, AUTHCOOKIE)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			session.Values["email"] = m.Email
+			session.Values["role"] = m.Role
+			log.Println(m.Email, ", role: ", m.Role)
+			session.Save(r, w)
+			w.Write([]byte(`{"resp":"OK"}`)) //TODO: do we really need to send something to trigger js: success func?
+		}
+	}
+}
+
 func EventGetCurrent(db *DB, userID int64) (Event, error) {
 	events, err := db.EventGetAllByUserID(userID)
 	if err != nil {
@@ -1217,6 +1366,10 @@ func EventGetCurrent(db *DB, userID int64) (Event, error) {
 		}
 	}
 	return Event{}, fmt.Errorf("no active event found for userID: %d", userID)
+}
+
+func PasswdReset(db *DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {}
 }
 
 type Order struct {
@@ -1271,6 +1424,57 @@ func ToNI(i int64) sql.NullInt64 {
 func ToDate(unix int64) string {
 	t := time.Unix(unix, 0)
 	return t.Format("2006-01-02")
+}
+
+func InitSession(w http.ResponseWriter, r *http.Request, cookieStore *sessions.CookieStore, onErrRedir string, requiredAdmin bool) (*sessions.Session, string, string, error) {
+	var role, email string
+
+	session, err := cookieStore.Get(r, AUTHCOOKIE)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return &sessions.Session{}, "", "", err
+	}
+
+	emailIntf, eok := session.Values["email"]
+	roleIntf, rok := session.Values["role"]
+	switch emailIntf.(type) {
+	case nil:
+		// cookie has disapeared, so re-auth
+		http.Redirect(w, r, onErrRedir, http.StatusSeeOther)
+		return session, "", "", fmt.Errorf("nil \"email\" cookie disapeared?, redirecting to %s", onErrRedir)
+	case string:
+		email = emailIntf.(string)
+
+	}
+	switch roleIntf.(type) {
+	case nil:
+		// cookie has disapeared, so re-auth
+		http.Redirect(w, r, onErrRedir, http.StatusSeeOther)
+		return session, "", "", fmt.Errorf("nil \"role\" cookie disapeared?, redirecting to %s", onErrRedir)
+	case string:
+		role = roleIntf.(string)
+	}
+
+	if !eok && !rok {
+		http.Redirect(w, r, onErrRedir, http.StatusSeeOther)
+		return session, "", "", fmt.Errorf("\"role\" or \"email\" are empty string, redirecting to %s", onErrRedir)
+	}
+
+	if requiredAdmin {
+		if err := mustBeAdmin(w, r, role, onErrRedir); err != nil {
+			http.Redirect(w, r, onErrRedir, http.StatusSeeOther)
+			return session, "", "", fmt.Errorf("user %q is not admin!, redirecting to %s", email, onErrRedir)
+		}
+	}
+
+	return session, role, email, nil
+}
+
+func mustBeAdmin(w http.ResponseWriter, r *http.Request, role, onErrRedir string) error {
+	if role != "admin" {
+		http.Redirect(r, w, onErrRedir, "user is not admin, redirecting", http.StatusSeeOther)
+	}
+	return nil
 }
 
 func SplitSitsRoomsPrices(sits, rooms, prices string) ([]int64, []int64, []int64, error) {

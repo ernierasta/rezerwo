@@ -9,6 +9,7 @@ $(function() {
     select: {
       style: 'multi', //'os'
     },
+    colReorder: true,
     dom: 'Blfrtip',
     buttons: [ 
       {
@@ -21,14 +22,15 @@ $(function() {
         extend: 'selected',
         text: 'Toggle "ordered/payed"',
         action: function ( e, dt, button, config ) {
+          var stsrow = table.colReorder.transpose(8);
           indexes = dt.rows({selected: true}).indexes();
           for (i=0; i < indexes.length;i++){
             row = dt.row(indexes[i]).data()
-            if (row[8] === "ordered") {
-              row[8] = "payed";
+            if (row[stsrow] === "ordered") {
+              row[stsrow] = "payed";
               dt.row(indexes[i]).data(row);
-            } else if (row[8] === "payed") {
-              row[8] = "ordered";
+            } else if (row[stsrow] === "payed") {
+              row[stsrow] = "ordered";
               dt.row(indexes[i]).data(row);
             } 
           }
@@ -43,8 +45,9 @@ $(function() {
   table.on( 'select', function ( e, dt, items ) {
     var rows = dt.rows({selected: true}).data();
     var price = 0;
+    var pricerow = table.colReorder.transpose(6);
     for (i=0; i < rows.length;i++){
-      price += Number(rows[i][6]);
+      price += Number(rows[i][pricerow]);
     };
     $('#total-price').html(price);
   });

@@ -1,12 +1,16 @@
 {{define "head"}}
-  <script type="text/javascript" src="/js/a_customers.js"></script>
+  <script type="text/javascript" src="/js/a_reservations.js"></script>
+  <link rel="stylesheet" type="text/css" href="/css/a_reservations.css"/>
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
+  <script type="text/javascript" src="/js/datatables.min.js"></script> 
   <title>{{.LBLTitle}}</title>
 {{end}}
 {{define "body"}}
-  <div class="row d-flex justify-content-center">
-    <div class="col-md-6">
+  <div class="d-flex justify-content-center">
+    <div class="col-md-12">
       <h3>{{.LBLTitle}}</h3>
-            <table class="table table-bordered">
+      <div id="total-price-lbl">{{.LBLTotalPrice}}: <span id="total-price"></span></div>
+            <table id="reservations" class="table table-bordered">
         <thead>
           <tr>
             <th scope="col">{{.THChairNumber}}</th>

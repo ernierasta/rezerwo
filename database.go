@@ -741,7 +741,7 @@ func (db *DB) ReservationFullGetAll(userID, eventID int64) ([]ReservationFull, e
 	if err != nil {
 		return rr, err
 	}
-	err = db.DB.Select(&rr, `SELECT r.*, c.email cust_email, c.name cust_name, c.surname cust_surname, c.phone cust_phone, f.number chair_number, rm.name room_name, n.text reservation_notes FROM reservations r LEFT JOIN furnitures f ON r.furnitures_id_fk = f.id LEFT JOIN rooms rm ON f.rooms_id_fk = rm.id LEFT JOIN customers c ON r.customers_id_fk = c.id LEFT JOIN events e ON r.events_id_fk = e.id LEFT JOIN notes n ON r.notes_id_fk = n.id WHERE e.users_id_fk = $1 AND r.events_id_fk=$2`, userID, eventID)
+	err = db.DB.Select(&rr, `SELECT r.*, c.email cust_email, c.name cust_name, c.surname cust_surname, c.phone cust_phone, f.number chair_number, rm.name room_name, n.text reservation_notes FROM reservations r LEFT JOIN furnitures f ON r.furnitures_id_fk = f.id LEFT JOIN rooms rm ON f.rooms_id_fk = rm.id LEFT JOIN customers c ON r.customers_id_fk = c.id LEFT JOIN events e ON r.events_id_fk = e.id LEFT JOIN notes n ON r.notes_id_fk = n.id WHERE e.users_id_fk = $1 AND r.events_id_fk=$2 ORDER BY f.number`, userID, eventID)
 	return rr, err
 
 }

@@ -1019,6 +1019,7 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 type AdminReservationsVars struct {
 	LBLLang          string
 	LBLTitle         string
+	LBLTotalPrice    string
 	THChairNumber    string
 	THRoomName       string
 	THCustName       string
@@ -1059,6 +1060,7 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 		enP := AdminReservationsVars{
 			LBLLang:          lang,
 			LBLTitle:         "Reservations",
+			LBLTotalPrice:    "Total",
 			THChairNumber:    "Chair number",
 			THRoomName:       "Room",
 			THCustName:       "Name",

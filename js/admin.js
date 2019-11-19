@@ -33,9 +33,13 @@ function EventEdit() {
 }
 
 function RoomEdit() {
-  $('#event-for-room').modal();
-  //$('#room-event-select :selected').val(); // get event selected for room
-  console.log($("#events-select :selected").val());
-  $("#rooms-select-form").submit();
+  $('#room-event').modal();
+  //$("#rooms-select-form").submit();
 }
 
+function FinalRoomEdit() {
+  //console.log($("#events-select :selected").val());
+  var eventID = $('#room-event-select :selected').val(); // get event selected for room
+  var roomID = $('#rooms-select :selected').val(); // get room id
+  Post("/admin/designer", {"room-id": roomID, "event-id": eventID})
+}

@@ -204,7 +204,7 @@ type PageMeta struct {
 	LBLTitle string
 	DesignerPage
 	ReservationPage
-	MainAdminPage
+	AdminMainPageVars
 }
 
 type Page struct {
@@ -249,15 +249,15 @@ func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 			if err != nil {
 				log.Printf("DesignerHTML: error parsing form, err: %v", err)
 			}
-			roomID, err = strconv.ParseInt(r.FormValue("rooms-select"), 10, 64)
+			roomID, err = strconv.ParseInt(r.FormValue("room-id"), 10, 64)
 			if err != nil {
 				log.Printf("error converting roomID to int, err: %v", err)
 			}
-			//eventIDs := r.FormValue("event-id")
-			//eventID, err = strconv.ParseInt(eventIDs, 10, 64)
-			//if err != nil {
-			//	log.Printf("error: DesignerHTML: can not convert %q to int64, err: %v", eventIDs, err)
-			//}
+			eventIDs := r.FormValue("event-id")
+			eventID, err = strconv.ParseInt(eventIDs, 10, 64)
+			if err != nil {
+				log.Printf("error: DesignerHTML: can not convert %q to int64, err: %v", eventIDs, err)
+			}
 
 		} else {
 			http.Redirect(w, r, "/admin", http.StatusSeeOther)
@@ -827,7 +827,11 @@ type AdminPage struct {
 	Furnitures []Furniture
 }
 
-type MainAdminPage struct {
+type AdminMainPageVars struct {
+	LBLRoomEventTitle      string
+	LBLRoomEventText       template.HTML
+	BTNSelect              string
+	BTNClose               string
 	BTNAddRoom             string
 	BTNAddEvent            string
 	LBLSelectRoom          string
@@ -921,7 +925,11 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 		enPM := PageMeta{
 			LBLLang:  lang,
 			LBLTitle: "Admin main page",
-			MainAdminPage: MainAdminPage{
+			AdminMainPageVars: AdminMainPageVars{
+				LBLRoomEventTitle:      "Select event",
+				LBLRoomEventText:       template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
+				BTNSelect:              "Select",
+				BTNClose:               "Close",
 				BTNAddRoom:             "Add room",
 				BTNAddEvent:            "Add event",
 				BTNEventEdit:           "Edit",

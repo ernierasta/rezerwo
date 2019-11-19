@@ -102,8 +102,8 @@ function GetOrderedAndCountPrice() {
       }
     }
   });
-  console.log({"sits": selected, "prices": prices, "rooms": rooms, "total-price": price, "default-currency": Price.defaultCurrency});
-  return {"sits": selected, "prices": prices, "rooms": rooms, "total-price": price, "default-currency": Price.defaultCurrency}
+  //console.log({"event-id": CurrentEvent.id, "sits": selected, "prices": prices, "rooms": rooms, "total-price": price, "default-currency": Price.defaultCurrency});
+  return {"event-id": CurrentEvent.id, "sits": selected, "prices": prices, "rooms": rooms, "total-price": price, "default-currency": Price.defaultCurrency}
 }
 
 function Order() {
@@ -111,7 +111,7 @@ function Order() {
   if (data["sits"] != "") {
     Post("/order", data);
   } else {
-    $('#NoSitsSelected').modal()
+    $('#NoSitsSelected').modal();
   }
 }
 

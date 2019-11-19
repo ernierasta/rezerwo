@@ -5,9 +5,11 @@
 {{end}}
 {{define "body"}}
 <script>
-  window.Price = {}
+  window.Price = {};
   Price.defaultPrice = {{.DefaultPrice}};
   Price.defaultCurrency = {{.DefaultCurrency}};
+  window.CurrentEvent = {};
+  CurrentEvent.id = {{.Event.ID}};
 </script>
 
 <!-- Modal -->

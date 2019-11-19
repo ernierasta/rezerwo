@@ -42,8 +42,6 @@ func main() {
 
 	lang := "pl-PL"
 
-	eventName := "Bal MS Karwina"
-
 	db := initDB()
 	defer db.Close()
 
@@ -58,11 +56,11 @@ func main() {
 	handleStatic("js")
 	handleStatic("css")
 	http.Handle("/", rtr)
-	http.HandleFunc("/order", ReservationOrderHTML(db, eventName, lang))
-	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, eventName, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass}))
+	http.HandleFunc("/order", ReservationOrderHTML(db, lang))
+	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass}))
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
-	http.HandleFunc("/admin/designer", DesignerHTML(db, eventName, lang))
+	http.HandleFunc("/admin/designer", DesignerHTML(db, lang))
 	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))
 	http.HandleFunc("/admin/reservations", AdminReservations(db, lang, cookieStore))
 	http.HandleFunc("/passreset", PasswdReset(db))
@@ -242,9 +240,10 @@ type RoomVars struct {
 	Labels              []Furniture
 }
 
-func DesignerHTML(db *DB, eventName string, lang string) func(w http.ResponseWriter, r *http.Request) {
+func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := int64(-1)
+		eventID := int64(-1)
 		if r.Method == "POST" {
 			err := r.ParseForm()
 			if err != nil {
@@ -254,12 +253,18 @@ func DesignerHTML(db *DB, eventName string, lang string) func(w http.ResponseWri
 			if err != nil {
 				log.Printf("error converting roomID to int, err: %v", err)
 			}
+			//eventIDs := r.FormValue("event-id")
+			//eventID, err = strconv.ParseInt(eventIDs, 10, 64)
+			//if err != nil {
+			//	log.Printf("error: DesignerHTML: can not convert %q to int64, err: %v", eventIDs, err)
+			//}
+
 		} else {
 			http.Redirect(w, r, "/admin", http.StatusSeeOther)
 			//return
 		}
 
-		p := GetPageVarsFromDB(db, roomID, eventName)
+		p := GetPageVarsFromDB(db, roomID, eventID)
 		//log.Printf("%+v", p)
 		enPM := PageMeta{
 			LBLLang:  lang,
@@ -345,7 +350,6 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			Rooms:          []RoomVars{},
 		}
 		for i := range rr {
-			// TODO: remake it, GetPageVarsFromDB call the same again, move previous lines there
 			rv := GetFurnituresFromDB(db, rr[i].Name, event.ID)
 			rv.Room = rr[i]
 			rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
@@ -374,23 +378,21 @@ type ReservationOrderStatusVars struct {
 	BTNOk                    string
 }
 
-func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf *MailConfig) func(w http.ResponseWriter, r *http.Request) {
+//TODO: split it, too long!
+func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		o := Order{}
-		event, err := db.EventGetByName(eventName)
-		if err != nil {
-			log.Printf("error getting event by name: %q, err: %v", eventName, err)
-		}
-		// TODO: this will be different
-		user, err := db.UserGetByID(event.UserID)
-		if err != nil {
-			log.Println(err)
-		}
-
+		event := Event{}
+		user := User{}
 		if r.Method == "POST" {
 			err := r.ParseForm()
 			if err != nil {
 				log.Printf("error parsing form data:, err: %v", err)
+			}
+			eventIDs := r.FormValue("event-id")
+			o.EventID, err = strconv.ParseInt(eventIDs, 10, 64)
+			if err != nil {
+				log.Printf("error: ReservationOrderStatusHTML: can not convert %q to int64, err: %v", eventIDs, err)
 			}
 			o.Sits = r.FormValue("sits")
 			o.Prices = r.FormValue("prices")
@@ -403,7 +405,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf 
 			o.Phone = r.FormValue("phone")
 			o.Notes = r.FormValue("notes")
 
-			fmt.Printf("%+v", o)
+			//fmt.Printf("debug: %+v", o)
 			c := Customer{
 				Email:   o.Email,
 				Passwd:  ToNS(o.Password),
@@ -416,7 +418,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf 
 				log.Printf("error adding customer: %+v, err: %v", c, err)
 				c, err = db.CustomerGetByEmail(o.Email)
 				if err != nil {
-					log.Printf("error getting user by mail %q, err: %v", o.Email, err)
+					log.Printf("error getting customer by mail %q, err: %v", o.Email, err)
 				}
 				cID = c.ID
 				//log.Printf("stare: %v, nowe: %v", c.Passwd.String, o.Password)
@@ -430,6 +432,15 @@ func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf 
 					return
 				}
 			}
+
+			event, err = db.EventGetByID(o.EventID)
+			if err != nil {
+				log.Printf("error: ReservationOrderStatusHTML: problem getting event by ID: %q, err: %v", o.EventID, err)
+			}
+			user, err = db.UserGetByID(event.UserID) // TODO: the same trick here, should be ok
+			if err != nil {
+				log.Printf("error: ReservationOrderStatusHTML: problem getting user by ID(from events table): %q, err: %v", event.UserID, err)
+			}
 			// password is correct, so continue
 			//TODO: this will fail for returning user, maybe check if exist and do not insert?
 			err = db.CustomerAppendToUser(user.ID, cID)
@@ -439,7 +450,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf 
 			log.Println("before Splitting")
 			ss, rr, err := SplitSitsRooms(o.Sits, o.Rooms)
 			if err != nil {
-				log.Printf("ReservationOrderStatusHTML: %v", err)
+				log.Printf("error: ReservationOrderStatusHTML: %v", err)
 			}
 
 			noteID := int64(0)
@@ -456,9 +467,9 @@ func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf 
 					log.Println(err)
 				}
 
-				reservation, err := db.ReservationGet(chair.ID, event.ID)
+				reservation, err := db.ReservationGet(chair.ID, o.EventID)
 				if err != nil {
-					log.Printf("error retrieving reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
+					log.Printf("error: ReservationOrderStatusHTML: can not get reservation for chair: %d from DB, eventID: %d, err: %v", chair.ID, o.EventID, err)
 				}
 				reservation.Status = "ordered"
 				reservation.CustomerID = cID
@@ -468,13 +479,12 @@ func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf 
 				log.Printf("debug: noteID: %v", noteID)
 				err = db.ReservationMod(&reservation)
 				if err != nil {
-					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err)
+					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, o.EventID, err)
 					plErr := map[string]string{
 						"title": "Nie można zmienić stutusu zamówienia!",
 						"text":  "Wystąpił problem ze zmianą stutusu zamówienia, przepraszamy za kłopot i prosimy o informację na\nmail: admin (at) zori.cz.\nProsimy o przesłanie info: email zamawiającego, numery zamawianych siedzień, nazwa sali/imprezy.",
 					}
 					ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
-					//http.Error(w, fmt.Sprintf("Can not update reservation for chair: %d, eventID: %d, err: %v", chair.ID, event.ID, err), 500)
 					return
 				}
 			}
@@ -520,6 +530,8 @@ func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf 
 			if err != nil {
 				log.Println(err)
 			}
+		} else {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 		}
 
 		pEN := ReservationOrderStatusVars{
@@ -540,7 +552,7 @@ func ReservationOrderStatusHTML(db *DB, eventName string, lang string, mailConf 
 		}
 
 		t := template.Must(template.ParseFiles("tmpl/order-status.html", "tmpl/base.html"))
-		err = t.ExecuteTemplate(w, "base", p)
+		err := t.ExecuteTemplate(w, "base", p)
 		if err != nil {
 			log.Print("Reservation template executing error: ", err)
 		}
@@ -573,14 +585,14 @@ func GetFurnituresFromDB(db *DB, roomName string, eventID int64) RoomVars {
 }
 
 // TODO: switch to room.ID in all db funcs
-func GetPageVarsFromDB(db *DB, roomID int64, eventName string) Page {
+func GetPageVarsFromDB(db *DB, roomID, eventID int64) Page {
 	room, err := db.RoomGetByID(roomID)
 	if err != nil {
 		log.Printf("error getting room by ID %d, err: %v", roomID, err)
 	}
-	event, err := db.EventGetByName(eventName)
+	event, err := db.EventGetByID(eventID)
 	if err != nil {
-		log.Printf("error getting event by name: %q, err: %v", eventName, err)
+		log.Printf("error getting event by ID: %d, err: %v", eventID, err)
 	}
 	chairs, err := db.FurnitureFullGetChairs(event.ID, room.Name)
 	if err != nil {
@@ -630,27 +642,25 @@ type ReservationOrderVars struct {
 	BTNSubmit, BTNCancel                string
 }
 
-func ReservationOrderHTML(db *DB, eventName string, lang string) func(w http.ResponseWriter, r *http.Request) {
+//TODO: this function is too long! split it!
+func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		eventID := int64(-1)
 		sits := ""
 		prices := ""
 		rooms := ""
 		totalPrice := ""
 		defaultCurrency := ""
 
-		event, err := db.EventGetByName(eventName)
-		if err != nil {
-			log.Printf("ReservationOrderHTML: error getting event by name: %q, err: %v", eventName, err)
-		}
-		user, err := db.UserGetByID(event.UserID) //TODO: this will be different
-		if err != nil {
-			log.Println(err)
-		}
-
 		if r.Method == "POST" {
 			err := r.ParseForm()
 			if err != nil {
 				log.Printf("ReservationOrderStatusHTML: error parsing form data:, err: %v", err)
+			}
+			eventIDs := r.FormValue("event-id")
+			eventID, err = strconv.ParseInt(eventIDs, 10, 64)
+			if err != nil {
+				log.Printf("error: ReservationOrderHTML: can not convert %q to int64, err: %v", eventIDs, err)
 			}
 			sits = r.FormValue("sits")
 			prices = r.FormValue("prices")
@@ -674,11 +684,11 @@ func ReservationOrderHTML(db *DB, eventName string, lang string) func(w http.Res
 					Currency:    ToNS(defaultCurrency),
 					Status:      "marked", // this is very important
 					FurnitureID: chair.ID,
-					EventID:     event.ID,
+					EventID:     eventID,
 					CustomerID:  -1, // this will be updated when customer is created
 				})
 				if err != nil {
-					log.Printf("error adding reservation for chair number: %d, roomID: %d, eventID: %d, err: %v", chair.Number, chair.RoomID, event.ID, err)
+					log.Printf("error adding reservation for chair number: %d, roomID: %d, eventID: %d, err: %v", chair.Number, chair.RoomID, eventID, err)
 					errPL := map[string]string{
 						"title": "Nie udało się zarezerwować miejsca!",
 						"text":  "Nie można zarezerwować wybranych miejsc, zostały one już zablokowane przez innego zamawiającego.\nProsimy o wybranie innych miejsc, lub poczekanie 5 minut. Po 5 minutach niezrealizowane zamówiania są automatycznie anulowane.",
@@ -688,7 +698,19 @@ func ReservationOrderHTML(db *DB, eventName string, lang string) func(w http.Res
 					return
 				}
 			}
+		} else {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 		}
+
+		event, err := db.EventGetByID(eventID)
+		if err != nil {
+			log.Printf("ReservationOrderHTML: error getting event by ID: %d, err: %v", eventID, err)
+		}
+		user, err := db.UserGetByID(event.UserID) //TODO: should we do it like that?
+		if err != nil {
+			log.Println(err)
+		}
+
 		//p := GetPageVarsFromDB(db, roomName, eventName)
 		pEN := ReservationOrderVars{
 			Event:                 event,
@@ -1434,6 +1456,7 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 	}
 }
 
+//TODO: add support for multiple active events
 func EventGetCurrent(db *DB, userID int64) (Event, error) {
 	events, err := db.EventGetAllByUserID(userID)
 	if err != nil {
@@ -1454,9 +1477,9 @@ func PasswdReset(db *DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 type Order struct {
+	EventID             int64
 	TotalPrice          string
 	Sits, Prices, Rooms string
-	Room                string
 	Email               string
 	Password            string
 	Name, Surname       string

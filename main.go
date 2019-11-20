@@ -236,11 +236,11 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 		uIDP = 2
 	}
 
-	r1IDP, err := db.RoomAdd(&Room{ID: 3, Name: "Dom Przyjaźni: Sala główna - parter", Description: ToNS(roomDescription1P), Width: 800, Height: 970})
+	r1IDP, err := db.RoomAdd(&Room{ID: 3, Name: "SALA GŁÓWNA - parter", Description: ToNS(roomDescription1P), Width: 800, Height: 970})
 	if err != nil {
 		log.Println(err)
 	}
-	r2IDP, err := db.RoomAdd(&Room{ID: 4, Name: "Dom Przyjaźni: Balkon - 1. piętro", Description: ToNS(roomDescription1P), Width: 800, Height: 950})
+	r2IDP, err := db.RoomAdd(&Room{ID: 4, Name: "BALKON - 1. piętro", Description: ToNS(roomDescription1P), Width: 800, Height: 950})
 	if err != nil {
 		log.Println(err)
 	}

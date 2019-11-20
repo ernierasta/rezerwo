@@ -300,8 +300,12 @@ function MakeSelectable() {
           $(this).removeClass("ui-selected");
         }
       });
-      $("#selected-chairs").html(selected.join(", "));
-      $("#total-price").html(price);
+      $(".selected-chairs").each(function(i, obj) {
+        $(this).html(selected.join(", "));
+      });
+      $(".total-price").each(function(i, obj) {
+        $(this).html(price);
+      });
     },
     unselected: function (e, ui) {
       selected = [];
@@ -316,8 +320,12 @@ function MakeSelectable() {
           }
         }
       });
-      $("#selected-chairs").html(String(selected));
-      $("#total-price").html(price);
+      $(".selected-chairs").each(function(i, obj) {
+        $(this).html(String(selected));
+      });
+      $(".total-price").each(function(i, obj) {
+        $(this).html(price);
+      });
     }
   });
 }

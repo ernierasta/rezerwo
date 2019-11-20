@@ -264,9 +264,9 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	err = db.EventAddRoom(eIDP, r2IDP)
 	if err != nil {
 		log.Println(err)
-		db.FurnitureCopyRoom(1, 3)
-		db.FurnitureCopyRoom(2, 4)
 	}
+	//db.FurnitureCopyRoom(1, 3)
+	//db.FurnitureCopyRoom(2, 4)
 
 	return db
 }

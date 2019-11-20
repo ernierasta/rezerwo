@@ -2,10 +2,12 @@ $(function() {
 
   var table = $('#reservations').DataTable({
     columnDefs: [{
-      orderable: false,
+      orderable: true,
       className: 'select-checkbox',
       targets:   0
     }],
+    'lengthMenu': [ [10, 50, 100, -1], [10, 50, 100, "All"] ],
+    //'pageLength': 100,
     select: {
       style: 'multi', //'os'
     },

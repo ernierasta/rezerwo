@@ -265,8 +265,8 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	if err != nil {
 		log.Println(err)
 	}
-	//db.FurnitureCopyRoom(1, 3)
-	//db.FurnitureCopyRoom(2, 4)
+	db.FurnitureCopyRoom(1, 3)
+	db.FurnitureCopyRoom(2, 4)
 
 	return db
 }

@@ -45,6 +45,8 @@ type Customer struct {
 	Notes   string         `db:"notes"`
 }
 
+//TODO: add build name
+//TODO: remake all queries - make room name non unique(beware! currently impossible, queries depends on name unique)
 type Room struct {
 	ID          int64          `db:"id"`
 	Name        string         `db:"name"`
@@ -371,6 +373,18 @@ VALUES(:number, :type, :orientation, :x, :y, :width, :height, :color, :label, :c
 		return -1, err
 	}
 	return ret.LastInsertId()
+}
+
+func (db *DB) FurnitureCopyRoom(fromRoomID int64, toRoomID int64) (int64, error) {
+	ret, err := db.DB.Exec(`INSERT INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk) SELECT number, type, orientation, x, y, width, height, color, label, capacity, $1 FROM furnitures WHERE rooms_id_fk = $2`, toRoomID, fromRoomID)
+	if err != nil {
+		return -1, err
+	}
+	rows, err := ret.RowsAffected()
+	if err != nil {
+		return -1, err
+	}
+	return rows, nil
 }
 
 func (db *DB) FurnitureAddOrUpdateUnsafe(f *Furniture) (int64, error) {

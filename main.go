@@ -89,7 +89,25 @@ func initDB() *DB {
 	<ul>
 		<li>Wstęp na bal.</li>
 		<li>Miejscówka.</li>
-	<li>Welcome drink.</li>
+		<li>Welcome drink.</li>
+		<li>Smaczna kolacja.</li>
+		<li>Woda i mały poczęstunek na stole.</li>
+		<li>Super muzyka.</li>
+		<li>Ciekawy program.</li>
+	</ul>`
+
+	howtoP := `<h1>Legenda:</h1>
+	<ul>
+		<li><span class="free-text">Zielony</span> = możliwa rezerwacja.</li>
+		<li><span class="marked-text">Żółty</span> = ktoś wybrał miejsce, ale jeszcze nie dokonał rezerwacji.
+		<li><span class="ordered-text">Pomarańczowy</span> = zarezerwowane.</li>
+		<li><span class="payed-text">Czerwony</span> = zapłacono.</li>
+		<li><span class="disabled-text">Czarny</span> = aktualnie miejsca niedostępne.</li>
+	</ul>
+	<p>Cena biletu: <b>400 Kč</b>. W cenie biletu:</p>
+	<ul>
+		<li>Wstęp na bal.</li>
+		<li>Miejscówka.</li>
 		<li>Smaczna kolacja.</li>
 		<li>Woda i mały poczęstunek na stole.</li>
 		<li>Super muzyka.</li>
@@ -99,7 +117,7 @@ func initDB() *DB {
 	mailText := `Szanowni Państwo,
 dziękujemy za dokonanie rezerwacji biletów na Bal Macierzy Szkolnej przy PSP w Karwinie-Frysztacie.
 Niniejszym mailem potwierdzamy zamówienie miejsc: {{.Sits}}.
-Łączna kwota biletów wynosi: {{.TotalPrice}}.
+Łączny koszt biletów wynosi: {{.TotalPrice}}.
 Bal odbędzie się w piątek 7 lutego 2020 od godziny 19:00 w Domu Przyjaźni w Karwinie.
 
 Uwaga! Dokonali Państwo tylko rezerwacji biletów.
@@ -114,6 +132,31 @@ Dziękujemy serdecznie!
 
 Zarząd MSz przy PSP w Karwinie-Frysztacie
 `
+	mailTextP := `Szanowni Państwo,
+dziękujemy za dokonanie rezerwacji biletów na BAL POLSKI organizowany 
+miejskimi kołami PZKO w Karwinie.
+Niniejszym mailem potwierdzamy zamówienie miejsc: {{.Sits}}.
+Łączny koszt biletów wynosi: {{.TotalPrice}}.
+Bal odbędzie się w piątek 24 stycznia 2020 od godziny 19:00 w Domu 
+Przyjaźni w Karwinie.
+
+Uwaga! Dokonali Państwo tylko rezerwacji biletów.
+Sprzedaż biletów odbędzie się w środę 4.12.2019 w Domu Polskim MK PZKO 
+Karwina-Frysztat od 16:30 do 18:00.
+Dodatkowy termin zakupu biletów to środa 11.12.2019 od 16:30 do 18:00 w 
+tym samym miejscu.
+
+Zarezerwowane miejsca, które po 11.12.2019 nie zostaną opłacone, 
+zostaną zwolnione.
+
+W przypadku pytań lub wątpliwości prosimy o kontakt mailowy -
+pzkokarwina@pzkokarwina.cz
+
+Dziękujemy serdecznie!
+
+Organizatorzy BALU POLSKIEGO w Karwinie
+`
+
 	roomDescription1 := `<div class="alert alert-warning" role="alert">Zapraszamy również na Balkon na 1. piętrze, tam pozostało jeszcze sporo wolnych miejsc.</div>
 Koło Macierzy Szkolnej zaprasza wszystkich na bal pt. <b>„ROZTAŃCZMY PRZYJAŹŃ …”</b>,<br />
 który odbędzie się w piątek <b>7 lutego 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.<br />
@@ -125,6 +168,14 @@ który odbędzie się w piątek <b>7 lutego 2020</b> od godziny 19:00 w Domu Prz
 W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.<br />
 W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub <b>"Balkon - 1. piętro"</b>.<br />
 Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
+	roomDescription1P := `Miejskie Koła PZKO w Karwinie zapraszają na <b>„BAL POLSKI”</b>, który odbędzie 
+się w piątek <b>24 stycznia 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.
+W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.
+W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub 
+<b>"Balkon - 1. piętro</b>".
+Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk <b>"Zamów"</b>, 
+które przekieruje Państwa do formularza rezerwacji.
+`
 
 	orderHowto := `W celu dokonania rezerwacji prosimy o wypełnienie poniższych danych. W przypadku kiedy Państwo dokonują rezerwacji większej ilości biletów, prosimy o podanie nazwisk osób, dla których są miejsca przeznaczone (wystarczy 1 nazwisko na 2 bilety).
 Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz z informacją na temat zakupu biletów.`
@@ -142,6 +193,7 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 
 	db.StructureCreate()
 
+	// macierz Karwina
 	uID, err := db.UserAdd(&User{ID: 1, Email: "pspmacierzkarwina@seznam.cz", URL: "mskarwina", Passwd: "MagikINFO2019"})
 	if err != nil {
 		log.Println(err)
@@ -175,6 +227,45 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	err = db.EventAddRoom(eID, r2ID)
 	if err != nil {
 		log.Println(err)
+	}
+
+	// init PZKO
+	uIDP, err := db.UserAdd(&User{ID: 2, Email: "pzkokarwina@pzkokarwina.cz", URL: "pzkokarwina", Passwd: "PZKO+007"})
+	if err != nil {
+		log.Println(err)
+		uIDP = 2
+	}
+
+	r1IDP, err := db.RoomAdd(&Room{ID: 3, Name: "Dom Przyjaźni: Sala główna - parter", Description: ToNS(roomDescription1P), Width: 800, Height: 970})
+	if err != nil {
+		log.Println(err)
+	}
+	r2IDP, err := db.RoomAdd(&Room{ID: 4, Name: "Dom Przyjaźni: Balkon - 1. piętro", Description: ToNS(roomDescription1P), Width: 800, Height: 950})
+	if err != nil {
+		log.Println(err)
+	}
+	err = db.RoomAssignToUser(uIDP, r1IDP)
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = db.RoomAssignToUser(uIDP, r2IDP)
+	if err != nil {
+		log.Println(err)
+	}
+	eIDP, err := db.EventAdd(&Event{ID: 2, Name: "Bal polski", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", NoSitsSelectedTitle: noSitsSelTitle, NoSitsSelectedText: noSitsSelText, OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNoteTitle: orderedNoteTitle, OrderedNoteText: orderedNoteText, MailSubject: "Rezerwacja biletów na Bal polski", MailText: mailTextP, AdminMailSubject: adminMailSubject, AdminMailText: adminMailText, HowTo: howtoP, UserID: uIDP})
+	if err != nil {
+		log.Println(err)
+	}
+	err = db.EventAddRoom(eIDP, r1IDP)
+	if err != nil {
+		log.Println(err)
+	}
+	err = db.EventAddRoom(eIDP, r2IDP)
+	if err != nil {
+		log.Println(err)
+		db.FurnitureCopyRoom(1, 3)
+		db.FurnitureCopyRoom(2, 4)
 	}
 
 	return db
@@ -324,7 +415,7 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 
 		plErr := map[string]string{
 			"title": "Nie znaleziono organizacji!",
-			"text":  "W bazie nie istnieje organizacja: %q\nProszę sprawdzić poprawność linka.\nJeżeli organizator twierdzi, że jest ok, to proszę o kontakt pod: admin (at) zori.cz.",
+			"text":  fmt.Sprintf("W bazie nie istnieje organizacja: %q\nProszę sprawdzić poprawność linka.\nJeżeli organizator twierdzi, że jest ok, to proszę o kontakt pod: admin (at) zori.cz.", v["user"]),
 		}
 
 		if err != nil {

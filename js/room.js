@@ -132,16 +132,16 @@ function SaveRoom() {
   $(".table, .chair, .object, .label").each(function(i, obj) {
     var child = $(this);
     if (child.attr('furniture') == "table") {
-      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 13), y: Math.round(child.offset().top - parent.offset().top - 13)};
+      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 13), y: Math.round(child.offset().top - parent.offset().top - 13)};
     } else if (child.attr('furniture') == "chair") {
-      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), disabled: child.hasClass("disabled"), x: Math.round(child.offset().left - parent.offset().left - 5), y: Math.round(child.offset().top - parent.offset().top - 5)};
+      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), disabled: child.hasClass("disabled"), x: Math.round(child.offset().left - parent.offset().left - 5), y: Math.round(child.offset().top - parent.offset().top - 5)};
     } else if (child.attr('furniture') == "object") {
-      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), width: child.width(), height: child.height(), color: getHexColor(child.css("backgroundColor")), label: child.children().text()};
+      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), width: child.width(), height: child.height(), color: getHexColor(child.css("backgroundColor")), label: child.children().text()};
     } else if (child.attr('furniture') == "label") {
-      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), color: getHexColor(child.css("color")), label: child.children().text()};
+      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), color: getHexColor(child.css("color")), label: child.children().text()};
     } else {
       console.log("this should not run, type: ", child.attr('furniture'))
-      current = {room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3)};
+      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3)};
     }
 
 
@@ -222,9 +222,9 @@ function DeleteFurnitures() {
     $.ajax({
       method: "POST",
       url: "/api/furdel",
-      data: JSON.stringify({room_id: Number($("#room-id").val()),name: Number($(this).attr('name')), type: $(this).attr('furniture')})
+      data: JSON.stringify({event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number($(this).attr('name')), type: $(this).attr('furniture')})
     })
-    console.log(JSON.stringify({room_id: Number($("#room-id").val()), id: $(this).attr('name'), type: $(this).attr('furniture')}))
+    console.log(JSON.stringify({event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), id: $(this).attr('name'), type: $(this).attr('furniture')}))
 
   });
 

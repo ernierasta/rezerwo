@@ -760,6 +760,17 @@ func (db *DB) ReservationMod(r *Reservation) error {
 	return err
 }
 
+func (db *DB) ReservationModStatus(status string, payedDate int64, eventID, furnID int64) error {
+	if err := NoMinus("eventID", eventID); err != nil {
+		return fmt.Errorf("error: ReservationModStatus: %v", err)
+	}
+	if err := NoMinus("furnID", furnID); err != nil {
+		return fmt.Errorf("error: ReservationModStatus: %v", err)
+	}
+	_, err := db.DB.Exec(`UPDATE reservations SET status=$1, payed_date=$2 WHERE events_id_fk=$3 AND furnitures_id_fk=$4`, status, payedDate, eventID, furnID)
+	return err
+}
+
 func (db *DB) ReservationDel(id int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM reservations WHERE id=$1`, id)
 	if err != nil {

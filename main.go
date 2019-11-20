@@ -70,6 +70,7 @@ func main() {
 	http.HandleFunc("/api/furdel", DesignerDeleteObject(db))
 	http.HandleFunc("/api/ordercancel", OrderCancel(db))
 	http.HandleFunc("/api/renumber", DesignerRenumberType(db))
+	http.HandleFunc("/api/resstatus", ChangeReservationStatusAPI(db))
 
 	log.Fatal(http.ListenAndServe(":3002", nil))
 }
@@ -132,6 +133,9 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	noSitsSelTitle := "Nie wybrano siedzeń!"
 	noSitsSelText := `Nie wybrano siedzeń. Prosimy kliknąć na wolne krzesła, czyli w kolorze <b class="free-text">zielonym</b> i zamówić ponownie.<br />Jeżeli nie ma wolnych krzeseł na parterze, proszimy sprawdzić na balkonie.`
 
+	adminMailSubject := "Rezerwacja: {{.Name}} {{.Surname}}, {{.TotalPrice}}"
+	adminMailText := "{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}} sale: {{.Rooms}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}"
+
 	db := DBInit("db.sql")
 	db.MustConnect()
 
@@ -159,7 +163,7 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	if err != nil {
 		log.Println(err)
 	}
-	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", NoSitsSelectedTitle: noSitsSelTitle, NoSitsSelectedText: noSitsSelText, OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNoteTitle: orderedNoteTitle, OrderedNoteText: orderedNoteText, MailSubject: "Rezerwacja biletów na Bal Macierzy", MailText: mailText, HowTo: howto, UserID: 1})
+	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", NoSitsSelectedTitle: noSitsSelTitle, NoSitsSelectedText: noSitsSelText, OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNoteTitle: orderedNoteTitle, OrderedNoteText: orderedNoteText, MailSubject: "Rezerwacja biletów na Bal Macierzy", MailText: mailText, AdminMailSubject: adminMailSubject, AdminMailText: adminMailText, HowTo: howto, UserID: 1})
 	if err != nil {
 		log.Println(err)
 	}
@@ -182,6 +186,7 @@ func handleStatic(dir string) {
 
 type DesignerPage struct {
 	TableNr, ChairNr, ObjectNr, LabelNr  int64
+	HTMLRoomDescription                  template.HTML
 	LBLWidth, LBLHeight                  string
 	LBLLabelPlaceholder                  string
 	BTNSetSize                           string
@@ -264,6 +269,15 @@ func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 			//return
 		}
 
+		if eventID < 1 {
+			log.Printf("error: DesignerHTML: eventID < 1 redirecting to /admin")
+			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		}
+		if roomID < 1 {
+			log.Printf("error: DesignerHTML: roomID < 1 redirecting to /admin")
+			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		}
+
 		p := GetPageVarsFromDB(db, roomID, eventID)
 		//log.Printf("%+v", p)
 		enPM := PageMeta{
@@ -274,6 +288,7 @@ func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 				ChairNr:             ChairNrFull(p.Chairs) + 1,
 				ObjectNr:            ObjectNr(p.Objects) + 1,
 				LabelNr:             LabelNr(p.Labels) + 1,
+				HTMLRoomDescription: template.HTML(p.Room.Description.String),
 				LBLWidth:            "Width",
 				LBLHeight:           "Height",
 				BTNSetSize:          "Set size",
@@ -433,6 +448,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				}
 			}
 
+			// password is correct, so continue
+
 			event, err = db.EventGetByID(o.EventID)
 			if err != nil {
 				log.Printf("error: ReservationOrderStatusHTML: problem getting event by ID: %q, err: %v", o.EventID, err)
@@ -441,13 +458,11 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			if err != nil {
 				log.Printf("error: ReservationOrderStatusHTML: problem getting user by ID(from events table): %q, err: %v", event.UserID, err)
 			}
-			// password is correct, so continue
 			//TODO: this will fail for returning user, maybe check if exist and do not insert?
 			err = db.CustomerAppendToUser(user.ID, cID)
 			if err != nil {
-				log.Println(err)
+				log.Printf("info: ReservationOrderStatusHTML: can not append customer to user, err: %v", err)
 			}
-			log.Println("before Splitting")
 			ss, rr, err := SplitSitsRooms(o.Sits, o.Rooms)
 			if err != nil {
 				log.Printf("error: ReservationOrderStatusHTML: %v", err)
@@ -522,8 +537,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				ReplyTo:    mailConf.From,
 				Sender:     mailConf.From,
 				To:         append(adminMails, user.Email),
-				Subject:    event.MailSubject,
-				Text:       ParseTmpl("{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}} sale: {{.Rooms}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}", o), //TODO
+				Subject:    ParseTmpl(event.AdminMailSubject, o),
+				Text:       ParseTmpl(event.AdminMailText, o),
 				IgnoreCert: mailConf.IgnoreCert,
 			}
 			err = MailSend(userMail)
@@ -706,7 +721,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 		if err != nil {
 			log.Printf("ReservationOrderHTML: error getting event by ID: %d, err: %v", eventID, err)
 		}
-		user, err := db.UserGetByID(event.UserID) //TODO: should we do it like that?
+		user, err := db.UserGetByID(event.UserID) //TODO: it is probably ok to do it like that?
 		if err != nil {
 			log.Println(err)
 		}
@@ -842,6 +857,8 @@ type AdminMainPageVars struct {
 	BTNEventEdit           string
 	BTNEventDelete         string
 	LBLMsgTitle            string
+	LBLRaports             string
+	BTNShowRaports         string
 }
 
 func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -940,6 +957,8 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				LBLSelectEvent:         "Select event ...",
 				BTNEventDelete:         "Delete",
 				LBLMsgTitle:            dtype,
+				LBLRaports:             "Raports",
+				BTNShowRaports:         "Show raports",
 			},
 		}
 
@@ -993,11 +1012,11 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 			if err != nil {
 				log.Printf("EventEditor: problem parsing form data, err: %v", err)
 			}
-			eventID, err := strconv.Atoi(r.FormValue("events-select"))
+			eventID, err := strconv.ParseInt(r.FormValue("event-id"), 10, 64)
 			if err != nil {
 				log.Printf("error converting eventID to int, err: %v", err)
 			}
-			event, err := db.EventGetByID(int64(eventID))
+			event, err := db.EventGetByID(eventID)
 			if err != nil {
 				log.Printf("error retrieving event with ID: %q from DB, err: %v", eventID, err)
 			}
@@ -1048,6 +1067,7 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 
 type AdminReservationsVars struct {
 	LBLLang          string
+	EventID          int64
 	LBLTitle         string
 	LBLTotalPrice    string
 	THChairNumber    string
@@ -1066,11 +1086,22 @@ type AdminReservationsVars struct {
 }
 
 func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
-
-	//TODO
-	eventID := int64(1)
-
 	return func(w http.ResponseWriter, r *http.Request) {
+		eventID := int64(-1)
+		if r.Method == "POST" {
+			err := r.ParseForm()
+			if err != nil {
+				log.Printf("error: AdminReservations: problem parsing form, err: %v", err)
+			}
+			eventIDs := r.FormValue("event-id")
+			eventID, err = strconv.ParseInt(eventIDs, 10, 64)
+			if err != nil {
+				log.Printf("error: AdminReservations: can not convert %q to int64, err: %v", eventIDs, err)
+			}
+
+		} else {
+			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		}
 		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
 		if err != nil {
 			log.Printf("info: AdminReservations: %v", err)
@@ -1089,6 +1120,7 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 
 		enP := AdminReservationsVars{
 			LBLLang:          lang,
+			EventID:          eventID,
 			LBLTitle:         "Reservations",
 			LBLTotalPrice:    "Total",
 			THChairNumber:    "Chair number",
@@ -1135,7 +1167,7 @@ func AboutHTML(lang string) func(w http.ResponseWriter, r *http.Request) {
 		były zarządzane za pomocą REZERWO.</b><br />
 		Docelowo system będzie dostępny również w języku czeskim oraz angielskim. Zamierzam również udostępnić
 		rozwiązanie subjektom komercyjnym jeżeli będą zainteresowane. Ale dla każdej organizacji polskiej w Czechach
-		rozwiązanie zawsze będzie dostępne DARMOWO. <i>Oczywiście na miodule se zaprosić niechóm jeśli kiery beje nalegoł.</i><br />
+		rozwiązanie zawsze będzie dostępne DARMOWO. <i>Oczywiście na miodule se zaprosić niechóm, jeśli kiery beje nalegoł.</i><br />
 		<br />
 		Z góry przepraszam za możliwe niedociągnięcia, będą one stopniowo usuwane, tak by w przyszłym roku zachwyćić. Mam nadzieję.<br />
 		Leszek Cimała, admin (at) zori.cz`),
@@ -1213,6 +1245,7 @@ func DesignerSetRoomSize(db *DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 type MoveMsg struct {
+	EventID     int64  `json:"event_id"`
 	RoomID      int64  `json:"room_id"`
 	Number      int64  `json:"name"`
 	Type        string `json:"type"`
@@ -1230,10 +1263,6 @@ type MoveMsg struct {
 }
 
 func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
-
-	// TODO: RoomID and EventID should be something real
-	eventID := int64(1)
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m MoveMsg
 		if r.Method == "POST" {
@@ -1281,7 +1310,7 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				Price:       m.Price,
 				Currency:    m.Currency,
 				Disabled:    dis,
-				EventID:     eventID,
+				EventID:     m.EventID,
 				FurnitureID: furn.ID,
 			}
 			_, err = db.PriceAdd(&p)
@@ -1298,16 +1327,13 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 }
 
 type DeleteMsg struct {
-	RoomID int64  `json:"room_id"`
-	Number int64  `json:"name"`
-	Type   string `json:"type"`
+	EventID int64  `json:"event_id"`
+	RoomID  int64  `json:"room_id"`
+	Number  int64  `json:"name"`
+	Type    string `json:"type"`
 }
 
 func DesignerDeleteObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
-
-	// TODO: EventID should be something real
-	eventID := int64(1)
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m DeleteMsg
 		if r.Method == "POST" {
@@ -1321,7 +1347,7 @@ func DesignerDeleteObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println(err)
 			}
-			db.PriceDelByEventIDFurn(eventID, m.Number, m.Type)
+			db.PriceDelByEventIDFurn(m.EventID, m.Number, m.Type)
 		}
 	}
 }
@@ -1484,6 +1510,44 @@ func PasswdReset(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {}
 }
 
+type ChangeReservationStatusMsg struct {
+	EventID    int64  `json:"event_id"`
+	FurnNumber int64  `json:"furn_number"`
+	RoomName   string `json:"room_name"`
+	Status     string `json:"status"`
+}
+
+func ChangeReservationStatusAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var m ChangeReservationStatusMsg
+		if r.Method == "POST" {
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&m)
+			if err != nil {
+				log.Printf("error: ChangeReservationStatusAPI: problem decoding json, err: %v", err)
+			}
+			fmt.Printf("%+v", m)
+			room, err := db.RoomGetByName(m.RoomName)
+			if err != nil {
+				log.Printf("error: ChangeReservationStatusAPI: problem retrieving room, name: %s, err: %v", m.RoomName, err)
+			}
+
+			chair, err := db.FurnitureGetByTypeNumberRoom("chair", m.FurnNumber, room.ID)
+			if err != nil {
+				log.Printf("error: ChangeReservationStatusAPI: problem retrieving furniture, number: %d, roomID: %d, err: %v", m.FurnNumber, room.ID, err)
+			}
+			timestamp := int64(0)
+			if m.Status == "payed" {
+				timestamp = time.Now().Unix()
+			}
+
+			if err := db.ReservationModStatus(m.Status, timestamp, m.EventID, chair.ID); err != nil {
+				log.Printf("error: ChangeReservationStatusAPI: problem updating status to %q for FurnID: %d, EventID: %d, err: %v", m.Status, chair.ID, m.EventID, err)
+			}
+		}
+	}
+}
+
 type Order struct {
 	EventID             int64
 	TotalPrice          string
@@ -1498,7 +1562,7 @@ func ParseTmpl(t string, o Order) string {
 	var buf bytes.Buffer
 	tmpl, err := template.New("test").Parse(t)
 	if err != nil {
-		log.Println("error parsing template %q, order %+v, err: %v", t, o, err)
+		log.Printf("error parsing template %q, order %+v, err: %v", t, o, err)
 		return t
 	}
 	err = tmpl.Execute(&buf, o)

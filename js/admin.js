@@ -29,7 +29,9 @@ function Post(path, params, method='post') {
 
 
 function EventEdit() {
-  $("#events-select-form").submit();
+  var eventID = $('#events-select :selected').val();
+  console.log(eventID);
+  Post("/admin/event", {"event-id": eventID});
 }
 
 function RoomEdit() {
@@ -43,3 +45,9 @@ function FinalRoomEdit() {
   var roomID = $('#rooms-select :selected').val(); // get room id
   Post("/admin/designer", {"room-id": roomID, "event-id": eventID})
 }
+
+function ShowRaports() {
+  var eventID = $('#events-raports-select :selected').val();
+  Post("/admin/reservations", {"event-id": eventID});
+}
+

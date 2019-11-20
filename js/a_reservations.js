@@ -22,16 +22,29 @@ $(function() {
         extend: 'selected',
         text: 'Toggle "ordered/payed"',
         action: function ( e, dt, button, config ) {
-          var stsrow = table.colReorder.transpose(8);
+          var stscol = table.colReorder.transpose(8);
+          var furnNumberCol = table.colReorder.transpose(0);
+          var roomNameCol = table.colReorder.transpose(1);
           indexes = dt.rows({selected: true}).indexes();
           for (i=0; i < indexes.length;i++){
             row = dt.row(indexes[i]).data()
-            if (row[stsrow] === "ordered") {
-              row[stsrow] = "payed";
+            if (row[stscol] === "ordered") {
+              row[stscol] = "payed";
               dt.row(indexes[i]).data(row);
-            } else if (row[stsrow] === "payed") {
-              row[stsrow] = "ordered";
+              $.ajax({
+                method: "POST",
+                url: "/api/resstatus",
+                data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol] , status: "payed"})
+              });
+ 
+            } else if (row[stscol] === "payed") {
+              row[stscol] = "ordered";
               dt.row(indexes[i]).data(row);
+              $.ajax({
+                method: "POST",
+                url: "/api/resstatus",
+                data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol] , status: "ordered"})
+              });
             } 
           }
           //dt.rows({selected: true}).deselect();

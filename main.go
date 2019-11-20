@@ -57,7 +57,7 @@ func main() {
 	handleStatic("css")
 	http.Handle("/", rtr)
 	http.HandleFunc("/order", ReservationOrderHTML(db, lang))
-	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass}))
+	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert}))
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, lang))
@@ -169,10 +169,10 @@ W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.<br />
 W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub <b>"Balkon - 1. piętro"</b>.<br />
 Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
 	roomDescription1P := `Miejskie Koła PZKO w Karwinie zapraszają na <b>„BAL POLSKI”</b>, który odbędzie 
-się w piątek <b>24 stycznia 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.
+się w piątek <b>24 stycznia 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.<br>
 W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.
-W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub 
-<b>"Balkon - 1. piętro</b>".
+W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub 
+<b>"Balkon - 1. piętro</b>".<br>
 Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk <b>"Zamów"</b>, 
 które przekieruje Państwa do formularza rezerwacji.
 `
@@ -183,7 +183,7 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	orderedNoteText := `Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji oraz informacja na temat zakupu biletów.`
 
 	noSitsSelTitle := "Nie wybrano siedzeń!"
-	noSitsSelText := `Nie wybrano siedzeń. Prosimy kliknąć na wolne krzesła, czyli w kolorze <b class="free-text">zielonym</b> i zamówić ponownie.<br />Jeżeli nie ma wolnych krzeseł na parterze, proszimy sprawdzić na balkonie.`
+	noSitsSelText := `Nie wybrano siedzeń. Prosimy kliknąć na wolne krzesła, czyli w kolorze <b class="free-text">zielonym</b> i zamówić ponownie.<br />Jeżeli nie ma wolnych krzeseł na parterze, prosimy sprawdzić na balkonie.`
 
 	adminMailSubject := "Rezerwacja: {{.Name}} {{.Surname}}, {{.TotalPrice}}"
 	adminMailText := "{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}} sale: {{.Rooms}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}"

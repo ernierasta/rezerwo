@@ -332,6 +332,13 @@ $(function() {
   var chair_nr=Designer.chairNr;
   var orientation="vertical";
 
+  // enable deleting with "Delete" or "Backspace" key on keyboard
+  $('html').keyup(function(e){
+    if(e.keyCode == 46 || e.keyCode == 8) {
+        DeleteFurnitures();
+    }
+  });
+
   //room-view
   MakeSelectable();
   // set first room as active tab

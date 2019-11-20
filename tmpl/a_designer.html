@@ -19,8 +19,9 @@
   </script>
   <div id="meta">
     <input id="room-id" type="hidden" value={{.Room.ID}}>
+    <input id="event-id" type="hidden" value={{.Event.ID}}>
     <h1 id="room-name">{{.Room.Name}}</h1>
-    <p id="room-desc">{{.Room.Description.String}}</p>
+    <p id="room-desc">{{.HTMLRoomDescription}}</p>
   </div>
   <div id="controls">
 

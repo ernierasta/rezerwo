@@ -26,6 +26,15 @@ type User struct {
 	Phone        sql.NullString `db:"phone"`
 }
 
+type Admin struct {
+	ID     int64          `db:"id"`
+	Type   string         `db:"type"`
+	Email  string         `db:"email"`
+	Passwd sql.NullString `db:"passwd"`
+	Notes  sql.NullString `db:"notes"`
+	UserID int64          `db:"users_id_fk"`
+}
+
 type Customer struct {
 	ID      int64          `db:"id"`
 	Email   string         `db:"email"`
@@ -81,9 +90,12 @@ type Event struct {
 	ToDate                int64  `db:"to_date"`
 	DefaultPrice          int64  `db:"default_price"`
 	DefaultCurrency       string `db:"default_currency"`
+	NoSitsSelectedTitle   string `db:"no_sits_selected_title"`
+	NoSitsSelectedText    string `db:"no_sits_selected_text"`
 	OrderHowto            string `db:"order_howto"`
 	OrderNotesDescription string `db:"order_notes_desc"`
-	OrderedNote           string `db:"ordered_note"`
+	OrderedNoteTitle      string `db:"ordered_note_title"`
+	OrderedNoteText       string `db:"ordered_note_text"`
 	MailSubject           string `db:"mail_subject"`
 	MailText              string `db:"mail_text"`
 	AdminMailSubject      string `db:"admin_mail_subject"`
@@ -117,6 +129,17 @@ type Reservation struct {
 	CustomerID  int64         `db:"customers_id_fk"`
 }
 
+type ReservationFull struct {
+	Reservation
+	CustEmail   sql.NullString `db:"cust_email"`
+	CustName    sql.NullString `db:"cust_name"`
+	CustSurname sql.NullString `db:"cust_surname"`
+	CustPhone   sql.NullString `db:"cust_phone"`
+	ChairNumber int64          `db:"chair_number"`
+	RoomName    string         `db:"room_name"`
+	Notes       sql.NullString `db:"reservation_notes"`
+}
+
 type FurnitureFull struct {
 	Furniture
 	AdminPrice    sql.NullInt64  `db:"admin_price"`
@@ -148,14 +171,14 @@ func (db *DB) MustConnect() {
 func (db *DB) StructureCreate() {
 	structure := `
 	CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, url TEXT NOT NULL, passwd TEXT NOT NULL, name TEXT, surname TEXT, organization TEXT, phone TEXT);
-	CREATE TABLE IF NOT EXISTS mails (id INTEGER NOT NULL PRIMARY KEY, type TEXT NOT NULL, server TEXT NOT NULL, port INTEGER NOT NULL, user TEXT NOT NULL, from_mail TEXT NOT NULL, password TEXT NOT NULL, sender TEXT NOT NULL, ignore_cert INTEGER NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id));
+	CREATE TABLE IF NOT EXISTS admins (id INTEGER NOT NULL PRIMARY KEY, type TEXT NOT NULL, email TEXT NOT NULL, passwd TEXT, notes TEXT, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id));
 	CREATE TABLE IF NOT EXISTS rooms (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT, width INTEGER NOT NULL, height INTEGER NOT NULL);
 	CREATE TABLE IF NOT EXISTS users_rooms (users_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL UNIQUE, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS furnitures (id INTEGER NOT NULL PRIMARY KEY, number INTEGER NOT NULL, type TEXT NOT NULL, orientation TEXT, x INTEGER NOT NULL, y INTEGER NOT NULL, width INTEGER, height INTEGER, color TEXT, label TEXT, capacity INTEGER, rooms_id_fk INTEGER NOT NULL, UNIQUE(number, type, rooms_id_fk) ON CONFLICT ROLLBACK, FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS prices (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS customers (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwd TEXT NOT NULL, name TEXT, surname TEXT, phone TEXT, notes TEXT);
 	CREATE TABLE IF NOT EXISTS users_customers (users_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(users_id_fk, customers_id_fk) ON CONFLICT ROLLBACK);
-	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note TEXT NOT NULL, mail_subject TEXT NOT NULL, mail_text TEXT NOT NULL, admin_mail_subject TEXT NOT NULL, admin_mail_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
+	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, no_sits_selected_title TEXT NOT NULL, no_sits_selected_text TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note_title TEXT NOT NULL, ordered_note_text TEXT NOT NULL, mail_subject TEXT NOT NULL, mail_text TEXT NOT NULL, admin_mail_subject TEXT NOT NULL, admin_mail_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS events_rooms (events_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id), UNIQUE(events_id_fk, rooms_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER, payed_date INTEGER, price INTEGER, currency TEXT, status TEXT NOT NULL, notes_id_fk INTEGER, furnitures_id_fk INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(notes_id_fk) REFERENCES notes(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS notes (id INTEGER NOT NULL PRIMARY KEY, text TEXT NOT NULL);
@@ -189,6 +212,12 @@ func (db *DB) UserGetByURL(url string) (User, error) {
 	user := User{}
 	err := db.DB.Get(&user, `SELECT * FROM users WHERE url=$1`, url)
 	return user, err
+}
+
+func (db *DB) UserGetPass(email string) (string, error) {
+	passwd := ""
+	err := db.DB.Get(&passwd, `SELECT passwd FROM users WHERE email=$1`, email)
+	return passwd, err
 }
 
 func (db *DB) UserGetAll() ([]User, error) {
@@ -560,8 +589,8 @@ func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) err
 }
 
 func (db *DB) EventAdd(e *Event) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, order_howto, order_notes_desc, ordered_note, how_to, mail_subject, mail_text, admin_mail_subject, admin_mail_text, users_id_fk) 
-VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :order_howto, :order_notes_desc, :ordered_note, :how_to, :mail_subject, :mail_text, :admin_mail_subject, :admin_mail_text, :users_id_fk)`, e)
+	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, mail_subject, mail_text, admin_mail_subject, admin_mail_text, users_id_fk) 
+VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :mail_subject, :mail_text, :admin_mail_subject, :admin_mail_text, :users_id_fk)`, e)
 	if err != nil {
 		return -1, err
 	}
@@ -641,7 +670,7 @@ func (db *DB) EventMod(event *Event) error {
 	if event.ID == 0 {
 		return fmt.Errorf("can not modify event if ID is 0")
 	}
-	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note=:ordered_note, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text, admin_mail_subject=:admin_mail_subject, admin_mail_text=:admin_mail_text WHERE id=:id`, event)
+	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text, admin_mail_subject=:admin_mail_subject, admin_mail_text=:admin_mail_text WHERE id=:id`, event)
 	return err
 }
 
@@ -702,6 +731,21 @@ func (db *DB) ReservationGetInStatus(status string) ([]Reservation, error) {
 	return reservations, err
 }
 
+func (db *DB) ReservationFullGetAll(userID, eventID int64) ([]ReservationFull, error) {
+	rr := []ReservationFull{}
+	err := NoMinus("userID", userID)
+	if err != nil {
+		return rr, err
+	}
+	err = NoMinus("eventID", eventID)
+	if err != nil {
+		return rr, err
+	}
+	err = db.DB.Select(&rr, `SELECT r.*, c.email cust_email, c.name cust_name, c.surname cust_surname, c.phone cust_phone, f.number chair_number, rm.name room_name, n.text reservation_notes FROM reservations r LEFT JOIN furnitures f ON r.furnitures_id_fk = f.id LEFT JOIN rooms rm ON f.rooms_id_fk = rm.id LEFT JOIN customers c ON r.customers_id_fk = c.id LEFT JOIN events e ON r.events_id_fk = e.id LEFT JOIN notes n ON r.notes_id_fk = n.id WHERE e.users_id_fk = $1 AND r.events_id_fk=$2 ORDER BY f.number`, userID, eventID)
+	return rr, err
+
+}
+
 func (db *DB) ReservationAdd(r *Reservation) (int64, error) {
 	ret, err := db.DB.NamedExec(`INSERT INTO reservations (ordered_date, payed_date, price, currency, status, notes_id_fk, furnitures_id_fk, events_id_fk, customers_id_fk) 
 VALUES(:ordered_date, :payed_date, :price, :currency, :status, :notes_id_fk, :furnitures_id_fk, :events_id_fk, :customers_id_fk)`, r)
@@ -713,6 +757,17 @@ VALUES(:ordered_date, :payed_date, :price, :currency, :status, :notes_id_fk, :fu
 
 func (db *DB) ReservationMod(r *Reservation) error {
 	_, err := db.DB.NamedExec(`UPDATE reservations SET ordered_date=:ordered_date, payed_date=:payed_date, price=:price, currency=:currency, status=:status, notes_id_fk=:notes_id_fk, customers_id_fk=:customers_id_fk WHERE furnitures_id_fk=:furnitures_id_fk AND events_id_fk=:events_id_fk`, r)
+	return err
+}
+
+func (db *DB) ReservationModStatus(status string, payedDate int64, eventID, furnID int64) error {
+	if err := NoMinus("eventID", eventID); err != nil {
+		return fmt.Errorf("error: ReservationModStatus: %v", err)
+	}
+	if err := NoMinus("furnID", furnID); err != nil {
+		return fmt.Errorf("error: ReservationModStatus: %v", err)
+	}
+	_, err := db.DB.Exec(`UPDATE reservations SET status=$1, payed_date=$2 WHERE events_id_fk=$3 AND furnitures_id_fk=$4`, status, payedDate, eventID, furnID)
 	return err
 }
 
@@ -746,6 +801,17 @@ func (db *DB) CustomerGetByEmail(email string) (Customer, error) {
 	return c, err
 }
 
+func (db *DB) CustomerGetAll(userID int64) ([]Customer, error) {
+	cc := []Customer{}
+
+	err := NoMinus("userID", userID)
+	if err != nil {
+		return cc, err
+	}
+	err = db.DB.Select(&cc, `SELECT c.* FROM customers c LEFT JOIN users_customers uc ON c.id = uc.customers_id_fk WHERE uc.users_id_fk=$1`, userID)
+	return cc, err
+}
+
 func (db *DB) CustomerAppendToUser(userID, customerID int64) error {
 	err := NoMinus("userID", userID)
 	if err != nil {
@@ -768,6 +834,28 @@ VALUES($1, $2)`, userID, customerID)
 		return fmt.Errorf("no users_customers entry added for userID: %v, customerID: %v", userID, customerID)
 	}
 	return err
+}
+
+func (db *DB) AdminAdd(a *Admin) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO admins (type, email, passwd, notes, users_id_fk) 
+VALUES(:type, :email, :passwd, :notes, :users_id_fk)`, a)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) AdminGetAll(UserID int64) ([]Admin, error) {
+	aa := []Admin{}
+	err := db.DB.Select(&aa, `SELECT * FROM admins WHERE users_id_fk=$1`, UserID)
+	return aa, err
+}
+
+// AdminGetEmails retrieves all mails, TODO: maybe filter by type?
+func (db *DB) AdminGetEmails(UserID int64) ([]string, error) {
+	aa := []string{}
+	err := db.DB.Select(&aa, `SELECT email FROM admins WHERE users_id_fk=$1`, UserID)
+	return aa, err
 }
 
 func (db *DB) NoteAdd(note string) (int64, error) {

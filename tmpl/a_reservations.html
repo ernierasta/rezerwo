@@ -1,0 +1,52 @@
+{{define "head"}}
+  <script type="text/javascript" src="/js/a_reservations.js"></script>
+  <link rel="stylesheet" type="text/css" href="/css/a_reservations.css"/>
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
+  <script type="text/javascript" src="/js/datatables.min.js"></script> 
+  <title>{{.LBLTitle}}</title>
+{{end}}
+{{define "body"}}
+  <div class="d-flex justify-content-center">
+    <div class="col-md-12">
+      <h3>{{.LBLTitle}}</h3>
+      <input id="event-id" type="hidden" value={{.EventID}}>
+      <div id="total-price-lbl">{{.LBLTotalPrice}}: <span id="total-price"></span></div>
+            <table id="reservations" class="table table-bordered">
+        <thead>
+          <tr>
+            <th scope="col">{{.THChairNumber}}</th>
+            <th scope="col">{{.THRoomName}}</th>
+            <th scope="col">{{.THCustName}}</th>
+            <th scope="col">{{.THCustSurname}}</th>
+            <th scope="col">{{.THCustEmail}}</th>
+            <th scope="col">{{.THCustPhone}}</th>
+            <th scope="col">{{.THPrice}}</th>
+            <th scope="col">{{.THCurrency}}</th>
+            <th scope="col">{{.THStatus}}</th>
+            <th scope="col">{{.THNotes}}</th>
+            <th scope="col">{{.THOrderedDate}}</th>
+            <th scope="col">{{.THPayedDate}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .ReservationsFull}}
+          <tr>
+            <td>{{.ChairNumber}}</td>
+            <td>{{.RoomName}}</td>
+            <td>{{.CustName.String}}</td>
+            <td>{{.CustSurname.String}}</td>
+            <td>{{.CustEmail.String}}</td>
+            <td>{{.CustPhone.String}}</td>
+            <td>{{.Price.Int64}}</td>
+            <td>{{.Currency.String}}</td>
+            <td>{{.Status}}</td>
+            <td>{{.Notes.String}}</td>
+            <td>{{.OrderedDate.Int64}}</td>
+            <td>{{.PayedDate.Int64}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{{end}}

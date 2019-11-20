@@ -1,66 +1,53 @@
-function EventEdit() {
+/**
+ * sends a request to the specified url from a form. this will change the window location.
+ * @param {string} path the path to send the post request to
+ * @param {object} params the paramiters to add to the url
+ * @param {string} [method=post] the method to use on the form
+ */
+function Post(path, params, method='post') {
 
-  console.log($("#events-select :selected").val());
-  $("#events-select-form").submit()
+  // The rest of this code assumes you are not using a library.
+  // It can be made less wordy if you use one.
+  const form = document.createElement('form');
+  form.method = method;
+  form.action = path;
+
+  for (const key in params) {
+    if (params.hasOwnProperty(key)) {
+      const hiddenField = document.createElement('input');
+      hiddenField.type = 'hidden';
+      hiddenField.name = key;
+      hiddenField.value = params[key];
+
+      form.appendChild(hiddenField);
+    }
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
+
+function EventEdit() {
+  var eventID = $('#events-select :selected').val();
+  console.log(eventID);
+  Post("/admin/event", {"event-id": eventID});
 }
 
 function RoomEdit() {
-
-  console.log($("#rooms-select :selected").val());
-  $("#rooms-select-form").submit()
+  $('#room-event').modal();
+  //$("#rooms-select-form").submit();
 }
 
-
-function GoBack() {
-  window.history.back();
+function FinalRoomEdit() {
+  //console.log($("#events-select :selected").val());
+  var eventID = $('#room-event-select :selected').val(); // get event selected for room
+  var roomID = $('#rooms-select :selected').val(); // get room id
+  Post("/admin/designer", {"room-id": roomID, "event-id": eventID})
 }
 
-
-//function ValidateOrder() {
-//  if ($("email")== "") {
-//
-//  }
-//}
-
-
-function EventDetailSubmit() {
-  $("#html-order-note").val($("#order-note-editor").html());
-  $("#html-howto").val($("#howto-editor").html());
-  return false;
+function ShowRaports() {
+  var eventID = $('#events-raports-select :selected').val();
+  Post("/admin/reservations", {"event-id": eventID});
 }
-
-
-(function() {
-  'use strict';
-  window.addEventListener('load', function() {
-    // Fetch all the forms we want to apply custom Bootstrap validation styles to
-    var forms = document.getElementsByClassName('needs-validation');
-    // Loop over them and prevent submission
-    var validation = Array.prototype.filter.call(forms, function(form) {
-      form.addEventListener('submit', function(event) {
-        if (form.checkValidity() === false) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        form.classList.add('was-validated');
-      }, false);
-    });
-  }, false);
-})();
-
-$(function() {
-  var QuillOrderNoteEditor = new Quill('#order-note-editor', {
-    theme: 'snow'
-  });
-  var QuillHowtoEditor = new Quill('#howto-editor', {
-    theme: 'snow'
-  });
-  // copy editor content to hidden text area x2
-  //$("#event-form").on("submit",function(){
-  //  $("#html-order-note").val($("#order-note-editor").html());
-  //  $("#html-howto").val($("#howto-editor").html());
-// })
-
-});
-
 

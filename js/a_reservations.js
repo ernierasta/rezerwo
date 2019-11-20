@@ -9,13 +9,17 @@ $(function() {
     select: {
       style: 'multi', //'os'
     },
+    // TODO: figure how to make it usefull
+    //rowGroup: {
+    //    dataSrc: 'group'
+    //},
     colReorder: true,
     dom: 'Blfrtip',
     buttons: [ 
       {
         extend: 'collection',
         text: 'Export',
-        buttons: ['copy', 'excel', 'csv' ,'pdf']
+        buttons: ['copy', 'excel', 'csv' ,'pdf', 'print']
       },
       'colvis',
       {
@@ -36,7 +40,6 @@ $(function() {
                 url: "/api/resstatus",
                 data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol] , status: "payed"})
               });
- 
             } else if (row[stscol] === "payed") {
               row[stscol] = "ordered";
               dt.row(indexes[i]).data(row);
@@ -48,6 +51,46 @@ $(function() {
             } 
           }
           //dt.rows({selected: true}).deselect();
+        }
+      },
+      {
+        extend: "selected",
+        text: "Delete",
+        action: function ( e, dt, button, config ) {
+          var furnNumberCol = table.colReorder.transpose(0);
+          var roomNameCol = table.colReorder.transpose(1);
+          var indexes = dt.rows({selected: true}).indexes();
+          bootbox.confirm({
+            message: "Really delete selected orders? It is UNREVERSABLE!",
+              buttons: {
+                cancel: {
+                    label: '<i class="fa fa-times"></i> Cancel'
+                },
+                confirm: {
+                    label: '<i class="fa fa-check"></i> Delete'
+                }
+              },
+            callback: function(result) {
+              if (result) {
+                for (i=0; i < indexes.length;i++){
+                  var row = dt.row(indexes[i]).data();
+                  $.ajax({
+                    method: "DELETE",
+                    url: "/api/resdelete",
+                    data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol]})
+                  });
+                }
+                dt.rows({selected: true}).remove().draw();
+              }
+            }
+          });
+        },
+      },
+      {
+        // select only visible, not all
+        text: "Select All",
+        action: function ( e, dt, button, config ) {
+          dt.rows( { page: 'current' } ).select();
         }
       },
       'selectNone',

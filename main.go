@@ -70,7 +70,8 @@ func main() {
 	http.HandleFunc("/api/furdel", DesignerDeleteObject(db))
 	http.HandleFunc("/api/ordercancel", OrderCancel(db))
 	http.HandleFunc("/api/renumber", DesignerRenumberType(db))
-	http.HandleFunc("/api/resstatus", ChangeReservationStatusAPI(db))
+	http.HandleFunc("/api/resstatus", ReservationChangeStatusAPI(db))
+	http.HandleFunc("/api/resdelete", ReservationDeleteAPI(db))
 
 	log.Fatal(http.ListenAndServe(":3002", nil))
 }
@@ -485,6 +486,12 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				reservation, err := db.ReservationGet(chair.ID, o.EventID)
 				if err != nil {
 					log.Printf("error: ReservationOrderStatusHTML: can not get reservation for chair: %d from DB, eventID: %d, err: %v", chair.ID, o.EventID, err)
+					plErr := map[string]string{
+						"title": "Zamówienie wygasło!",
+						"text":  "Zamówienie wygasło (obecnie wygasa po 5 minutach od kliknięcia na \"Zamów\"). Należy na nowo wybrać krzesła i ponowić zamówienie.",
+					}
+					ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+					return
 				}
 				reservation.Status = "ordered"
 				reservation.CustomerID = cID
@@ -1510,31 +1517,31 @@ func PasswdReset(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {}
 }
 
-type ChangeReservationStatusMsg struct {
+type ReservationChangeStatusMsg struct {
 	EventID    int64  `json:"event_id"`
 	FurnNumber int64  `json:"furn_number"`
 	RoomName   string `json:"room_name"`
 	Status     string `json:"status"`
 }
 
-func ChangeReservationStatusAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func ReservationChangeStatusAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var m ChangeReservationStatusMsg
+		var m ReservationChangeStatusMsg
 		if r.Method == "POST" {
 			dec := json.NewDecoder(r.Body)
 			err := dec.Decode(&m)
 			if err != nil {
-				log.Printf("error: ChangeReservationStatusAPI: problem decoding json, err: %v", err)
+				log.Printf("error: ReservationChangeStatusAPI: problem decoding json, err: %v", err)
 			}
 			fmt.Printf("%+v", m)
 			room, err := db.RoomGetByName(m.RoomName)
 			if err != nil {
-				log.Printf("error: ChangeReservationStatusAPI: problem retrieving room, name: %s, err: %v", m.RoomName, err)
+				log.Printf("error: ReservationChangeStatusAPI: problem retrieving room, name: %s, err: %v", m.RoomName, err)
 			}
 
 			chair, err := db.FurnitureGetByTypeNumberRoom("chair", m.FurnNumber, room.ID)
 			if err != nil {
-				log.Printf("error: ChangeReservationStatusAPI: problem retrieving furniture, number: %d, roomID: %d, err: %v", m.FurnNumber, room.ID, err)
+				log.Printf("error: ReservationChangeStatusAPI: problem retrieving furniture, number: %d, roomID: %d, err: %v", m.FurnNumber, room.ID, err)
 			}
 			timestamp := int64(0)
 			if m.Status == "payed" {
@@ -1542,8 +1549,65 @@ func ChangeReservationStatusAPI(db *DB) func(w http.ResponseWriter, r *http.Requ
 			}
 
 			if err := db.ReservationModStatus(m.Status, timestamp, m.EventID, chair.ID); err != nil {
-				log.Printf("error: ChangeReservationStatusAPI: problem updating status to %q for FurnID: %d, EventID: %d, err: %v", m.Status, chair.ID, m.EventID, err)
+				log.Printf("error: ReservationChangeStatusAPI: problem updating status to %q for FurnID: %d, EventID: %d, err: %v", m.Status, chair.ID, m.EventID, err)
 			}
+		}
+	}
+}
+
+type ReservationDeleteMsg struct {
+	EventID    int64  `json:"event_id"`
+	FurnNumber int64  `json:"furn_number"`
+	RoomName   string `json:"room_name"`
+}
+
+func ReservationDeleteAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var m ReservationDeleteMsg
+		if r.Method == "DELETE" {
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&m)
+			if err != nil {
+				log.Printf("error: ReservationDeleteAPI: problem decoding json, err: %v", err)
+			}
+			fmt.Printf("%+v", m)
+			room, err := db.RoomGetByName(m.RoomName)
+			if err != nil {
+				log.Printf("error: ReservationDeleteAPI: problem retrieving room, name: %s, err: %v", m.RoomName, err)
+			}
+
+			chair, err := db.FurnitureGetByTypeNumberRoom("chair", m.FurnNumber, room.ID)
+			if err != nil {
+				log.Printf("error: ReservationDeleteAPI: problem retrieving furniture, number: %d, roomID: %d, err: %v", m.FurnNumber, room.ID, err)
+			}
+
+			reservation, err := db.ReservationGet(chair.ID, m.EventID)
+			if err != nil {
+				log.Printf("error: ReservationDeleteAPI: error retrieving reservation for chair: %d, eventID: %d, err: %v", chair.ID, m.EventID, err)
+			}
+			log.Println("debug: reservationID:", reservation.ID)
+			err = db.ReservationDel(reservation.ID)
+			if err != nil {
+				log.Printf("error: ReservationDeleteAPI: error deleting reservation, err: %v", err)
+			}
+			if reservation.NoteID.Valid {
+				log.Printf("debug: is valid!")
+				rr, err := db.ReservationGetAllByNoteID(reservation.NoteID.Int64)
+				if err != nil {
+					log.Printf("error: ReservationDeleteAPI: error retrieving reservations by NoteID: %d, err: %v", reservation.NoteID.Int64, err)
+				}
+				log.Println(rr)
+				if len(rr) == 0 {
+					err = db.NoteDel(reservation.NoteID.Int64)
+					if err != nil {
+						log.Printf("error: ReservationDeleteAPI: problem deleting note with ID: %d, err: %v", reservation.NoteID.Int64, err)
+					}
+
+				} else {
+					log.Printf("debug: ReservationDeleteAPI: not deleting note, %d related reservation remains", len(rr))
+				}
+			}
+
 		}
 	}
 }

@@ -26,7 +26,7 @@ func TickerStop(stop chan bool) {
 }
 
 func RemoveStalledOrders(db *DB) {
-	rr, err := db.ReservationGetInStatus("marked")
+	rr, err := db.ReservationGetAllInStatus("marked")
 	if err != nil {
 		log.Println(err)
 	}

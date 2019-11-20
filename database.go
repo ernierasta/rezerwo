@@ -725,9 +725,15 @@ func (db *DB) ReservationGet(furnitureID, eventID int64) (Reservation, error) {
 	return r, err
 }
 
-func (db *DB) ReservationGetInStatus(status string) ([]Reservation, error) {
+func (db *DB) ReservationGetAllInStatus(status string) ([]Reservation, error) {
 	reservations := []Reservation{}
 	err := db.DB.Select(&reservations, `SELECT * FROM reservations WHERE status=$1`, status)
+	return reservations, err
+}
+
+func (db *DB) ReservationGetAllByNoteID(noteID int64) ([]Reservation, error) {
+	reservations := []Reservation{}
+	err := db.DB.Select(&reservations, `SELECT * FROM reservations WHERE notes_id_fk=$1`, noteID)
 	return reservations, err
 }
 
@@ -771,6 +777,7 @@ func (db *DB) ReservationModStatus(status string, payedDate int64, eventID, furn
 	return err
 }
 
+//TODO: does affected check make any sense? there is error if no row affected IMO
 func (db *DB) ReservationDel(id int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM reservations WHERE id=$1`, id)
 	if err != nil {
@@ -865,6 +872,11 @@ VALUES($1)`, note)
 		return -1, err
 	}
 	return ret.LastInsertId()
+}
+
+func (db *DB) NoteDel(noteID int64) error {
+	_, err := db.DB.Exec(`DELETE FROM notes WHERE id=$1`, noteID)
+	return err
 }
 
 func (db *DB) Close() {

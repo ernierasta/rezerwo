@@ -5,3 +5,18 @@
 #total-price{
 	font-size: larger;
 }
+
+.fa-check::before {
+    content: "";
+}
+
+.fa-remove::before, .fa-close::before, .fa-times::before {
+    content: "";
+}
+
+.fa {
+    display: inline-block;
+    font: normal normal normal 14px/1 FontAwesome;
+    font-size: inherit;
+    text-rendering: auto;
+}

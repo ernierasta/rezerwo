@@ -24,6 +24,7 @@ wget https://github.com/quilljs/quill/releases/download/v1.3.6/quill.tar.gz
 
 # datatable.js - download by hand from: https://datatables.net
 # look inside downloaded zip which modules we actually have
+# actually we are using all extensions
 
 # bootbox - easy modals
 wget https://github.com/makeusabrew/bootbox/releases/download/v5.3.4/bootbox.min.js -O ../js/bootbox.min.js

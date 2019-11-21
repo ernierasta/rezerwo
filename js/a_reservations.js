@@ -1,6 +1,5 @@
 $(function() {
-
-  // Setup - add a text input to each footer cell
+   // Setup - add a text input to each footer cell
   $('#reservations thead tr').clone(true).appendTo( '#reservations thead' );
   $('#reservations thead tr:eq(1) th').each( function (i) {
       var title = $(this).text();

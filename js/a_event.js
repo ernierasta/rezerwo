@@ -8,7 +8,6 @@ function EventDetailSubmit() {
   return false;
 }
 
-
 $(function() {
   var QuillOrderNoteEditor = new Quill('#order-note-editor', {
     theme: 'snow'

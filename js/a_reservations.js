@@ -1,13 +1,32 @@
 $(function() {
 
+  // Setup - add a text input to each footer cell
+  $('#reservations thead tr').clone(true).appendTo( '#reservations thead' );
+  $('#reservations thead tr:eq(1) th').each( function (i) {
+      var title = $(this).text();
+      $(this).html( '<input type="text" placeholder="Search '+title+'" />' );
+
+      $( 'input', this ).on( 'keyup change', function () {
+          if ( table.column(i).search() !== this.value ) {
+              table
+                  .column(i)
+                  .search( this.value )
+                  .draw();
+          }
+      } );
+  } );
+
   var table = $('#reservations').DataTable({
+    orderCellsTop: true,
+    fixedHeader: true,
+    colReorder: true,
     columnDefs: [{
       orderable: true,
       className: 'select-checkbox',
       targets:   0
     }],
     'lengthMenu': [ [10, 50, 100, -1], [10, 50, 100, "All"] ],
-    //'pageLength': 100,
+    'pageLength': -1,
     select: {
       style: 'multi', //'os'
     },
@@ -15,7 +34,6 @@ $(function() {
     //rowGroup: {
     //    dataSrc: 'group'
     //},
-    colReorder: true,
     dom: 'Blfrtip',
     buttons: [ 
       {

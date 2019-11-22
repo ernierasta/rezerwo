@@ -35,6 +35,9 @@ $(function() {
   var table = $('#reservations').DataTable({
     orderCellsTop: true,
     fixedHeader: true,
+    fixedColumns: {
+      leftColumns: 2
+    },
     colReorder: true,
     //responsive: true,
     columnDefs: [{

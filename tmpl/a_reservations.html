@@ -12,7 +12,7 @@
     <div class="col-md-12">
       <h3>{{.LBLTitle}}</h3>
       <input id="event-id" type="hidden" value={{.EventID}}>
-      <div id="total-price-lbl">{{.LBLTotalPrice}}: <span id="total-price"></span><span>, {{.LBLTotalSits}}: <span id="total-sits"></span></div>
+      <!-- this is now created by js: <div id="total-price-lbl">{{.LBLTotalPrice}}: <span id="total-price"></span><span>, {{.LBLTotalSits}}: <span id="total-sits"></span></div> -->
         <table id="reservations" class="table table-bordered">
         <thead>
           <tr>
@@ -21,8 +21,8 @@
             <th scope="col">{{.THCustName}}</th>
             <th scope="col">{{.THCustSurname}}</th>
             <th scope="col">{{.THStatus}}</th>
-            <th scope="col">{{.THNotes}}</th>
             <th scope="col">{{.THCustEmail}}</th>
+            <th scope="col">{{.THNotes}}</th>
             <th scope="col">{{.THCustPhone}}</th>
             <th scope="col">{{.THPrice}}</th>
             <th scope="col">{{.THCurrency}}</th>
@@ -38,8 +38,8 @@
             <td>{{.CustName.String}}</td>
             <td>{{.CustSurname.String}}</td>
             <td>{{.Status}}</td>
-            <td>{{.Notes.String}}</td>
             <td>{{.CustEmail.String}}</td>
+            <td>{{.Notes.String}}</td>
             <td>{{.CustPhone.String}}</td>
             <td>{{.Price.Int64}}</td>
             <td>{{.Currency.String}}</td>

@@ -1,3 +1,16 @@
+var ChairNr = 0;
+var Room = 1;
+var Name = 2;
+var Surname = 3;
+var OrderStatus = 4;
+var Email = 5;
+var Notes = 6;
+var Phone = 7;
+var Price = 8;
+var Currency = 9;
+var Ordered = 10;
+var Payed = 11;
+
 $(function() {
 
   // Column filering
@@ -6,7 +19,7 @@ $(function() {
   $('#reservations thead tr:eq(1) th').each( function (i) {
     var title = $(this).text();
     var width = '';
-    if (title == 'Order status'|| title == 'Chair nr' || title == 'Name' || title == 'Surname' ) {
+    if (i == OrderStatus || i == ChairNr || i == Name || i == Surname) {
       width = 'style="width: 110px;"';
     }
     $(this).html( '<input type="text" '+width+' placeholder="Search '+title+'" />' );
@@ -52,7 +65,7 @@ $(function() {
     //rowGroup: {
     //    dataSrc: 'group'
     //},
-    dom: 'Blfrtip',
+    dom: 'ilfB<"total-price-lbl">rtp',
     buttons: [ 
       {
         extend: 'collection',
@@ -64,9 +77,9 @@ $(function() {
         extend: 'selected',
         text: 'Toggle "ordered/payed"',
         action: function ( e, dt, button, config ) {
-          var stscol = table.colReorder.transpose(4);
-          var furnNumberCol = table.colReorder.transpose(0);
-          var roomNameCol = table.colReorder.transpose(1);
+          var stscol = table.colReorder.transpose(OrderStatus);
+          var furnNumberCol = table.colReorder.transpose(ChairNr);
+          var roomNameCol = table.colReorder.transpose(Room);
           indexes = dt.rows({selected: true}).indexes();
           for (i=0; i < indexes.length;i++){
             row = dt.row(indexes[i]).data()
@@ -97,8 +110,8 @@ $(function() {
         extend: "selected",
         text: "Delete",
         action: function ( e, dt, button, config ) {
-          var furnNumberCol = table.colReorder.transpose(0);
-          var roomNameCol = table.colReorder.transpose(1);
+          var furnNumberCol = table.colReorder.transpose(ChairNr);
+          var roomNameCol = table.colReorder.transpose(Room);
           var indexes = dt.rows({selected: true}).indexes();
           bootbox.confirm({
             message: "Really delete selected orders? It is UNREVERSABLE!",
@@ -127,6 +140,16 @@ $(function() {
         },
       },
       {
+        text: "Cancel filters",
+        action: function ( e, dt, button, config ) {
+          $('#reservations thead tr:eq(1) th input').each( function (i) {
+            table.column(i).search("");
+            $(this).val("");
+          });
+          table.draw();
+        }
+      },
+      {
         // select only visible, not all
         text: "Select All",
         action: function ( e, dt, button, config ) {
@@ -137,12 +160,21 @@ $(function() {
     ]
   });
 
+  // position info panel
+  $("div#reservations_length").css("display", "inline");
+  $("div#reservations_length").css("float", "left");
+  $("div#reservations_length").css("margin-right", "10px");
+
+  // set content of total-price-lbl, it is created in "dom" table param
+  $("div.total-price-lbl").css("display", "inline");
+  $("div.total-price-lbl").css("margin-left", "5px");
+  $("div.total-price-lbl").html('Total: <span id="total-price"></span><span>, Sits: <span id="total-sits"></span></div>');
 
   // show total sits and price on select/deselect
   table.on( 'select', function ( e, dt, items ) {
     var rows = dt.rows({selected: true}).data();
     var price = 0;
-    var pricecol = table.colReorder.transpose(8);
+    var pricecol = table.colReorder.transpose(Price);
     for (i=0; i < rows.length;i++){
       price += Number(rows[i][pricecol]);
     };
@@ -153,7 +185,7 @@ $(function() {
   table.on( 'deselect', function ( e, dt, items ) {
     var rows = dt.rows({selected: true}).data();
     var price = 0;
-    var pricecol = table.colReorder.transpose(8);
+    var pricecol = table.colReorder.transpose(Price);
     for (i=0; i < rows.length;i++){
       price += Number(rows[i][pricecol]);
     };

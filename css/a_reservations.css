@@ -1,11 +1,11 @@
 @charset "UTF-8";
-#total-price-lbl {
-  float: right;
-}
-
 #total-price, #total-sits {
   font-size: larger;
   font-weight: bold;
+}
+
+div.dataTables_wrapper div.dataTables_filter {
+  text-align: left !important;
 }
 
 .fa-check::before {

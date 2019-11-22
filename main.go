@@ -231,7 +231,7 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	}
 
 	// init PZKO
-	uIDP, err := db.UserAdd(&User{ID: 2, Email: "pzkokarwina@pzkokarwina.cz", URL: "pzkokarwina", Passwd: "PZKO+007"})
+	uIDP, err := db.UserAdd(&User{ID: 2, Email: "rezerwacja@pzkokarwina.cz", URL: "pzkokarwina", Passwd: "PZKO+007"})
 	if err != nil {
 		log.Println(err)
 		uIDP = 2

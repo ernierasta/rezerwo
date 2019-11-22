@@ -7,6 +7,7 @@ Admin XP:
 * map view for admin,
 * Different color after payed on table (green),
 * Dock buttons
+* Remove filters
 
 Customer XP:
 * total/free chairs - no reservation page.

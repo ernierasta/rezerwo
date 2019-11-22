@@ -55,6 +55,7 @@ func main() {
 
 	handleStatic("js")
 	handleStatic("css")
+	handleStatic("img")
 	http.Handle("/", rtr)
 	http.HandleFunc("/order", ReservationOrderHTML(db, lang))
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert}))

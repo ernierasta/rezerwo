@@ -1,0 +1,10 @@
+sources:
+https://svgsilh.com/000000/image/1633250.html
+https://svgsilh.com/image/155491.html
+
+license:
+Creative Commons CC0
+
+org names:
+1633250.svg
+155491.svg

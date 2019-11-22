@@ -23,7 +23,7 @@ $(function() {
     orderCellsTop: true,
     fixedHeader: true,
     colReorder: true,
-    responsive: true,
+    //responsive: true,
     columnDefs: [{
       orderable: true,
       //className: 'select-checkbox',

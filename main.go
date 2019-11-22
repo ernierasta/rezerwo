@@ -1224,7 +1224,7 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 			LBLTitle:         "Reservations",
 			LBLTotalPrice:    "Total",
 			LBLTotalSits:     "Sits",
-			THChairNumber:    "Chair number",
+			THChairNumber:    "Chair nr",
 			THRoomName:       "Room",
 			THCustName:       "Name",
 			THCustSurname:    "Surname",

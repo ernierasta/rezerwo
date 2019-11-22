@@ -5,7 +5,11 @@ $(function() {
   $('#reservations thead tr').clone(true).appendTo( '#reservations thead' );
   $('#reservations thead tr:eq(1) th').each( function (i) {
     var title = $(this).text();
-    $(this).html( '<input type="text" placeholder="Search '+title+'" />' );
+    var width = '';
+    if (title == 'Order status'|| title == 'Chair nr' || title == 'Name' || title == 'Surname' ) {
+      width = 'style="width: 110px;"';
+    }
+    $(this).html( '<input type="text" '+width+' placeholder="Search '+title+'" />' );
     $( 'input', this ).on( 'keyup change', function () {
       // a bit overhead, but need to have actual value when typing
       var colnr = table.colReorder.transpose(i);

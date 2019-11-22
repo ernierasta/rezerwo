@@ -24,7 +24,21 @@ $(function() {
       orderable: true,
       //className: 'select-checkbox',
       targets:   0
-    }],
+    },
+      {
+        targets: 4,
+        render: function ( data, type, row ) {
+          var color = 'black';
+          if (data == 'ordered') {
+            color = '#fd7e14';
+          }
+          if (data == 'payed') {
+            color = '#28a745';
+          }
+          return '<span style="color:' + color + '">' + data + '</span>';
+        }
+     }
+    ],
     'lengthMenu': [ [10, 50, 100, -1], [10, 50, 100, "All"] ],
     'pageLength': -1,
     select: {

@@ -3,6 +3,10 @@
 * Mail - send room name!
 * GDPR - events table.
 
+Admin XP:
+* map view for admin,
+* Different color after payed on table (green),
+* Dock buttons
 
 Customer XP:
 * total/free chairs - no reservation page.
@@ -12,3 +16,5 @@ Designer:
 * numeric input - current chair number and current table number, current object number.
 * possibility to change object color
 
+Bugs:
+* reservation - bug, not working payed sometimes. TODO: show bug if happen

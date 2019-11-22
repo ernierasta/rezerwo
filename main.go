@@ -1169,6 +1169,7 @@ type AdminReservationsVars struct {
 	EventID          int64
 	LBLTitle         string
 	LBLTotalPrice    string
+	LBLTotalSits     string
 	THChairNumber    string
 	THRoomName       string
 	THCustName       string
@@ -1222,6 +1223,7 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 			EventID:          eventID,
 			LBLTitle:         "Reservations",
 			LBLTotalPrice:    "Total",
+			LBLTotalSits:     "Sits",
 			THChairNumber:    "Chair number",
 			THRoomName:       "Room",
 			THCustName:       "Name",

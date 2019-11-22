@@ -1,27 +1,28 @@
 $(function() {
-   // Setup - add a text input to each footer cell
+
+  // Column filering
+  // Setup - add a text input to each footer cell
   $('#reservations thead tr').clone(true).appendTo( '#reservations thead' );
   $('#reservations thead tr:eq(1) th').each( function (i) {
-      var title = $(this).text();
-      $(this).html( '<input type="text" placeholder="Search '+title+'" />' );
-
-      $( 'input', this ).on( 'keyup change', function () {
-          if ( table.column(i).search() !== this.value ) {
-              table
-                  .column(i)
-                  .search( this.value )
-                  .draw();
-          }
-      } );
-  } );
+    var title = $(this).text();
+    $(this).html( '<input type="text" style="width: 100%" placeholder="Search '+title+'" />' );
+    $( 'input', this ).on( 'keyup change', function () {
+      // a bit overhead, but need to have actual value when typing
+      var colnr = table.colReorder.transpose(i);
+      if ( table.column(colnr).search() !== this.value ) {
+         table.column(colnr).search( this.value ).draw();
+      }
+    });
+  });
 
   var table = $('#reservations').DataTable({
     orderCellsTop: true,
     fixedHeader: true,
     colReorder: true,
+    responsive: true,
     columnDefs: [{
       orderable: true,
-      className: 'select-checkbox',
+      //className: 'select-checkbox',
       targets:   0
     }],
     'lengthMenu': [ [10, 50, 100, -1], [10, 50, 100, "All"] ],
@@ -45,7 +46,7 @@ $(function() {
         extend: 'selected',
         text: 'Toggle "ordered/payed"',
         action: function ( e, dt, button, config ) {
-          var stscol = table.colReorder.transpose(8);
+          var stscol = table.colReorder.transpose(4);
           var furnNumberCol = table.colReorder.transpose(0);
           var roomNameCol = table.colReorder.transpose(1);
           indexes = dt.rows({selected: true}).indexes();
@@ -69,7 +70,9 @@ $(function() {
               });
             } 
           }
-          //dt.rows({selected: true}).deselect();
+          dt.rows({selected: true}).deselect();
+          //$('#total-price').html(0);
+          //$('#total-sits').html(0);
         }
       },
       {
@@ -117,14 +120,27 @@ $(function() {
   });
 
 
+  // show total sits and price on select/deselect
   table.on( 'select', function ( e, dt, items ) {
     var rows = dt.rows({selected: true}).data();
     var price = 0;
-    var pricerow = table.colReorder.transpose(6);
+    var pricecol = table.colReorder.transpose(8);
     for (i=0; i < rows.length;i++){
-      price += Number(rows[i][pricerow]);
+      price += Number(rows[i][pricecol]);
     };
     $('#total-price').html(price);
+    $('#total-sits').html(rows.length);
+  });
+
+  table.on( 'deselect', function ( e, dt, items ) {
+    var rows = dt.rows({selected: true}).data();
+    var price = 0;
+    var pricecol = table.colReorder.transpose(8);
+    for (i=0; i < rows.length;i++){
+      price += Number(rows[i][pricecol]);
+    };
+    $('#total-price').html(price);
+    $('#total-sits').html(rows.length);
   });
 
 });

@@ -4,13 +4,17 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"net/mail"
 	"net/smtp"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jaytaylor/html2text"
 )
 
 // NotifConfig type represent all notification attributes
@@ -25,12 +29,58 @@ type MailConfig struct {
 	To         []string
 	Subject    string
 	Text       string
+	Files      []string
 }
+
+/*
+Correct mail stuct html with attachments:
+
+From: x
+To: y
+...
+Content-Type: multipart/mixed; boundary="boundary1"
+
+--boundary1
+Content-Type: multipart/alternative; boundary="boundary2"
+
+--boundary2
+Content-Type: text/plain; charset="UTF-8"
+
+hi!
+
+--boundary2
+Content-Type: text/html; charset="UTF-8"
+
+<html><body><p>hi</p></body></html>
+
+--boundary2--
+--boundary1
+Content-Type: application/octet-stream; name="PLAN - I semestr(2).docx"
+Content-Disposition: attachment; filename="PLAN - I semestr(2).docx"
+Content-Transfer-Encoding: base64
+
+aU...
+
+--boundary1
+Content-Type: application/vnd.oasis.opendocument.text; name="odziez.2.odt"
+Content-Disposition: attachment; filename="odziez.2.odt"
+Content-Transfer-Encoding: base64
+
+aaUU ...
+--boundary1--
+
+*/
 
 // Send sends mail via smtp.
 // Supports multiple recepients, TLS (port 465)/StartTLS(ports 25,587, any other).
 // Mail should always valid (correctly encoded subject and body).
+// Now there is HTML (with automatic text version generating) support.
+// We can also send attachments.
 func MailSend(n MailConfig) error {
+
+	var b1 = "00000000000035014305975de62a"
+	var b2 = "00000000000035014305975de6Xx"
+
 	if (n.User != "" && n.Pass == "") ||
 		(n.Pass != "" && n.User == "") ||
 		n.Server == "" {
@@ -52,15 +102,60 @@ func MailSend(n MailConfig) error {
 	header["Date"] = time.Now().Format(time.RFC1123Z)
 	header["Subject"] = encodeRFC2047(n.Subject)
 	header["MIME-Version"] = "1.0"
-	header["Content-Type"] = "text/plain; charset=\"utf-8\""
-	header["Content-Transfer-Encoding"] = "base64"
+
+	if n.Sender != "" {
+		header["Sender"] = n.Sender
+	}
+	if n.ReplyTo != "" {
+		header["Reply-To"] = n.ReplyTo
+	}
+	isHTML := strings.Contains(n.Text, "<html>")
+	hasAttachments := len(n.Files) > 0
+
+	msg := ""
+
+	if isHTML && hasAttachments {
+		header["Content-Type"] = fmt.Sprintf("multipart/mixed;boundary=\"%s\"", b1)
+		// prepate "alternative" section plain/html
+		msg = "\r\n" + "--" + b1 + "\r\n"
+		altCont, err := alternativeContent(msg, n.Text, b2)
+		if err != nil {
+			return err
+		}
+		msg += altCont
+		// attachments
+		for i := range n.Files {
+			ct, err := validateFile(n.Files[i])
+			if err != nil {
+				return err
+			}
+			f, err := ioutil.ReadFile(n.Files[i])
+			msg += "--" + b1
+			msg += fmt.Sprintf("Content-Type: %s; name=\"%s\"", ct, n.Files[i])
+			msg += fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"", n.Files[i])
+			msg += "Content-Transfer-Encoding: base64\r\n"
+			msg += "\r\n" + base64.StdEncoding.EncodeToString(f) + "\r\n"
+		}
+		msg += "--" + b1 + "--"
+
+	} else if isHTML && !hasAttachments {
+		var err error
+		msg, err = alternativeContent("", n.Text, b1)
+		if err != nil {
+			return err
+		}
+	} else {
+		header["Content-Transfer-Encoding"] = "base64"
+		header["Content-Type"] = "text/plain; charset=\"utf-8\""
+		msg = base64.StdEncoding.EncodeToString([]byte(n.Text))
+	}
 
 	message := ""
 	for k, v := range header {
 		message += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
 
-	message += "\r\n" + base64.StdEncoding.EncodeToString([]byte(n.Text))
+	message += msg
 	err := sendMail(n.Server, n.Port, auth, n.IgnoreCert, n.From, n.To, []byte(message))
 
 	if err != nil {
@@ -208,4 +303,59 @@ func validateLine(line string) error {
 		return fmt.Errorf("smtp: A line must not contain CR or LF")
 	}
 	return nil
+}
+
+// validateFile checks if file exists and return it's MIME type if all ok
+func validateFile(file string) (string, error) {
+	if _, err := os.Stat(file); err != nil {
+		return "", err
+	}
+	f, err := os.Open(file)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	ct, err := getFileContentType(f)
+	if err != nil {
+		return "", err
+	}
+	return ct, nil
+}
+
+func getFileContentType(out *os.File) (string, error) {
+	// Only the first 512 bytes are used to sniff the content type.
+	buffer := make([]byte, 512)
+
+	_, err := out.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	// Use the net/http package's handy DectectContentType function. Always returns a valid
+	// content-type by returning "application/octet-stream" if no others seemed to match.
+	contentType := http.DetectContentType(buffer)
+	return contentType, nil
+}
+
+func alternativeContent(msg, htmlText, boundary string) (string, error) {
+	msg += fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
+	// text version
+	plainText, err := html2text.FromString(htmlText, html2text.Options{PrettyTables: true})
+	if err != nil {
+		return "", err
+	}
+	msg += "\r\n" + "--" + boundary + "\r\n"
+	msg += "Content-Type: text/plain; charset=\"UTF-8\"\r\n"
+	msg += "Content-Transfer-Encoding: base64\r\n"
+	msg += "\r\n" + base64.StdEncoding.EncodeToString([]byte(plainText)) + "\r\n"
+	// html version
+	msg += "\r\n" + "--" + boundary + "\r\n"
+	msg += "Content-Type: text/html; charset=\"UTF-8\"\r\n"
+	msg += "Content-Transfer-Encoding: base64\r\n"
+	msg += "\r\n" + base64.StdEncoding.EncodeToString([]byte(htmlText)) + "\r\n"
+	msg += "\r\n" + "--" + boundary + "--" + "\r\n"
+
+	fmt.Println(msg)
+
+	return msg, nil
 }

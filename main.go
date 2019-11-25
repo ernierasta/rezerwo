@@ -736,7 +736,7 @@ func GetPageVarsFromDB(db *DB, roomID, eventID int64) Page {
 
 type ReservationOrderVars struct {
 	Event                               Event
-	LBLOrderHowto                       string
+	LBLOrderHowto                       template.HTML
 	LBLLang                             string
 	LBLTitle                            string
 	LBLEmail, LBLEmailPlaceholder       string
@@ -828,7 +828,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 		//p := GetPageVarsFromDB(db, roomName, eventName)
 		pEN := ReservationOrderVars{
 			Event:                 event,
-			LBLOrderHowto:         event.OrderHowto,
+			LBLOrderHowto:         template.HTML(event.OrderHowto),
 			LBLLang:               lang,
 			LBLTitle:              "Order",
 			LBLEmail:              "Email",
@@ -858,7 +858,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 
 		p := ReservationOrderVars{
 			Event:                 event,
-			LBLOrderHowto:         event.OrderHowto,
+			LBLOrderHowto:         template.HTML(event.OrderHowto),
 			LBLLang:               lang,
 			LBLTitle:              "Zamówienie",
 			LBLEmail:              "Email",
@@ -1015,6 +1015,9 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				e.ToDate = td.Unix()
 				e.DefaultPrice = int64(dp)
 				e.DefaultCurrency = r.FormValue("default-currency")
+				e.NoSitsSelectedTitle = r.FormValue("no-sits-selected-title")
+				e.NoSitsSelectedText = r.FormValue("no-sits-selected-text")
+				e.OrderHowto = r.FormValue("order-howto")
 				e.MailSubject = r.FormValue("mail-subject")
 				e.AdminMailSubject = r.FormValue("admin-mail-subject")
 				e.AdminMailText = r.FormValue("admin-mail-text")
@@ -1022,10 +1025,10 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				e.OrderedNoteTitle = r.FormValue("ordered-note-title")
 				e.OrderedNoteText = r.FormValue("html-ordered-note-text")
 
-				log.Printf("%+v", e)
+				fmt.Printf("new: %+v", e)
 				org, _ := db.EventGetByID(e.ID)
-				log.Printf("org: %+v", org)
-				log.Println("test equal, is:", reflect.DeepEqual(e, org))
+				fmt.Printf("org: %+v", org)
+				fmt.Println("test equal, is:", reflect.DeepEqual(e, org))
 			}
 		} // POST END
 
@@ -1725,7 +1728,7 @@ func ParseTmpl(t string, o Order) string {
 	}
 	err = tmpl.Execute(&buf, o)
 	if err != nil {
-		log.Println("error executing template %q, order %+v, err: %v", t, o, err)
+		log.Printf("error executing template %q, order %+v, err: %v", t, o, err)
 		return t
 	}
 	return buf.String()

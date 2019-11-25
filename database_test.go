@@ -176,7 +176,7 @@ func TestFurniture(t *testing.T) {
 	}
 
 	furniture1.RoomID = rID
-	fID, err := db.FurnitureAddOrUpdate(furniture1)
+	fID, err := db.FurnitureAdd(furniture1)
 	if err != nil {
 		t.Errorf("problem adding furniture: %+v, err: %v ", furniture1, err)
 	} else {
@@ -184,9 +184,9 @@ func TestFurniture(t *testing.T) {
 		t.Log(furniture1)
 	}
 	// update the same furniture
-	fID, err = db.FurnitureAddOrUpdate(furniture1)
-	if err != nil {
-		t.Errorf("problem re-adding(updating) furniture: %+v, err: %v ", furniture1, err)
+	fID, err = db.FurnitureAdd(furniture1)
+	if err == nil {
+		t.Errorf("expecting error on re-adding the same furniture: %+v, err: %v ", furniture1, err)
 	}
 
 	// change room
@@ -202,7 +202,7 @@ func TestFurniture(t *testing.T) {
 	}
 
 	// remove furniture1
-	err = db.FurnitureDelByNumberType(furniture1.Number, furniture1.Type)
+	err = db.FurnitureDelByNumberTypeRoom(furniture1.Number, furniture1.Type, room1b.ID)
 	if err != nil {
 		t.Errorf("problem deleting furniture, err: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestEventsRoom(t *testing.T) {
 		t.Fatal(err)
 	}
 	event1.UserID = uID
-	eID, err := db.EventAddOrUpdate(event1)
+	eID, err := db.EventAdd(event1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,11 +238,11 @@ func TestEventsRoom(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = db.RoomAddToEvent(room1.ID, eID)
+	err = db.EventAddRoom(eID, room1.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = db.RoomAddToEvent(room1b.ID, eID)
+	err = db.EventAddRoom(eID, room1b.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

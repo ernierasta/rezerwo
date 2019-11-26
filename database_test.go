@@ -22,6 +22,14 @@ var (
 		Surname:      sql.NullString{"Overtestosteron", true},
 		Organization: sql.NullString{"ErnieRasta Corp", true},
 	}
+	user2 = &User{
+		ID:           100,
+		Email:        "shit@testing.com",
+		Passwd:       "some",
+		Name:         sql.NullString{"a", true},
+		Surname:      sql.NullString{"b", true},
+		Organization: sql.NullString{"org", true},
+	}
 	room1 = &Room{
 		Name:   "room1",
 		Width:  1000,
@@ -93,11 +101,10 @@ func TestUser(t *testing.T) {
 		t.Errorf("problem adding user: %v, err: %v", user1, err)
 	} else {
 		user1.ID = id
+		user1b.ID = id
 	}
 	if _, err := db.UserAdd(user1); err == nil {
-		t.Errorf("expected error adding the same user: %v, err: %v", user1, err)
-	} else {
-		t.Log(err)
+		t.Errorf("was expecting error adding the same user: %v, err: %v", user1, err)
 	}
 	if u, err := db.UserGetByEmail(user1.Email); err != nil {
 		t.Errorf("problem retrieving user by email: %q, User: %v, err: %v", user1.Email, u, err)
@@ -112,8 +119,14 @@ func TestUser(t *testing.T) {
 		}
 	}
 	if err := db.UserMod(user1b); err != nil {
-		t.Errorf("problem updating user, new data: %v, err: %v", user1b, err)
+		t.Errorf("problem updating user,  err: %v", err)
 	}
+	if err := db.UserMod(user2); err == nil {
+		t.Errorf("there should be error when updating non-existing")
+	} else {
+		t.Logf("this err is expected: %s", err)
+	}
+
 	Raport("before deleting user:", db, t)
 	if err := db.UserDel(user1.Email); err != nil {
 		t.Errorf("problem deleting user by email: %q, err: %v", user1.Email, err)
@@ -196,7 +209,8 @@ func TestFurniture(t *testing.T) {
 	}
 
 	// update furniture attribs
-	err = db.FurnitureMod(furniture1b)
+	furniture1b.RoomID = rID
+	err = db.FurnitureModByNumberTypeRoom(furniture1b)
 	if err != nil {
 		t.Errorf("problem updating furniture, err: %v", err)
 	}

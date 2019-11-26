@@ -200,12 +200,18 @@ func (db *DB) UserAdd(user *User) (int64, error) {
 
 func (db *DB) UserGetByEmail(email string) (User, error) {
 	user := User{}
+	if email == "" {
+		return user, fmt.Errorf("db.UserGetByEmail: empty email given")
+	}
 	err := db.DB.Get(&user, `SELECT * FROM users WHERE email=$1`, email)
 	return user, err
 }
 
 func (db *DB) UserGetByID(id int64) (User, error) {
 	user := User{}
+	if err := NoZeroMinus("user id", id); err != nil {
+		return user, fmt.Errorf("UserGetByID: %v", err)
+	}
 	err := db.DB.Get(&user, `SELECT * FROM users WHERE id=$1`, id)
 	return user, err
 }
@@ -229,8 +235,21 @@ func (db *DB) UserGetAll() ([]User, error) {
 }
 
 func (db *DB) UserMod(user *User) error {
-	_, err := db.DB.NamedExec(`UPDATE users SET email=:email, url=:url, passwd=:passwd, name=:name, surname=:surname, organization=:organization WHERE id=:id`, user)
-	return err
+	ret, err := db.DB.NamedExec(`UPDATE users SET email=:email, url=:url, passwd=:passwd, name=:name, surname=:surname, organization=:organization WHERE id=:id`, user)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", user)
+	}
+	if aff > 1 {
+		return fmt.Errorf("more then 1 row changed for: %+v", user)
+	}
+	return nil
 }
 
 func (db *DB) UserModByEmail(user *User) error {
@@ -329,11 +348,11 @@ func (db *DB) RoomDel(id int64) error {
 
 // rooms_id_fk is uniqu, so only one owner of room can exist
 func (db *DB) RoomAssignToUser(userID, roomID int64) error {
-	err := NoMinus("userID", userID)
+	err := NoZeroMinus("userID", userID)
 	if err != nil {
 		return err
 	}
-	err = NoMinus("roomID", roomID)
+	err = NoZeroMinus("roomID", roomID)
 	if err != nil {
 		return err
 	}
@@ -544,11 +563,11 @@ func (db *DB) PriceModByEventIDFurnID(price *Price) error {
 	if price.EventID == 0 || price.FurnitureID == 0 {
 		return fmt.Errorf("can not modify price if EventID or FurnitureID is 0, %+v", price)
 	}
-	err := NoMinus("eventID", price.EventID)
+	err := NoZeroMinus("eventID", price.EventID)
 	if err != nil {
 		return err
 	}
-	err = NoMinus("furnitureID", price.FurnitureID)
+	err = NoZeroMinus("furnitureID", price.FurnitureID)
 	if err != nil {
 		return err
 	}
@@ -652,11 +671,11 @@ func (db *DB) RoomAddToEventUnsafe(roomID int64, eventID int64) error {
 }
 
 func (db *DB) EventAddRoom(eventID, roomID int64) error {
-	err := NoMinus("eventID", eventID)
+	err := NoZeroMinus("eventID", eventID)
 	if err != nil {
 		return err
 	}
-	err = NoMinus("roomID", roomID)
+	err = NoZeroMinus("roomID", roomID)
 	if err != nil {
 		return err
 	}
@@ -753,11 +772,11 @@ func (db *DB) ReservationGetAllByNoteID(noteID int64) ([]Reservation, error) {
 
 func (db *DB) ReservationFullGetAll(userID, eventID int64) ([]ReservationFull, error) {
 	rr := []ReservationFull{}
-	err := NoMinus("userID", userID)
+	err := NoZeroMinus("userID", userID)
 	if err != nil {
 		return rr, err
 	}
-	err = NoMinus("eventID", eventID)
+	err = NoZeroMinus("eventID", eventID)
 	if err != nil {
 		return rr, err
 	}
@@ -781,10 +800,10 @@ func (db *DB) ReservationMod(r *Reservation) error {
 }
 
 func (db *DB) ReservationModStatus(status string, payedDate int64, eventID, furnID int64) error {
-	if err := NoMinus("eventID", eventID); err != nil {
+	if err := NoZeroMinus("eventID", eventID); err != nil {
 		return fmt.Errorf("error: ReservationModStatus: %v", err)
 	}
-	if err := NoMinus("furnID", furnID); err != nil {
+	if err := NoZeroMinus("furnID", furnID); err != nil {
 		return fmt.Errorf("error: ReservationModStatus: %v", err)
 	}
 	_, err := db.DB.Exec(`UPDATE reservations SET status=$1, payed_date=$2 WHERE events_id_fk=$3 AND furnitures_id_fk=$4`, status, payedDate, eventID, furnID)
@@ -825,7 +844,7 @@ func (db *DB) CustomerGetByEmail(email string) (Customer, error) {
 func (db *DB) CustomerGetAll(userID int64) ([]Customer, error) {
 	cc := []Customer{}
 
-	err := NoMinus("userID", userID)
+	err := NoZeroMinus("userID", userID)
 	if err != nil {
 		return cc, err
 	}
@@ -834,11 +853,11 @@ func (db *DB) CustomerGetAll(userID int64) ([]Customer, error) {
 }
 
 func (db *DB) CustomerAppendToUser(userID, customerID int64) error {
-	err := NoMinus("userID", userID)
+	err := NoZeroMinus("userID", userID)
 	if err != nil {
 		return err
 	}
-	err = NoMinus("customerID", customerID)
+	err = NoZeroMinus("customerID", customerID)
 	if err != nil {
 		return err
 	}
@@ -897,8 +916,8 @@ func (db *DB) Close() {
 	db.DB.Close()
 }
 
-func NoMinus(n string, i int64) error {
-	if i < 0 {
+func NoZeroMinus(n string, i int64) error {
+	if i <= 0 {
 		return fmt.Errorf("wrong input param %q: %d", n, i)
 	}
 	return nil

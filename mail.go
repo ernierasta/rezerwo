@@ -71,7 +71,7 @@ aaUU ...
 
 */
 
-// Send sends mail via smtp.
+// MailSend sends mail via smtp.
 // Supports multiple recepients, TLS (port 465)/StartTLS(ports 25,587, any other).
 // Mail should always valid (correctly encoded subject and body).
 // Now there is HTML (with automatic text version generating) support.
@@ -90,7 +90,7 @@ func MailSend(n MailConfig) error {
 		} else {
 			pass = n.Pass // if someone has 4 leter pass, it deserves to be logged ;-)
 		}
-		return fmt.Errorf("mail.Send: one of auth params is empty(SENDING ABORTED), u: %q p:%q s: %q", n.User, pass, n.Server)
+		return fmt.Errorf("SendMail: one of auth params is empty(SENDING ABORTED), u: %q p:%q s: %q", n.User, pass, n.Server)
 	}
 	auth := smtp.PlainAuth("", n.User, n.Pass, n.Server)
 
@@ -100,7 +100,7 @@ func MailSend(n MailConfig) error {
 	header["From"] = n.From
 	header["To"] = recipients
 	header["Date"] = time.Now().Format(time.RFC1123Z)
-	header["Subject"] = encodeRFC2047(n.Subject)
+	header["Subject"] = n.Subject
 	header["MIME-Version"] = "1.0"
 
 	if n.Sender != "" {
@@ -118,24 +118,26 @@ func MailSend(n MailConfig) error {
 		header["Content-Type"] = fmt.Sprintf("multipart/mixed;boundary=\"%s\"", b1)
 		// prepate "alternative" section plain/html
 		msg = "\r\n" + "--" + b1 + "\r\n"
-		altCont, err := alternativeContent(msg, n.Text, b2)
+		altCont, err := alternativeContent("", n.Text, b2)
 		if err != nil {
 			return err
 		}
 		msg += altCont
 		// attachments
+		attachCont := ""
 		for i := range n.Files {
 			ct, err := validateFile(n.Files[i])
 			if err != nil {
 				return err
 			}
 			f, err := ioutil.ReadFile(n.Files[i])
-			msg += "--" + b1
-			msg += fmt.Sprintf("Content-Type: %s; name=\"%s\"", ct, n.Files[i])
-			msg += fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"", n.Files[i])
-			msg += "Content-Transfer-Encoding: base64\r\n"
-			msg += "\r\n" + base64.StdEncoding.EncodeToString(f) + "\r\n"
+			attachCont += "--" + b1 + "\r\n"
+			attachCont += fmt.Sprintf("Content-Type: %s; name=\"%s\"\r\n", ct, n.Files[i])
+			attachCont += fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n", n.Files[i])
+			attachCont += "Content-Transfer-Encoding: base64\r\n"
+			attachCont += "\r\n" + base64.StdEncoding.EncodeToString(f) + "\r\n"
 		}
+		msg += attachCont
 		msg += "--" + b1 + "--"
 
 	} else if isHTML && !hasAttachments {
@@ -156,10 +158,11 @@ func MailSend(n MailConfig) error {
 	}
 
 	message += msg
+	//_ = auth
 	err := sendMail(n.Server, n.Port, auth, n.IgnoreCert, n.From, n.To, []byte(message))
 
 	if err != nil {
-		return fmt.Errorf("mail.Send: error sending mail, err: %v", err)
+		return fmt.Errorf("SendMail: error sending mail, err: %v", err)
 	}
 
 	return nil
@@ -337,25 +340,23 @@ func getFileContentType(out *os.File) (string, error) {
 	return contentType, nil
 }
 
-func alternativeContent(msg, htmlText, boundary string) (string, error) {
-	msg += fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
+func alternativeContent(msgpart, htmlText, boundary string) (string, error) {
+	msgpart += fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
 	// text version
 	plainText, err := html2text.FromString(htmlText, html2text.Options{PrettyTables: true})
 	if err != nil {
 		return "", err
 	}
-	msg += "\r\n" + "--" + boundary + "\r\n"
-	msg += "Content-Type: text/plain; charset=\"UTF-8\"\r\n"
-	msg += "Content-Transfer-Encoding: base64\r\n"
-	msg += "\r\n" + base64.StdEncoding.EncodeToString([]byte(plainText)) + "\r\n"
+	msgpart += "\r\n" + "--" + boundary + "\r\n"
+	msgpart += "Content-Type: text/plain; charset=\"UTF-8\"\r\n"
+	msgpart += "Content-Transfer-Encoding: base64\r\n"
+	msgpart += "\r\n" + base64.StdEncoding.EncodeToString([]byte(plainText)) + "\r\n"
 	// html version
-	msg += "\r\n" + "--" + boundary + "\r\n"
-	msg += "Content-Type: text/html; charset=\"UTF-8\"\r\n"
-	msg += "Content-Transfer-Encoding: base64\r\n"
-	msg += "\r\n" + base64.StdEncoding.EncodeToString([]byte(htmlText)) + "\r\n"
-	msg += "\r\n" + "--" + boundary + "--" + "\r\n"
+	msgpart += "\r\n" + "--" + boundary + "\r\n"
+	msgpart += "Content-Type: text/html; charset=\"UTF-8\"\r\n"
+	msgpart += "Content-Transfer-Encoding: base64\r\n"
+	msgpart += "\r\n" + base64.StdEncoding.EncodeToString([]byte(htmlText)) + "\r\n"
+	msgpart += "\r\n" + "--" + boundary + "--" + "\r\n"
 
-	fmt.Println(msg)
-
-	return msg, nil
+	return msgpart, nil
 }

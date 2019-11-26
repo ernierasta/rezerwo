@@ -10,11 +10,11 @@ import (
 // MSERVER= MUSER= MPASS= MTO= go test
 
 var (
-	server        = os.ExpandEnv("$MSERVER")
-	user          = os.ExpandEnv("$MUSER")
-	pass          = os.ExpandEnv("$MPASS")
-	to            = []string{os.ExpandEnv("$MTO")}
-	n, n2, n3, n4 MailConfig
+	server            = os.ExpandEnv("$MSERVER")
+	user              = os.ExpandEnv("$MUSER")
+	pass              = os.ExpandEnv("$MPASS")
+	to                = []string{os.ExpandEnv("$MTO")}
+	n, n2, n3, n4, n5 MailConfig
 )
 
 func Init() {
@@ -43,9 +43,13 @@ func Init() {
 
 	n4 = n
 	n4.Text = "<html><body><h1>Hi!</h1><p>This is HTML mail!<br></p><div>See You!<br>golang testing library</div></body></html>"
+
+	n5 = n
+	n5.Text = "<html><body><b>Hi!</b><p>This is HTML mail with attachments!<br></p><div>See You!<br>golang testing library</div></body></html>"
+	n5.Files = []string{"mail_test.go"}
 }
 
-func TestMail_Send(t *testing.T) {
+func TestSendMail(t *testing.T) {
 	Init()
 	type args struct {
 		n MailConfig
@@ -61,6 +65,7 @@ func TestMail_Send(t *testing.T) {
 		{"simple tls send", args{n2}, false},
 		{"html mail", args{n4}, false},
 		{"send as someone else", args{n3}, false},
+		{"html mail with attachments", args{n5}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

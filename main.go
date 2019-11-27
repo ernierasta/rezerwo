@@ -792,7 +792,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 				if err != nil {
 					log.Println(err)
 				}
-				_, err = db.ReservationAdd(&Reservation{
+				_, err = db.ReservationAddUnknCust(&Reservation{
 					OrderedDate: ToNI(time.Now().Unix()),
 					Price:       ToNI(pp[i]),
 					Currency:    ToNS(defaultCurrency),

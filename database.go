@@ -201,7 +201,7 @@ func (db *DB) UserAdd(user *User) (int64, error) {
 func (db *DB) UserGetByEmail(email string) (User, error) {
 	user := User{}
 	if email == "" {
-		return user, fmt.Errorf("db.UserGetByEmail: empty email given")
+		return user, fmt.Errorf("empty email given")
 	}
 	err := db.DB.Get(&user, `SELECT * FROM users WHERE email=$1`, email)
 	return user, err
@@ -210,7 +210,7 @@ func (db *DB) UserGetByEmail(email string) (User, error) {
 func (db *DB) UserGetByID(id int64) (User, error) {
 	user := User{}
 	if err := NoZeroMinus("user id", id); err != nil {
-		return user, fmt.Errorf("UserGetByID: %v", err)
+		return user, err
 	}
 	err := db.DB.Get(&user, `SELECT * FROM users WHERE id=$1`, id)
 	return user, err
@@ -218,12 +218,18 @@ func (db *DB) UserGetByID(id int64) (User, error) {
 
 func (db *DB) UserGetByURL(url string) (User, error) {
 	user := User{}
+	if url == "" {
+		return user, fmt.Errorf("empty url given")
+	}
 	err := db.DB.Get(&user, `SELECT * FROM users WHERE url=$1`, url)
 	return user, err
 }
 
 func (db *DB) UserGetPass(email string) (string, error) {
 	passwd := ""
+	if email == "" {
+		return "", fmt.Errorf("empty email given")
+	}
 	err := db.DB.Get(&passwd, `SELECT passwd FROM users WHERE email=$1`, email)
 	return passwd, err
 }
@@ -235,6 +241,9 @@ func (db *DB) UserGetAll() ([]User, error) {
 }
 
 func (db *DB) UserMod(user *User) error {
+	if user.ID <= 0 {
+		return fmt.Errorf("%q is %v", "user.ID", user.ID)
+	}
 	ret, err := db.DB.NamedExec(`UPDATE users SET email=:email, url=:url, passwd=:passwd, name=:name, surname=:surname, organization=:organization WHERE id=:id`, user)
 	if err != nil {
 		return err
@@ -247,29 +256,51 @@ func (db *DB) UserMod(user *User) error {
 		return fmt.Errorf("no rows affected for: %+v", user)
 	}
 	if aff > 1 {
-		return fmt.Errorf("more then 1 row changed for: %+v", user)
+		return fmt.Errorf("%d rows changed instead of one for: %+v", aff, user)
 	}
 	return nil
 }
 
 func (db *DB) UserModByEmail(user *User) error {
-	_, err := db.DB.NamedExec(`UPDATE users SET url=:url, passwd=:passwd, name=:name, surname=:surname, organization=:organization WHERE email=:email`, user)
-	return err
+	if user.Email == "" {
+		return fmt.Errorf("empty email given")
+	}
+	ret, err := db.DB.NamedExec(`UPDATE users SET url=:url, passwd=:passwd, name=:name, surname=:surname, organization=:organization WHERE email=:email`, user)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", user)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of one for: %+v", aff, user)
+	}
+	return nil
 }
 
 func (db *DB) UserDel(email string) error {
+	if email == "" {
+		return fmt.Errorf("empty email given")
+	}
 	ret, err := db.DB.Exec(`DELETE FROM users WHERE email=$1`, email)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("user %q not found", email)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", email)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of only one for: %+v", aff, email)
+	}
+	return nil
 }
 
 func (db *DB) RoomAdd(room *Room) (int64, error) {
@@ -282,24 +313,36 @@ func (db *DB) RoomAdd(room *Room) (int64, error) {
 
 func (db *DB) RoomGetByName(name string) (Room, error) {
 	room := Room{}
+	if name == "" {
+		return room, fmt.Errorf("empty name given")
+	}
 	err := db.DB.Get(&room, `SELECT * FROM rooms WHERE name=$1`, name)
 	return room, err
 }
 
 func (db *DB) RoomGetByID(id int64) (Room, error) {
 	room := Room{}
+	if id <= 0 {
+		return room, fmt.Errorf("id is %d", id)
+	}
 	err := db.DB.Get(&room, `SELECT * FROM rooms WHERE id=$1`, id)
 	return room, err
 }
 
 func (db *DB) RoomGetAllForEvent(event string) ([]Room, error) {
 	rooms := []Room{}
+	if event == "" {
+		return rooms, fmt.Errorf("empty event name given")
+	}
 	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN events_rooms er ON r.id = er.rooms_id_fk LEFT JOIN events e ON er.events_id_fk = e.id WHERE e.name = $1`, event)
 	return rooms, err
 }
 
 func (db *DB) RoomGetAllForEventID(eventID int64) ([]Room, error) {
 	rooms := []Room{}
+	if eventID <= 0 {
+		return rooms, fmt.Errorf("%q is %v", "eventID", eventID)
+	}
 	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN events_rooms er ON r.id = er.rooms_id_fk WHERE er.events_id_fk = $1`, eventID)
 	return rooms, err
 }
@@ -312,38 +355,95 @@ func (db *DB) RoomGetAll() ([]Room, error) {
 
 func (db *DB) RoomGetAllByUserID(userID int64) ([]Room, error) {
 	rooms := []Room{}
+	if userID <= 0 {
+		return rooms, fmt.Errorf("%q is %v", "userID", userID)
+	}
 	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN users_rooms ur ON r.id = ur.rooms_id_fk WHERE ur.users_id_fk = $1`, userID)
 	return rooms, err
 }
 
 func (db *DB) RoomMod(room *Room) error {
-	_, err := db.DB.NamedExec(`UPDATE rooms SET name=:name, width=:width, height=:height WHERE id=:id`, room)
-	return err
+	if room.ID <= 0 {
+		return fmt.Errorf("%q is %v", "room.ID", room.ID)
+	}
+	ret, err := db.DB.NamedExec(`UPDATE rooms SET name=:name, width=:width, height=:height WHERE id=:id`, room)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", room)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of only one for: %+v", aff, room)
+	}
+	return nil
 }
 
 func (db *DB) RoomModSizeByName(room *Room) error {
-	_, err := db.DB.NamedExec(`UPDATE rooms SET width=:width, height=:height WHERE name=:name`, room)
-	return err
+	if room.Name == "" {
+		return fmt.Errorf("empty name given")
+	}
+	ret, err := db.DB.NamedExec(`UPDATE rooms SET width=:width, height=:height WHERE name=:name`, room)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", room)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of only one for: %+v", aff, room)
+	}
+	return nil
 }
 
 func (db *DB) RoomModSizeByID(room *Room) error {
-	_, err := db.DB.NamedExec(`UPDATE rooms SET width=:width, height=:height WHERE id=:id`, room)
-	return err
+	if room.ID <= 0 {
+		return fmt.Errorf("%q is %v", "room.ID", room.ID)
+	}
+	ret, err := db.DB.NamedExec(`UPDATE rooms SET width=:width, height=:height WHERE id=:id`, room)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", room)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of only one for: %+v", aff, room)
+	}
+	return nil
 }
 
 func (db *DB) RoomDel(id int64) error {
+	if id <= 0 {
+		return fmt.Errorf("%q is %v", "id", id)
+	}
 	ret, err := db.DB.Exec(`DELETE FROM rooms WHERE id=$1`, id)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("room with ID: %d not found", id)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for id: %d", id)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of only one for id: %d", aff, id)
+	}
+	return nil
 }
 
 // rooms_id_fk is uniqu, so only one owner of room can exist
@@ -360,29 +460,43 @@ func (db *DB) RoomAssignToUser(userID, roomID int64) error {
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("no users_rooms entry added for userID: %v, roomID: %v", userID, roomID)
+	if aff < 1 {
+		return fmt.Errorf("no rooms assigned for userID: %+v, roomID: %v", userID, roomID)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows rooms assigned instead of only one for userID: %+v, roomID: %v", aff, userID, roomID)
+	}
+	return nil
 }
 
 func (db *DB) RoomUnassignUser(userID, roomID int64) error {
+	err := NoZeroMinus("userID", userID)
+	if err != nil {
+		return err
+	}
+	err = NoZeroMinus("roomID", roomID)
+	if err != nil {
+		return err
+	}
 	ret, err := db.DB.Exec(`DELETE FROM users_rooms WHERE users_id_fk=$1 AND rooms_id_fk=$2`, userID, roomID)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("no users_rooms entry removed for userID: %v, roomID: %v", userID, roomID)
+	if aff < 1 {
+		return fmt.Errorf("no rooms unassigned from userID: %+v, roomID: %v", userID, roomID)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows rooms unassigned instead of only one for userID: %+v, roomID: %v", aff, userID, roomID)
+	}
+	return nil
 }
 
 func (db *DB) FurnitureAdd(f *Furniture) (int64, error) {
@@ -395,71 +509,114 @@ VALUES(:number, :type, :orientation, :x, :y, :width, :height, :color, :label, :c
 }
 
 func (db *DB) FurnitureCopyRoom(fromRoomID int64, toRoomID int64) (int64, error) {
+	if err := NoZeroMinus("fromRoomID", fromRoomID); err != nil {
+		return -1, err
+	}
+	if err := NoZeroMinus("toRoomID", toRoomID); err != nil {
+		return -1, err
+	}
 	ret, err := db.DB.Exec(`INSERT INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk) SELECT number, type, orientation, x, y, width, height, color, label, capacity, $1 FROM furnitures WHERE rooms_id_fk = $2`, toRoomID, fromRoomID)
 	if err != nil {
 		return -1, err
 	}
-	rows, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return -1, err
 	}
-	return rows, nil
-}
-
-func (db *DB) FurnitureAddOrUpdateUnsafe(f *Furniture) (int64, error) {
-	log.Println("Do NOT use FurnitureAddOrUpdate - messes with ID's")
-	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk) 
-VALUES(:number, :type, :orientation, :x, :y, :width, :height, :color, :label, :capacity, :rooms_id_fk)`, f)
-	if err != nil {
-		return -1, err
+	if aff < 1 {
+		return aff, fmt.Errorf("no furnitures copied fromRoomID: %d, toRoomID: %d", fromRoomID, toRoomID)
 	}
-	return ret.LastInsertId()
+	return aff, nil
 }
 
 func (db *DB) FurnitureGetByTypeNumberRoom(ftype string, number int64, roomID int64) (Furniture, error) {
 	furniture := Furniture{}
+	if ftype == "" {
+		fmt.Errorf("empty %q given", "ftype")
+	}
+	if err := NoZeroMinus("furniture number", number); err != nil {
+		return furniture, err
+	}
+	if err := NoZeroMinus("roomID", roomID); err != nil {
+		return furniture, err
+	}
 	err := db.DB.Get(&furniture, `SELECT * FROM furnitures WHERE type=$1 AND number=$2 AND rooms_id_fk=$3`, ftype, number, roomID)
 	return furniture, err
 }
 
 func (db *DB) FurnitureGetByID(id int64) (Furniture, error) {
 	furniture := Furniture{}
+	if id <= 0 {
+		return furniture, fmt.Errorf("%q is %v", "id", id)
+	}
 	err := db.DB.Get(&furniture, `SELECT * FROM furnitures WHERE id=$1`, id)
 	return furniture, err
 }
 
 func (db *DB) FurnitureGetAllByRoomID(roomID int64) ([]Furniture, error) {
 	furnitures := []Furniture{}
+	if roomID <= 0 {
+		return furnitures, fmt.Errorf("%q is %d", "roomID", roomID)
+	}
 	err := db.DB.Select(&furnitures, `SELECT * FROM furnitures WHERE rooms_id_fk=$1 ORDER BY number`, roomID)
 	return furnitures, err
 }
 
 func (db *DB) FurnitureGetAllByRoomIDOfType(roomID int64, ftype string) ([]Furniture, error) {
 	furnitures := []Furniture{}
+	if roomID <= 0 {
+		return furnitures, fmt.Errorf("%q is %d", "roomID", roomID)
+	}
+	if ftype == "" {
+		return furnitures, fmt.Errorf("empty %q given", "ftype")
+	}
 	err := db.DB.Select(&furnitures, `SELECT * FROM furnitures WHERE type=$1 AND rooms_id_fk=$2 ORDER BY number`, ftype, roomID)
 	return furnitures, err
 }
 
 func (db *DB) FurnitureGetAllByRoomName(name string) ([]Furniture, error) {
 	furnitures := []Furniture{}
+	if name == "" {
+		return furnitures, fmt.Errorf("empty %q given", "room name")
+	}
 	err := db.DB.Select(&furnitures, `SELECT * FROM furnitures WHERE rooms_id_fk=(SELECT id FROM rooms WHERE name=$1) ORDER BY number`, name)
 	return furnitures, err
 }
 
 func (db *DB) FurnitureGetAllByRoomNameOfType(name, ftype string) ([]Furniture, error) {
 	furnitures := []Furniture{}
+	if name == "" {
+		return furnitures, fmt.Errorf("empty %q given", "room name")
+	}
+	if ftype == "" {
+		return furnitures, fmt.Errorf("empty %q given", "ftype")
+	}
+
 	err := db.DB.Select(&furnitures, `SELECT * FROM furnitures WHERE type=$1 AND rooms_id_fk=(SELECT id FROM rooms WHERE name=$2) ORDER BY number`, ftype, name)
 	return furnitures, err
 }
 
 func (db *DB) FurnitureFullGetAllByEventRoom(eventID int64, name string) ([]FurnitureFull, error) {
 	furnitures := []FurnitureFull{}
+	if eventID <= 0 {
+		return furnitures, fmt.Errorf("%q is %d", "eventID", eventID)
+	}
+	if name == "" {
+		return furnitures, fmt.Errorf("empty %q given", "room name")
+	}
+
 	err := db.DB.Select(&furnitures, `SELECT f.*, p.price admin_price,p.currency admin_currency, p.disabled admin_disabled, r.price bought_price, r.status status, r.ordered_date ordered_date, r.payed_date payed_date, r.customers_id_fk reservation_customers_id_fk FROM furnitures f LEFT JOIN prices p ON f.id = p.furnitures_id_fk AND p.events_id_fk=$1 LEFT JOIN reservations r ON f.id = r.furnitures_id_fk AND r.events_id_fk=$1 WHERE f.rooms_id_fk=(SELECT id FROM rooms WHERE name=$2) ORDER BY f.type, f.number`, eventID, name)
 	return furnitures, err
 }
 
 func (db *DB) FurnitureFullGetChairs(eventID int64, name string) ([]FurnitureFull, error) {
 	furnitures := []FurnitureFull{}
+	if eventID <= 0 {
+		return furnitures, fmt.Errorf("%q is %d", "eventID", eventID)
+	}
+	if name == "" {
+		return furnitures, fmt.Errorf("empty %q given", "room name")
+	}
 	err := db.DB.Select(&furnitures, `SELECT f.*, p.price admin_price,p.currency admin_currency, p.disabled admin_disabled, r.price bought_price, r.status status, r.ordered_date ordered_date, r.payed_date payed_date, r.customers_id_fk reservation_customers_id_fk FROM furnitures f LEFT JOIN prices p ON f.id = p.furnitures_id_fk AND p.events_id_fk=$1 LEFT JOIN reservations r ON f.id = r.furnitures_id_fk AND r.events_id_fk=$1 WHERE f.type="chair" AND f.rooms_id_fk=(SELECT id FROM rooms WHERE name=$2) ORDER BY f.number`, eventID, name)
 	return furnitures, err
 }
@@ -471,52 +628,128 @@ func (db *DB) FurnitureGetAll() ([]Furniture, error) {
 }
 
 func (db *DB) FurnitureMod(furniture *Furniture) error {
-	if furniture.ID == 0 {
-		return fmt.Errorf("FurnitureMod: cannot update when ID is 0")
+	if furniture.ID <= 0 {
+		return fmt.Errorf("%q is %d", "funiture.ID", furniture.ID)
 	}
-	_, err := db.DB.NamedExec(`UPDATE furnitures SET number=:number, type=:type, orientation=:orientation,
+	ret, err := db.DB.NamedExec(`UPDATE furnitures SET number=:number, type=:type, orientation=:orientation,
 		x=:x, y=:y, width=:width, height=:height, color=:color, label=:label, capacity=:capacity WHERE id=:id`, furniture)
-	return err
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", furniture)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of one for: %+v", aff, furniture)
+	}
+	return nil
 }
 
 func (db *DB) FurnitureModByNumberTypeRoom(furniture *Furniture) error {
-	_, err := db.DB.NamedExec(`UPDATE furnitures SET orientation=:orientation, x=:x, y=:y, width=:width, height=:height, color=:color, label=:label, capacity=:capacity WHERE number=:number AND type=:type AND rooms_id_fk=:rooms_id_fk`, furniture)
-	return err
+	if furniture.Number <= 0 {
+		return fmt.Errorf("%q is %d", "furniture.Number", furniture.Number)
+	}
+	if furniture.Type == "" {
+		return fmt.Errorf("empty %q given", "furniture.Type")
+	}
+	if furniture.RoomID <= 0 {
+		return fmt.Errorf("%q is %d", "furniture.RoomID", furniture.RoomID)
+	}
+	ret, err := db.DB.NamedExec(`UPDATE furnitures SET orientation=:orientation, x=:x, y=:y, width=:width, height=:height, color=:color, label=:label, capacity=:capacity WHERE number=:number AND type=:type AND rooms_id_fk=:rooms_id_fk`, furniture)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", furniture)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of one for: %+v", aff, furniture)
+	}
+	return nil
 }
 
 func (db *DB) FurnitureChangeRoomByName(number int64, ftype string, roomName string) error {
-	_, err := db.DB.Exec(`UPDATE furnitures SET rooms_id_fk=(SELECT id FROM rooms WHERE name=$1) WHERE number=$2 AND type=$3`, roomName, number, ftype)
-	return err
+	if number <= 0 {
+		return fmt.Errorf("%q is %d", "number", number)
+	}
+	if ftype == "" {
+		return fmt.Errorf("empty %q given", "ftype")
+	}
+	if roomName == "" {
+		return fmt.Errorf("empty %q given", "roomName")
+	}
+	ret, err := db.DB.Exec(`UPDATE furnitures SET rooms_id_fk=(SELECT id FROM rooms WHERE name=$1) WHERE number=$2 AND type=$3`, roomName, number, ftype)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for number: %d, ftype: %s, roomName: %s", number, ftype, roomName)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of one for number: %d, ftype: %s, roomName: %s", aff, number, ftype, roomName)
+	}
+	return nil
 }
 
 func (db *DB) FurnitureDel(id int64) error {
+	if id <= 0 {
+		fmt.Errorf("%q is %d", "id", id)
+	}
 	ret, err := db.DB.Exec(`DELETE FROM furnitures WHERE id=$1`, id)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("furniture with ID: %d not found", id)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for ID: %d", id)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of one for ID: %d", id)
+	}
+	return nil
 }
 
 func (db *DB) FurnitureDelByNumberTypeRoom(number int64, ftype string, roomID int64) error {
+	if number <= 0 {
+		return fmt.Errorf("%q is %d", "number", number)
+	}
+	if ftype == "" {
+		return fmt.Errorf("empty %q given", "ftype")
+	}
+	if roomID <= 0 {
+		return fmt.Errorf("%q is %d", "roomID", roomID)
+	}
+
 	ret, err := db.DB.Exec(`DELETE FROM furnitures WHERE number=$1 AND type=$2 AND rooms_id_fk=$3`, number, ftype, roomID)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("furniture with number: %d and type: %q not found", number, ftype)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for number: %d, ftype: %s, roomID: %d", number, ftype, roomID)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of one for number: %d, ftype: %s, roomID: %d", aff, number, ftype, roomID)
+	}
+	return nil
 }
 
 func (db *DB) PriceAdd(p *Price) (int64, error) {
@@ -528,17 +761,14 @@ VALUES(:price, :currency, :disabled, :events_id_fk, :furnitures_id_fk)`, p)
 	return ret.LastInsertId()
 }
 
-func (db *DB) PriceAddOrUpdateUnsafe(p *Price) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk) 
-VALUES(:price, :currency, :disabled, :events_id_fk, :furnitures_id_fk)`, p)
-	if err != nil {
-		return -1, err
-	}
-	return ret.LastInsertId()
-}
-
 func (db *DB) PriceGetByEventName(fID int64, event string) (Price, error) {
 	price := Price{}
+	if fID <= 0 {
+		return price, fmt.Errorf("%q is %d", "furnitureID", fID)
+	}
+	if event == "" {
+		return price, fmt.Errorf("empty %q given", "event name")
+	}
 	err := db.DB.Get(&price, `SELECT * FROM prices WHERE furnitures_id_fk=$1 
 								and events_id_fk = (SELECT id FROM events WHERE name=$2)`, fID, event)
 	return price, err
@@ -546,23 +776,35 @@ func (db *DB) PriceGetByEventName(fID int64, event string) (Price, error) {
 
 func (db *DB) PriceGetByID(id int64) (Price, error) {
 	price := Price{}
+	if id <= 0 {
+		return price, fmt.Errorf("%q is %d", "id", id)
+	}
 	err := db.DB.Get(&price, `SELECT * FROM prices WHERE id=$1`, id)
 	return price, err
 }
 
 func (db *DB) PriceMod(price *Price) error {
-	if price.ID == 0 {
-		return fmt.Errorf("can not modify price if ID is 0")
+	if price.ID <= 0 {
+		return fmt.Errorf("%q is %d", "price.ID", price.ID)
 	}
-
-	_, err := db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE id=:id`, price)
-	return err
+	ret, err := db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE id=:id`, price)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", price)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of one for: %+v", aff, price)
+	}
+	return nil
 }
 
 func (db *DB) PriceModByEventIDFurnID(price *Price) error {
-	if price.EventID == 0 || price.FurnitureID == 0 {
-		return fmt.Errorf("can not modify price if EventID or FurnitureID is 0, %+v", price)
-	}
 	err := NoZeroMinus("eventID", price.EventID)
 	if err != nil {
 		return err
@@ -571,54 +813,98 @@ func (db *DB) PriceModByEventIDFurnID(price *Price) error {
 	if err != nil {
 		return err
 	}
+	ret, err := db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE events_id_fk=:events_id_fk and furnitures_id_fk=:furnitures_id_fk`, price)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for: %+v", price)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of one for: %+v", aff, price)
+	}
+	return nil
 
-	_, err = db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE events_id_fk=:events_id_fk and furnitures_id_fk=:furnitures_id_fk`, price)
-	return err
 }
 
 func (db *DB) PriceDel(id int64) error {
+	if id <= 0 {
+		return fmt.Errorf("%q is %d", "id", id)
+	}
 	ret, err := db.DB.Exec(`DELETE FROM prices WHERE id=$1`, id)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("price with ID: %d not found", id)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for ID: %d", id)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of one for ID: %d", aff, id)
+	}
+	return nil
 }
 
 func (db *DB) PriceDelByEventIDFurn(eventID int64, fnumber int64, ftype string) error {
+	if fnumber <= 0 {
+		return fmt.Errorf("%q is %d", "furniture number", fnumber)
+	}
+	if ftype == "" {
+		return fmt.Errorf("empty %q given", "furniture type")
+	}
+	if eventID <= 0 {
+		return fmt.Errorf("%q is %d", "eventID", eventID)
+	}
 	ret, err := db.DB.Exec(`DELETE FROM prices WHERE events_id_fk=$1 AND number=$2 AND type=$3`, eventID, fnumber, ftype)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("price with number and type: %q and %q not found", fnumber, ftype)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for fnumber: %d, ftype: %s, eventID: %d", fnumber, ftype, eventID)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of one for number: %d, ftype: %s, eventID: %d", aff, fnumber, ftype, eventID)
+	}
+	return nil
 }
 
 func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) error {
+	if fnumber <= 0 {
+		return fmt.Errorf("%q is %d", "furniture number", fnumber)
+	}
+	if ftype == "" {
+		return fmt.Errorf("empty %q given", "furniture type")
+	}
+	if event == "" {
+		return fmt.Errorf("empty %q given", "event name")
+	}
+
 	ret, err := db.DB.Exec(`DELETE FROM prices WHERE events_id_fk=(SELECT id FROM events where name=$1) AND number=$2 AND type=$3`, event, fnumber, ftype)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("price with number and type: %q and %q not found", fnumber, ftype)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for fnumber: %d, ftype: %s, event name: %s", fnumber, ftype, event)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of one for number: %d, ftype: %s, event name: %s", aff, fnumber, ftype, event)
+	}
+	return nil
 }
 
 func (db *DB) EventAdd(e *Event) (int64, error) {
@@ -630,31 +916,29 @@ VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :n
 	return ret.LastInsertId()
 }
 
-// EventAddOrUpdate will increase id every update!!!
-func (db *DB) EventAddOrUpdateUnsafe(e *Event) (int64, error) {
-	log.Println("EventAddOrUpdate: probably wrong idea to use this func!")
-	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO events (name, date, from_date, to_date, default_price, default_currency, ordered_note, how_to, mail_subject, mail_text, users_id_fk) 
-VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :ordered_note, :how_to, :mail_subject, :mail_text, :users_id_fk)`, e)
-	if err != nil {
-		return -1, err
-	}
-	return ret.LastInsertId()
-}
-
 func (db *DB) EventGetByName(eventName string) (Event, error) {
 	event := Event{}
+	if eventName == "" {
+		return event, fmt.Errorf("empty %q given", "eventName")
+	}
 	err := db.DB.Get(&event, `SELECT * FROM events WHERE name=$1 `, eventName)
 	return event, err
 }
 
 func (db *DB) EventGetByID(id int64) (Event, error) {
 	event := Event{}
+	if id <= 0 {
+		return event, fmt.Errorf("%g is %d", "id", id)
+	}
 	err := db.DB.Get(&event, `SELECT * FROM events WHERE id=$1`, id)
 	return event, err
 }
 
 func (db *DB) EventGetAllByUserID(userID int64) ([]Event, error) {
 	events := []Event{}
+	if userID <= 0 {
+		return events, fmt.Errorf("%q is %d", "userID", userID)
+	}
 	err := db.DB.Select(&events, `SELECT * FROM events WHERE users_id_fk = $1 ORDER BY name`, userID)
 	return events, err
 }
@@ -663,11 +947,6 @@ func (db *DB) EventGetAll() ([]Event, error) {
 	events := []Event{}
 	err := db.DB.Select(&events, `SELECT * FROM events ORDER BY name`)
 	return events, err
-}
-
-func (db *DB) RoomAddToEventUnsafe(roomID int64, eventID int64) error {
-	_, err := db.DB.Exec("INSERT OR REPLACE INTO events_rooms (events_id_fk, rooms_id_fk) VALUES ($1, $2)", eventID, roomID)
-	return err
 }
 
 func (db *DB) EventAddRoom(eventID, roomID int64) error {
@@ -683,73 +962,122 @@ func (db *DB) EventAddRoom(eventID, roomID int64) error {
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("error adding room %d to event %d, err: %v", roomID, eventID, err)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for eventID: %d, roomID: %d", eventID, roomID)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of one for eventID: %d, roomID: %d", aff, eventID, roomID)
+	}
+	return nil
 }
 
 func (db *DB) EventGetRooms(eventID int64) ([]Room, error) {
 	rooms := []Room{}
+	if eventID <= 0 {
+		return rooms, fmt.Errorf("%q is %d", "eventID", eventID)
+	}
 	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN events_rooms er ON r.id = er.rooms_id_fk WHERE er.events_id_fk = $1`, eventID)
 	return rooms, err
 }
 
 func (db *DB) EventMod(event *Event) error {
-	if event.ID == 0 {
-		return fmt.Errorf("can not modify event if ID is 0")
+	if event.ID <= 0 {
+		return fmt.Errorf("%q is %d", "event.ID ", event.ID)
 	}
-	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text, admin_mail_subject=:admin_mail_subject, admin_mail_text=:admin_mail_text WHERE id=:id`, event)
-	return err
+	ret, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text, admin_mail_subject=:admin_mail_subject, admin_mail_text=:admin_mail_text WHERE id=:id`, event)
+	if err != nil {
+		return err
+	}
+	aff, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for event: %+v", event)
+	}
+	if aff > 1 {
+		return fmt.Errorf("%d rows changed instead of one for event: %+v", event)
+	}
+	return nil
 }
 
 func (db *DB) EventDel(id int64) error {
+	if id <= 0 {
+		return fmt.Errorf("%q is %d", "id", id)
+	}
 	ret, err := db.DB.Exec(`DELETE FROM events WHERE id=$1`, id)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("event with ID: %d not found", id)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for ID: %d", id)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of one for id: %d", aff, id)
+	}
+	return nil
 }
 
 func (db *DB) EventDelByEventIDFurn(eventID int64, fnumber int64, ftype string) error {
+	if eventID <= 0 {
+		return fmt.Errorf("%q is %d", "eventID", eventID)
+	}
+	if fnumber <= 0 {
+		return fmt.Errorf("%q is %d", "fnumber", fnumber)
+	}
+	if ftype == "" {
+		return fmt.Errorf("empty %q given", "ftype")
+	}
 	ret, err := db.DB.Exec(`DELETE FROM events WHERE events_id_fk=$1 AND number=$2 AND type=$3`, eventID, fnumber, ftype)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("event with number and type: %q and %q not found", fnumber, ftype)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for eventID: %d, fnumber: %d, ftype: %s", eventID, fnumber, ftype)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of one for eventID: %d, fnumber: %d, ftype: %s", aff, eventID, fnumber, ftype)
+	}
+	return nil
 }
 
 func (db *DB) EventDelByEventFurn(event string, fnumber int64, ftype string) error {
+	if event == "" {
+		return fmt.Errorf("empty %q given", "event")
+	}
+	if fnumber <= 0 {
+		return fmt.Errorf("%q is %d", "fnumber", fnumber)
+	}
+	if ftype == "" {
+		return fmt.Errorf("empty %q given", "ftype")
+	}
 	ret, err := db.DB.Exec(`DELETE FROM events WHERE events_id_fk=(SELECT id FROM events where name=$1) AND number=$2 AND type=$3`, event, fnumber, ftype)
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	aff, err := ret.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("event with number and type: %q and %q not found", fnumber, ftype)
+	if aff < 1 {
+		return fmt.Errorf("no rows affected for event: %s, fnumber: %d, ftype: %s", event, fnumber, ftype)
 	}
-	return err
+	if aff > 1 {
+		return fmt.Errorf("%d rows removed instead of one for event: %s, fnumber: %d, ftype: %s", aff, event, fnumber, ftype)
+	}
+	return nil
 }
 
 func (db *DB) ReservationGet(furnitureID, eventID int64) (Reservation, error) {
@@ -785,9 +1113,26 @@ func (db *DB) ReservationFullGetAll(userID, eventID int64) ([]ReservationFull, e
 
 }
 
-func (db *DB) ReservationAdd(r *Reservation) (int64, error) {
+func (db *DB) ReservationAdd(reservation *Reservation) (int64, error) {
+	if reservation.CustomerID <= 0 {
+		return -1, fmt.Errorf("%q is %d", "reservation.CustomerID", reservation.CustomerID)
+	}
 	ret, err := db.DB.NamedExec(`INSERT INTO reservations (ordered_date, payed_date, price, currency, status, notes_id_fk, furnitures_id_fk, events_id_fk, customers_id_fk) 
-VALUES(:ordered_date, :payed_date, :price, :currency, :status, :notes_id_fk, :furnitures_id_fk, :events_id_fk, :customers_id_fk)`, r)
+VALUES(:ordered_date, :payed_date, :price, :currency, :status, :notes_id_fk, :furnitures_id_fk, :events_id_fk, :customers_id_fk)`, reservation)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+// ReservationAddUnknCust always inserts -1 as Customer ID.
+func (db *DB) ReservationAddUnknCust(reservation *Reservation) (int64, error) {
+	// CustomerID only negative values are accepted
+	if reservation.CustomerID >= 0 {
+		return -1, fmt.Errorf("%q is %d, negative value needed", "reservation.CustomerID", reservation.CustomerID)
+	}
+	ret, err := db.DB.NamedExec(`INSERT INTO reservations (ordered_date, payed_date, price, currency, status, notes_id_fk, furnitures_id_fk, events_id_fk, customers_id_fk) 
+VALUES(:ordered_date, :payed_date, :price, :currency, :status, :notes_id_fk, :furnitures_id_fk, :events_id_fk, :customers_id_fk)`, reservation)
 	if err != nil {
 		return -1, err
 	}

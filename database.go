@@ -45,8 +45,8 @@ type Customer struct {
 	Notes   string         `db:"notes"`
 }
 
-//TODO: add build name
-//TODO: remake all queries - make room name non unique(beware! currently impossible, queries depends on name unique)
+// TODO: add build name
+// TODO: remake all queries - make room name non unique(beware! currently impossible, queries depends on name unique)
 type Room struct {
 	ID          int64          `db:"id"`
 	Name        string         `db:"name"`
@@ -791,7 +791,7 @@ func (db *DB) ReservationModStatus(status string, payedDate int64, eventID, furn
 	return err
 }
 
-//TODO: does affected check make any sense? there is error if no row affected IMO
+// TODO: does affected check make any sense? there is error if no row affected IMO
 func (db *DB) ReservationDel(id int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM reservations WHERE id=$1`, id)
 	if err != nil {
@@ -807,8 +807,8 @@ func (db *DB) ReservationDel(id int64) error {
 	return err
 }
 
-func (db *DB) CustomerAdd(c *Customer) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO customers (email, passwd, name, surname, phone, notes) 
+func (db *DB) CustomerAddOrReplace(c *Customer) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO customers (email, passwd, name, surname, phone, notes) 
 VALUES(:email, :passwd, :name, :surname, :phone, :notes)`, c)
 	if err != nil {
 		return -1, err

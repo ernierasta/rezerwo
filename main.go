@@ -486,7 +486,7 @@ type ReservationOrderStatusVars struct {
 	BTNOk                    string
 }
 
-//TODO: split it, too long!
+// TODO: split it, too long!
 func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		o := Order{}
@@ -507,7 +507,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			o.Rooms = r.FormValue("rooms")
 			o.TotalPrice = r.FormValue("total-price")
 			o.Email = r.FormValue("email")
-			o.Password = r.FormValue("password")
+			o.Password = r.FormValue("password") //hidden & unused
 			o.Name = r.FormValue("name")
 			o.Surname = r.FormValue("surname")
 			o.Phone = r.FormValue("phone")
@@ -521,24 +521,30 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				Surname: ToNS(o.Surname),
 				Phone:   ToNS(o.Phone),
 			}
-			cID, err := db.CustomerAdd(&c)
+			cID, err := db.CustomerAddOrReplace(&c)
 			if err != nil {
 				log.Printf("error adding customer: %+v, err: %v", c, err)
-				c, err = db.CustomerGetByEmail(o.Email)
-				if err != nil {
-					log.Printf("error getting customer by mail %q, err: %v", o.Email, err)
+				plErr := map[string]string{
+					"title": "Nie można zapisać zamówienia!",
+					"text":  "Wystąpił błąd, nie można zapisać danych zamawiającego, tym samym również zamówienia.",
 				}
-				cID = c.ID
+				ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+				//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
+				return
+
 				//log.Printf("stare: %v, nowe: %v", c.Passwd.String, o.Password)
-				if c.Passwd.String == "" || c.Passwd.String != o.Password {
-					plErr := map[string]string{
-						"title": "Nie można zapisać osoby!",
-						"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy o podanie poprawnego hasła.",
+				// ER2022: disabled password check, we are not using it anyway
+				/*
+					if c.Passwd.String == "" || c.Passwd.String != o.Password {
+						plErr := map[string]string{
+							"title": "Nie można zapisać osoby!",
+							"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy o podanie poprawnego hasła.",
+						}
+						ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+						//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
+						return
 					}
-					ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
-					//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
-					return
-				}
+				*/
 			}
 
 			// password is correct, so continue
@@ -756,7 +762,7 @@ type ReservationOrderVars struct {
 	BTNSubmit, BTNCancel                string
 }
 
-//TODO: this function is too long! split it!
+// TODO: this function is too long! split it!
 func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		eventID := int64(-1)
@@ -1591,7 +1597,7 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 	}
 }
 
-//TODO: add support for multiple active events
+// TODO: add support for multiple active events
 func EventGetCurrent(db *DB, userID int64) (Event, error) {
 	events, err := db.EventGetAllByUserID(userID)
 	if err != nil {
@@ -1725,7 +1731,7 @@ func ParseTmpl(t string, o Order) string {
 	}
 	err = tmpl.Execute(&buf, o)
 	if err != nil {
-		log.Println("error executing template %q, order %+v, err: %v", t, o, err)
+		log.Printf("error executing template %q, order %+v, err: %v", t, o, err)
 		return t
 	}
 	return buf.String()

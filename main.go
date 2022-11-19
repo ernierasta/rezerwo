@@ -745,6 +745,7 @@ type ReservationOrderVars struct {
 	LBLOrderHowto                       string
 	LBLLang                             string
 	LBLTitle                            string
+	LBLCountdownDescription             string
 	LBLEmail, LBLEmailPlaceholder       string
 	LBLEmailHelp                        string
 	LBLPassword, LBLPasswordPlaceholder string
@@ -863,33 +864,34 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 		_ = pEN
 
 		p := ReservationOrderVars{
-			Event:                 event,
-			LBLOrderHowto:         event.OrderHowto,
-			LBLLang:               lang,
-			LBLTitle:              "Zamówienie",
-			LBLEmail:              "Email",
-			LBLEmailHelp:          "Na podany email zostanie wysłane potwierdzenie. Proszę sprawdzić, że podano poprawny!",
-			LBLEmailPlaceholder:   "email",
-			LBLPassword:           "Hasło",
-			LBLPasswordHelp:       "Należy wymyślić dowolne hasło. Podanie hasła umożliwia wykonanie wielu rezerwacji używając tego samego konta mailowego a docelowo również zarządzianie zamówieniami.",
-			LBLName:               "Imię",
-			LBLNamePlaceholder:    "imię",
-			LBLSurname:            "Nazwisko",
-			LBLSurnamePlaceholder: "nazwisko",
-			LBLPhone:              "Nr telefonu",
-			LBLPhonePlaceholder:   "00420 ",
-			LBLNotes:              "Notatki",
-			LBLNotesPlaceholder:   "notatki",
-			LBLNotesHelp:          event.OrderNotesDescription,
-			LBLPricesValue:        prices,
-			LBLRoomsValue:         rooms,
-			LBLSits:               "Numery krzeseł",
-			LBLSitsValue:          sits,
-			LBLTotalPrice:         "Łączna suma",
-			LBLTotalPriceValue:    totalPrice + " " + defaultCurrency,
-			LBLUserURL:            user.URL,
-			BTNSubmit:             "Zamawiam",
-			BTNCancel:             "Anuluj zamówienie",
+			Event:                   event,
+			LBLOrderHowto:           event.OrderHowto,
+			LBLLang:                 lang,
+			LBLTitle:                "Zamówienie",
+			LBLCountdownDescription: "Sesja wygaśnie, kiedy skończy się odliczanie:",
+			LBLEmail:                "Email",
+			LBLEmailHelp:            "Na podany email zostanie wysłane potwierdzenie. Proszę sprawdzić, że podano poprawny!",
+			LBLEmailPlaceholder:     "email",
+			LBLPassword:             "Hasło",
+			LBLPasswordHelp:         "Należy wymyślić dowolne hasło. Podanie hasła umożliwia wykonanie wielu rezerwacji używając tego samego konta mailowego a docelowo również zarządzianie zamówieniami.",
+			LBLName:                 "Imię",
+			LBLNamePlaceholder:      "imię",
+			LBLSurname:              "Nazwisko",
+			LBLSurnamePlaceholder:   "nazwisko",
+			LBLPhone:                "Nr telefonu",
+			LBLPhonePlaceholder:     "00420 ",
+			LBLNotes:                "Notatki",
+			LBLNotesPlaceholder:     "notatki",
+			LBLNotesHelp:            event.OrderNotesDescription,
+			LBLPricesValue:          prices,
+			LBLRoomsValue:           rooms,
+			LBLSits:                 "Numery krzeseł",
+			LBLSitsValue:            sits,
+			LBLTotalPrice:           "Łączna suma",
+			LBLTotalPriceValue:      totalPrice + " " + defaultCurrency,
+			LBLUserURL:              user.URL,
+			BTNSubmit:               "Zamawiam",
+			BTNCancel:               "Anuluj zamówienie",
 		}
 
 		t := template.Must(template.ParseFiles("tmpl/order.html", "tmpl/base.html"))

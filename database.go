@@ -8,7 +8,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	// Workaround bug:
 	//"github.com/demiurgestudios/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	//_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 const (
@@ -166,7 +167,7 @@ func DBInit(filename string) *DB {
 }
 
 func (db *DB) MustConnect() {
-	db.DB = sqlx.MustConnect("sqlite3", db.FileName+ConnOptions)
+	db.DB = sqlx.MustConnect("sqlite", db.FileName+ConnOptions)
 	db.DB.SetMaxOpenConns(1)
 }
 

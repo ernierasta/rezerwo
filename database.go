@@ -808,8 +808,8 @@ func (db *DB) ReservationDel(id int64) error {
 	return err
 }
 
-func (db *DB) CustomerAddOrReplace(c *Customer) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO customers (email, passwd, name, surname, phone, notes) 
+func (db *DB) CustomerAdd(c *Customer) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO customers (email, passwd, name, surname, phone, notes) 
 VALUES(:email, :passwd, :name, :surname, :phone, :notes)`, c)
 	if err != nil {
 		return -1, err
@@ -819,7 +819,7 @@ VALUES(:email, :passwd, :name, :surname, :phone, :notes)`, c)
 
 func (db *DB) CustomerGetByEmail(email string) (Customer, error) {
 	c := Customer{}
-	err := db.DB.Get(&c, `SELECT * FROM customers WHERE email=$1`, email)
+	err := db.DB.Get(&c, `SELECT * FROM customers WHERE email=$1 ORDER BY id DESC LIMIT 1`, email)
 	return c, err
 }
 

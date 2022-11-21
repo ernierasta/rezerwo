@@ -521,7 +521,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				Surname: ToNS(o.Surname),
 				Phone:   ToNS(o.Phone),
 			}
-			cID, err := db.CustomerAddOrReplace(&c)
+			cID, err := db.CustomerAdd(&c)
 			if err != nil {
 				log.Printf("error adding customer: %+v, err: %v", c, err)
 				plErr := map[string]string{

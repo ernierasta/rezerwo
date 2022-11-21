@@ -1269,16 +1269,19 @@ func AboutHTML(lang string) func(w http.ResponseWriter, r *http.Request) {
 			LBLTitle:      "REZERWO",
 			LBLAboutTitle: template.HTML("REZERWO - Zaolziański system do rezerwacji"),
 			LBLAboutText: template.HTML(`
-		Rezerwo to młody projekt utworzony z myślą o polskich organizacjach w Czechach. Ponieważ projekt powstał
-		za pięć dwunasta, w tym roku działać będą tylko funkcje niezbędne do realizacji rezerwacji, i absolutne 
-		podstawy administracji. Ale planów mam dużo ...<br />
+		<b>Sezon 2022/2023</b><br />
+		Wszyscy wymawiają się na covid, więc i ja skorzystam. System jak widzicie żyje i ma się dobrze. Covid spowodował,
+		że mieliśmy trzy letnią pauzę i bali po prostu nie było. <br />
+		W tym roku dodałem kilka zmian w tle a z widoczych to wyświetlanie czasu do zakończenia sesji podczas zamawiania biletów.<br />
+		Na razie nie promuję systemu wśród innych kół Macierzy i PZKO, od strony administracji jest jeszcze kilka rzeczy do zrobienia by doświadczenia zarządzających były na prawdę bezproblemowe.<br />
+		<br />
+		<br />
+		<b>Uaktualniony opis projektu:</b><br />
+		<br />
+		Rezerwo to projekt utworzony z myślą o polskich organizacjach w Czechach. Ponieważ projekt to "one man show"
+		pisany w wolnym czasie, administracja imprez wymaga jeszcze trochę pracy. Pozatym pomysłów na ulepszenia jest dużo ...<br />
 		<b>Głównym celem projektu jest, by wszystkie bale (i podobne), których organizatorem są polskie organizacje w Czechach,
 		były zarządzane za pomocą REZERWO.</b><br />
-		Docelowo system będzie dostępny również w języku czeskim oraz angielskim. Zamierzam również udostępnić
-		rozwiązanie subjektom komercyjnym jeżeli będą zainteresowane. Ale dla każdej organizacji polskiej w Czechach
-		rozwiązanie zawsze będzie dostępne DARMOWO. <i>Oczywiście na miodule se zaprosić niechóm, jeśli kiery beje nalegoł.</i><br />
-		<br />
-		Z góry przepraszam za możliwe niedociągnięcia, będą one stopniowo usuwane, tak by w przyszłym roku zachwyćić. Mam nadzieję.<br />
 		Leszek Cimała, admin (at) zori.cz`),
 		}
 

@@ -12,6 +12,23 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// QUERIES which may be helpful in the future:
+
+// Add prices for given room:
+
+// INSERT INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk)
+// SELECT 650, "Kč", 0, 6, furnitures.id
+// FROM furnitures
+// WHERE furnitures.rooms_id_fk = 4
+
+// Check which prices are defined:
+
+// SELECT * FROM prices p
+// JOIN furnitures f ON f.id = p.furnitures_id_fk
+// WHERE
+// p.events_id_fk = 6
+// AND f.rooms_id_fk = 4
+
 const (
 	ConnOptions = "?cache=shared&mode=rwc&_busy_timeout=999999"
 )

@@ -7,3 +7,4 @@ config.toml
 test_db_sqllite.db
 rezerwo
 .mailpass
+media

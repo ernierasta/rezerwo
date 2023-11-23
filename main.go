@@ -20,6 +20,7 @@ import (
 
 const (
 	AUTHCOOKIE = "auth"
+	MEDIAROOT  = "media"
 )
 
 func main() {
@@ -56,6 +57,7 @@ func main() {
 	handleStatic("js")
 	handleStatic("css")
 	handleStatic("img")
+	handleStatic("media") //user data
 	http.Handle("/", rtr)
 	http.HandleFunc("/order", ReservationOrderHTML(db, lang))
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert}))
@@ -279,6 +281,7 @@ func handleStatic(dir string) {
 
 type DesignerPage struct {
 	TableNr, ChairNr, ObjectNr, LabelNr  int64
+	HTMLBannerImg                        template.HTML
 	HTMLRoomDescription                  template.HTML
 	LBLWidth, LBLHeight                  string
 	LBLLabelPlaceholder                  string
@@ -327,6 +330,7 @@ type ReservationPageVars struct {
 
 type RoomVars struct {
 	Room
+	HTMLBannerImg       template.HTML
 	HTMLRoomDescription template.HTML
 	HTMLHowTo           template.HTML
 	LBLSelected         string
@@ -371,8 +375,16 @@ func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 			http.Redirect(w, r, "/admin", http.StatusSeeOther)
 		}
 
+		// user would be needed here, but we will create banner image Path
+		// from user name
+		userURL := mux.Vars(r)["user"]
+
 		p := GetPageVarsFromDB(db, roomID, eventID)
 		//log.Printf("%+v", p)
+
+		// parse banner from pic.png;600;300
+		imgName, imgW, imgH := parseBanner(p.Room.Banner.String)
+
 		enPM := PageMeta{
 			LBLLang:  lang,
 			LBLTitle: "Designer",
@@ -381,6 +393,7 @@ func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 				ChairNr:             ChairNrFull(p.Chairs) + 1,
 				ObjectNr:            ObjectNr(p.Objects) + 1,
 				LabelNr:             LabelNr(p.Labels) + 1,
+				HTMLBannerImg:       template.HTML(getImgHTML(imgName, userURL, MEDIAROOT, imgW, imgH)),
 				HTMLRoomDescription: template.HTML(p.Room.Description.String),
 				LBLWidth:            "Width",
 				LBLHeight:           "Height",
@@ -429,7 +442,7 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 		event, err := EventGetCurrent(db, user.ID)
 		if err != nil {
 			log.Printf("error getting current event for userID: %d, err: %v", user.ID, err)
-			ErrorHTML("Nie obecnie aktywnych imprez!", "Administrator nie ma obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", lang, w, r)
+			ErrorHTML("Nie ma obecnie aktywnych imprez!", "Administrator nie ma obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", lang, w, r)
 			//http.Error(w, "User have no active events! Come back later, when reservations will be opened!", 500) //TODO: inform about closest user event and when it is
 			return
 		}
@@ -460,6 +473,8 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 		for i := range rr {
 			rv := GetFurnituresFromDB(db, rr[i].Name, event.ID)
 			rv.Room = rr[i]
+			imgName, imgW, imgH := parseBanner(rr[i].Banner.String)
+			rv.HTMLBannerImg = template.HTML(getImgHTML(imgName, user.URL, MEDIAROOT, imgW, imgH))
 			rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
 			rv.HTMLHowTo = template.HTML(event.HowTo)
 			// EN: rv.BTNOrder = "Order"
@@ -477,6 +492,42 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			log.Print("Reservation template executing error: ", err)
 		}
 	}
+}
+
+// parseBanner separates info from db into:
+// filename, width, height
+// in db it is like:
+// myfile.png;400;300
+func parseBanner(dbstring string) (string, int, int) {
+	if dbstring == "" {
+		return "", -1, -1
+	}
+	ss := strings.Split(dbstring, ";")
+	if len(ss) != 3 {
+		log.Printf("parseBanner: wrong nr of banner data, len:%d, from db:%v", len(ss), dbstring)
+		return "", -1, -1
+	}
+	w, err := strconv.Atoi(ss[1])
+	if err != nil {
+		log.Print("parseBanner: wrong img width info in db(can't convert to int):", err)
+	}
+	h, err := strconv.Atoi(ss[2])
+	if err != nil {
+		log.Print("parseBanner: wrong img height info in db(can't convert to int):", err)
+	}
+	return ss[0], w, h
+}
+
+// path is unix specific here
+func getImgHTML(imgName, userName, mediaRootPath string, w, h int) string {
+	if imgName == "" {
+		return ""
+	}
+	return fmt.Sprintf(`<img id="banner_img" src="/%s/%s/%s" width="%d" height="%d">`,
+		mediaRootPath,
+		userName,
+		imgName,
+		w, h)
 }
 
 type ReservationOrderStatusVars struct {

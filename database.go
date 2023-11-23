@@ -68,6 +68,7 @@ type Customer struct {
 type Room struct {
 	ID          int64          `db:"id"`
 	Name        string         `db:"name"`
+	Banner      sql.NullString `db:"banner_img"`
 	Description sql.NullString `db:"description"`
 	Width       int64          `db:"width"`
 	Height      int64          `db:"height"`
@@ -192,7 +193,7 @@ func (db *DB) StructureCreate() {
 	structure := `
 	CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, url TEXT NOT NULL, passwd TEXT NOT NULL, name TEXT, surname TEXT, organization TEXT, phone TEXT);
 	CREATE TABLE IF NOT EXISTS admins (id INTEGER NOT NULL PRIMARY KEY, type TEXT NOT NULL, email TEXT NOT NULL, passwd TEXT, notes TEXT, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id));
-	CREATE TABLE IF NOT EXISTS rooms (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT, width INTEGER NOT NULL, height INTEGER NOT NULL);
+	CREATE TABLE IF NOT EXISTS rooms (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL UNIQUE, banner_img TEXT, description TEXT, width INTEGER NOT NULL, height INTEGER NOT NULL);
 	CREATE TABLE IF NOT EXISTS users_rooms (users_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL UNIQUE, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS furnitures (id INTEGER NOT NULL PRIMARY KEY, number INTEGER NOT NULL, type TEXT NOT NULL, orientation TEXT, x INTEGER NOT NULL, y INTEGER NOT NULL, width INTEGER, height INTEGER, color TEXT, label TEXT, capacity INTEGER, rooms_id_fk INTEGER NOT NULL, UNIQUE(number, type, rooms_id_fk) ON CONFLICT ROLLBACK, FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id));
 	CREATE TABLE IF NOT EXISTS prices (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
@@ -272,7 +273,7 @@ func (db *DB) UserDel(email string) error {
 }
 
 func (db *DB) RoomAdd(room *Room) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO rooms (name, description, width, height) VALUES (:name, :description, :width, :height)`, room)
+	ret, err := db.DB.NamedExec(`INSERT INTO rooms (name, banner_img, description, width, height) VALUES (:name, :banner_img, :description, :width, :height)`, room)
 	if err != nil {
 		return -1, err
 	}
@@ -315,6 +316,8 @@ func (db *DB) RoomGetAllByUserID(userID int64) ([]Room, error) {
 	return rooms, err
 }
 
+// TODO: do we need banner_img here? probably separate function for setting banner
+// would be better idea.
 func (db *DB) RoomMod(room *Room) error {
 	_, err := db.DB.NamedExec(`UPDATE rooms SET name=:name, width=:width, height=:height WHERE id=:id`, room)
 	return err

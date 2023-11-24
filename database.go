@@ -29,6 +29,10 @@ import (
 // p.events_id_fk = 6
 // AND f.rooms_id_fk = 4
 
+// Example of alter table:
+// ALTER TABLE users
+//   ADD COLUMN alt_email TEXT;
+
 const (
 	ConnOptions = "?cache=shared&mode=rwc&_busy_timeout=999999"
 )
@@ -42,6 +46,7 @@ type User struct {
 	Surname      sql.NullString `db:"surname"`
 	Organization sql.NullString `db:"organization"`
 	Phone        sql.NullString `db:"phone"`
+	AltEmail     sql.NullString `db:"alt_email"`
 }
 
 type Admin struct {

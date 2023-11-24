@@ -660,7 +660,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				}
 			}
 
-			adminMails, err := db.AdminGetEmails(user.ID)
+			adminMails, err := db.AdminGetEmails(user.ID) // this is empty table, no mails currently there
 			if err != nil {
 				log.Println(err)
 			}
@@ -670,8 +670,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				Port:       mailConf.Port,
 				User:       mailConf.User,
 				Pass:       mailConf.Pass,
-				From:       user.Email,
-				ReplyTo:    user.Email,
+				From:       chooseEmail(user.Email, user.AltEmail.String), // choose user (organizators) mails. Use primary email if alt_email is NULL. Otherwise use alt_email.
+				ReplyTo:    user.Email,                                    // we wont they reply to organizators mail
 				Sender:     mailConf.Sender,
 				To:         []string{o.Email},
 				Subject:    event.MailSubject,
@@ -1931,4 +1931,12 @@ func SplitSitsRooms(sits, rooms string) ([]int64, []int64, error) {
 	}
 
 	return ssi, rri, nil
+}
+
+// chooseEmail - use main mail if alt_email is not defined
+func chooseEmail(main, alt string) string {
+	if alt != "" {
+		return alt
+	}
+	return main
 }

@@ -1,14 +1,17 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
 	"net/mail"
 	"net/smtp"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -54,6 +57,7 @@ func MailSend(n MailConfig) error {
 	header["MIME-Version"] = "1.0"
 	header["Content-Type"] = "text/plain; charset=\"utf-8\""
 	header["Content-Transfer-Encoding"] = "base64"
+	header["Message-Id"] = fmt.Sprintf("<%s>", generateMessageIDWithHostname("rezerwo.zori.cz"))
 
 	message := ""
 	for k, v := range header {
@@ -101,9 +105,9 @@ func encodeRFC2047(s string) string {
 // via TLS (port: 465).
 //
 // Changes for zoriX:
-//  - fixed potential MITM atack
-//  - added option to ignore certificate
-//  - fixed stuck connection if server has port closed (added timeout)
+//   - fixed potential MITM atack
+//   - added option to ignore certificate
+//   - fixed stuck connection if server has port closed (added timeout)
 func sendMail(host string, port int, a smtp.Auth, ignoreCert bool, from string, to []string, msg []byte) error {
 	if err := validateLine(from); err != nil {
 		return err
@@ -208,4 +212,28 @@ func validateLine(line string) error {
 		return fmt.Errorf("smtp: A line must not contain CR or LF")
 	}
 	return nil
+}
+
+// Functions below are stolen from https://github.com/emersion/go-message/blob/v0.17.0/mail/header.go
+// With small modifications by me.
+
+// generateMessageIDWithHostname generates an RFC 2822-compliant Message-Id
+// based on the informational draft "Recommendations for generating Message
+// IDs", it takes an hostname as argument, so that software using this library
+// could use a hostname they know to be unique
+func generateMessageIDWithHostname(hostname string) string {
+	now := uint64(time.Now().UnixNano())
+
+	nonceByte := make([]byte, 8)
+	if _, err := rand.Read(nonceByte); err != nil {
+		return ""
+	}
+	nonce := binary.BigEndian.Uint64(nonceByte)
+
+	msgID := fmt.Sprintf("%s.%s@%s", base36(now), base36(nonce), hostname)
+	return msgID
+}
+
+func base36(input uint64) string {
+	return strings.ToUpper(strconv.FormatUint(input, 36))
 }

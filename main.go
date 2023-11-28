@@ -531,10 +531,11 @@ func getImgHTML(imgName, userName, mediaRootPath string, w, h int) string {
 }
 
 type ReservationOrderStatusVars struct {
-	LBLLang                  string
-	LBLTitle                 string
-	LBLStatus, LBLStatusText string
-	BTNOk                    string
+	LBLLang       string
+	LBLTitle      string
+	LBLStatus     string
+	LBLStatusText template.HTML
+	BTNOk         string
 }
 
 // TODO: split it, too long!
@@ -675,7 +676,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				Sender:     mailConf.Sender,
 				To:         []string{o.Email},
 				Subject:    event.MailSubject,
-				Text:       ParseTmpl(event.MailText, o),
+				Text:       ParseOrderTmpl(event.MailText, o),
 				IgnoreCert: mailConf.IgnoreCert,
 			}
 
@@ -693,8 +694,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				ReplyTo:    mailConf.From,
 				Sender:     mailConf.From,
 				To:         append(adminMails, user.Email),
-				Subject:    ParseTmpl(event.AdminMailSubject, o),
-				Text:       ParseTmpl(event.AdminMailText, o),
+				Subject:    ParseOrderTmpl(event.AdminMailSubject, o),
+				Text:       ParseOrderTmpl(event.AdminMailText, o),
 				IgnoreCert: mailConf.IgnoreCert,
 			}
 			err = MailSend(userMail)
@@ -709,7 +710,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			LBLLang:       lang,
 			LBLTitle:      "Order status",
 			LBLStatus:     event.OrderedNoteTitle,
-			LBLStatusText: event.OrderedNoteText,
+			LBLStatusText: template.HTML(event.OrderedNoteText),
 			BTNOk:         "OK",
 		}
 		_ = pEN
@@ -718,7 +719,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			LBLLang:       lang,
 			LBLTitle:      "Zamówiono bilety!",
 			LBLStatus:     event.OrderedNoteTitle,
-			LBLStatusText: event.OrderedNoteText,
+			LBLStatusText: template.HTML(event.OrderedNoteText),
 			BTNOk:         "OK",
 		}
 
@@ -1779,7 +1780,7 @@ type Order struct {
 	Phone, Notes        string
 }
 
-func ParseTmpl(t string, o Order) string {
+func ParseOrderTmpl(t string, o Order) string {
 	var buf bytes.Buffer
 	tmpl, err := template.New("test").Parse(t)
 	if err != nil {

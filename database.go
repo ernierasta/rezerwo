@@ -33,6 +33,11 @@ import (
 // ALTER TABLE users
 //   ADD COLUMN alt_email TEXT;
 
+// Renumbering tables:
+// UPDATE furnitures
+// SET number = number + 20
+// WHERE rooms_id_fk = 4 AND type = "table"
+
 const (
 	ConnOptions = "?cache=shared&mode=rwc&_busy_timeout=999999"
 )

@@ -60,7 +60,7 @@ func main() {
 	handleStatic("media") //user data
 	http.Handle("/", rtr)
 	http.HandleFunc("/order", ReservationOrderHTML(db, lang))
-	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert}))
+	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert, Hostname: conf.MailHostname}))
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, lang))
@@ -678,6 +678,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				Subject:    event.MailSubject,
 				Text:       ParseOrderTmpl(event.MailText, o),
 				IgnoreCert: mailConf.IgnoreCert,
+				Hostname:   mailConf.Hostname,
+				Files:      getAttachments(event.MailAttachmentsDelimited.String, user.URL, MEDIAROOT),
 			}
 
 			err = MailSend(custMail)
@@ -697,6 +699,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				Subject:    ParseOrderTmpl(event.AdminMailSubject, o),
 				Text:       ParseOrderTmpl(event.AdminMailText, o),
 				IgnoreCert: mailConf.IgnoreCert,
+				Hostname:   mailConf.Hostname,
 			}
 			err = MailSend(userMail)
 			if err != nil {
@@ -1932,6 +1935,22 @@ func SplitSitsRooms(sits, rooms string) ([]int64, []int64, error) {
 	}
 
 	return ssi, rri, nil
+}
+
+// getAttachments looks for ';' and splits
+// filenames into slice, then it adds full path
+// to the user (organization) media path
+func getAttachments(atts, userDirPath, mediaRootPath string) []string {
+	fullPathAtts := []string{}
+	if atts == "" {
+		return fullPathAtts
+	}
+	ss := strings.Split(atts, ";")
+	for i := range ss {
+		fullPathAtts = append(fullPathAtts,
+			fmt.Sprintf("%s/%s/%s", mediaRootPath, userDirPath, ss[i]))
+	}
+	return fullPathAtts
 }
 
 // chooseEmail - use main mail if alt_email is not defined

@@ -33,6 +33,9 @@ import (
 // ALTER TABLE users
 //   ADD COLUMN alt_email TEXT;
 
+// ALTER TABLE events
+//   ADD COLUMN mail_attachments TEXT;
+
 // Renumbering tables:
 // UPDATE furnitures
 // SET number = number + 20
@@ -114,25 +117,26 @@ type Price struct {
 }
 
 type Event struct {
-	ID                    int64  `db:"id"`
-	Name                  string `db:"name"`
-	Date                  int64  `db:"date"`
-	FromDate              int64  `db:"from_date"`
-	ToDate                int64  `db:"to_date"`
-	DefaultPrice          int64  `db:"default_price"`
-	DefaultCurrency       string `db:"default_currency"`
-	NoSitsSelectedTitle   string `db:"no_sits_selected_title"`
-	NoSitsSelectedText    string `db:"no_sits_selected_text"`
-	OrderHowto            string `db:"order_howto"`
-	OrderNotesDescription string `db:"order_notes_desc"`
-	OrderedNoteTitle      string `db:"ordered_note_title"`
-	OrderedNoteText       string `db:"ordered_note_text"`
-	MailSubject           string `db:"mail_subject"`
-	MailText              string `db:"mail_text"`
-	AdminMailSubject      string `db:"admin_mail_subject"`
-	AdminMailText         string `db:"admin_mail_text"`
-	HowTo                 string `db:"how_to"`
-	UserID                int64  `db:"users_id_fk"`
+	ID                       int64          `db:"id"`
+	Name                     string         `db:"name"`
+	Date                     int64          `db:"date"`
+	FromDate                 int64          `db:"from_date"`
+	ToDate                   int64          `db:"to_date"`
+	DefaultPrice             int64          `db:"default_price"`
+	DefaultCurrency          string         `db:"default_currency"`
+	NoSitsSelectedTitle      string         `db:"no_sits_selected_title"`
+	NoSitsSelectedText       string         `db:"no_sits_selected_text"`
+	OrderHowto               string         `db:"order_howto"`
+	OrderNotesDescription    string         `db:"order_notes_desc"`
+	OrderedNoteTitle         string         `db:"ordered_note_title"`
+	OrderedNoteText          string         `db:"ordered_note_text"`
+	MailSubject              string         `db:"mail_subject"`
+	MailText                 string         `db:"mail_text"`
+	MailAttachmentsDelimited sql.NullString `db:"mail_attachments"`
+	AdminMailSubject         string         `db:"admin_mail_subject"`
+	AdminMailText            string         `db:"admin_mail_text"`
+	HowTo                    string         `db:"how_to"`
+	UserID                   int64          `db:"users_id_fk"`
 }
 
 // TODO: would we ever use this type of stucts in go?

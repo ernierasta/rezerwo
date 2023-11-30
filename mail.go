@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"net/mail"
 	"net/smtp"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jaytaylor/html2text"
 )
 
 // NotifConfig type represent all notification attributes
@@ -28,12 +31,59 @@ type MailConfig struct {
 	To         []string
 	Subject    string
 	Text       string
+	Files      []string
+	Hostname   string
 }
 
-// Send sends mail via smtp.
+/*
+Correct mail stuct html with attachments:
+
+From: x
+To: y
+...
+Content-Type: multipart/mixed; boundary="boundary1"
+
+--boundary1
+Content-Type: multipart/alternative; boundary="boundary2"
+
+--boundary2
+Content-Type: text/plain; charset="UTF-8"
+
+hi!
+
+--boundary2
+Content-Type: text/html; charset="UTF-8"
+
+<html><body><p>hi</p></body></html>
+
+--boundary2--
+--boundary1
+Content-Type: application/octet-stream; name="PLAN - I semestr(2).docx"
+Content-Disposition: attachment; filename="PLAN - I semestr(2).docx"
+Content-Transfer-Encoding: base64
+
+aU...
+
+--boundary1
+Content-Type: application/vnd.oasis.opendocument.text; name="odziez.2.odt"
+Content-Disposition: attachment; filename="odziez.2.odt"
+Content-Transfer-Encoding: base64
+
+aaUU ...
+--boundary1--
+
+*/
+
+// MailSend sends mail via smtp.
 // Supports multiple recepients, TLS (port 465)/StartTLS(ports 25,587, any other).
 // Mail should always valid (correctly encoded subject and body).
+// Now there is HTML (with automatic text version generating) support.
+// We can also send attachments.
 func MailSend(n MailConfig) error {
+
+	var b1 = "00000000000035014305975de62a"
+	var b2 = "00000000000035014305975de6Xx"
+
 	if (n.User != "" && n.Pass == "") ||
 		(n.Pass != "" && n.User == "") ||
 		n.Server == "" {
@@ -43,8 +93,13 @@ func MailSend(n MailConfig) error {
 		} else {
 			pass = n.Pass // if someone has 4 leter pass, it deserves to be logged ;-)
 		}
-		return fmt.Errorf("mail.Send: one of auth params is empty(SENDING ABORTED), u: %q p:%q s: %q", n.User, pass, n.Server)
+		return fmt.Errorf("SendMail: one of auth params is empty(SENDING ABORTED), u: %q p:%q s: %q", n.User, pass, n.Server)
 	}
+
+	if n.Hostname == "" {
+		return fmt.Errorf("SendMail: hostname is not defined, it is needed to generate unique Message-Id (SENDING ABORTED)")
+	}
+
 	auth := smtp.PlainAuth("", n.User, n.Pass, n.Server)
 
 	recipients := strings.Join(n.To, ", ")
@@ -53,22 +108,73 @@ func MailSend(n MailConfig) error {
 	header["From"] = n.From
 	header["To"] = recipients
 	header["Date"] = time.Now().Format(time.RFC1123Z)
-	header["Subject"] = encodeRFC2047(n.Subject)
+	header["Subject"] = n.Subject
 	header["MIME-Version"] = "1.0"
-	header["Content-Type"] = "text/plain; charset=\"utf-8\""
-	header["Content-Transfer-Encoding"] = "base64"
-	header["Message-Id"] = fmt.Sprintf("<%s>", generateMessageIDWithHostname("rezerwo.zori.cz"))
+	header["Message-Id"] = fmt.Sprintf("<%s>", generateMessageIDWithHostname(n.Hostname))
+
+	if n.Sender != "" {
+		header["Sender"] = n.Sender
+	}
+	if n.ReplyTo != "" {
+		header["Reply-To"] = n.ReplyTo
+	}
+	isHTML := strings.Contains(n.Text, "<html>")
+	hasAttachments := len(n.Files) > 0
+
+	msg := ""
+
+	if isHTML && hasAttachments {
+		header["Content-Type"] = fmt.Sprintf("multipart/mixed;boundary=\"%s\"", b1)
+		// prepate "alternative" section plain/html
+		msg = "\r\n" + "--" + b1 + "\r\n"
+		altCont, err := alternativeContent("", n.Text, b2)
+		if err != nil {
+			return err
+		}
+		msg += altCont
+		// attachments
+		attachCont := ""
+		for i := range n.Files {
+			ct, err := validateFile(n.Files[i])
+			if err != nil {
+				return err
+			}
+			f, err := os.ReadFile(n.Files[i])
+			if err != nil {
+				return err
+			}
+			attachCont += "--" + b1 + "\r\n"
+			attachCont += fmt.Sprintf("Content-Type: %s; name=\"%s\"\r\n", ct, n.Files[i])
+			attachCont += fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n", n.Files[i])
+			attachCont += "Content-Transfer-Encoding: base64\r\n"
+			attachCont += "\r\n" + base64.StdEncoding.EncodeToString(f) + "\r\n"
+		}
+		msg += attachCont
+		msg += "--" + b1 + "--"
+
+	} else if isHTML && !hasAttachments {
+		var err error
+		msg, err = alternativeContent("", n.Text, b1)
+		if err != nil {
+			return err
+		}
+	} else {
+		header["Content-Transfer-Encoding"] = "base64"
+		header["Content-Type"] = "text/plain; charset=\"utf-8\""
+		msg = base64.StdEncoding.EncodeToString([]byte(n.Text))
+	}
 
 	message := ""
 	for k, v := range header {
 		message += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
 
-	message += "\r\n" + base64.StdEncoding.EncodeToString([]byte(n.Text))
+	message += msg
+	//_ = auth
 	err := sendMail(n.Server, n.Port, auth, n.IgnoreCert, n.From, n.To, []byte(message))
 
 	if err != nil {
-		return fmt.Errorf("mail.Send: error sending mail, err: %v", err)
+		return fmt.Errorf("SendMail: error sending mail, err: %v", err)
 	}
 
 	return nil
@@ -212,6 +318,59 @@ func validateLine(line string) error {
 		return fmt.Errorf("smtp: A line must not contain CR or LF")
 	}
 	return nil
+}
+
+// validateFile checks if file exists and return it's MIME type if all ok
+func validateFile(file string) (string, error) {
+	if _, err := os.Stat(file); err != nil {
+		return "", err
+	}
+	f, err := os.Open(file)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	ct, err := getFileContentType(f)
+	if err != nil {
+		return "", err
+	}
+	return ct, nil
+}
+
+func getFileContentType(out *os.File) (string, error) {
+	// Only the first 512 bytes are used to sniff the content type.
+	buffer := make([]byte, 512)
+
+	_, err := out.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	// Use the net/http package's handy DectectContentType function. Always returns a valid
+	// content-type by returning "application/octet-stream" if no others seemed to match.
+	contentType := http.DetectContentType(buffer)
+	return contentType, nil
+}
+
+func alternativeContent(msgpart, htmlText, boundary string) (string, error) {
+	msgpart += fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
+	// text version
+	plainText, err := html2text.FromString(htmlText, html2text.Options{PrettyTables: true})
+	if err != nil {
+		return "", err
+	}
+	msgpart += "\r\n" + "--" + boundary + "\r\n"
+	msgpart += "Content-Type: text/plain; charset=\"UTF-8\"\r\n"
+	msgpart += "Content-Transfer-Encoding: base64\r\n"
+	msgpart += "\r\n" + base64.StdEncoding.EncodeToString([]byte(plainText)) + "\r\n"
+	// html version
+	msgpart += "\r\n" + "--" + boundary + "\r\n"
+	msgpart += "Content-Type: text/html; charset=\"UTF-8\"\r\n"
+	msgpart += "Content-Transfer-Encoding: base64\r\n"
+	msgpart += "\r\n" + base64.StdEncoding.EncodeToString([]byte(htmlText)) + "\r\n"
+	msgpart += "\r\n" + "--" + boundary + "--" + "\r\n"
+
+	return msgpart, nil
 }
 
 // Functions below are stolen from https://github.com/emersion/go-message/blob/v0.17.0/mail/header.go

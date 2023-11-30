@@ -20,6 +20,7 @@ type Settings struct {
 	MailServer              string
 	MailPort                int64
 	MailIgnoreCert          bool
+	MailHostname            string
 }
 
 func SettingsNew() *Settings {

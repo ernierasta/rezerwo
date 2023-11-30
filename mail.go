@@ -104,20 +104,23 @@ func MailSend(n MailConfig) error {
 
 	recipients := strings.Join(n.To, ", ")
 
+	subjectb64 := base64.StdEncoding.EncodeToString([]byte(n.Subject))
+
 	header := make(map[string]string)
 	header["From"] = n.From
 	header["To"] = recipients
 	header["Date"] = time.Now().Format(time.RFC1123Z)
-	header["Subject"] = n.Subject
+	header["Subject"] = "=?UTF-8?B?" + subjectb64 + "?="
 	header["MIME-Version"] = "1.0"
 	header["Message-Id"] = fmt.Sprintf("<%s>", generateMessageIDWithHostname(n.Hostname))
 
 	if n.Sender != "" {
 		header["Sender"] = n.Sender
 	}
-	if n.ReplyTo != "" {
-		header["Reply-To"] = n.ReplyTo
-	}
+	// remove reply to - it can be problem for antispam
+	//if n.ReplyTo != "" {
+	//	header["Reply-To"] = n.ReplyTo
+	//}
 	isHTML := strings.Contains(n.Text, "<html>")
 	hasAttachments := len(n.Files) > 0
 

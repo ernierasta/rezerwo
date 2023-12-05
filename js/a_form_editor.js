@@ -28,6 +28,7 @@ var QuillThankYouEditor = new Quill('#thankyou-editor', {
 
 
 function SendFormDef(data) {
+
   var finald = {};
   dataj = JSON.parse(data);
   finald.name = $('#form-name').val();
@@ -36,7 +37,12 @@ function SendFormDef(data) {
   finald.banner = $("#form-banner").val();
   finald.thankyou = QuillThankYouEditor.root.innerHTML;
   finald.content = dataj;
-  console.log(finald);
+  // remove all trailing <br> from end of label json field
+  // it some kind of bug in formBuilder
+  for (var i = 0; i < dataj.length; i++) {
+    dataj[i].label = dataj[i].label.replace(/<br>+$/, "");
+  }
+  //console.log(finald);
   
 
   $.ajax({

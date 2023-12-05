@@ -1,0 +1,47 @@
+{{define "head"}}
+  <title>{{.LBLTitle}}</title>
+  <script src="/js/form-builder.min.js"></script>
+  <link href="/css/quill.snow.css" rel="stylesheet">
+  <script src="/js/quill.min.js"></script>
+{{end}}
+{{define "body"}}
+  <div class="d-flex justify-content-center align-items-center">
+    <div class="col-md-8">
+      <h4>{{.LBLTitle}}</h4>
+      <p>{{.LBLAdminHowTo}}</p>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="form-name">{{.LBLFormName}}</label>
+    <input type="text" class="form-control" id="form-name" name="form-name" value="{{.FormNameVal}}">
+    <label for="form-url">{{.LBLFormURL}}</label>
+    <input type="text" class="form-control" id="form-url" name="form-url" value="{{.FormURLVal}}">
+    <label for="form-banner">{{.LBLFormBanner}}</label>
+    <input type="text" class="form-control" id="form-banner" name="form-banner" value="{{.FormBannerVal}}">
+
+  </div>
+  <div class="form-group">
+    <p id="howto-editor-label">{{.LBLFormHowTo}}</p>
+    <div id="howto-editor">
+      {{.HTMLFormHowToVal}}
+    </div>
+  </div>
+  <div class="form-group">
+    <p id="thankyou-editor-label">{{.LBLFormThankYou}}</p>
+    <div id="thankyou-editor">
+      {{.HTMLFormThankYouVal}}
+    </div>
+  </div>
+
+  <div id="fb-editor"></div>
+  <div class="d-flex justify-content-center">
+    <button id="save" class="btn btn-primary">{{.BTNSave}}</button>
+  </div>
+  <script type="text/javascript" src="/js/a_form_editor.js"></script>
+  <script>
+    formBuilder.promise.then(function(fb) {
+        fb.actions.setData('{{.FormDataVal}}');
+    });
+  </script>
+
+{{end}}

@@ -1,0 +1,38 @@
+{{define "head"}}
+  <title>{{.LBLTitle}}</title>
+  <script src="/js/form-render.min.js"></script>
+{{end}}
+{{define "body"}}
+  <div class="d-flex justify-content-center align-items-center">
+    <div class="col-md-6">
+      <h4>{{.LBLTitle}}</h4>
+      <p>{{.LBLHowTo}}</p>
+      <form id="form-rendered">
+        <div id="fb-render"></div>
+      </form>
+      <div class="d-flex justify-content-center">
+        <button id="save" class="btn btn-primary mt-3" onclick="SendFormData()">{{.BTNSave}}</button>
+      </div>
+    </div>
+    <!-- <div><p>boczne info tu!</p></div> -->
+  </div>
+  <script>
+    // we are setting it here, I can not figure out how to get setData to work after render
+    var renderDiv = $('#fb-render');
+    var formRender = renderDiv.formRender({
+            formData: {{.FormDataVal}},
+            i18n: {
+                locale: 'pl-PL',
+                location: '/js/'
+            }//,
+            //layoutTemplates: {
+            //  default: function(field, label, help, data) {
+            //    $(field).addClass('form-control'); // add form-control to all fields (bootstrap)
+            //    return $('<div/>').append(label, field, help);
+            //  }
+        //}
+    });
+  </script>
+  <script type="text/javascript" src="/js/form-renderer.js"></script>
+
+{{end}}

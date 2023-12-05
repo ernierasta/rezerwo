@@ -88,6 +88,27 @@
           <button id="run-raports" class="btn btn-primary" type="button" onclick="ShowRaports()" >{{.BTNShowRaports}}</button>
         </div>
       </div>
+      <h3>{{.LBLForms}}</h3>
+      <div class="input-group">
+        <input type="text" class="form-control" id="new-form-name" placeholder="{{.LBLNewFormPlaceholder}}" aria-label="{{.LBLNewForm}}" aria-describedby="basic-addon2">
+        <input type="text" class="form-control" id="new-form-url" placeholder="{{.LBLNewFormURLPlaceholder}}" aria-label="{{.LBLNewFormURL}}" aria-describedby="basic-addon2">
+
+        <div class="input-group-append">
+          <button class="btn btn-outline-secondary" type="button" onclick="NewForm()">{{.BTNAddForm}}</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <select name="forms-select" id="forms-select" class="custom-select">
+          <option value="0" selected>{{.LBLSelectForm}}</option>
+          {{range .FormTempls}}
+          <option value="{{.ID}}">{{.Name}}</option>
+          {{end}}
+        </select>
+        <div class="input-group-append">
+          <button id="edit-form" class="btn btn-primary" type="button" onclick="EditForm()" >{{.BTNEditForm}}</button>
+        </div>
+      </div>
 
         <!-- <button id="add-room" class="btn btn-primary">{{.BTNAddRoom}}</button>
         <button id="add-event" class="btn btn-primary">{{.BTNAddEvent}}</button> -->

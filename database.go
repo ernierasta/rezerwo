@@ -187,6 +187,53 @@ type FurnitureFull struct {
 	CustomerID    sql.NullInt64  `db:"reservation_customers_id_fk"`
 }
 
+type FormTemplate struct {
+	ID          int64          `db:"id"`
+	Name        string         `db:"name"`
+	URL         string         `db:"url"`
+	HowTo       sql.NullString `db:"howto"`
+	Banner      sql.NullString `db:"banner"`
+	ThankYou    sql.NullString `db:"thankyou"`
+	Content     sql.NullString `db:"content"`
+	CreatedDate int64          `db:"created_date"`
+	UserID      int64          `db:"users_id_fk"`
+	EventID     sql.NullInt64  `db:"events_id_fk"`
+}
+
+type FormField struct {
+	ID             int64  `db:"id"`
+	Name           string `db:"name"`
+	Display        string `db:"display"`
+	Type           string `db:"type"`
+	FormTemplateID int64  `db:"formtemplates_id_fk"`
+}
+
+type Form struct {
+	ID             int64          `db:"id"`
+	Name           sql.NullString `db:"name"`
+	Surname        sql.NullString `db:"surname"`
+	Email          sql.NullString `db:"email"`
+	Notes          sql.NullString `db:"notes"`
+	CreatedDate    int64          `db:"created_date"`
+	UserID         int64          `db:"users_id_fk"`
+	FormTemplateID int64          `db:"formtemplates_id_fk"`
+}
+
+type FormAnswer struct {
+	ID          int64          `db:"id"`
+	Value       sql.NullString `db:"value"`
+	FormFieldID int64          `db:"formfields_id_fk"`
+	FormID      int64          `db:"forms_id_fk"`
+}
+
+// GetType is needed for generics
+func (f FormField) GetType() string {
+	return f.Type
+}
+func (f FormField) GetName() string {
+	return f.Name
+}
+
 type DB struct {
 	FileName string
 	DB       *sqlx.DB
@@ -925,6 +972,151 @@ VALUES($1)`, note)
 
 func (db *DB) NoteDel(noteID int64) error {
 	_, err := db.DB.Exec(`DELETE FROM notes WHERE id=$1`, noteID)
+	return err
+}
+
+func (db *DB) FormTemplateAdd(t *FormTemplate) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO formtemplates (name, url, howto, banner, thankyou, content, created_date, users_id_fk, events_id_fk)
+	VALUES(:name, :url, :howto, :banner, :thankyou, :content, :created_date, :users_id_fk, :events_id_fk)`, t)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) FormTemplateGetAll(UserID int64) ([]FormTemplate, error) {
+	tt := []FormTemplate{}
+	err := db.DB.Select(&tt, `SELECT * FROM formtemplates WHERE users_id_fk=$1`, UserID)
+	return tt, err
+}
+
+func (db *DB) FormTemplateGetByID(tmplID int64) (FormTemplate, error) {
+	t := FormTemplate{}
+	err := db.DB.Get(&t, `SELECT * FROM formtemplates WHERE id=$1`, tmplID)
+	return t, err
+}
+
+func (db *DB) FormTemplateGetByURL(URL string, UserID int64) (FormTemplate, error) {
+	t := FormTemplate{}
+	err := db.DB.Get(&t, `SELECT * FROM formtemplates WHERE url=$1 AND users_id_fk=$2`, URL, UserID)
+	return t, err
+}
+
+func (db *DB) FormTemplateModByID(t *FormTemplate) error {
+	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, url=:url, howto=:howto, banner=:banner, thankyou=:thankyou, content=:content WHERE id=:id`, t)
+	return err
+}
+
+func (db *DB) FormTemplateModByURL(t *FormTemplate) error {
+	if t.UserID < 1 {
+		return fmt.Errorf("FormTemplateModByURL: no userID given! Update aborted. %+v", t)
+	}
+	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, content=:content, banner=:banner, howto=:howto, thankyou=:thankyou WHERE url=:url AND users_id_fk=:users_id_fk`, t)
+	return err
+}
+
+func (db *DB) FormFieldAdd(f *FormField) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO formfields (name, display, type, formtemplates_id_fk)
+	VALUES(:name, :display, :type, :formtemplates_id_fk)`, f)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) FormFieldGetAllForTmpl(formtemplateID int64) ([]FormField, error) {
+	ff := []FormField{}
+	err := db.DB.Select(&ff, `SELECT * FROM formfields WHERE formtemplates_id_fk=$1`, formtemplateID)
+	return ff, err
+}
+
+// FormFieldGetByName - there is some strange problem with this function!
+// TODO: It never finds any data, why?
+func (db *DB) FormFieldGetByName(name string, formtemplateID int64) (FormField, error) {
+	f := FormField{}
+	err := db.DB.Get(&f, `SELECT * FROM formfields WHERE name=$1 AND formtemplates_id_fk=$1`, name, formtemplateID)
+	return f, err
+}
+
+// FormFieldModByName requires name and formtemplates_id_fk!
+func (db *DB) FormFieldModByName(f *FormField) error {
+	_, err := db.DB.NamedExec(`UPDATE formfields SET display=:display, type=:type WHERE name=:name AND formtemplates_id_fk=:formtemplates_id_fk`, f)
+	return err
+}
+
+func (db *DB) FormFieldDelByName(name string, formtemplateID int64) error {
+	ret, err := db.DB.Exec(`DELETE FROM formfields WHERE name=$1`, name)
+	if err != nil {
+		return err
+	}
+	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return fmt.Errorf("formfields: no rows deleted, tried to remove: %q", name)
+	}
+	return err
+}
+
+func (db *DB) FormAdd(f *Form) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO forms (name, surname, notes, email, created_date, users_id_fk, formtemplates_id_fk)
+	VALUES(:name, :surname, :notes, :email, :created_date, :users_id_fk, :formtemplates_id_fk)`, f)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) FormGetAll(UserID int64, FormTemplateID int64) ([]Form, error) {
+	ff := []Form{}
+	err := db.DB.Select(&ff, `SELECT * FROM forms WHERE users_id_fk=$1 AND formtemplates_id_fk=$2`, UserID, FormTemplateID)
+	return ff, err
+}
+
+func (db *DB) FormGetIDByEmail(email string, FormTemplateID, UserID int64) (int64, error) {
+	var id int64
+	if email == "" || FormTemplateID == 0 || UserID == 0 {
+		return id, fmt.Errorf("FormGetIDByEmail: empty email %q or formtemplates_id_fk %d or users_id_fk %d", email, FormTemplateID, UserID)
+	}
+	err := db.DB.Get(&id, `SELECT id FROM forms WHERE email=$1 AND users_id_fk=$2 AND  formtemplates_id_fk=$3`, email, UserID, FormTemplateID)
+	return id, err
+}
+
+func (db *DB) FormModByEmail(f *Form) error {
+	if f.Email.String == "" || f.FormTemplateID == 0 || f.UserID == 0 {
+		return fmt.Errorf("FormModByEmail: empty email %q or formtemplates_id_fk %d or users_id_fk %d", f.Email.String, f.FormTemplateID, f.UserID)
+	}
+	_, err := db.DB.NamedExec(`UPDATE forms SET name=:name, surname=:surname, notes=:notes WHERE email=:email AND users_id_fk=:users_id_fk AND  formtemplates_id_fk=:formtemplates_id_fk`, f)
+	return err
+}
+
+func (db *DB) FormAnswerAdd(fa *FormAnswer) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO formanswers (value, formfields_id_fk, forms_id_fk)
+	VALUES(:value, :formfields_id_fk, :forms_id_fk)`, fa)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) FormAnswerGetAll(FormID int64) ([]FormAnswer, error) {
+	fa := []FormAnswer{}
+	err := db.DB.Select(&fa, `SELECT * FROM formanswers WHERE forms_id_fk=$1`, FormID)
+	return fa, err
+}
+
+func (db *DB) FormAnswerGetAllForTemplate(FormTemplateID int64) ([]FormAnswer, error) {
+	fa := []FormAnswer{}
+	err := db.DB.Select(&fa, `SELECT * FROM formanswers WHERE formtemplates_id_fk=$1`, FormTemplateID)
+	return fa, err
+}
+
+func (db *DB) FormAnswerMod(fa *FormAnswer) error {
+	if fa.FormFieldID == 0 || fa.FormID == 0 {
+		return fmt.Errorf("FormAnswerMod: empty FormFieldID %q or FormID %d", fa.FormFieldID, fa.FormID)
+	}
+	_, err := db.DB.NamedExec(`UPDATE formanswers SET value=:value WHERE formfields_id_fk=:formfields_id_fk AND forms_id_fk=:forms_id_fk`, fa)
 	return err
 }
 

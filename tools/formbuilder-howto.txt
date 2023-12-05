@@ -1,0 +1,8 @@
+git clone https://github.com/kevinchappell/formBuilder
+cd formBuilder
+npm run build
+npm install --save-dev webpack
+
+then:
+git clone https://github.com/kevinchappell/formBuilder-languages
+copy needed languages to /js/ dir

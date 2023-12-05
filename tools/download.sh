@@ -30,4 +30,6 @@ wget https://github.com/quilljs/quill/releases/download/v1.3.6/quill.tar.gz
 wget https://github.com/makeusabrew/bootbox/releases/download/v5.3.4/bootbox.min.js -O ../js/bootbox.min.js
 wget https://github.com/makeusabrew/bootbox/releases/download/v5.3.4/bootbox.locales.min.js -O ../js/bootbox.locales.min.js
 
+# qr code generator
+wget https://raw.githubusercontent.com/davidshimjs/qrcodejs/master/qrcode.min.js -O ../js/qrcode.min.js
 

@@ -51,3 +51,13 @@ function ShowRaports() {
   Post("/admin/reservations", {"event-id": eventID});
 }
 
+function NewForm() {
+  name = $('#new-form-name').val();
+  url = $('#new-form-url').val();
+  Post("/admin/formeditor", {"name": name, "url": url });
+}
+
+function EditForm() {
+  var formID = $('#forms-select :selected').val();
+  Post("/admin/formeditor", {"form-id": formID});
+}

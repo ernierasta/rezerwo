@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"reflect"
@@ -52,6 +53,8 @@ func main() {
 
 	rtr := mux.NewRouter()
 	rtr.HandleFunc("/res/{user}", ReservationHTML(db, lang))
+	rtr.HandleFunc("/form/{userurl}/{formurl}", FormRenderer(db, lang))
+	rtr.HandleFunc("/form/{userurl}/{formurl}/done", FormThankYou(db, lang))
 	rtr.HandleFunc("/", AboutHTML(lang))
 
 	handleStatic("js")
@@ -66,6 +69,7 @@ func main() {
 	http.HandleFunc("/admin/designer", DesignerHTML(db, lang))
 	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))
 	http.HandleFunc("/admin/reservations", AdminReservations(db, lang, cookieStore))
+	http.HandleFunc("/admin/formeditor", FormEditor(db, lang, cookieStore))
 	http.HandleFunc("/passreset", PasswdReset(db))
 	http.HandleFunc("/api/login", LoginAPI(db, cookieStore))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
@@ -75,6 +79,9 @@ func main() {
 	http.HandleFunc("/api/renumber", DesignerRenumberType(db))
 	http.HandleFunc("/api/resstatus", ReservationChangeStatusAPI(db))
 	http.HandleFunc("/api/resdelete", ReservationDeleteAPI(db))
+	//http.HandleFunc("/api/newformtmpl", FormTemplateNew(db, cookieStore))
+	http.HandleFunc("/api/formed", FormTemplateAddMod(db, cookieStore))
+	http.HandleFunc("/api/formans", FormAddMod(db))
 
 	log.Fatal(http.ListenAndServe(":3002", nil))
 }
@@ -648,7 +655,6 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				if noteID != 0 {
 					reservation.NoteID = ToNI(noteID)
 				}
-				log.Printf("debug: noteID: %v", noteID)
 				err = db.ReservationMod(&reservation)
 				if err != nil {
 					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, o.EventID, err)
@@ -1002,25 +1008,34 @@ type AdminPage struct {
 	Events     []Event
 	Rooms      []Room
 	Furnitures []Furniture
+	FormTempls []FormTemplate
 }
 
 type AdminMainPageVars struct {
-	LBLRoomEventTitle      string
-	LBLRoomEventText       template.HTML
-	BTNSelect              string
-	BTNClose               string
-	BTNAddRoom             string
-	BTNAddEvent            string
-	LBLSelectRoom          string
-	BTNRoomEdit            string
-	BTNRoomDelete          string
-	LBLNewEventPlaceholder string
-	LBLSelectEvent         string
-	BTNEventEdit           string
-	BTNEventDelete         string
-	LBLMsgTitle            string
-	LBLRaports             string
-	BTNShowRaports         string
+	LBLRoomEventTitle        string
+	LBLRoomEventText         template.HTML
+	BTNSelect                string
+	BTNClose                 string
+	BTNAddRoom               string
+	BTNAddEvent              string
+	LBLSelectRoom            string
+	BTNRoomEdit              string
+	BTNRoomDelete            string
+	LBLNewEventPlaceholder   string
+	LBLSelectEvent           string
+	BTNEventEdit             string
+	BTNEventDelete           string
+	LBLMsgTitle              string
+	LBLRaports               string
+	BTNShowRaports           string
+	LBLForms                 string
+	BTNAddForm               string
+	LBLNewForm               string
+	LBLNewFormPlaceholder    string
+	LBLNewFormURL            string
+	LBLSelectForm            string
+	LBLNewFormURLPlaceholder string
+	BTNEditForm              string
 }
 
 func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -1101,33 +1116,47 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 		if err != nil {
 			log.Printf("error getting event by name: %q, err: %v", "TODO", err)
 		}
+		formTempls, err := db.FormTemplateGetAll(user.ID)
+		if err != nil {
+			log.Printf("error getting all forms for user %d, %v", user.ID, err)
+		}
+
 		enPM := PageMeta{
 			LBLLang:  lang,
 			LBLTitle: "Admin main page",
 			AdminMainPageVars: AdminMainPageVars{
-				LBLRoomEventTitle:      "Select event",
-				LBLRoomEventText:       template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
-				BTNSelect:              "Select",
-				BTNClose:               "Close",
-				BTNAddRoom:             "Add room",
-				BTNAddEvent:            "Add event",
-				BTNEventEdit:           "Edit",
-				LBLNewEventPlaceholder: "New event name",
-				LBLSelectRoom:          "Select room ...",
-				BTNRoomEdit:            "Edit",
-				BTNRoomDelete:          "Delete",
-				LBLSelectEvent:         "Select event ...",
-				BTNEventDelete:         "Delete",
-				LBLMsgTitle:            dtype,
-				LBLRaports:             "Raports",
-				BTNShowRaports:         "Show raports",
+				LBLRoomEventTitle:        "Select event",
+				LBLRoomEventText:         template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
+				BTNSelect:                "Select",
+				BTNClose:                 "Close",
+				BTNAddRoom:               "Add room",
+				BTNAddEvent:              "Add event",
+				BTNEventEdit:             "Edit",
+				LBLNewEventPlaceholder:   "New event name",
+				LBLSelectRoom:            "Select room ...",
+				BTNRoomEdit:              "Edit",
+				BTNRoomDelete:            "Delete",
+				LBLSelectEvent:           "Select event ...",
+				BTNEventDelete:           "Delete",
+				LBLMsgTitle:              dtype,
+				LBLRaports:               "Raports",
+				BTNShowRaports:           "Show raports",
+				LBLForms:                 "Forms",
+				LBLNewForm:               "New form",
+				BTNAddForm:               "New form",
+				LBLNewFormPlaceholder:    "Enter unique form name",
+				LBLSelectForm:            "Select form ...",
+				LBLNewFormURL:            "Form URL",
+				LBLNewFormURLPlaceholder: "Enter unique name - used as part of form link",
+				BTNEditForm:              "Edytuj formularz",
 			},
 		}
 
 		rp := AdminPage{
-			PageMeta: enPM,
-			Events:   events,
-			Rooms:    rooms,
+			PageMeta:   enPM,
+			Events:     events,
+			Rooms:      rooms,
+			FormTempls: formTempls,
 		}
 		t := template.Must(template.ParseFiles("tmpl/a_main.html", "tmpl/base.html"))
 		err = t.ExecuteTemplate(w, "base", rp)
@@ -1348,6 +1377,85 @@ func AboutHTML(lang string) func(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+}
+
+type FormEditorVars struct {
+	LBLLang             string
+	LBLTitle            string
+	LBLAdminHowTo       string
+	LBLFormHowTo        string
+	LBLFormName         string
+	LBLFormURL          string
+	LBLFormBanner       string
+	LBLFormThankYou     string
+	FormNameVal         string
+	FormURLVal          string
+	FormBannerVal       string
+	FormDataVal         string
+	HTMLFormHowToVal    template.HTML
+	HTMLFormThankYouVal template.HTML
+	BTNSave             string
+}
+
+func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var formTempl FormTemplate
+
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("FormEditor: problem getting session %v", err)
+			return
+		}
+
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("FormEditor: problem getting user by mail %q, err: %v", email, err)
+		}
+
+		err = r.ParseForm()
+		if err != nil {
+			log.Printf("FormEditor: problem parsing form data, err: %v", err)
+		}
+		formTemplID, err := strconv.ParseInt(r.FormValue("form-id"), 10, 64)
+		if err != nil {
+			log.Printf("info: probably no form-id given, so this is new form, err: %v", err)
+			formTempl.Name = r.FormValue("name")
+			formTempl.URL = r.FormValue("url")
+			formTempl.UserID = user.ID
+		} else {
+			formTempl, err = db.FormTemplateGetByID(formTemplID)
+			if err != nil {
+				log.Printf("error retrieving formTemplate with ID: %q from DB, err: %v", formTemplID, err)
+			}
+		}
+
+		if formTempl.Content.String == "" || formTempl.Content.String == "[]" {
+			formTempl.Content.String = `[{"type":"text","required":true,"label":"Imię","className":"form-control row-1 col-md-3","name":"name-REQUIRED","access":false,"subtype":"text","maxlength":30},{"type":"text","required":true,"label":"Nazwisko","className":"form-control row-1 col-md-4","name":"surname-REQUIRED","access":false,"subtype":"text","maxlength":50},{"type":"text","subtype":"email","required":true,"label":"E-mail","className":"form-control row-1 col-md-5","name":"email-REQUIRED","access":false,"maxlength":50}]`
+		}
+
+		pPL := FormEditorVars{
+			LBLTitle:            "Edytor deklaracji",
+			LBLFormName:         "Nazwa formularza:",
+			LBLAdminHowTo:       "Przeciągaj elementy na głowny ekran. Zmień ich tytuły i Zapisz. Pamiętaj by Link był unikatowy (np. dekl2024)!",
+			LBLFormURL:          "Link (URL):",
+			LBLFormHowTo:        "Instrukcja dla wypełniającego (HTML):",
+			LBLFormBanner:       "Banner formularza:",
+			LBLFormThankYou:     "Komunikat/podziękowanie po wypełnienieniu formularza:",
+			BTNSave:             "Zapisz",
+			FormNameVal:         formTempl.Name,
+			FormURLVal:          formTempl.URL,
+			FormBannerVal:       formTempl.Banner.String,
+			FormDataVal:         formTempl.Content.String,
+			HTMLFormHowToVal:    template.HTML(formTempl.HowTo.String),
+			HTMLFormThankYouVal: template.HTML(formTempl.ThankYou.String),
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/a_form_editor.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", pPL)
+		if err != nil {
+			log.Print("ErrorHTML: template executing error: ", err) //log it
+		}
+	}
 }
 
 type ErrorVars struct {
@@ -1658,6 +1766,451 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 	}
 }
 
+type FormTemplJson struct {
+	Name     string         `json:"name"`
+	URL      string         `json:"url"`
+	Banner   string         `json:"banner"`
+	HowTo    string         `json:"howto"`
+	ThankYou string         `json:"thankyou"`
+	Content  []FormFieldDef `json:"content"`
+}
+
+type FormTemplRawContent struct {
+	Content json.RawMessage `json:"content"`
+}
+
+type FormFieldDef struct {
+	Type    string `json:"type"`
+	Display string `json:"label"`
+	Name    string `json:"name"`
+}
+
+func (f FormFieldDef) GetType() string {
+	return f.Type
+}
+
+func (f FormFieldDef) GetName() string {
+	return f.Name
+}
+
+// FormTemplateAddMod is API func
+func FormTemplateAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var formTemplJson FormTemplJson
+		var rawContent FormTemplRawContent
+
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("FormTemplateNew: session error: %v", err)
+			return
+		}
+
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("FormTemplateNew: can not get user by mail %q, %v", email, err)
+			return
+		}
+
+		if r.Method == "POST" {
+			bodyJson, err := io.ReadAll(r.Body)
+			if err != nil {
+				log.Println("FormTemplateAddMod: error reading form template json sent from form editor,", err)
+			}
+			err = json.Unmarshal(bodyJson, &formTemplJson)
+			if err != nil {
+				log.Println(err)
+			}
+
+			//log.Println("fields:")
+			//log.Println(formTemplJson.Content)
+			log.Println("raw json:")
+			log.Println(string(bodyJson))
+
+			err = json.Unmarshal(bodyJson, &rawContent)
+			if err != nil {
+				log.Printf("FormTemplateAddMod: error marshalling fields to the string, err: %v", err)
+				return
+			}
+
+			//log.Println("raw json content:", string(rawContent.Content))
+
+			ft := &FormTemplate{
+				Name:        formTemplJson.Name,
+				URL:         formTemplJson.URL,
+				UserID:      user.ID,
+				HowTo:       ToNS(formTemplJson.HowTo),
+				Banner:      ToNS(formTemplJson.Banner),
+				ThankYou:    ToNS(formTemplJson.ThankYou),
+				CreatedDate: time.Now().Unix(),
+				Content:     ToNS(string(rawContent.Content)),
+				// TODO: if we want to assign it to event, add here:
+				// EventID: "get event somehow",
+			}
+			// try to add FormTemplate to db
+			lastid, err := db.FormTemplateAdd(ft)
+			// form template probably already exists,
+			// we will try to modify it
+			if err != nil {
+				log.Printf("FormTemplateAddMod: insert failed, probably already exists in db, %v", err)
+				err := db.FormTemplateModByURL(ft)
+				if err != nil {
+					log.Printf("FormTemplateAddMod: insert and update faied! %v", err)
+					http.Error(w, fmt.Sprintf(`{"msg":"Nie udało się zapisać formularza!\n%s"}`, err.Error()), http.StatusTeapot) // amazing status 418
+				} else {
+					w.Write([]byte(`{"msg":"updated"}`))
+				}
+			} else {
+				w.Write([]byte(fmt.Sprintf(`{"msg":"inserted %d"}`, lastid)))
+			}
+
+			tmpl, err := db.FormTemplateGetByURL(formTemplJson.URL, user.ID)
+			if err != nil {
+				log.Printf("FormTemplateAddMod: can not get FormTemplate by URL %q for User %d, %v", formTemplJson.URL, user.ID, err)
+			}
+			updateFormFieldsInDB(tmpl.ID, formTemplJson.Content, db)
+		}
+	}
+}
+
+func updateFormFieldsInDB(templateID int64, current []FormFieldDef, db *DB) {
+	current = filterFormFields(current)
+	previous, err := db.FormFieldGetAllForTmpl(templateID)
+	if err != nil {
+		log.Printf("updateFormFieldsInDB: error getting FormFields for template %d, %v", templateID, err)
+	}
+	previous = filterFormFields(previous)
+
+	found := make([]bool, len(previous))
+
+	for i := range current {
+		f := &FormField{
+			Name:           current[i].Name,
+			Display:        current[i].Display,
+			Type:           current[i].Type,
+			FormTemplateID: templateID,
+		}
+		if n := isFieldIn(current[i].Name, previous); n >= 0 {
+			found[n] = true
+			err := db.FormFieldModByName(f)
+			if err != nil {
+				log.Printf("updateFormFieldsInDB: error updating field %q, %v", f.Name, err)
+			}
+		} else { // this is new field
+			lastid, err := db.FormFieldAdd(f)
+			if err != nil {
+				log.Printf("updateFormFieldsInDB: error adding field %q, %v", f.Name, err)
+			}
+			_ = lastid
+		}
+	}
+
+	// remove old fields, which are not in the template anymore
+	for i := range found {
+		if !found[i] {
+			err := db.FormFieldDelByName(previous[i].Name, templateID)
+			if err != nil {
+				log.Printf("updateFormFieldsInDB: error deleting old formfield %q, templateID %d, %v", previous[i].Name, templateID, err)
+			}
+		}
+	}
+
+}
+
+// isFieldIn returns possition in given list if found
+// or -1 if not in list
+func isFieldIn(name string, l []FormField) int {
+	for i := range l {
+		if name == l[i].Name {
+			return i
+		}
+	}
+	return -1
+}
+
+type FormFieldType interface {
+	FormField | FormFieldDef
+	GetName() string
+	GetType() string
+}
+
+// filterFormFields is generic function which works
+// for both formfield types
+func filterFormFields[L FormFieldType](l []L) []L {
+	var ret []L
+	for i := range l {
+		if l[i].GetName() == "" {
+			continue
+		}
+		if !isTypeIgnored(l[i].GetType()) {
+			ret = append(ret, l[i])
+		}
+	}
+	return ret
+}
+
+func isTypeIgnored(t string) bool {
+	var ignored = []string{"header", "paragraph", "button", "hidden"}
+	for i := range ignored {
+		if ignored[i] == t {
+			return true
+		}
+	}
+	return false
+}
+
+type FormAnsData struct {
+	URI  string            `json:"uri"`
+	Data []FormAnswersJson `json:"data"`
+}
+
+type FormAnswersJson struct {
+	Name     string   `json:"name"`
+	UserData []string `json:"userData"`
+}
+
+// FormAddMod is API func
+func FormAddMod(db *DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var formAnsJson FormAnsData
+
+		if r.Method == "POST" {
+			bodyJson, err := io.ReadAll(r.Body)
+			if err != nil {
+				log.Println("FormAddMod: error reading form template json sent from form editor,", err)
+			}
+			err = json.Unmarshal(bodyJson, &formAnsJson)
+			if err != nil {
+				log.Println(err)
+			}
+
+			userURL, templURL := parseFormURI(formAnsJson.URI)
+
+			user, err := db.UserGetByURL(userURL)
+			if err != nil {
+				log.Printf("FormAddMod: can not get user by url %q, %v", userURL, err)
+				http.Error(w, fmt.Sprintf(`{"msg":"Nie udało się zapisać formularza!\nCan not get user by url %q,\n%s"}`, userURL, err.Error()), http.StatusTeapot)
+				return
+			}
+
+			templ, err := db.FormTemplateGetByURL(templURL, user.ID)
+			if err != nil {
+				log.Printf("FormAddMod: can not get template by url %q, user %d, %v", templURL, user.ID, err)
+				http.Error(w, fmt.Sprintf(`{"msg":"Nie udało się zapisać formularza!\n%s"}`, err.Error()), http.StatusTeapot)
+				return
+			}
+
+			log.Println("fields:")
+			log.Println(formAnsJson)
+			//log.Println("raw json:")
+			//log.Println(string(bodyJson))
+
+			name, surname, email := getBasicFields(formAnsJson.Data)
+
+			f := &Form{
+				Name:           ToNS(name),
+				Surname:        ToNS(surname),
+				Email:          ToNS(email),
+				CreatedDate:    time.Now().Unix(),
+				UserID:         user.ID,
+				FormTemplateID: templ.ID,
+			}
+			// try to add Form to db
+			FormID, err := db.FormAdd(f)
+			if err != nil {
+				// form probably already exists,
+				// we will try to modify it
+
+				log.Printf("FormAddMod: insert failed, probably already exists in db, %v", err)
+				err := db.FormModByEmail(f)
+				if err != nil {
+					log.Printf("FormTemplateAddMod: insert and update faied! %v", err)
+					http.Error(w, fmt.Sprintf(`{"msg":"Nie udało się zapisać formularza!\n%s"}`, err.Error()), http.StatusTeapot) // 418
+					return
+				} else {
+					FormID, err = db.FormGetIDByEmail(f.Email.String, templ.ID, user.ID)
+					if err != nil {
+						log.Printf("FormAddMod: can not get FormID via email %q, templateID %d, userID %d, %v", f.Email.String, templ.ID, user.ID, err)
+					}
+					w.Write([]byte(fmt.Sprintf(`{"msg":"updated %d"}`, FormID)))
+				}
+			} else {
+				w.Write([]byte(fmt.Sprintf(`{"msg":"inserted %d"}`, FormID)))
+			}
+
+			// add/update answers
+
+			// get all formfields first
+			formfields, err := db.FormFieldGetAllForTmpl(templ.ID)
+			if err != nil {
+				log.Printf("FormAddMod: error getting all formfields for templateID %d, %v", templ.ID, err)
+			}
+
+			for i := range formAnsJson.Data {
+				var v sql.NullString
+				var fi FormField
+				n := isFieldIn(formAnsJson.Data[i].Name, formfields)
+				if n > 0 {
+					fi = formfields[n]
+				} else {
+					continue // ignore fields with empty names
+				}
+				if !isEmpty(formAnsJson.Data[i].UserData) {
+					v = ToNS(formAnsJson.Data[i].UserData[0])
+				} else {
+					v = ToNS("")
+				}
+				formAnsField := &FormAnswer{
+					Value:       v,
+					FormFieldID: fi.ID,
+					FormID:      FormID,
+				}
+				_, err = db.FormAnswerAdd(formAnsField)
+				if err != nil {
+					log.Printf("FormAddMod: info: adding answer failed, FormFieldID %q(%d), Forms %d, val: %s, %v", fi.Name,
+						fi.ID, FormID, v.String, err,
+					)
+					err = db.FormAnswerMod(formAnsField)
+					if err != nil {
+						log.Printf("FormAddMod: insert and update of FormAnswer failed! FormFieldID %q(%d), Forms %d, val: %s, %v",
+							fi.Name, fi.ID, FormID, v.String, err,
+						)
+					}
+
+				}
+			}
+		}
+	}
+}
+
+// parseFormURI parses: /form/org/formname
+func parseFormURI(uri string) (string, string) {
+	ss := strings.Split(uri, "/")
+	log.Printf("%+v", ss)
+	if len(ss) == 4 { // first element is empty (before first /)
+		return ss[2], ss[3]
+	}
+	return "", ""
+}
+
+func getBasicFields(j []FormAnswersJson) (string, string, string) {
+	var name, surname, email string
+	log.Println("json:", j)
+	for i := range j {
+		if j[i].Name == "name-REQUIRED" {
+			if !isEmpty(j[i].UserData) {
+				name = j[i].UserData[0]
+			}
+		}
+		if j[i].Name == "surname-REQUIRED" {
+			if !isEmpty(j[i].UserData) {
+				surname = j[i].UserData[0]
+			}
+		}
+		if j[i].Name == "email-REQUIRED" {
+			if !isEmpty(j[i].UserData) {
+				email = j[i].UserData[0]
+			}
+		}
+	}
+	log.Println(name, surname, email)
+	return name, surname, email
+}
+
+func isEmpty[T comparable](t []T) bool {
+	if len(t) > 0 {
+		return false
+	}
+	return true
+}
+
+type FormRendererVars struct {
+	LBLLang     string
+	LBLTitle    string
+	LBLHowTo    template.HTML
+	FormDataVal template.JS
+	BTNSave     string
+}
+
+func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		_, templ, err := getOrganizationAndForm(w, r, db, lang)
+		if err != nil {
+			return // just and function, errors had been sent
+		}
+
+		// now actuall rendering
+
+		pPL := FormRendererVars{
+			LBLLang:     lang,
+			LBLTitle:    templ.Name,
+			LBLHowTo:    template.HTML(templ.HowTo.String),
+			FormDataVal: template.JS(templ.Content.String),
+			BTNSave:     "Wyślij!",
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/form_renderer.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", pPL)
+		if err != nil {
+			log.Print("ErrorHTML: template executing error: ", err) //log it
+		}
+
+	}
+}
+
+func FormThankYou(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		_, tmpl, err := getOrganizationAndForm(w, r, db, lang)
+		if err != nil {
+			return
+		}
+
+		p := ReservationOrderStatusVars{
+			LBLLang:       lang,
+			LBLTitle:      "Dziękujemy za wypełnienie formularza!",
+			LBLStatus:     "",
+			LBLStatusText: template.HTML(tmpl.ThankYou.String),
+			BTNOk:         "OK",
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/order-status.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", p)
+		if err != nil {
+			log.Print("Form thankyou template executing error: ", err)
+		}
+	}
+}
+
+func getOrganizationAndForm(w http.ResponseWriter, r *http.Request, db *DB, lang string) (User, FormTemplate, error) {
+	// get vars from url (from mux)
+	userURL := mux.Vars(r)["userurl"]
+	formURL := mux.Vars(r)["formurl"]
+
+	// validate url
+	user, err := db.UserGetByURL(userURL)
+	if err != nil {
+		log.Printf("FormRenderer: error getting user(wrong link or user in url), %v", err)
+		plErr := map[string]string{
+			"title": "Nie znaleziono organizacji!",
+			"text":  fmt.Sprintf("W bazie nie istnieje organizacja: %q\nProszę sprawdzić poprawność linka.\nJeżeli organizator twierdzi, że jest ok, to proszę o kontakt pod: admin (at) zori.cz.", userURL),
+		}
+		ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+		return user, FormTemplate{}, err
+	}
+	templ, err := db.FormTemplateGetByURL(formURL, user.ID)
+	if err != nil {
+		log.Printf("FormRenderer: error getting form(wrong link or formurl in url), %v", err)
+		plErr := map[string]string{
+			"title": "Nie znaleziono formularza!",
+			"text":  fmt.Sprintf("W bazie nie istnieje taki formularz: %q\nProszę sprawdzić poprawność linka.\nJeżeli organizator twierdzi, że jest ok, to proszę o kontakt pod: admin (at) zori.cz.", formURL),
+		}
+		ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+		return user, templ, err
+	}
+	return user, templ, nil
+}
+
 // TODO: add support for multiple active events
 func EventGetCurrent(db *DB, userID int64) (Event, error) {
 	events, err := db.EventGetAllByUserID(userID)
@@ -1746,7 +2299,6 @@ func ReservationDeleteAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("error: ReservationDeleteAPI: error retrieving reservation for chair: %d, eventID: %d, err: %v", chair.ID, m.EventID, err)
 			}
-			log.Println("debug: reservationID:", reservation.ID)
 			err = db.ReservationDel(reservation.ID)
 			if err != nil {
 				log.Printf("error: ReservationDeleteAPI: error deleting reservation, err: %v", err)

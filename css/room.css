@@ -4,8 +4,7 @@
 }
 
 #content-wrap {
-  padding-bottom: 2.5rem;
-  /* Footer height */
+  padding-bottom: 2.5rem; /* Footer height */
 }
 
 #meta {
@@ -187,7 +186,7 @@
 }
 
 .vertical-18 {
-  height: 190px;
+  height: 220px;
 }
 
 .vertical-20 {
@@ -255,7 +254,7 @@
 }
 
 .horizontal-18 {
-  width: 190px;
+  width: 220px;
 }
 
 .horizontal-20 {
@@ -310,3 +309,5 @@
   z-index: 100;
   border: 1px dotted black;
 }
+
+/*# sourceMappingURL=room.css.map */

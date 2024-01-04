@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# backup db into backup directory
+
+if [ ! -e "db.sql" ]; then
+    cd ..
+fi
+
+if [ -e "db.sql" ]; then
+    mkdir -p backup
+    cp db.sql backup/db-`date +"%Y%m%d-%H%M%S"`.sql
+fi

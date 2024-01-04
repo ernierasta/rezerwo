@@ -88,7 +88,6 @@ aaUU ...
 // We can also send attachments.
 func MailSend(n MailConfig) error {
 
-	var b0 = "00000000000035014305975deMmm"
 	var b1 = "00000000000035014305975de62a"
 	var b2 = "00000000000035014305975de6Xx"
 
@@ -130,28 +129,18 @@ func MailSend(n MailConfig) error {
 	//	header["Reply-To"] = n.ReplyTo
 	//}
 	isHTML := strings.Contains(n.Text, "<html>")
-	hasAttachments := len(n.Files) > 0
-	hasEmbeddedImgs := len(n.EmbededHTMLImgs) > 0
 
 	msg := ""
 
 	if isHTML {
-		if hasAttachments {
-			header["Content-Type"] = fmt.Sprintf("multipart/mixed;boundary=\"%s\"", b0)
-			msg += "\r\n" + "--" + b0 + "\r\n"
-		}
-		if hasEmbeddedImgs {
-			header["Content-Type"] = fmt.Sprintf("multipart/related;boundary=\"%s\"", b1)
-			msg += "\r\n" + "--" + b1 + "\r\n"
-		}
-
+		header["Content-Type"] = fmt.Sprintf("multipart/mixed;boundary=\"%s\"", b1)
 		// prepate "alternative" section plain/html
+		msg = "\r\n" + "--" + b1 + "\r\n"
 		altCont, err := alternativeContent("", n.Text, b2)
 		if err != nil {
 			return err
 		}
 		msg += altCont
-
 		// attachments
 		attachCont := ""
 		for i := range n.Files {
@@ -171,7 +160,7 @@ func MailSend(n MailConfig) error {
 		}
 		if attachCont != "" {
 			msg += attachCont
-			msg += "--" + b0 + "--\r\n"
+			msg += "--" + b1 + "--"
 		}
 
 		embededImgs := ""
@@ -194,7 +183,7 @@ func MailSend(n MailConfig) error {
 		}
 		if embededImgs != "" {
 			msg += embededImgs
-			msg += "--" + b1 + "--\r\n"
+			msg += "--" + b1 + "--"
 		}
 		// this no necessary imho
 		//} else if isHTML && !hasAttachments {

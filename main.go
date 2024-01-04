@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -20,8 +21,10 @@ import (
 )
 
 const (
-	AUTHCOOKIE = "auth"
-	MEDIAROOT  = "media"
+	AUTHCOOKIE        = "auth"
+	MEDIAROOT         = "media"
+	MEDIAEMAILSUBDIR  = "email"
+	MEDIAQRCODESUBDIR = "qrcode"
 )
 
 func main() {
@@ -70,6 +73,8 @@ func main() {
 	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))
 	http.HandleFunc("/admin/reservations", AdminReservations(db, lang, cookieStore))
 	http.HandleFunc("/admin/formeditor", FormEditor(db, lang, cookieStore))
+	http.HandleFunc("/admin/formraport", FormRaport(db, lang, cookieStore))
+	http.HandleFunc("/admin/bankacceditor", BankAccountEditor(db, lang, cookieStore))
 	http.HandleFunc("/passreset", PasswdReset(db))
 	http.HandleFunc("/api/login", LoginAPI(db, cookieStore))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
@@ -79,10 +84,10 @@ func main() {
 	http.HandleFunc("/api/renumber", DesignerRenumberType(db))
 	http.HandleFunc("/api/resstatus", ReservationChangeStatusAPI(db))
 	http.HandleFunc("/api/resdelete", ReservationDeleteAPI(db))
-	//http.HandleFunc("/api/newformtmpl", FormTemplateNew(db, cookieStore))
+	http.HandleFunc("/api/formstatus", FormChangeStatusAPI(db))
 	http.HandleFunc("/api/formed", FormTemplateAddMod(db, cookieStore))
+	http.HandleFunc("/api/baed", BankAccountAddMod(db, cookieStore))
 	http.HandleFunc("/api/formans", FormAddMod(db))
-
 	log.Fatal(http.ListenAndServe(":3002", nil))
 }
 
@@ -541,6 +546,9 @@ type ReservationOrderStatusVars struct {
 	LBLLang       string
 	LBLTitle      string
 	LBLStatus     string
+	HiddenFormID  string
+	HiddenSurname string
+	HiddenName    string
 	LBLStatusText template.HTML
 	BTNOk         string
 }
@@ -673,19 +681,20 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			}
 
 			custMail := MailConfig{
-				Server:     mailConf.Server,
-				Port:       mailConf.Port,
-				User:       mailConf.User,
-				Pass:       mailConf.Pass,
-				From:       chooseEmail(user.Email, user.AltEmail.String), // choose user (organizators) mails. Use primary email if alt_email is NULL. Otherwise use alt_email.
-				ReplyTo:    user.Email,                                    // we wont they reply to organizators mail
-				Sender:     mailConf.Sender,
-				To:         []string{o.Email},
-				Subject:    event.MailSubject,
-				Text:       ParseOrderTmpl(event.MailText, o),
-				IgnoreCert: mailConf.IgnoreCert,
-				Hostname:   mailConf.Hostname,
-				Files:      getAttachments(event.MailAttachmentsDelimited.String, user.URL, MEDIAROOT),
+				Server:          mailConf.Server,
+				Port:            mailConf.Port,
+				User:            mailConf.User,
+				Pass:            mailConf.Pass,
+				From:            chooseEmail(user.Email, user.AltEmail.String), // choose user (organizators) mails. Use primary email if alt_email is NULL. Otherwise use alt_email.
+				ReplyTo:         user.Email,                                    // we wont they reply to organizators mail
+				Sender:          mailConf.Sender,
+				To:              []string{o.Email},
+				Subject:         event.MailSubject,
+				Text:            ParseOrderTmpl(event.MailText, o),
+				IgnoreCert:      mailConf.IgnoreCert,
+				Hostname:        mailConf.Hostname,
+				Files:           getAttachments(event.MailAttachmentsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
+				EmbededHTMLImgs: getEmbeddedImgs(event.MailEmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
 			}
 
 			err = MailSend(custMail)
@@ -1005,13 +1014,15 @@ func AdminLoginHTML(db *DB, lang string, cookieStore *sessions.CookieStore) func
 
 type AdminPage struct {
 	PageMeta
-	Events     []Event
-	Rooms      []Room
-	Furnitures []Furniture
-	FormTempls []FormTemplate
+	Events       []Event
+	Rooms        []Room
+	Furnitures   []Furniture
+	FormTempls   []FormTemplate
+	BankAccounts []BankAccount
 }
 
 type AdminMainPageVars struct {
+	LBLEvents                string
 	LBLRoomEventTitle        string
 	LBLRoomEventText         template.HTML
 	BTNSelect                string
@@ -1036,6 +1047,14 @@ type AdminMainPageVars struct {
 	LBLSelectForm            string
 	LBLNewFormURLPlaceholder string
 	BTNEditForm              string
+	LBLSelectFormRaport      string
+	BTNShowFormRaports       string
+	LBLBankAccountsTitle     string
+	LBLNewBAPlaceholder      string
+	LBLSelectBankAccount     string
+	BTNAddNewBA              string
+	BTNBAEdit                string
+	BTNBADelete              string
 }
 
 func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -1110,21 +1129,26 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 		// Prepare form with rooms and events
 		rooms, err := db.RoomGetAllByUserID(user.ID)
 		if err != nil {
-			log.Printf("error getting all rooms, err: %q", err)
+			log.Printf("AdminMainPage: error getting all rooms, err: %q", err)
 		}
 		events, err := db.EventGetAllByUserID(user.ID)
 		if err != nil {
-			log.Printf("error getting event by name: %q, err: %v", "TODO", err)
+			log.Printf("AdminMainPage: error getting event by name: %q, err: %v", "TODO", err)
 		}
 		formTempls, err := db.FormTemplateGetAll(user.ID)
 		if err != nil {
-			log.Printf("error getting all forms for user %d, %v", user.ID, err)
+			log.Printf("AdminMainPage: error getting all forms for user %d, %v", user.ID, err)
+		}
+		bankAccs, err := db.BankAccountGetAll(user.ID)
+		if err != nil {
+			log.Printf("AdminMainPage: error getting all bankaccounts for user %d, %v", user.ID, err)
 		}
 
 		enPM := PageMeta{
 			LBLLang:  lang,
 			LBLTitle: "Admin main page",
 			AdminMainPageVars: AdminMainPageVars{
+				LBLEvents:                "Events",
 				LBLRoomEventTitle:        "Select event",
 				LBLRoomEventText:         template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
 				BTNSelect:                "Select",
@@ -1148,15 +1172,66 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				LBLSelectForm:            "Select form ...",
 				LBLNewFormURL:            "Form URL",
 				LBLNewFormURLPlaceholder: "Enter unique name - used as part of form link",
+				BTNEditForm:              "Edit form",
+				LBLSelectFormRaport:      "Select form raport ...",
+				BTNShowFormRaports:       "Show",
+				LBLBankAccountsTitle:     "Bank Accounts (QRPay)",
+				LBLNewBAPlaceholder:      "New account name",
+				BTNAddNewBA:              "Add new",
+				LBLSelectBankAccount:     "Choose account ...",
+				BTNBAEdit:                "Edit",
+				BTNBADelete:              "Delete",
+			},
+		}
+
+		_ = enPM
+
+		plPM := PageMeta{
+			LBLLang:  lang,
+			LBLTitle: "Administracja",
+			AdminMainPageVars: AdminMainPageVars{
+				LBLEvents:                "Imprezy",
+				LBLRoomEventTitle:        "Wybierz imprezę",
+				LBLRoomEventText:         template.HTML("<b>Dlaczego?</b><br />Musisz wybrać imprezę, ponieważ status krzeseł <i>'wyłączony'</i> oraz <i>'cena'</i> miejsca są związanie z <b>imprezą</b>, a nie z pomieszczeniem jako takim."),
+				BTNSelect:                "Wybierz",
+				BTNClose:                 "Zamknij",
+				BTNAddRoom:               "Dodaj pomieszczenie",
+				BTNAddEvent:              "Dodaj imprezę",
+				BTNEventEdit:             "Zmień",
+				LBLNewEventPlaceholder:   "Nazwa nowej imprezy",
+				LBLSelectRoom:            "Wybierz pomieszczenie ...",
+				BTNRoomEdit:              "Zmień",
+				BTNRoomDelete:            "Usuń",
+				LBLSelectEvent:           "Wybierz imprezę ...",
+				BTNEventDelete:           "Usuń",
+				LBLMsgTitle:              dtype,
+				LBLRaports:               "Raporty",
+				BTNShowRaports:           "Wyświetl raporty",
+				LBLForms:                 "Formularze",
+				LBLNewForm:               "Nowy formularz",
+				BTNAddForm:               "Nowy formlarz",
+				LBLNewFormPlaceholder:    "Podaj unikatową nazwę formularza",
+				LBLSelectForm:            "Wybierz formularz ...",
+				LBLNewFormURL:            "URL formularza",
+				LBLNewFormURLPlaceholder: "Podaj unikatową - będzie tworzyła odnośnik do forma",
 				BTNEditForm:              "Edytuj formularz",
+				LBLSelectFormRaport:      "Wybierz raport do formularza ...",
+				BTNShowFormRaports:       "Wyświetl",
+				LBLBankAccountsTitle:     "Konta bankowe (QRPay)",
+				LBLNewBAPlaceholder:      "Nazwa nowego konta",
+				BTNAddNewBA:              "Dodaj nowe",
+				LBLSelectBankAccount:     "Wybierz konto ...",
+				BTNBAEdit:                "Edytuj",
+				BTNBADelete:              "Usuń",
 			},
 		}
 
 		rp := AdminPage{
-			PageMeta:   enPM,
-			Events:     events,
-			Rooms:      rooms,
-			FormTempls: formTempls,
+			PageMeta:     plPM,
+			Events:       events,
+			Rooms:        rooms,
+			FormTempls:   formTempls,
+			BankAccounts: bankAccs,
 		}
 		t := template.Must(template.ParseFiles("tmpl/a_main.html", "tmpl/base.html"))
 		err = t.ExecuteTemplate(w, "base", rp)
@@ -1299,7 +1374,6 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 			log.Printf("info: AdminReservations: %v", err)
 			return
 		}
-		_ = email
 		user, err := db.UserGetByEmail(email)
 		if err != nil {
 			log.Printf("error: AdminReservations: can't get user %q by mail, err: %v", email, err)
@@ -1379,22 +1453,129 @@ func AboutHTML(lang string) func(w http.ResponseWriter, r *http.Request) {
 
 }
 
+type BankAccountEditorVars struct {
+	LBLLang              string
+	LBLTitle             string
+	LBLQRPayTitle        string
+	LBLQRPayHowTo        string
+	LBLQRAccount         string
+	LBLQRRecipientName   string
+	LBLQRName            string
+	LBLQRBankID          string
+	LBLQRMessage         string
+	LBLQAmountFieldName  string
+	LBLQRCurrency        string
+	LBLQRVarSymbol       string
+	QRNameVal            string
+	QRAccountVal         string
+	QRRecipientNameVal   string
+	QRBankIDVal          string
+	QRMessageVal         string
+	QRAmountFieldNameVal string
+	QRCurrencyVal        string
+	QRVarSymbolVal       string
+	BTNSave              string
+}
+
+func BankAccountEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("BankAccountEditor: problem getting session %v", err)
+			return
+		}
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("BankAccountEditor: problem getting user by mail %q, err: %v", email, err)
+		}
+
+		var curBA BankAccount
+
+		err = r.ParseForm()
+		if err != nil {
+			log.Printf("BankAccountEditor: problem parsing form data, err: %v", err)
+		}
+		bankIDs := r.FormValue("ba-id")
+		bankAccID, err := strconv.ParseInt(bankIDs, 10, 64)
+		if err != nil {
+			// it is probably new account, so name is sent
+			name := r.FormValue("name")
+			curBA = BankAccount{
+				Name: name,
+			}
+			if name == "" {
+				log.Printf("BankAccountEditor: error retrieving bank account, no valid ID %q and name %q", bankIDs, name)
+			}
+		} else {
+			curBA, err = db.BankAccountGetByID(bankAccID, user.ID)
+			if err != nil {
+				log.Printf("BankAccountEditor: problem getting bank account by id %d, %v", bankAccID, err)
+			}
+		}
+
+		pPL := BankAccountEditorVars{
+			LBLLang:              lang,
+			LBLTitle:             "Edycja kont bankowych (QRPay)",
+			LBLQRPayTitle:        "QR Kod - płatność",
+			LBLQRName:            "Nazwa konta(w Rezerwo):",
+			LBLQRPayHowTo:        "Podaj namiary na konto, dla którego ma być wygenerowany kod QR. IBAN stwierdź z kodu wygenerowanego przez aplikację bankowości mobilnej.",
+			LBLQRAccount:         "Konto bankowe w formacie IBAN (ważne!):",
+			LBLQRRecipientName:   "Nazwa konta wyświetlana płacącemu (opcjonalne):",
+			LBLQRMessage:         "Początek wiadomości do adrasata(np. bal2024), zostanie dodane imię i nazwisko:",
+			LBLQRCurrency:        "Waluta (w formacie 3-znakowym: CZK, PLN, EUR, ...)",
+			LBLQAmountFieldName:  "Nazwa pola na formularzu zawierającego sumę (opcjonalne):",
+			LBLQRVarSymbol:       "Variabilní symbol (opcjonalne):",
+			QRNameVal:            curBA.Name,
+			QRAccountVal:         curBA.IBAN,
+			QRRecipientNameVal:   curBA.RecipientName.String,
+			QRBankIDVal:          curBA.BankID.String,
+			QRMessageVal:         curBA.Message.String,
+			QRAmountFieldNameVal: curBA.AmountField.String,
+			QRCurrencyVal:        curBA.Currency,
+			BTNSave:              "Zapisz",
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/a_bankaccount.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", pPL)
+		if err != nil {
+			log.Print("ErrorHTML: template executing error: ", err) //log it
+		}
+	}
+
+}
+
 type FormEditorVars struct {
-	LBLLang             string
-	LBLTitle            string
-	LBLAdminHowTo       string
-	LBLFormHowTo        string
-	LBLFormName         string
-	LBLFormURL          string
-	LBLFormBanner       string
-	LBLFormThankYou     string
-	FormNameVal         string
-	FormURLVal          string
-	FormBannerVal       string
-	FormDataVal         string
-	HTMLFormHowToVal    template.HTML
-	HTMLFormThankYouVal template.HTML
-	BTNSave             string
+	LBLLang                    string
+	LBLTitle                   string
+	LBLAdminHowTo              string
+	LBLFormHowTo               string
+	LBLFormName                string
+	LBLFormURL                 string
+	LBLFormBanner              string
+	LBLFormThankYou            string
+	LBLFormInfoPanel           string
+	FormNameVal                string
+	FormURLVal                 string
+	FormBannerVal              string
+	FormDataVal                string
+	HTMLFormHowToVal           template.HTML
+	HTMLFormThankYouVal        template.HTML
+	HTMLFormInfoPanelVal       template.HTML
+	LBLSelectBankAccount       string
+	LBLBankAccountsSelectTitle string
+	LBLMoneyField              string
+	MoneyFieldVal              string
+	BTNSave                    string
+	BTNClose                   string
+	BTNSelect                  string
+	BankAccounts               []BankAccount
+	LBLFormThankYouMailSubject string
+	FormThankYouMailSubjectVal string
+	LBLFormThankYouMail        string
+	HTMLFormThankYouMailVal    template.HTML
+	LBLThankYouTitle           string
+	LBLThankYouMailTitle       string
 }
 
 func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -1412,6 +1593,11 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			log.Printf("FormEditor: problem getting user by mail %q, err: %v", email, err)
 		}
 
+		ba, err := db.BankAccountGetAll(user.ID)
+		if err != nil {
+			log.Printf("FormEditor: problem getting bankaccounts for user %q, err: %v", user.Name.String, err)
+		}
+
 		err = r.ParseForm()
 		if err != nil {
 			log.Printf("FormEditor: problem parsing form data, err: %v", err)
@@ -1423,7 +1609,7 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			formTempl.URL = r.FormValue("url")
 			formTempl.UserID = user.ID
 		} else {
-			formTempl, err = db.FormTemplateGetByID(formTemplID)
+			formTempl, err = db.FormTemplateGetByID(formTemplID, user.ID)
 			if err != nil {
 				log.Printf("error retrieving formTemplate with ID: %q from DB, err: %v", formTemplID, err)
 			}
@@ -1433,21 +1619,41 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			formTempl.Content.String = `[{"type":"text","required":true,"label":"Imię","className":"form-control row-1 col-md-3","name":"name-REQUIRED","access":false,"subtype":"text","maxlength":30},{"type":"text","required":true,"label":"Nazwisko","className":"form-control row-1 col-md-4","name":"surname-REQUIRED","access":false,"subtype":"text","maxlength":50},{"type":"text","subtype":"email","required":true,"label":"E-mail","className":"form-control row-1 col-md-5","name":"email-REQUIRED","access":false,"maxlength":50}]`
 		}
 
+		curBA, err := db.BankAccountGetByID(formTempl.BankAccountID.Int64, user.ID)
+		if err != nil {
+			log.Printf("FormEditor: can not get current bank account %d, %v", formTempl.BankAccountID.Int64, err)
+		}
+
 		pPL := FormEditorVars{
-			LBLTitle:            "Edytor deklaracji",
-			LBLFormName:         "Nazwa formularza:",
-			LBLAdminHowTo:       "Przeciągaj elementy na głowny ekran. Zmień ich tytuły i Zapisz. Pamiętaj by Link był unikatowy (np. dekl2024)!",
-			LBLFormURL:          "Link (URL):",
-			LBLFormHowTo:        "Instrukcja dla wypełniającego (HTML):",
-			LBLFormBanner:       "Banner formularza:",
-			LBLFormThankYou:     "Komunikat/podziękowanie po wypełnienieniu formularza:",
-			BTNSave:             "Zapisz",
-			FormNameVal:         formTempl.Name,
-			FormURLVal:          formTempl.URL,
-			FormBannerVal:       formTempl.Banner.String,
-			FormDataVal:         formTempl.Content.String,
-			HTMLFormHowToVal:    template.HTML(formTempl.HowTo.String),
-			HTMLFormThankYouVal: template.HTML(formTempl.ThankYou.String),
+			LBLTitle:                   "Edytor deklaracji",
+			LBLFormName:                "Nazwa formularza:",
+			LBLAdminHowTo:              "Przeciągaj elementy na głowny ekran. Zmień ich tytuły i Zapisz. Pamiętaj by Link był unikatowy (np. dekl2024)!",
+			LBLFormURL:                 "Link (URL):",
+			LBLFormHowTo:               "Instrukcja dla wypełniającego (HTML):",
+			LBLFormBanner:              "Banner formularza:",
+			LBLFormThankYou:            "Komunikat/podziękowanie po wypełnienieniu formularza:",
+			LBLFormInfoPanel:           "Panel boczny formularza (np. zliczanie aktualnych wartości):",
+			BTNSave:                    "Zapisz",
+			FormNameVal:                formTempl.Name,
+			FormURLVal:                 formTempl.URL,
+			FormBannerVal:              formTempl.Banner.String,
+			FormDataVal:                formTempl.Content.String,
+			HTMLFormHowToVal:           template.HTML(formTempl.HowTo.String),
+			HTMLFormThankYouVal:        template.HTML(formTempl.ThankYou.String),
+			HTMLFormInfoPanelVal:       template.HTML(formTempl.InfoPanel.String),
+			LBLBankAccountsSelectTitle: "Konta bankowe:",
+			LBLSelectBankAccount:       "Wybierz konto ...",
+			LBLMoneyField:              "Nazwa pola zawierającego ilość pieniedzy:",
+			MoneyFieldVal:              chooseEmail(curBA.AmountField.String, formTempl.MoneyAmountFieldName.String),
+			BankAccounts:               ba,
+			BTNClose:                   "Zamknij",
+			BTNSelect:                  "Wybierz",
+			LBLFormThankYouMailSubject: "Tytuł maila:",
+			FormThankYouMailSubjectVal: formTempl.ThankYouMailSubject.String,
+			LBLFormThankYouMail:        "Treść maila:",
+			HTMLFormThankYouMailVal:    template.HTML(formTempl.ThankYouMailText.String),
+			LBLThankYouTitle:           "Wiadomość po wypełnieniu (podsumowanie + podziękowanie)",
+			LBLThankYouMailTitle:       "E-mail z podsumowaniem, podziękowaniem",
 		}
 
 		t := template.Must(template.ParseFiles("tmpl/a_form_editor.html", "tmpl/base.html"))
@@ -1456,6 +1662,149 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			log.Print("ErrorHTML: template executing error: ", err) //log it
 		}
 	}
+}
+
+type FormRapRow struct {
+	FormID   int64
+	AnswerID int64
+	Value    string
+}
+
+type FormRaportVars struct {
+	LBLLang       string
+	FormTmplID    int64
+	LBLTitle      string
+	LBLTotalPrice string
+	FormFields    []FormField
+	AnswersRows   [][]FormRapRow
+}
+
+func FormRaport(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		formTmplID := int64(-1)
+		if r.Method == "POST" {
+			err := r.ParseForm()
+			if err != nil {
+				log.Printf("FormRaport: problem parsing form, err: %v", err)
+			}
+			formTemplIDs := r.FormValue("formtmpl-id")
+			formTmplID, err = strconv.ParseInt(formTemplIDs, 10, 64)
+			if err != nil {
+				log.Printf("FormRaport: can not convert %q to int64, err: %v", formTemplIDs, err)
+			}
+
+		} else {
+			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		}
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("FormRaport info: %v", err)
+			return
+		}
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("FormRaport: can't get user %q by mail, err: %v", email, err)
+		}
+
+		// we only need moneyfield from FormTemplate
+		tmpl, err := db.FormTemplateGetByID(formTmplID, user.ID)
+		if err != nil {
+			log.Printf("FormRaport: can not get FormTemplate with id: %d for user: %s, err: %v", formTmplID, user.Name.String, err)
+		}
+		_ = tmpl
+
+		ff, err := db.FormFieldGetAllForTmpl(formTmplID)
+		if err != nil {
+			log.Printf("FormRaport: can not get fields for formTmplID %d, %v", formTmplID, err)
+		}
+		prependPL := []FormField{
+			{Display: "Status"},
+			{Display: "Ostatnia notyf."},
+			{Display: "Ilość wysłanych"},
+		}
+		cols := append(prependPL, ff...)
+
+		// gen answers for this formTempl
+		forms, err := db.FormGetAll(user.ID, formTmplID)
+		if err != nil {
+			log.Printf("FormRaport: can not get forms form formTmplID %d, %v", formTmplID, err)
+		}
+
+		rows := [][]FormRapRow{}
+		for i := range forms {
+			// get notification data first
+			lastdate, err := db.FormNotificationGetLast(forms[i].ID)
+			if err != nil {
+				log.Printf("FormRaport: can not get notification date for %d, %v", forms[i].ID, err)
+			}
+			amount, err := db.FormNotificationGetAmount(forms[i].ID)
+			if err != nil {
+				log.Printf("FormRaport: can not get notification date for %d, %v", forms[i].ID, err)
+			}
+
+			row := make([]FormRapRow, len(cols))
+			// first column is status
+			row[0] = FormRapRow{
+				AnswerID: 0,
+				FormID:   0,
+				Value:    forms[i].Status.String,
+			}
+			row[1] = FormRapRow{
+				AnswerID: 0,
+				FormID:   0,
+				Value:    ToDateTime(lastdate),
+			}
+			row[2] = FormRapRow{
+				AnswerID: 0,
+				FormID:   0,
+				Value:    strconv.FormatInt(amount, 10),
+			}
+			ans, err := db.FormAnswerGetAll(forms[i].ID)
+			if err != nil {
+				log.Printf("FormRaport: can not get answers form formID %d, %v", forms[i].ID, err)
+			}
+
+			for n := range ans {
+				index := getFormFieldIndex(ans[n].FormFieldID, ff) // search in column list column index
+				if index == -1 {
+					log.Println("answer", ans[n].Value.String, "with id", ans[n].FormFieldID, "not found in FormFields!")
+					continue
+				}
+				row[index+len(prependPL)] = FormRapRow{ // we have to shift index, we are prependig some data to row
+					AnswerID: ans[n].ID,
+					FormID:   ans[n].FormID,
+					Value:    ans[n].Value.String} // put answer data on given index
+			}
+			rows = append(rows, row)
+		}
+
+		plP := FormRaportVars{
+			LBLLang:       lang,
+			FormTmplID:    formTmplID,
+			LBLTitle:      "Reservations",
+			LBLTotalPrice: "Total",
+			FormFields:    cols,
+			AnswersRows:   rows,
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/a_form_raport.html", "tmpl/base.html"))
+		err = t.ExecuteTemplate(w, "base", plP)
+		if err != nil {
+			log.Print("FormRaport template executing error: ", err)
+		}
+
+	}
+}
+
+// getFormFieldIndex returns possition in given list if found
+// or -1 if not in list
+func getFormFieldIndex(formFieldID int64, ff []FormField) int {
+	for i := range ff {
+		if formFieldID == ff[i].ID {
+			return i
+		}
+	}
+	return -1
 }
 
 type ErrorVars struct {
@@ -1767,12 +2116,16 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 }
 
 type FormTemplJson struct {
-	Name     string         `json:"name"`
-	URL      string         `json:"url"`
-	Banner   string         `json:"banner"`
-	HowTo    string         `json:"howto"`
-	ThankYou string         `json:"thankyou"`
-	Content  []FormFieldDef `json:"content"`
+	Name                string         `json:"name"`
+	URL                 string         `json:"url"`
+	Banner              string         `json:"banner"`
+	HowTo               string         `json:"howto"`
+	ThankYou            string         `json:"thankyou"`
+	ThankYouMailSubject string         `json:"thankyoumailsubject"`
+	ThankYouMailText    string         `json:"thankyoumailtext"`
+	InfoPanel           string         `json:"infopanel"`
+	MoneyField          string         `json:"moneyfield"`
+	Content             []FormFieldDef `json:"content"`
 }
 
 type FormTemplRawContent struct {
@@ -1835,23 +2188,28 @@ func FormTemplateAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 			//log.Println("raw json content:", string(rawContent.Content))
 
 			ft := &FormTemplate{
-				Name:        formTemplJson.Name,
-				URL:         formTemplJson.URL,
-				UserID:      user.ID,
-				HowTo:       ToNS(formTemplJson.HowTo),
-				Banner:      ToNS(formTemplJson.Banner),
-				ThankYou:    ToNS(formTemplJson.ThankYou),
-				CreatedDate: time.Now().Unix(),
-				Content:     ToNS(string(rawContent.Content)),
+				Name:                 formTemplJson.Name,
+				URL:                  formTemplJson.URL,
+				UserID:               user.ID,
+				HowTo:                ToNS(formTemplJson.HowTo),
+				Banner:               ToNS(formTemplJson.Banner),
+				ThankYou:             ToNS(formTemplJson.ThankYou),
+				ThankYouMailSubject:  ToNS(formTemplJson.ThankYouMailSubject),
+				ThankYouMailText:     ToNS(formTemplJson.ThankYouMailText),
+				InfoPanel:            ToNS(formTemplJson.InfoPanel),
+				MoneyAmountFieldName: ToNS(formTemplJson.MoneyField),
+				CreatedDate:          time.Now().Unix(),
+				Content:              ToNS(string(rawContent.Content)),
 				// TODO: if we want to assign it to event, add here:
 				// EventID: "get event somehow",
 			}
+
 			// try to add FormTemplate to db
 			lastid, err := db.FormTemplateAdd(ft)
 			// form template probably already exists,
 			// we will try to modify it
 			if err != nil {
-				log.Printf("FormTemplateAddMod: insert failed, probably already exists in db, %v", err)
+				//log.Printf("FormTemplateAddMod: insert failed, probably already exists in db, %v", err)
 				err := db.FormTemplateModByURL(ft)
 				if err != nil {
 					log.Printf("FormTemplateAddMod: insert and update faied! %v", err)
@@ -1925,6 +2283,74 @@ func isFieldIn(name string, l []FormField) int {
 		}
 	}
 	return -1
+}
+
+type BankAccountJson struct {
+	Name      string `json:"name"`
+	Account   string `json:"account"`
+	Recipient string `json:"recipient"`
+	Message   string `json:"message"`
+	FieldName string `json:"fieldname"`
+	VarSymbol string `json:"varsymbol"`
+	Currency  string `json:"currency"`
+}
+
+func BankAccountAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("FormTemplateNew: session error: %v", err)
+			return
+		}
+
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("FormTemplateNew: can not get user by mail %q, %v", email, err)
+			return
+		}
+
+		if r.Method == "POST" {
+			var b BankAccountJson
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&b)
+			if err != nil {
+				log.Printf("BankAccountAddMod: error reading json answer, %v", err)
+			}
+
+			vs, err := strconv.ParseInt(strings.TrimSpace(b.VarSymbol), 10, 64)
+			if err != nil {
+				log.Printf("BankAccountAddMod: error converting varsymbol %q to int, %v", b.VarSymbol, err)
+			}
+
+			log.Printf("%+v", b) // debug
+
+			ba := &BankAccount{
+				Name:          b.Name,
+				IBAN:          b.Account,
+				RecipientName: ToNS(b.Recipient),
+				Message:       ToNS(b.Message),
+				AmountField:   ToNS(b.FieldName),
+				VarSymbol:     ToNI(vs),
+				Currency:      b.Currency,
+				UserID:        user.ID,
+			}
+
+			lastid, err := db.BankAccountAdd(ba)
+
+			if err != nil {
+				err = db.BankAccountModByName(ba)
+				if err != nil {
+					log.Printf("BankAccountAddMod: insert and update of %v failed, %v", ba, err)
+					http.Error(w, fmt.Sprintf(`{"msg":"Nie udało się zapisać konta!\n%s"}`, err.Error()), http.StatusTeapot) // 418
+				} else {
+					w.Write([]byte(fmt.Sprintf(`{"msg":"updated %s"}`, b.Name)))
+				}
+			} else {
+				w.Write([]byte(fmt.Sprintf(`{"msg":"inserted %d"}`, lastid)))
+			}
+		}
+
+	}
 }
 
 type FormFieldType interface {
@@ -2031,10 +2457,10 @@ func FormAddMod(db *DB) func(w http.ResponseWriter, r *http.Request) {
 					if err != nil {
 						log.Printf("FormAddMod: can not get FormID via email %q, templateID %d, userID %d, %v", f.Email.String, templ.ID, user.ID, err)
 					}
-					w.Write([]byte(fmt.Sprintf(`{"msg":"updated %d"}`, FormID)))
+					w.Write([]byte(fmt.Sprintf(`{"id":"%d"}`, FormID)))
 				}
 			} else {
-				w.Write([]byte(fmt.Sprintf(`{"msg":"inserted %d"}`, FormID)))
+				w.Write([]byte(fmt.Sprintf(`{"formid":"%d", "name":"%s", "surname":"%s", "templurl":"%s"}`, FormID, name, surname, templ.URL)))
 			}
 
 			// add/update answers
@@ -2124,29 +2550,118 @@ func isEmpty[T comparable](t []T) bool {
 }
 
 type FormRendererVars struct {
-	LBLLang     string
-	LBLTitle    string
-	LBLHowTo    template.HTML
-	FormDataVal template.JS
-	BTNSave     string
+	LBLLang       string
+	LBLTitle      string
+	LBLHowTo      template.HTML
+	FormDataVal   template.JS
+	FormInfoPanel template.HTML
+	BTNSave       string
+}
+
+type InfoPanel struct {
+	FormFuncs
+}
+
+type FormFuncs struct {
+	DB          *DB
+	User        User
+	FormID      int64
+	Template    FormTemplate
+	NameSurname string
+}
+
+// Sum returns sum of given form field.
+// form field can be specified by name or display value,
+// where name is always checked first.
+func (i *InfoPanel) Sum(FormFieldName string) string {
+	var sum int64
+	if strings.ToLower(FormFieldName) == "forms" {
+		amm, err := i.DB.FormGetAmmount(i.User.ID, i.Template.ID)
+		if err != nil {
+			log.Printf("Sum: error getting ammount of forms for user %q, formTemplID %d, %v", i.User.URL, i.Template.ID, err)
+		}
+		return strconv.FormatInt(amm, 10)
+	}
+	id, err := i.DB.FormFieldGetIDByName(FormFieldName, i.Template.ID)
+	if err != nil {
+		log.Printf("searching for display: %s", FormFieldName) //debug
+		id, err = i.DB.FormFieldGetIDByDisplay(FormFieldName, i.Template.ID)
+	}
+
+	log.Println("field id:", id)
+	nrs, err := i.DB.FormAnswerGetAllAnswersForFieldInts(id)
+	if err != nil {
+		log.Printf("Sum: can not get data for field %s(id:%d), %v", FormFieldName, id, err)
+	}
+	for i := range nrs {
+		sum += nrs[i]
+	}
+
+	return strconv.FormatInt(sum, 10)
+}
+
+// QRPay TODO: we need to get fields vals here somehow
+// or ... not, db will be already filled on ThankYou page.
+func (i *InfoPanel) QRPay(accountName string) template.HTML {
+	ba, err := i.DB.BankAccountGetByName(accountName, i.User.ID)
+	if err != nil {
+		log.Printf("QRPay: no account with this name found, name given by admin: %q, userID: %d(%s), %v", accountName, i.User.ID, i.User.URL, err)
+	}
+
+	templURL := strings.Join(strings.Fields(i.Template.URL), "")
+	imgpath := fmt.Sprintf("%s/%s/%s/%s.jpeg", MEDIAROOT, i.User.URL, MEDIAQRCODESUBDIR, templURL+"_"+i.NameSurname)
+
+	am, err := i.DB.FormAnswerGetByFieldName(i.FormID, i.Template.ID, i.Template.MoneyAmountFieldName.String)
+	if err != nil {
+		am, err = i.DB.FormAnswerGetByFieldDisplay(i.FormID, i.Template.ID, i.Template.MoneyAmountFieldName.String)
+		if err != nil {
+			log.Printf("QRPay: problem getting money amount field name and display %q, FormID %d, %v", i.Template.MoneyAmountFieldName.String, i.FormID, err)
+		}
+	}
+	ami, err := strconv.ParseInt(am, 10, 64)
+	if err != nil {
+		log.Printf("QRPay: error converting money amount to int64 %q, %v", am, err)
+	}
+	qr := NewQRPayment(ba.IBAN, ba.RecipientName.String, float64(ami), ba.Currency, ba.Message.String+"_"+i.NameSurname, ba.VarSymbol.Int64)
+	log.Println(ba)
+	err = qr.GenCode(imgpath)
+	if err != nil {
+		log.Printf("QRPay: error generating qr image, %v", err)
+	}
+	return template.HTML(fmt.Sprintf("<img width=\"200\" height=\"200\" src=\"/%s\" alt=\"QRError\">", imgpath))
 }
 
 func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var parsedInfoPanel bytes.Buffer
 
-		_, templ, err := getOrganizationAndForm(w, r, db, lang)
+		user, templ, err := getOrganizationAndForm(w, r, db, lang)
 		if err != nil {
-			return // just and function, errors had been sent
+			return // just end function, errors had been sent
 		}
+
+		infp := &InfoPanel{FormFuncs{DB: db, User: user, Template: templ}}
+
+		tmpl, err := template.New("infopanel").Parse(templ.InfoPanel.String)
+		if err != nil {
+			log.Printf("FormRenderer: error parsing InfoPanel template, %v", err)
+		}
+		err = tmpl.ExecuteTemplate(&parsedInfoPanel, "infopanel", infp)
+		if err != nil {
+			log.Printf("FormRenderer: error executing InfoPanel template, %v", err)
+		}
+
+		log.Println(parsedInfoPanel.String())
 
 		// now actuall rendering
 
 		pPL := FormRendererVars{
-			LBLLang:     lang,
-			LBLTitle:    templ.Name,
-			LBLHowTo:    template.HTML(templ.HowTo.String),
-			FormDataVal: template.JS(templ.Content.String),
-			BTNSave:     "Wyślij!",
+			LBLLang:       lang,
+			LBLTitle:      templ.Name,
+			LBLHowTo:      template.HTML(templ.HowTo.String),
+			FormDataVal:   template.JS(templ.Content.String),
+			FormInfoPanel: template.HTML(parsedInfoPanel.String()),
+			BTNSave:       "Wyślij!",
 		}
 
 		t := template.Must(template.ParseFiles("tmpl/form_renderer.html", "tmpl/base.html"))
@@ -2158,19 +2673,63 @@ func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+type ThankYouVars struct {
+	LBLLang       string
+	LBLTitle      string
+	LBLStatus     string
+	HiddenFormID  string
+	HiddenName    string
+	HiddenSurname string
+	LBLStatusText template.HTML
+	BTNOk         string
+}
+
+type ThankYou struct {
+	FormFuncs
+}
+
 func FormThankYou(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		_, tmpl, err := getOrganizationAndForm(w, r, db, lang)
+		var parsedThankYou bytes.Buffer
+		user, templ, err := getOrganizationAndForm(w, r, db, lang)
 		if err != nil {
 			return
 		}
+		// FormID is POSTed by js in form_renderer
+		err = r.ParseForm()
+		if err != nil {
+			log.Printf("FormThankYou: problem parsing form data, err: %v", err)
+		}
+		formID, err := strconv.ParseInt(r.FormValue("formID"), 10, 64)
+		if err != nil {
+			log.Printf("FormThankYou: problem getting formID posted by js in form_renderer.js, %v", err)
+		}
+		name := r.FormValue("name")
+		surname := r.FormValue("surname")
 
-		p := ReservationOrderStatusVars{
+		nsn := surname + "_" + name
+
+		thp := &InfoPanel{FormFuncs{DB: db, User: user, Template: templ, FormID: formID, NameSurname: nsn}}
+
+		tmpl, err := template.New("thankyou").Parse(templ.ThankYou.String)
+		if err != nil {
+			log.Printf("FormThankYou: error parsing InfoPanel template, %v", err)
+		}
+		err = tmpl.ExecuteTemplate(&parsedThankYou, "thankyou", thp)
+		if err != nil {
+			log.Printf("FormThankYou: error executing ThankYou template, %v", err)
+		}
+
+		log.Println(parsedThankYou.String())
+
+		p := ThankYouVars{
 			LBLLang:       lang,
 			LBLTitle:      "Dziękujemy za wypełnienie formularza!",
 			LBLStatus:     "",
-			LBLStatusText: template.HTML(tmpl.ThankYou.String),
+			HiddenFormID:  strconv.FormatInt(formID, 10),
+			HiddenName:    name,
+			HiddenSurname: surname,
+			LBLStatusText: template.HTML(parsedThankYou.String()),
 			BTNOk:         "OK",
 		}
 
@@ -2185,7 +2744,7 @@ func FormThankYou(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 func getOrganizationAndForm(w http.ResponseWriter, r *http.Request, db *DB, lang string) (User, FormTemplate, error) {
 	// get vars from url (from mux)
 	userURL := mux.Vars(r)["userurl"]
-	formURL := mux.Vars(r)["formurl"]
+	formtemplURL := mux.Vars(r)["formurl"]
 
 	// validate url
 	user, err := db.UserGetByURL(userURL)
@@ -2198,12 +2757,12 @@ func getOrganizationAndForm(w http.ResponseWriter, r *http.Request, db *DB, lang
 		ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
 		return user, FormTemplate{}, err
 	}
-	templ, err := db.FormTemplateGetByURL(formURL, user.ID)
+	templ, err := db.FormTemplateGetByURL(formtemplURL, user.ID)
 	if err != nil {
-		log.Printf("FormRenderer: error getting form(wrong link or formurl in url), %v", err)
+		log.Printf("FormRenderer: error getting form(wrong link or formtemplurl in url), %v", err)
 		plErr := map[string]string{
 			"title": "Nie znaleziono formularza!",
-			"text":  fmt.Sprintf("W bazie nie istnieje taki formularz: %q\nProszę sprawdzić poprawność linka.\nJeżeli organizator twierdzi, że jest ok, to proszę o kontakt pod: admin (at) zori.cz.", formURL),
+			"text":  fmt.Sprintf("W bazie nie istnieje taki formularz: %q\nProszę sprawdzić poprawność linka.\nJeżeli organizator twierdzi, że jest ok, to proszę o kontakt pod: admin (at) zori.cz.", formtemplURL),
 		}
 		ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
 		return user, templ, err
@@ -2299,6 +2858,7 @@ func ReservationDeleteAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("error: ReservationDeleteAPI: error retrieving reservation for chair: %d, eventID: %d, err: %v", chair.ID, m.EventID, err)
 			}
+
 			err = db.ReservationDel(reservation.ID)
 			if err != nil {
 				log.Printf("error: ReservationDeleteAPI: error deleting reservation, err: %v", err)
@@ -2321,6 +2881,37 @@ func ReservationDeleteAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+		}
+	}
+}
+
+type FormChangeStatusMsg struct {
+	FormID       int64  `json:"form_id"`
+	FormAnswerID int64  `json:"form_answer_id"`
+	Status       string `json:"status"`
+}
+
+// it is called from form raport, allows to change status in forms table
+func FormChangeStatusAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var m FormChangeStatusMsg
+		if r.Method == "POST" {
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&m)
+			if err != nil {
+				log.Printf("error: FormChangeStatusAPI: problem decoding json, err: %v", err)
+			}
+			fmt.Printf("%+v", m) //debug
+			// TODO: add timestamp for status change
+			timestamp := int64(0)
+			if m.Status == "payed" {
+				timestamp = time.Now().Unix()
+			}
+			_ = timestamp
+
+			//if err := db.(m.Status, timestamp); err != nil {
+			//		log.Printf("error: ReservationChangeStatusAPI: problem updating status to %q for FurnID: %d, EventID: %d, err: %v", m.Status, chair.ID, m.EventID, err)
+			//	}
 		}
 	}
 }
@@ -2377,6 +2968,11 @@ func ToNI(i int64) sql.NullInt64 {
 func ToDate(unix int64) string {
 	t := time.Unix(unix, 0)
 	return t.Format("2006-01-02")
+}
+
+func ToDateTime(unix int64) string {
+	t := time.Unix(unix, 0)
+	return t.Format("2006-01-02 15:04")
 }
 
 func InitSession(w http.ResponseWriter, r *http.Request, cookieStore *sessions.CookieStore, onErrRedir string, requiredAdmin bool) (*sessions.Session, string, string, error) {
@@ -2492,7 +3088,7 @@ func SplitSitsRooms(sits, rooms string) ([]int64, []int64, error) {
 // getAttachments looks for ';' and splits
 // filenames into slice, then it adds full path
 // to the user (organization) media path
-func getAttachments(atts, userDirPath, mediaRootPath string) []string {
+func getAttachments(atts, userDirPath, emailsubdir, mediaRootPath string) []string {
 	fullPathAtts := []string{}
 	if atts == "" {
 		return fullPathAtts
@@ -2500,9 +3096,35 @@ func getAttachments(atts, userDirPath, mediaRootPath string) []string {
 	ss := strings.Split(atts, ";")
 	for i := range ss {
 		fullPathAtts = append(fullPathAtts,
-			fmt.Sprintf("%s/%s/%s", mediaRootPath, userDirPath, ss[i]))
+			fmt.Sprintf("%s/%s/%s/%s", mediaRootPath, userDirPath, emailsubdir, ss[i]))
 	}
 	return fullPathAtts
+}
+
+func getEmbeddedImgs(imgs, userDirPath, emailsubdir, mediaRootPath string) []EmbImg {
+	//embs := getAttachments(event.MailEmbeddedImgsDelimited.String, user.URL+"/"+emailsubdir, MEDIAROOT)
+
+	log.Println("imgs:", imgs) //debug
+	if imgs == "" {
+		return []EmbImg{}
+	}
+
+	ss := strings.Split(imgs, ";")
+	log.Println("ss:", ss) //debug
+	var ei = make([]EmbImg, len(ss))
+	for i := range ss {
+		ei[i] = EmbImg{
+			NamePath: fmt.Sprintf("%s/%s/%s/%s", mediaRootPath, userDirPath, emailsubdir, ss[i]),
+			CID:      fmt.Sprintf("%s@%s.cz", removeNonAlphanumeric(ss[i]), userDirPath),
+		}
+	}
+	log.Println("ei:", ei) //debug
+	return ei
+}
+
+func removeNonAlphanumeric(str string) string {
+	var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
+	return nonAlphanumericRegex.ReplaceAllString(str, "")
 }
 
 // chooseEmail - use main mail if alt_email is not defined

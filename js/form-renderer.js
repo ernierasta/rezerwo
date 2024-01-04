@@ -19,7 +19,7 @@ function SendFormData() {
     url: "/api/formans",
     data: JSON.stringify(finald),
     success: function(resp) {
-      console.log(resp.msg);
+      console.log("FormID:" + resp.id);
       
       // make button green
       $("#save").addClass("btn-success");
@@ -27,8 +27,20 @@ function SendFormData() {
       window.setTimeout(function(){
         $("#save").removeClass("btn-success");
       },2000);
-      window.location.replace(finald.uri + "/done");
+      //window.location.replace(finald.uri + "/done");
+      //window.location.assign(finald.uri + "/done");
       //window.location.href = "/admin";
+     
+      // redirect to given url and send additional
+      // post data
+      
+      $.redirect(finald.uri + "/done",
+        {
+          formID:   resp.formid,
+          name:     resp.name,
+          surname:  resp.surname,
+        }
+      );
     },
     statusCode: {
       418: function(xhr) {

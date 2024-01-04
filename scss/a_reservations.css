@@ -1,0 +1,25 @@
+#total-price, #total-sits {
+  font-size: larger;
+  font-weight: bold;
+}
+
+div.dataTables_wrapper div.dataTables_filter {
+  text-align: left !important;
+}
+
+.fa-check::before {
+  content: "\f00c";
+}
+
+.fa-remove::before, .fa-close::before, .fa-times::before {
+  content: "\f00d";
+}
+
+.fa {
+  display: inline-block;
+  font: normal normal normal 14px/1 FontAwesome;
+  font-size: inherit;
+  text-rendering: auto;
+}
+
+/*# sourceMappingURL=a_reservations.css.map */

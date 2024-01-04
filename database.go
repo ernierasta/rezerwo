@@ -36,6 +36,43 @@ import (
 // ALTER TABLE events
 //   ADD COLUMN mail_attachments TEXT;
 
+//ALTER TABLE formtemplates
+//   ADD COLUMN infopanel TEXT;
+
+// ALTER TABLE formtemplates
+//   ADD COLUMN bankaccounts_id_fk INTEGER REFERENCES bankaccounts(id);
+
+//ALTER TABLE formtemplates
+//   ADD COLUMN moneyfield TEXT;
+//ALTER TABLE formtemplates
+//   ADD COLUMN thankyoumailsubject TEXT;
+//ALTER TABLE formtemplates
+//   ADD COLUMN thankyoumailtext TEXT;
+
+//ALTER TABLE events
+//   ADD COLUMN mail_embeded_imgs TEXT;
+
+//ALTER TABLE forms
+//   ADD COLUMN status TEXT;
+
+// Get form data:
+// SELECT display, value FROM formanswers
+// JOIN formfields ON (formanswers.formfields_id_fk=formfields.id)
+// WHERE forms_id_fk=4
+
+// FormAnswers:
+//SELECT f.name, f.surname, ff.display, fa.value FROM forms f
+//JOIN formanswers fa ON fa.forms_id_fk=f.id
+//JOIN formfields ff ON fa.formfields_id_fk=ff.id
+//WHERE ff.display != "Nazwisko"
+
+//SELECT display, SUM(fa.value) FROM forms f
+//JOIN formanswers fa ON fa.forms_id_fk=f.id
+//JOIN formfields ff ON fa.formfields_id_fk=ff.id
+//WHERE ff.display != "Nazwisko" AND ff.display != "E-mail" AND display != "Imię dziecka"
+//AND display != "Klasa/przedszkole"
+//GROUP BY display
+
 // Renumbering tables:
 // UPDATE furnitures
 // SET number = number + 20
@@ -117,26 +154,27 @@ type Price struct {
 }
 
 type Event struct {
-	ID                       int64          `db:"id"`
-	Name                     string         `db:"name"`
-	Date                     int64          `db:"date"`
-	FromDate                 int64          `db:"from_date"`
-	ToDate                   int64          `db:"to_date"`
-	DefaultPrice             int64          `db:"default_price"`
-	DefaultCurrency          string         `db:"default_currency"`
-	NoSitsSelectedTitle      string         `db:"no_sits_selected_title"`
-	NoSitsSelectedText       string         `db:"no_sits_selected_text"`
-	OrderHowto               string         `db:"order_howto"`
-	OrderNotesDescription    string         `db:"order_notes_desc"`
-	OrderedNoteTitle         string         `db:"ordered_note_title"`
-	OrderedNoteText          string         `db:"ordered_note_text"`
-	MailSubject              string         `db:"mail_subject"`
-	MailText                 string         `db:"mail_text"`
-	MailAttachmentsDelimited sql.NullString `db:"mail_attachments"`
-	AdminMailSubject         string         `db:"admin_mail_subject"`
-	AdminMailText            string         `db:"admin_mail_text"`
-	HowTo                    string         `db:"how_to"`
-	UserID                   int64          `db:"users_id_fk"`
+	ID                        int64          `db:"id"`
+	Name                      string         `db:"name"`
+	Date                      int64          `db:"date"`
+	FromDate                  int64          `db:"from_date"`
+	ToDate                    int64          `db:"to_date"`
+	DefaultPrice              int64          `db:"default_price"`
+	DefaultCurrency           string         `db:"default_currency"`
+	NoSitsSelectedTitle       string         `db:"no_sits_selected_title"`
+	NoSitsSelectedText        string         `db:"no_sits_selected_text"`
+	OrderHowto                string         `db:"order_howto"`
+	OrderNotesDescription     string         `db:"order_notes_desc"`
+	OrderedNoteTitle          string         `db:"ordered_note_title"`
+	OrderedNoteText           string         `db:"ordered_note_text"`
+	MailSubject               string         `db:"mail_subject"`
+	MailText                  string         `db:"mail_text"`
+	MailAttachmentsDelimited  sql.NullString `db:"mail_attachments"`
+	MailEmbeddedImgsDelimited sql.NullString `db:"mail_embeded_imgs"`
+	AdminMailSubject          string         `db:"admin_mail_subject"`
+	AdminMailText             string         `db:"admin_mail_text"`
+	HowTo                     string         `db:"how_to"`
+	UserID                    int64          `db:"users_id_fk"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -188,16 +226,21 @@ type FurnitureFull struct {
 }
 
 type FormTemplate struct {
-	ID          int64          `db:"id"`
-	Name        string         `db:"name"`
-	URL         string         `db:"url"`
-	HowTo       sql.NullString `db:"howto"`
-	Banner      sql.NullString `db:"banner"`
-	ThankYou    sql.NullString `db:"thankyou"`
-	Content     sql.NullString `db:"content"`
-	CreatedDate int64          `db:"created_date"`
-	UserID      int64          `db:"users_id_fk"`
-	EventID     sql.NullInt64  `db:"events_id_fk"`
+	ID                   int64          `db:"id"`
+	Name                 string         `db:"name"`
+	URL                  string         `db:"url"`
+	HowTo                sql.NullString `db:"howto"`
+	Banner               sql.NullString `db:"banner"`
+	InfoPanel            sql.NullString `db:"infopanel"`
+	ThankYou             sql.NullString `db:"thankyou"`
+	Content              sql.NullString `db:"content"`
+	CreatedDate          int64          `db:"created_date"`
+	MoneyAmountFieldName sql.NullString `db:"moneyfield"`
+	UserID               int64          `db:"users_id_fk"`
+	EventID              sql.NullInt64  `db:"events_id_fk"`
+	BankAccountID        sql.NullInt64  `db:"bankaccounts_id_fk"`
+	ThankYouMailSubject  sql.NullString `db:"thankyoumailsubject"`
+	ThankYouMailText     sql.NullString `db:"thankyoumailtext"`
 }
 
 type FormField struct {
@@ -214,6 +257,7 @@ type Form struct {
 	Surname        sql.NullString `db:"surname"`
 	Email          sql.NullString `db:"email"`
 	Notes          sql.NullString `db:"notes"`
+	Status         sql.NullString `db:"status"`
 	CreatedDate    int64          `db:"created_date"`
 	UserID         int64          `db:"users_id_fk"`
 	FormTemplateID int64          `db:"formtemplates_id_fk"`
@@ -224,6 +268,25 @@ type FormAnswer struct {
 	Value       sql.NullString `db:"value"`
 	FormFieldID int64          `db:"formfields_id_fk"`
 	FormID      int64          `db:"forms_id_fk"`
+}
+
+type BankAccount struct {
+	ID            int64          `db:"id"`
+	Name          string         `db:"name"`
+	IBAN          string         `db:"iban"`
+	RecipientName sql.NullString `db:"recipientname"`
+	BankID        sql.NullString `db:"bank"`
+	Currency      string         `db:"currency"`
+	Message       sql.NullString `db:"message"`
+	VarSymbol     sql.NullInt64  `db:"varsymbol"`
+	AmountField   sql.NullString `db:"amountfield"`
+	UserID        int64          `db:"users_id_fk"`
+}
+
+type FormNotification struct {
+	ID     int64 `db:"id"`
+	Date   int64 `db:"date"`
+	FormID int64 `db:"forms_id_fk"`
 }
 
 // GetType is needed for generics
@@ -976,8 +1039,8 @@ func (db *DB) NoteDel(noteID int64) error {
 }
 
 func (db *DB) FormTemplateAdd(t *FormTemplate) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO formtemplates (name, url, howto, banner, thankyou, content, created_date, users_id_fk, events_id_fk)
-	VALUES(:name, :url, :howto, :banner, :thankyou, :content, :created_date, :users_id_fk, :events_id_fk)`, t)
+	ret, err := db.DB.NamedExec(`INSERT INTO formtemplates (name, url, howto, banner, thankyou, thankyoumailsubject, thankyoumailtext, infopanel, content, created_date, moneyfield, users_id_fk, events_id_fk, bankaccounts_id_fk)
+	VALUES(:name, :url, :howto, :banner, :thankyou, :thankyoumailsubject, :thankyoumailtext, :infopanel, :content, :created_date, :moneyfield, :users_id_fk, :events_id_fk, :bankaccounts_id_fk)`, t)
 	if err != nil {
 		return -1, err
 	}
@@ -990,9 +1053,9 @@ func (db *DB) FormTemplateGetAll(UserID int64) ([]FormTemplate, error) {
 	return tt, err
 }
 
-func (db *DB) FormTemplateGetByID(tmplID int64) (FormTemplate, error) {
+func (db *DB) FormTemplateGetByID(tmplID, UserID int64) (FormTemplate, error) {
 	t := FormTemplate{}
-	err := db.DB.Get(&t, `SELECT * FROM formtemplates WHERE id=$1`, tmplID)
+	err := db.DB.Get(&t, `SELECT * FROM formtemplates WHERE id=$1 AND users_id_fk=$2`, tmplID, UserID)
 	return t, err
 }
 
@@ -1003,7 +1066,7 @@ func (db *DB) FormTemplateGetByURL(URL string, UserID int64) (FormTemplate, erro
 }
 
 func (db *DB) FormTemplateModByID(t *FormTemplate) error {
-	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, url=:url, howto=:howto, banner=:banner, thankyou=:thankyou, content=:content WHERE id=:id`, t)
+	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, url=:url, howto=:howto, banner=:banner, thankyou=:thankyou, thankyoumailsubject=:thankyoumailsubject, thankyoumailtext=:thankyoumailtext, infopanel=:infopanel, content=:content, moneyfield=:moneyfield, bankaccounts_id_fk=:bankaccounts_id_fk WHERE id=:id`, t)
 	return err
 }
 
@@ -1011,7 +1074,7 @@ func (db *DB) FormTemplateModByURL(t *FormTemplate) error {
 	if t.UserID < 1 {
 		return fmt.Errorf("FormTemplateModByURL: no userID given! Update aborted. %+v", t)
 	}
-	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, content=:content, banner=:banner, howto=:howto, thankyou=:thankyou WHERE url=:url AND users_id_fk=:users_id_fk`, t)
+	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, content=:content, banner=:banner, howto=:howto, thankyou=:thankyou,thankyoumailsubject=:thankyoumailsubject, thankyoumailtext=:thankyoumailtext, infopanel=:infopanel, moneyfield=:moneyfield, bankaccounts_id_fk=:bankaccounts_id_fk WHERE url=:url AND users_id_fk=:users_id_fk`, t)
 	return err
 }
 
@@ -1036,6 +1099,24 @@ func (db *DB) FormFieldGetByName(name string, formtemplateID int64) (FormField, 
 	f := FormField{}
 	err := db.DB.Get(&f, `SELECT * FROM formfields WHERE name=$1 AND formtemplates_id_fk=$1`, name, formtemplateID)
 	return f, err
+}
+
+func (db *DB) FormFieldGetIDByName(name string, FormTemplateID int64) (int64, error) {
+	var id int64
+	if name == "" || FormTemplateID == 0 {
+		return id, fmt.Errorf("FormFieldGetByName: empty name %q or formtemplates_id_fk %d", name, FormTemplateID)
+	}
+	err := db.DB.Get(&id, `SELECT id FROM formfields WHERE name=$1 AND formtemplates_id_fk=$2`, name, FormTemplateID)
+	return id, err
+}
+
+func (db *DB) FormFieldGetIDByDisplay(display string, FormTemplateID int64) (int64, error) {
+	var id int64
+	if display == "" || FormTemplateID == 0 {
+		return id, fmt.Errorf("FormFieldGetByDisplay: empty display name %q or formtemplates_id_fk %d", display, FormTemplateID)
+	}
+	err := db.DB.Get(&id, `SELECT id FROM formfields WHERE display=$1 AND formtemplates_id_fk=$2`, display, FormTemplateID)
+	return id, err
 }
 
 // FormFieldModByName requires name and formtemplates_id_fk!
@@ -1074,6 +1155,12 @@ func (db *DB) FormGetAll(UserID int64, FormTemplateID int64) ([]Form, error) {
 	return ff, err
 }
 
+func (db *DB) FormGetAmmount(UserID, FormTemplateID int64) (int64, error) {
+	var f int64
+	err := db.DB.Get(&f, `SELECT COUNT(id) FROM forms WHERE users_id_fk=$1 AND formtemplates_id_fk=$2`, UserID, FormTemplateID)
+	return f, err
+}
+
 func (db *DB) FormGetIDByEmail(email string, FormTemplateID, UserID int64) (int64, error) {
 	var id int64
 	if email == "" || FormTemplateID == 0 || UserID == 0 {
@@ -1100,6 +1187,18 @@ func (db *DB) FormAnswerAdd(fa *FormAnswer) (int64, error) {
 	return ret.LastInsertId()
 }
 
+func (db *DB) FormAnswerGetByFieldDisplay(FormID, TemplateID int64, FormFieldDisplay string) (string, error) {
+	var fa string
+	err := db.DB.Get(&fa, `SELECT value FROM formanswers WHERE forms_id_fk=$1 AND formfields_id_fk=(SELECT id FROM formfields WHERE display=$2 AND formtemplates_id_fk=$3)`, FormID, FormFieldDisplay, TemplateID)
+	return fa, err
+}
+
+func (db *DB) FormAnswerGetByFieldName(FormID, TemplateID int64, FormFieldName string) (string, error) {
+	var fa string
+	err := db.DB.Get(&fa, `SELECT value FROM formanswers WHERE forms_id_fk=$1 AND formfields_id_fk=(SELECT id FROM formfields WHERE name=$2 AND formtemplates_id_fk=$3)`, FormID, FormFieldName, TemplateID)
+	return fa, err
+}
+
 func (db *DB) FormAnswerGetAll(FormID int64) ([]FormAnswer, error) {
 	fa := []FormAnswer{}
 	err := db.DB.Select(&fa, `SELECT * FROM formanswers WHERE forms_id_fk=$1`, FormID)
@@ -1112,12 +1211,90 @@ func (db *DB) FormAnswerGetAllForTemplate(FormTemplateID int64) ([]FormAnswer, e
 	return fa, err
 }
 
+// FormAnswerGetAllAnswersForFieldInts works only for data which can be converted to int64
+func (db *DB) FormAnswerGetAllAnswersForFieldInts(FieldID int64) ([]int64, error) {
+	fa := []int64{}
+	err := db.DB.Select(&fa, `SELECT Value FROM formanswers WHERE formfields_id_fk=$1`, FieldID)
+	return fa, err
+}
+
 func (db *DB) FormAnswerMod(fa *FormAnswer) error {
 	if fa.FormFieldID == 0 || fa.FormID == 0 {
-		return fmt.Errorf("FormAnswerMod: empty FormFieldID %q or FormID %d", fa.FormFieldID, fa.FormID)
+		return fmt.Errorf("FormAnswerMod: empty FormFieldID %d or FormID %d", fa.FormFieldID, fa.FormID)
 	}
 	_, err := db.DB.NamedExec(`UPDATE formanswers SET value=:value WHERE formfields_id_fk=:formfields_id_fk AND forms_id_fk=:forms_id_fk`, fa)
 	return err
+}
+
+func (db *DB) FormNotificationAdd(fa *FormNotification) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO formnotifications (date, forms_id_fk)
+	VALUES(:date, :forms_id_fk)`, fa)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) FormNotificationGetAll(FormID int64) ([]FormNotification, error) {
+	ff := []FormNotification{}
+	err := db.DB.Select(&ff, `SELECT * FROM formnotifications WHERE forms_id_fk=$1`, FormID)
+	return ff, err
+}
+
+func (db *DB) FormNotificationGetLast(FormID int64) (int64, error) {
+	var f int64
+	err := db.DB.Get(&f, `SELECT MAX(id) FROM formnotifications WHERE forms_id_fk=$1`, FormID)
+	return f, err
+}
+
+func (db *DB) FormNotificationGetAmount(FormID int64) (int64, error) {
+	var f int64
+	err := db.DB.Get(&f, `SELECT COUNT(id) FROM formnotifications WHERE forms_id_fk=$1`, FormID)
+	return f, err
+}
+
+func (db *DB) BankAccountAdd(ba *BankAccount) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO bankaccounts (name, iban, recipientname, bank, message, currency, varsymbol, amountfield, users_id_fk)
+	VALUES (:name, :iban, :recipientname, :bank, :message, :currency, :varsymbol, :amountfield, :users_id_fk)`, ba)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+func (db *DB) BankAccountMod(ba *BankAccount) error {
+	if ba.ID == 0 || ba.UserID == 0 {
+		return fmt.Errorf("BankAccountMod: empty ID %d or UserID %d", ba.ID, ba.UserID)
+	}
+	_, err := db.DB.NamedExec(`UPDATE bankaccounts SET name=:name, iban=:iban, recipientname=:recipientname, bank=:bank, message=:message, currency=:currency, varsymbol=:varsymbol, amountfield=:amountfield WHERE id=:id AND users_id_fk=:users_id_fk`, ba)
+	return err
+}
+
+func (db *DB) BankAccountModByName(ba *BankAccount) error {
+	if ba.Name == "" || ba.UserID == 0 {
+		return fmt.Errorf("BankAccountMod: empty name %q or UserID %d", ba.Name, ba.UserID)
+	}
+	_, err := db.DB.NamedExec(`UPDATE bankaccounts SET iban=:iban, recipientname=:recipientname, bank=:bank, message=:message, currency=:currency, varsymbol=:varsymbol, amountfield=:amountfield WHERE name=:name AND users_id_fk=:users_id_fk`, ba)
+	return err
+}
+
+func (db *DB) BankAccountGetAll(UserID int64) ([]BankAccount, error) {
+	ba := []BankAccount{}
+	err := db.DB.Select(&ba, `SELECT * FROM bankaccounts WHERE users_id_fk=$1`, UserID)
+	return ba, err
+}
+
+// userID is there just to doublecheck
+func (db *DB) BankAccountGetByID(id int64, userID int64) (BankAccount, error) {
+	c := BankAccount{}
+	err := db.DB.Get(&c, `SELECT * FROM bankaccounts WHERE id=$1 AND users_id_fk=$2 ORDER BY id DESC LIMIT 1`, id, userID)
+	return c, err
+}
+
+func (db *DB) BankAccountGetByName(name string, userID int64) (BankAccount, error) {
+	c := BankAccount{}
+	err := db.DB.Get(&c, `SELECT * FROM bankaccounts WHERE name=$1 AND users_id_fk=$2 ORDER BY id DESC LIMIT 1`, name, userID)
+	return c, err
 }
 
 func (db *DB) Close() {

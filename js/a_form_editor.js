@@ -24,7 +24,23 @@ var QuillHowToEditor = new Quill('#howto-editor', {
 
 var QuillThankYouEditor = new Quill('#thankyou-editor', {
     theme: 'snow'
-  });
+  }
+);
+
+var QuillThankYouMailEditor = new Quill('#thankyou-mail-editor', {
+    theme: 'snow'
+  }
+);
+
+var QuillInfoPanelEditor = new Quill('#infopanel-editor', {
+    theme: 'snow'
+  }
+);
+
+
+function NewBankAccount(){
+  
+}
 
 
 function SendFormDef(data) {
@@ -34,15 +50,20 @@ function SendFormDef(data) {
   finald.name = $('#form-name').val();
   finald.url = $('#form-url').val();
   finald.howto = QuillHowToEditor.root.innerHTML;
-  finald.banner = $("#form-banner").val();
+  finald.banner = $('#form-banner').val();
   finald.thankyou = QuillThankYouEditor.root.innerHTML;
-  finald.content = dataj;
+  finald.thankyoumailsubject = $('#mail-subject').val();
+  finald.thankyoumailtext = QuillThankYouMailEditor.root.innerHTML;
+  finald.infopanel = QuillInfoPanelEditor.root.innerHTML;
+  finald.moneyfield = $('#money-field').val();
+
   // remove all trailing <br> from end of label json field
   // it some kind of bug in formBuilder
   for (var i = 0; i < dataj.length; i++) {
     dataj[i].label = dataj[i].label.replace(/<br>+$/, "");
   }
-  //console.log(finald);
+  finald.content = dataj;
+  console.log(finald);
   
 
   $.ajax({

@@ -19,6 +19,9 @@ wget https://code.jquery.com/jquery-3.4.1.min.map -O ../js/jquery.min.map
 # jquery-ui
 wget https://jqueryui.com/resources/download/jquery-ui-1.12.1.zip
 
+# jquery-redirect
+wget https://raw.githubusercontent.com/mgalante/jquery.redirect/master/jquery.redirect.js -O ../js/jquery.redirect.js
+
 #quill - text editor
 wget https://github.com/quilljs/quill/releases/download/v1.3.6/quill.tar.gz
 

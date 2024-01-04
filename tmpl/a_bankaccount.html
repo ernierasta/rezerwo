@@ -1,0 +1,31 @@
+{{define "head"}}
+  <title>{{.LBLTitle}}</title>
+  <script src="/js/a_bankaccount.js"></script>
+{{end}}
+{{define "body"}}
+
+<div class="d-flex justify-content-center align-items-center">
+  <div class="col-md-6">
+    <h4>{{.LBLQRPayTitle}}</h4>
+    <div> {{.LBLQRPayHowTo}}</div>
+    <br />
+    <div class="form-group">
+      <label for="ba-name">{{.LBLQRName}}</label>
+      <input type="text" class="form-control" id="ba-name" name="ba-name" value="{{.QRNameVal}}" required>
+      <label for="ba-account">{{.LBLQRAccount}}</label>
+      <input type="text" class="form-control" id="ba-account" name="ba-account" value="{{.QRAccountVal}}" required>
+      <label for="ba-message">{{.LBLQRMessage}}</label>
+      <input type="text" class="form-control" id="ba-message" name="ba-message" value="{{.QRMessageVal}}" required>
+      <label for="ba-currency">{{.LBLQRCurrency}}</label>
+      <input type="text" class="form-control" id="ba-currency" name="ba-currency" value="{{.QRCurrencyVal}}">
+      <label for="ba-amount-field-name">{{.LBLQAmountFieldName}}</label>
+      <input type="text" class="form-control" id="ba-amount-field-name" name="ba-amount-field-name" value="{{.QRAmountFieldNameVal}}">
+      <label for="ba-recipientname">{{.LBLQRRecipientName}}</label>
+      <input type="text" class="form-control" id="ba-recipientname" name="ba-recipientname" value="{{.QRRecipientNameVal}}">
+      <label for="ba-varsymbol">{{.LBLQRVarSymbol}}</label>
+      <input type="text" class="form-control" id="ba-varsymbol" name="ba-varsymbol" value="{{.QRVarSymbolVal}}">
+    </div>
+    <button id="save" class="btn btn-primary" onclick="Save()">{{.BTNSave}}</button>
+  </div>
+</div>
+{{end}}

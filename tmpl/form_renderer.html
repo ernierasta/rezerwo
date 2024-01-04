@@ -1,6 +1,7 @@
 {{define "head"}}
   <title>{{.LBLTitle}}</title>
   <script src="/js/form-render.min.js"></script>
+  <script src="/js/jquery.redirect.js"></script>
 {{end}}
 {{define "body"}}
   <div class="d-flex justify-content-center align-items-center">
@@ -14,7 +15,9 @@
         <button id="save" class="btn btn-primary mt-3" onclick="SendFormData()">{{.BTNSave}}</button>
       </div>
     </div>
-    <!-- <div><p>boczne info tu!</p></div> -->
+    <div id="infopanel">
+      {{.FormInfoPanel}}
+    </div>
   </div>
   <script>
     // we are setting it here, I can not figure out how to get setData to work after render

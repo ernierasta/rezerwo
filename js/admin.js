@@ -61,3 +61,22 @@ function EditForm() {
   var formID = $('#forms-select :selected').val();
   Post("/admin/formeditor", {"form-id": formID});
 }
+
+function ShowFormRaports() {
+  var formtmplID = $('#forms-raports-select :selected').val();
+  Post("/admin/formraport", {"formtmpl-id": formtmplID});
+}
+
+function NewBankAccount() {
+  name = $('#new-ba-name').val();
+  Post("/admin/bankacceditor", {"name": name });
+}
+
+function EditBankAccount() {
+  var baID = $('#ba-select :selected').val();
+  Post("/admin/bankacceditor", {"ba-id": baID});
+}
+function DeleteBankAccount() {
+  var baID = $('#ba-select :selected').val();
+  Post("/admin/bankacceditor", {"ba-id": baID, "action": "delete"});
+}

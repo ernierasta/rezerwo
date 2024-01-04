@@ -11,31 +11,65 @@
       <p>{{.LBLAdminHowTo}}</p>
     </div>
   </div>
-  <div class="form-group">
-    <label for="form-name">{{.LBLFormName}}</label>
-    <input type="text" class="form-control" id="form-name" name="form-name" value="{{.FormNameVal}}">
-    <label for="form-url">{{.LBLFormURL}}</label>
-    <input type="text" class="form-control" id="form-url" name="form-url" value="{{.FormURLVal}}">
-    <label for="form-banner">{{.LBLFormBanner}}</label>
-    <input type="text" class="form-control" id="form-banner" name="form-banner" value="{{.FormBannerVal}}">
-
-  </div>
-  <div class="form-group">
-    <p id="howto-editor-label">{{.LBLFormHowTo}}</p>
-    <div id="howto-editor">
-      {{.HTMLFormHowToVal}}
+  <div class="col-md-8">
+    <div class="form-group">
+      <label for="form-name">{{.LBLFormName}}</label>
+      <input type="text" class="form-control" id="form-name" name="form-name" value="{{.FormNameVal}}">
+      <label for="form-url">{{.LBLFormURL}}</label>
+      <input type="text" class="form-control" id="form-url" name="form-url" value="{{.FormURLVal}}">
+      <label for="form-banner">{{.LBLFormBanner}}</label>
+      <input type="text" class="form-control" id="form-banner" name="form-banner" value="{{.FormBannerVal}}">
     </div>
-  </div>
-  <div class="form-group">
-    <p id="thankyou-editor-label">{{.LBLFormThankYou}}</p>
-    <div id="thankyou-editor">
-      {{.HTMLFormThankYouVal}}
+    <div class="form-group">
+      <p id="howto-editor-label">{{.LBLFormHowTo}}</p>
+      <div id="howto-editor">
+        {{.HTMLFormHowToVal}}
+      </div>
     </div>
-  </div>
-
-  <div id="fb-editor"></div>
-  <div class="d-flex justify-content-center">
-    <button id="save" class="btn btn-primary">{{.BTNSave}}</button>
+    <h4>{{.LBLThankYouTitle}}</h4>
+    <div class="form-group">
+      <p id="thankyou-editor-label">{{.LBLFormThankYou}}</p>
+      <div id="thankyou-editor">
+        {{.HTMLFormThankYouVal}}
+      </div>
+    </div>
+    <h4>{{.LBLThankYouMailTitle}}</h4>
+    <div class="form-group">
+      <label for="form-name">{{.LBLFormThankYouMailSubject}}</label>
+      <input type="text" class="form-control" id="mail-subject" name="mail-subject" value="{{.FormThankYouMailSubjectVal}}">
+    </div>
+    <div class="form-group">
+      <p id="thankyou-mail-editor-label">{{.LBLFormThankYouMail}}</p>
+      <div id="thankyou-mail-editor">
+        {{.HTMLFormThankYouMailVal}}
+      </div>
+    </div>
+  
+    <div class="form-group">
+      <p id="infopanel-editor-label">{{.LBLFormInfoPanel}}</p>
+      <div id="infopanel-editor">
+        {{.HTMLFormInfoPanelVal}}
+      </div>
+    </div>
+  
+    <h2>{{.LBLBankAccountsSelectTitle}}</h2>
+    <select name="qrpay-select" id="qrpay-select" class="custom-select">
+      <option value="0" selected>{{.LBLSelectBankAccount}}</option>
+      {{range .BankAccounts}}
+      <option value="{{.ID}}">{{.Name}}</option>
+      {{end}}
+    </select>
+  
+    <div class="form-group">
+      <label for="money-field">{{.LBLMoneyField}}</label>
+      <input type="text" class="form-control" id="money-field" name="money-field" value="{{.MoneyFieldVal}}">
+    </div>
+  
+    <br>
+    <div id="fb-editor"></div>
+    <div class="d-flex justify-content-center">
+      <button id="save" class="btn btn-primary">{{.BTNSave}}</button>
+    </div>
   </div>
   <script type="text/javascript" src="/js/a_form_editor.js"></script>
   <script>

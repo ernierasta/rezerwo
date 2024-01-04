@@ -1,0 +1,313 @@
+#page {
+  position: relative;
+  min-height: 100vh;
+}
+
+#content-wrap {
+  padding-bottom: 2.5rem; /* Footer height */
+}
+
+#meta {
+  padding: 10px;
+}
+
+#footer {
+  background: lightgrey;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 2.5rem;
+}
+
+.table {
+  float: left;
+  margin: 10px;
+  background: grey;
+}
+
+.chair {
+  float: left;
+  color: white;
+  background-color: #28a745;
+  border-color: #28a745;
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  margin: 2px;
+  font-size: x-small;
+}
+
+.object, .table, .chair {
+  text-align: center;
+}
+
+.object > p, .table > p, .chair > p {
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.free-text {
+  color: #28a745;
+}
+
+.marked-text {
+  color: #ffc107;
+}
+
+.ordered-text {
+  color: #fd7e14;
+}
+
+.payed-text {
+  color: #dc3545;
+}
+
+.disabled-text {
+  color: #403734;
+}
+
+.marked {
+  color: white;
+  background-color: #ffc107;
+  border-color: #ffc107;
+}
+
+.ordered {
+  color: black;
+  background-color: #fd7e14;
+  border-color: #fd7e14;
+}
+
+.payed {
+  color: white;
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.disabled {
+  color: lightgrey;
+  background-color: #403734;
+  border-color: #403734;
+}
+
+.column {
+  float: left;
+  margin: 10px;
+}
+
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.right {
+  position: inherit;
+  padding: 10px;
+}
+
+.nav-link {
+  color: firebrick;
+  font-weight: bold;
+}
+
+.nav-link.active {
+  font-weight: normal;
+}
+
+#selected-chairs {
+  width: 400px;
+  display: flex;
+}
+
+.input-group {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+#right-col {
+  float: right;
+}
+
+#objects-actions {
+  width: 300px;
+}
+
+#inline {
+  display: inline;
+}
+
+#room-controls {
+  width: 300px;
+  border: medium dashed lightgrey;
+  margin: 10px;
+  padding: 5px;
+}
+
+#furniture-actions {
+  width: 300px;
+}
+
+.vertical-30, .vertical-28, .vertical-26, .vertical-24, .vertical-22, .vertical-20, .vertical-18, .vertical-16, .vertical-14, .vertical-12, .vertical-10, .vertical-8, .vertical-6, .vertical-4, .vertical-2 {
+  width: 20px;
+}
+
+.vertical-2 {
+  height: 20px;
+}
+
+.vertical-4 {
+  height: 45px;
+}
+
+.vertical-6 {
+  height: 70px;
+}
+
+.vertical-8 {
+  height: 95px;
+}
+
+.vertical-10 {
+  height: 120px;
+}
+
+.vertical-12 {
+  height: 145px;
+}
+
+.vertical-14 {
+  height: 170px;
+}
+
+.vertical-16 {
+  height: 195px;
+}
+
+.vertical-18 {
+  height: 220px;
+}
+
+.vertical-20 {
+  height: 245px;
+}
+
+.vertical-10 {
+  height: 120px;
+}
+
+.vertical-22 {
+  height: 270px;
+}
+
+.vertical-24 {
+  height: 295px;
+}
+
+.vertical-26 {
+  height: 320px;
+}
+
+.vertical-28 {
+  height: 345px;
+}
+
+.vertical-30 {
+  height: 370px;
+}
+
+.horizontal-30, .horizontal-28, .horizontal-26, .horizontal-24, .horizontal-22, .horizontal-20, .horizontal-18, .horizontal-16, .horizontal-14, .horizontal-12, .horizontal-10, .horizontal-8, .horizontal-6, .horizontal-4, .horizontal-2 {
+  height: 20px;
+}
+
+.horizontal-2 {
+  width: 20px;
+}
+
+.horizontal-4 {
+  width: 45px;
+}
+
+.horizontal-6 {
+  width: 70px;
+}
+
+.horizontal-8 {
+  width: 95px;
+}
+
+.horizontal-10 {
+  width: 120px;
+}
+
+.horizontal-12 {
+  width: 145px;
+}
+
+.horizontal-14 {
+  width: 170px;
+}
+
+.horizontal-16 {
+  width: 195px;
+}
+
+.horizontal-18 {
+  width: 220px;
+}
+
+.horizontal-20 {
+  width: 245px;
+}
+
+.horizontal-10 {
+  width: 120px;
+}
+
+.horizontal-22 {
+  width: 270px;
+}
+
+.horizontal-24 {
+  width: 295px;
+}
+
+.horizontal-26 {
+  width: 320px;
+}
+
+.horizontal-28 {
+  width: 345px;
+}
+
+.horizontal-30 {
+  width: 370px;
+}
+
+#room, .room-view {
+  width: 1000px;
+  height: 1000px;
+  float: left;
+  margin: 10px;
+  border: 3px dashed black;
+}
+
+#room .ui-selecting, .room-view .ui-selecting {
+  filter: brightness(125%);
+  box-shadow: 0 0 0 0.2rem rgba(72, 180, 97, 0.5);
+}
+
+#room .ui-selected, .room-view .ui-selected {
+  box-shadow: 0px 0px 20px yellow;
+  border: 1px solid yellow;
+  background: rgba(255, 225, 0, 0.64);
+}
+
+.ui-selectable-helper {
+  position: absolute;
+  z-index: 100;
+  border: 1px dotted black;
+}
+
+/*# sourceMappingURL=room.css.map */

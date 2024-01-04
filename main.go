@@ -1718,10 +1718,16 @@ func FormRaport(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			log.Printf("FormRaport: can not get fields for formTmplID %d, %v", formTmplID, err)
 		}
 		prependPL := []FormField{
+			{Display: "ID"},
 			{Display: "Status"},
 			{Display: "Ostatnia notyf."},
 			{Display: "Ilość wysłanych"},
+			{Display: "Imię"},
+			{Display: "Nazwisko"},
+			{Display: "E-mail"},
+			{Display: "Utworzono"},
 		}
+
 		cols := append(prependPL, ff...)
 
 		// gen answers for this formTempl
@@ -1743,22 +1749,47 @@ func FormRaport(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			}
 
 			row := make([]FormRapRow, len(cols))
-			// first column is status
 			row[0] = FormRapRow{
 				AnswerID: 0,
 				FormID:   0,
-				Value:    forms[i].Status.String,
+				Value:    strconv.FormatInt(forms[i].ID, 10),
 			}
 			row[1] = FormRapRow{
 				AnswerID: 0,
 				FormID:   0,
-				Value:    ToDateTime(lastdate),
+				Value:    forms[i].Status.String,
 			}
 			row[2] = FormRapRow{
 				AnswerID: 0,
 				FormID:   0,
+				Value:    ToDateTime(lastdate),
+			}
+			row[3] = FormRapRow{
+				AnswerID: 0,
+				FormID:   0,
 				Value:    strconv.FormatInt(amount, 10),
 			}
+			row[4] = FormRapRow{
+				AnswerID: 0,
+				FormID:   0,
+				Value:    forms[i].Name.String,
+			}
+			row[5] = FormRapRow{
+				AnswerID: 0,
+				FormID:   0,
+				Value:    forms[i].Surname.String,
+			}
+			row[6] = FormRapRow{
+				AnswerID: 0,
+				FormID:   0,
+				Value:    forms[i].Email.String,
+			}
+			row[7] = FormRapRow{
+				AnswerID: 0,
+				FormID:   0,
+				Value:    ToDateTime(forms[i].CreatedDate),
+			}
+
 			ans, err := db.FormAnswerGetAll(forms[i].ID)
 			if err != nil {
 				log.Printf("FormRaport: can not get answers form formID %d, %v", forms[i].ID, err)

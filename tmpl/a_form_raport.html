@@ -29,6 +29,13 @@
           </tr>
           {{end}}
         </tbody>
+        <tfoot>
+          <tr>
+            {{range $i, $e := .FormFields}}
+            <td id="tfoot{{$i}}"></td>
+            {{end}}
+          </tr>
+        </tfoot>
       </table>
     </div>
   </div>

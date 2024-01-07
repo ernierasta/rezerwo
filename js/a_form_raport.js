@@ -10,6 +10,32 @@ var Currency = 9;
 var Ordered = 10;
 var Payed = 11;
 
+// SetSums sets sums of selected rows
+// Need as much elements with id='footX'(where X=number)
+// as there are columns
+function SetSums(dt) {
+    var rows = dt.rows({selected: true}).data();
+    if (rows.length > 0) {
+      var sums = Array(rows[0].length).fill(0);
+      for (i=0; i < rows.length;i++){ // iterate over rows
+        for (n=0; n < rows[0].length;n++){ // iterate over row cols
+          sums[n] += Number(rows[i][n]);
+        };
+      };
+      for (i=0; i < sums.length;i++){
+        if (!isNaN(sums[i])) {
+          $('#tfoot'+i).html('<b>'+sums[i]+'</b>');
+        }
+      };
+    } else {
+      colnum = $('#form-raport thead th').length;
+      for (i=0;i < colnum;i++) {
+        $('#tfoot'+i).empty();
+      }
+    };
+    $('#total-rows').html(rows.length);
+}
+
 $(function() {
 
   // Column filering
@@ -68,7 +94,7 @@ $(function() {
     buttons: [ 
       {
         extend: 'collection',
-        text: 'Export',
+        text: 'Eksportuj',
         buttons: ['copy', 'excel', 'csv' ,'pdf', 'print']
       },
       'colvis',
@@ -99,24 +125,24 @@ $(function() {
           }
           dt.rows({selected: true}).deselect();
           //$('#total-price').html(0);
-          //$('#total-sits').html(0);
+          //$('#total-rows').html(0);
         }
       },
       {
         extend: "selected",
-        text: "Delete",
+        text: "Kasuj",
         action: function ( e, dt, button, config ) {
           var furnNumberCol = table.colReorder.transpose(ChairNr);
           var roomNameCol = table.colReorder.transpose(Room);
           var indexes = dt.rows({selected: true}).indexes();
           bootbox.confirm({
-            message: "Really delete selected orders? It is UNREVERSABLE!",
+            message: "Naprawde usunąć <b>" + indexes.length + "</b> zaznaczonych wpisów? Będą usunięte bezpowrotnie!",
               buttons: {
                 cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
+                    label: '<i class="fa fa-times"></i> Anuluj'
                 },
                 confirm: {
-                    label: '<i class="fa fa-check"></i> Delete'
+                    label: '<i class="fa fa-check"></i> Kasuj'
                 }
               },
             callback: function(result) {
@@ -125,7 +151,7 @@ $(function() {
                   var row = dt.row(indexes[i]).data();
                   $.ajax({
                     method: "DELETE",
-                    url: "/api/resdelete",
+                    url: "/api/formansdelete",
                     data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol]})
                   });
                 }
@@ -136,7 +162,7 @@ $(function() {
         },
       },
       {
-        text: "Cancel filters",
+        text: "Usuń filtry",
         action: function ( e, dt, button, config ) {
           $('#form-raport thead tr:eq(1) th input').each( function (i) {
             table.column(i).search("");
@@ -147,7 +173,7 @@ $(function() {
       },
       {
         // select only visible, not all
-        text: "Select All",
+        text: "Zaznacz wszystko",
         action: function ( e, dt, button, config ) {
           dt.rows( { page: 'current' } ).select();
         }
@@ -164,29 +190,15 @@ $(function() {
   // set content of total-price-lbl, it is created in "dom" table param
   $("div.total-price-lbl").css("display", "inline");
   $("div.total-price-lbl").css("margin-left", "5px");
-  $("div.total-price-lbl").html('Total: <span id="total-price"></span><span>, Sits: <span id="total-sits"></span></div>');
+  $("div.total-price-lbl").html('Wybranych: <span id="total-rows"></span></div>');
 
   // show total sits and price on select/deselect
   table.on( 'select', function ( e, dt, items ) {
-    var rows = dt.rows({selected: true}).data();
-    var price = 0;
-    var pricecol = table.colReorder.transpose(Price);
-    for (i=0; i < rows.length;i++){
-      price += Number(rows[i][pricecol]);
-    };
-    $('#total-price').html(price);
-    $('#total-sits').html(rows.length);
+    SetSums(dt);
   });
 
   table.on( 'deselect', function ( e, dt, items ) {
-    var rows = dt.rows({selected: true}).data();
-    var price = 0;
-    var pricecol = table.colReorder.transpose(Price);
-    for (i=0; i < rows.length;i++){
-      price += Number(rows[i][pricecol]);
-    };
-    $('#total-price').html(price);
-    $('#total-sits').html(rows.length);
+    SetSums(dt);
   });
 
 });

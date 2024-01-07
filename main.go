@@ -87,7 +87,9 @@ func main() {
 	http.HandleFunc("/api/formstatus", FormChangeStatusAPI(db))
 	http.HandleFunc("/api/formed", FormTemplateAddMod(db, cookieStore))
 	http.HandleFunc("/api/baed", BankAccountAddMod(db, cookieStore))
-	http.HandleFunc("/api/formans", FormAddMod(db))
+	http.HandleFunc("/api/formans", FormAddMod(db, cookieStore))
+	http.HandleFunc("/api/formansdelete", FormAnsDelete(db, cookieStore))
+
 	log.Fatal(http.ListenAndServe(":3002", nil))
 }
 
@@ -2426,11 +2428,18 @@ type FormAnswersJson struct {
 }
 
 // FormAddMod is API func
-func FormAddMod(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func FormAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var formAnsJson FormAnsData
 
 		if r.Method == "POST" {
+
+			_, _, _, err := InitSession(w, r, cs, "/admin/login", true)
+			if err != nil {
+				log.Printf("FormAddMod: session error: %v", err)
+				return
+			}
+
 			bodyJson, err := io.ReadAll(r.Body)
 			if err != nil {
 				log.Println("FormAddMod: error reading form template json sent from form editor,", err)
@@ -2536,6 +2545,12 @@ func FormAddMod(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+}
+
+// TODO: implement
+func FormAnsDelete(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 

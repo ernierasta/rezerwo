@@ -12,7 +12,16 @@
     <div class="col-md-12">
       <h3>{{.LBLTitle}}</h3>
       <input id="formtmpl-id" type="hidden" value={{.FormTmplID}}>
-        <table id="form-raport" class="table table-bordered">
+      <div>{{.HTMLNotificationHowTo}}</div>
+      <div class="input-group">
+        <select name="ba-select" id="ba-select" class="custom-select">
+          <option value="0" selected>{{.LBLSelectNotification}}</option>
+          {{range .Notifications}}
+          <option value="{{.ID}}">{{.Name}}</option>
+          {{end}}
+        </select>
+      </div>
+      <table id="form-raport" class="table table-bordered">
         <thead>
           <tr>
           {{range .FormFields}}

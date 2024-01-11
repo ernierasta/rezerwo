@@ -47,6 +47,8 @@ func main() {
 
 	lang := "pl-PL"
 
+	mailConf := &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert, Hostname: conf.MailHostname}
+
 	db := initDB()
 	defer db.Close()
 
@@ -66,7 +68,7 @@ func main() {
 	handleStatic("media") //user data
 	http.Handle("/", rtr)
 	http.HandleFunc("/order", ReservationOrderHTML(db, lang))
-	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert, Hostname: conf.MailHostname}))
+	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, mailConf))
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, lang))
@@ -89,6 +91,7 @@ func main() {
 	http.HandleFunc("/api/baed", BankAccountAddMod(db, cookieStore))
 	http.HandleFunc("/api/formans", FormAddMod(db, cookieStore))
 	http.HandleFunc("/api/formansdelete", FormAnsDelete(db, cookieStore))
+	http.HandleFunc("/api/formanssendmail", FormAnsSendMail(db, mailConf, cookieStore))
 
 	log.Fatal(http.ListenAndServe(":3002", nil))
 }
@@ -1016,47 +1019,54 @@ func AdminLoginHTML(db *DB, lang string, cookieStore *sessions.CookieStore) func
 
 type AdminPage struct {
 	PageMeta
-	Events       []Event
-	Rooms        []Room
-	Furnitures   []Furniture
-	FormTempls   []FormTemplate
-	BankAccounts []BankAccount
+	Events        []Event
+	Rooms         []Room
+	Furnitures    []Furniture
+	FormTempls    []FormTemplate
+	BankAccounts  []BankAccount
+	Notifications []Notification
 }
 
 type AdminMainPageVars struct {
-	LBLEvents                string
-	LBLRoomEventTitle        string
-	LBLRoomEventText         template.HTML
-	BTNSelect                string
-	BTNClose                 string
-	BTNAddRoom               string
-	BTNAddEvent              string
-	LBLSelectRoom            string
-	BTNRoomEdit              string
-	BTNRoomDelete            string
-	LBLNewEventPlaceholder   string
-	LBLSelectEvent           string
-	BTNEventEdit             string
-	BTNEventDelete           string
-	LBLMsgTitle              string
-	LBLRaports               string
-	BTNShowRaports           string
-	LBLForms                 string
-	BTNAddForm               string
-	LBLNewForm               string
-	LBLNewFormPlaceholder    string
-	LBLNewFormURL            string
-	LBLSelectForm            string
-	LBLNewFormURLPlaceholder string
-	BTNEditForm              string
-	LBLSelectFormRaport      string
-	BTNShowFormRaports       string
-	LBLBankAccountsTitle     string
-	LBLNewBAPlaceholder      string
-	LBLSelectBankAccount     string
-	BTNAddNewBA              string
-	BTNBAEdit                string
-	BTNBADelete              string
+	LBLEvents                     string
+	LBLRoomEventTitle             string
+	LBLRoomEventText              template.HTML
+	BTNSelect                     string
+	BTNClose                      string
+	BTNAddRoom                    string
+	BTNAddEvent                   string
+	LBLSelectRoom                 string
+	BTNRoomEdit                   string
+	BTNRoomDelete                 string
+	LBLNewEventPlaceholder        string
+	LBLSelectEvent                string
+	BTNEventEdit                  string
+	BTNEventDelete                string
+	LBLMsgTitle                   string
+	LBLRaports                    string
+	BTNShowRaports                string
+	LBLForms                      string
+	BTNAddForm                    string
+	LBLNewForm                    string
+	LBLNewFormPlaceholder         string
+	LBLNewFormURL                 string
+	LBLSelectForm                 string
+	LBLNewFormURLPlaceholder      string
+	BTNEditForm                   string
+	LBLSelectFormRaport           string
+	BTNShowFormRaports            string
+	LBLBankAccountsTitle          string
+	LBLNewBAPlaceholder           string
+	LBLSelectBankAccount          string
+	BTNAddNewBA                   string
+	BTNBAEdit                     string
+	BTNBADelete                   string
+	LBLNotificationsTitle         string
+	LBLNewNotificationPlaceholder string
+	LBLSelectNotification         string
+	BTNAddNewNotification         string
+	BTNNotificationEdit           string
+	BTNNotifictionDelete          string
 }
 
 func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -1146,43 +1156,54 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 			log.Printf("AdminMainPage: error getting all bankaccounts for user %d, %v", user.ID, err)
 		}
 
+		notifs, err := db.NotificationGetAllForUser(user.ID)
+		if err != nil {
+			log.Printf("AdminMainPage: error getting all notifications for user %d, %v", user.ID, err)
+		}
+
 		enPM := PageMeta{
 			LBLLang:  lang,
 			LBLTitle: "Admin main page",
 			AdminMainPageVars: AdminMainPageVars{
-				LBLEvents:                "Events",
-				LBLRoomEventTitle:        "Select event",
-				LBLRoomEventText:         template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
-				BTNSelect:                "Select",
-				BTNClose:                 "Close",
-				BTNAddRoom:               "Add room",
-				BTNAddEvent:              "Add event",
-				BTNEventEdit:             "Edit",
-				LBLNewEventPlaceholder:   "New event name",
-				LBLSelectRoom:            "Select room ...",
-				BTNRoomEdit:              "Edit",
-				BTNRoomDelete:            "Delete",
-				LBLSelectEvent:           "Select event ...",
-				BTNEventDelete:           "Delete",
-				LBLMsgTitle:              dtype,
-				LBLRaports:               "Raports",
-				BTNShowRaports:           "Show raports",
-				LBLForms:                 "Forms",
-				LBLNewForm:               "New form",
-				BTNAddForm:               "New form",
-				LBLNewFormPlaceholder:    "Enter unique form name",
-				LBLSelectForm:            "Select form ...",
-				LBLNewFormURL:            "Form URL",
-				LBLNewFormURLPlaceholder: "Enter unique name - used as part of form link",
-				BTNEditForm:              "Edit form",
-				LBLSelectFormRaport:      "Select form raport ...",
-				BTNShowFormRaports:       "Show",
-				LBLBankAccountsTitle:     "Bank Accounts (QRPay)",
-				LBLNewBAPlaceholder:      "New account name",
-				BTNAddNewBA:              "Add new",
-				LBLSelectBankAccount:     "Choose account ...",
-				BTNBAEdit:                "Edit",
-				BTNBADelete:              "Delete",
+				LBLEvents:                     "Events",
+				LBLRoomEventTitle:             "Select event",
+				LBLRoomEventText:              template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
+				BTNSelect:                     "Select",
+				BTNClose:                      "Close",
+				BTNAddRoom:                    "Add room",
+				BTNAddEvent:                   "Add event",
+				BTNEventEdit:                  "Edit",
+				LBLNewEventPlaceholder:        "New event name",
+				LBLSelectRoom:                 "Select room ...",
+				BTNRoomEdit:                   "Edit",
+				BTNRoomDelete:                 "Delete",
+				LBLSelectEvent:                "Select event ...",
+				BTNEventDelete:                "Delete",
+				LBLMsgTitle:                   dtype,
+				LBLRaports:                    "Raports",
+				BTNShowRaports:                "Show raports",
+				LBLForms:                      "Forms",
+				LBLNewForm:                    "New form",
+				BTNAddForm:                    "New form",
+				LBLNewFormPlaceholder:         "Enter unique form name",
+				LBLSelectForm:                 "Select form ...",
+				LBLNewFormURL:                 "Form URL",
+				LBLNewFormURLPlaceholder:      "Enter unique name - used as part of form link",
+				BTNEditForm:                   "Edit form",
+				LBLSelectFormRaport:           "Select form raport ...",
+				BTNShowFormRaports:            "Show",
+				LBLBankAccountsTitle:          "Bank Accounts (QRPay)",
+				LBLNewBAPlaceholder:           "New account name",
+				BTNAddNewBA:                   "Add new",
+				LBLSelectBankAccount:          "Choose account ...",
+				BTNBAEdit:                     "Edit",
+				BTNBADelete:                   "Delete",
+				LBLNotificationsTitle:         "Notifications",
+				LBLNewNotificationPlaceholder: "New notification name",
+				LBLSelectNotification:         "Choose notification ...",
+				BTNAddNewNotification:         "Add new",
+				BTNNotificationEdit:           "Edit",
+				BTNNotifictionDelete:          "Delete",
 			},
 		}
 
@@ -1192,48 +1213,55 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 			LBLLang:  lang,
 			LBLTitle: "Administracja",
 			AdminMainPageVars: AdminMainPageVars{
-				LBLEvents:                "Imprezy",
-				LBLRoomEventTitle:        "Wybierz imprezę",
-				LBLRoomEventText:         template.HTML("<b>Dlaczego?</b><br />Musisz wybrać imprezę, ponieważ status krzeseł <i>'wyłączony'</i> oraz <i>'cena'</i> miejsca są związanie z <b>imprezą</b>, a nie z pomieszczeniem jako takim."),
-				BTNSelect:                "Wybierz",
-				BTNClose:                 "Zamknij",
-				BTNAddRoom:               "Dodaj pomieszczenie",
-				BTNAddEvent:              "Dodaj imprezę",
-				BTNEventEdit:             "Zmień",
-				LBLNewEventPlaceholder:   "Nazwa nowej imprezy",
-				LBLSelectRoom:            "Wybierz pomieszczenie ...",
-				BTNRoomEdit:              "Zmień",
-				BTNRoomDelete:            "Usuń",
-				LBLSelectEvent:           "Wybierz imprezę ...",
-				BTNEventDelete:           "Usuń",
-				LBLMsgTitle:              dtype,
-				LBLRaports:               "Raporty",
-				BTNShowRaports:           "Wyświetl raporty",
-				LBLForms:                 "Formularze",
-				LBLNewForm:               "Nowy formularz",
-				BTNAddForm:               "Nowy formlarz",
-				LBLNewFormPlaceholder:    "Podaj unikatową nazwę formularza",
-				LBLSelectForm:            "Wybierz formularz ...",
-				LBLNewFormURL:            "URL formularza",
-				LBLNewFormURLPlaceholder: "Podaj unikatową - będzie tworzyła odnośnik do forma",
-				BTNEditForm:              "Edytuj formularz",
-				LBLSelectFormRaport:      "Wybierz raport do formularza ...",
-				BTNShowFormRaports:       "Wyświetl",
-				LBLBankAccountsTitle:     "Konta bankowe (QRPay)",
-				LBLNewBAPlaceholder:      "Nazwa nowego konta",
-				BTNAddNewBA:              "Dodaj nowe",
-				LBLSelectBankAccount:     "Wybierz konto ...",
-				BTNBAEdit:                "Edytuj",
-				BTNBADelete:              "Usuń",
+				LBLEvents:                     "Imprezy",
+				LBLRoomEventTitle:             "Wybierz imprezę",
+				LBLRoomEventText:              template.HTML("<b>Dlaczego?</b><br />Musisz wybrać imprezę, ponieważ status krzeseł <i>'wyłączony'</i> oraz <i>'cena'</i> miejsca są związanie z <b>imprezą</b>, a nie z pomieszczeniem jako takim."),
+				BTNSelect:                     "Wybierz",
+				BTNClose:                      "Zamknij",
+				BTNAddRoom:                    "Dodaj pomieszczenie",
+				BTNAddEvent:                   "Dodaj imprezę",
+				BTNEventEdit:                  "Zmień",
+				LBLNewEventPlaceholder:        "Nazwa nowej imprezy",
+				LBLSelectRoom:                 "Wybierz pomieszczenie ...",
+				BTNRoomEdit:                   "Zmień",
+				BTNRoomDelete:                 "Usuń",
+				LBLSelectEvent:                "Wybierz imprezę ...",
+				BTNEventDelete:                "Usuń",
+				LBLMsgTitle:                   dtype,
+				LBLRaports:                    "Raporty",
+				BTNShowRaports:                "Wyświetl raporty",
+				LBLForms:                      "Formularze",
+				LBLNewForm:                    "Nowy formularz",
+				BTNAddForm:                    "Nowy formlarz",
+				LBLNewFormPlaceholder:         "Podaj unikatową nazwę formularza",
+				LBLSelectForm:                 "Wybierz formularz ...",
+				LBLNewFormURL:                 "URL formularza",
+				LBLNewFormURLPlaceholder:      "Podaj unikatową - będzie tworzyła odnośnik do forma",
+				BTNEditForm:                   "Edytuj formularz",
+				LBLSelectFormRaport:           "Wybierz raport do formularza ...",
+				BTNShowFormRaports:            "Wyświetl",
+				LBLBankAccountsTitle:          "Konta bankowe (QRPay)",
+				LBLNewBAPlaceholder:           "Nazwa nowego konta",
+				BTNAddNewBA:                   "Dodaj nowe",
+				LBLSelectBankAccount:          "Wybierz konto ...",
+				BTNBAEdit:                     "Edytuj",
+				BTNBADelete:                   "Usuń",
+				LBLNotificationsTitle:         "Maile (notyfikacje)",
+				LBLNewNotificationPlaceholder: "Nazwa nowej notyfikacji",
+				LBLSelectNotification:         "Wybierz notyfikację ...",
+				BTNAddNewNotification:         "Dodaj",
+				BTNNotificationEdit:           "Edytuj",
+				BTNNotifictionDelete:          "Usuń",
 			},
 		}
 
 		rp := AdminPage{
-			PageMeta:     plPM,
-			Events:       events,
-			Rooms:        rooms,
-			FormTempls:   formTempls,
-			BankAccounts: bankAccs,
+			PageMeta:      plPM,
+			Events:        events,
+			Rooms:         rooms,
+			FormTempls:    formTempls,
+			BankAccounts:  bankAccs,
+			Notifications: notifs,
 		}
 		t := template.Must(template.ParseFiles("tmpl/a_main.html", "tmpl/base.html"))
 		err = t.ExecuteTemplate(w, "base", rp)
@@ -1673,12 +1701,15 @@ type FormRapRow struct {
 }
 
 type FormRaportVars struct {
-	LBLLang       string
-	FormTmplID    int64
-	LBLTitle      string
-	LBLTotalPrice string
-	FormFields    []FormField
-	AnswersRows   [][]FormRapRow
+	LBLLang               string
+	FormTmplID            int64
+	LBLTitle              string
+	LBLTotalPrice         string
+	FormFields            []FormField
+	AnswersRows           [][]FormRapRow
+	HTMLNotificationHowTo template.HTML
+	LBLSelectNotification string
+	Notifications         []Notification
 }
 
 func FormRaport(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -1741,11 +1772,11 @@ func FormRaport(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 		rows := [][]FormRapRow{}
 		for i := range forms {
 			// get notification data first
-			lastdate, err := db.FormNotificationGetLast(forms[i].ID)
+			lastdate, err := db.FormNotificationLogGetLast(forms[i].ID)
 			if err != nil {
 				log.Printf("FormRaport: can not get notification date for %d, %v", forms[i].ID, err)
 			}
-			amount, err := db.FormNotificationGetAmount(forms[i].ID)
+			amount, err := db.FormNotificationLogGetAmount(forms[i].ID)
 			if err != nil {
 				log.Printf("FormRaport: can not get notification date for %d, %v", forms[i].ID, err)
 			}
@@ -1811,13 +1842,22 @@ func FormRaport(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			rows = append(rows, row)
 		}
 
+		// TODO: add support for shared notifications
+		notifs, err := db.NotificationGetAllForUser(user.ID)
+		if err != nil {
+			log.Printf("FormRaport: error getting all notifications for user %d, %v", user.ID, err)
+		}
+
 		plP := FormRaportVars{
-			LBLLang:       lang,
-			FormTmplID:    formTmplID,
-			LBLTitle:      "Reservations",
-			LBLTotalPrice: "Total",
-			FormFields:    cols,
-			AnswersRows:   rows,
+			LBLLang:               lang,
+			FormTmplID:            formTmplID,
+			LBLTitle:              "Reservations",
+			LBLTotalPrice:         "Total",
+			HTMLNotificationHowTo: template.HTML("Wybierz przygotowaną wcześniej wiadomość e-mail.<br>Jeżeli nie masz takiej, to możesz to zrobić z głównego ekranu administracji."),
+			LBLSelectNotification: "Domyślna notyfikacja (konfigurowana we właściwościach Formularza)",
+			FormFields:            cols,
+			AnswersRows:           rows,
+			Notifications:         notifs,
 		}
 
 		t := template.Must(template.ParseFiles("tmpl/a_form_raport.html", "tmpl/base.html"))
@@ -2548,9 +2588,131 @@ func FormAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r 
 	}
 }
 
+type FormAnsManipulateJson struct {
+	FormTemplateID int64 `json:"formtmpl_id"`
+	FormID         int64 `json:"forms_id"`
+	NotificationID int64 `json:"notification_id"`
+}
+
 // TODO: implement
 func FormAnsDelete(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" {
+			var m FormAnsManipulateJson
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&m)
+			if err != nil {
+				log.Printf("FormAnsDelete: problem decoding json, err: %v", err)
+			}
+
+			err = db.FormAnswerDel(m.FormID, m.FormTemplateID)
+			if err != nil {
+				log.Printf("FormAnsDelete: problem deleting formanswers, formID: %d (templID: %d), err: %v", m.FormID, m.FormTemplateID, err)
+			}
+
+			err = db.FormDel(m.FormID, m.FormTemplateID)
+			if err != nil {
+				log.Printf("FormAnsDelete: problem deleting formID: %d (templID: %d), err: %v", m.FormID, m.FormTemplateID, err)
+			}
+			// TODO: is that all? Should we return error to frontend if occurs?
+
+		}
+
+	}
+}
+
+func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			var m FormAnsManipulateJson
+			var parsedThankYouMail bytes.Buffer
+			var mtext, msubject string
+
+			_, _, userEmail, err := InitSession(w, r, cs, "/admin/login", true)
+			if err != nil {
+				log.Printf("FormAnsSendMail: session error: %v", err)
+				return
+			}
+
+			user, err := db.UserGetByEmail(userEmail)
+			if err != nil {
+				log.Printf("FormAnsSendMail: very strange, can not find admin in users table, but is authenticated, err: %v", err)
+			}
+
+			bodyJson, err := io.ReadAll(r.Body)
+			if err != nil {
+				log.Println("FormAnsSendMail: error reading form template json sent from form editor,", err)
+			}
+			err = json.Unmarshal(bodyJson, &m)
+			if err != nil {
+				log.Println(err)
+			}
+
+			form, err := db.FormGet(m.FormID, m.FormTemplateID)
+			if err != nil {
+				log.Println("FormAnsSendMail: error reading form template json sent from form editor,", err)
+			}
+
+			log.Printf("%+v, email: %s", m, form.Email.String) // debug
+
+			formTempl, err := db.FormTemplateGetByID(m.FormTemplateID, user.ID)
+			if err != nil {
+				log.Printf("error retrieving formTemplate with ID: %q from DB, err: %v", m.FormTemplateID, err)
+			}
+
+			// decide which mail template to use
+			if m.NotificationID == 0 {
+				mtext = makeSureIsHTML(formTempl.ThankYouMailText.String)
+				msubject = formTempl.ThankYouMailSubject.String
+			} else {
+				log.Println("FormAnsSendMail: UNIMPLEMENTED, simply take it from notification table")
+			}
+
+			nsn := form.Surname.String + "_" + form.Name.String
+
+			thp := &InfoPanel{FormFuncs{DB: db, User: user, Template: formTempl, FormID: m.FormID, NameSurname: nsn}}
+
+			tmpl, err := template.New("thankyou").Parse(mtext)
+			if err != nil {
+				log.Printf("FormThankYou: error parsing InfoPanel template, %v", err)
+			}
+			err = tmpl.ExecuteTemplate(&parsedThankYouMail, "thankyou", thp)
+			if err != nil {
+				log.Printf("FormThankYouMail: error executing ThankYou template, %v", err)
+			}
+
+			log.Println("MAIL TEXT:", parsedThankYouMail.String())
+
+			mail := MailConfig{
+				Server:          mailConf.Server,
+				Port:            mailConf.Port,
+				User:            mailConf.User,
+				Pass:            mailConf.Pass,
+				From:            chooseEmail(user.Email, user.AltEmail.String), // choose user (organizators) mails. Use primary email if alt_email is NULL. Otherwise use alt_email.
+				ReplyTo:         user.Email,                                    // we wont they reply to organizators mail
+				Sender:          mailConf.Sender,
+				To:              []string{form.Email.String},
+				Subject:         msubject,
+				Text:            parsedThankYouMail.String(),
+				IgnoreCert:      mailConf.IgnoreCert,
+				Hostname:        mailConf.Hostname,
+				EmbededHTMLImgs: thp.EmbeddedImgs,
+			}
+
+			err = MailSend(mail)
+			if err != nil {
+				log.Println(err)
+			} else {
+				_, err := db.FormNotificationLogAdd(&FormNotificationLog{
+					Date:           time.Now().Unix(),
+					NotificationID: m.NotificationID,
+					FormID:         m.FormID,
+				})
+				if err != nil {
+					log.Printf("MailSend: error logging mail sent %v", err)
+				}
+			}
+		}
 	}
 }
 
@@ -2562,6 +2724,13 @@ func parseFormURI(uri string) (string, string) {
 		return ss[2], ss[3]
 	}
 	return "", ""
+}
+
+func makeSureIsHTML(s string) string {
+	if strings.Contains(s, "<html>") {
+		return s
+	}
+	return "<html>" + s + "</html>"
 }
 
 func getBasicFields(j []FormAnswersJson) (string, string, string) {
@@ -2614,6 +2783,10 @@ type FormFuncs struct {
 	FormID      int64
 	Template    FormTemplate
 	NameSurname string
+	// EmbeddedImgs contains all images embedded in notifications
+	// this is the way for method to let caller know, that it have
+	// to include data for cid image(-s)
+	EmbeddedImgs []EmbImg
 }
 
 // Sum returns sum of given form field.
@@ -2646,16 +2819,30 @@ func (i *InfoPanel) Sum(FormFieldName string) string {
 	return strconv.FormatInt(sum, 10)
 }
 
-// QRPay TODO: we need to get fields vals here somehow
-// or ... not, db will be already filled on ThankYou page.
-func (i *InfoPanel) QRPay(accountName string) template.HTML {
+func (i *InfoPanel) Field(FormFieldName string) string {
+	FieldID, err := i.DB.FormFieldGetIDByName(FormFieldName, i.Template.ID)
+	if err != nil {
+		FieldID, err = i.DB.FormFieldGetIDByDisplay(FormFieldName, i.Template.ID)
+	}
+
+	log.Println("field id:", FieldID)
+	s, err := i.DB.FormAnswerGetByField(i.FormID, FieldID)
+	if err != nil {
+		log.Printf("Field: can not get data for field %s(id:%d), formID: %d, %v", FormFieldName, FieldID, i.FormID, err)
+	}
+
+	return s
+}
+
+func (i *InfoPanel) generateQRimg(accountName string) (string, string) {
 	ba, err := i.DB.BankAccountGetByName(accountName, i.User.ID)
 	if err != nil {
 		log.Printf("QRPay: no account with this name found, name given by admin: %q, userID: %d(%s), %v", accountName, i.User.ID, i.User.URL, err)
 	}
 
 	templURL := strings.Join(strings.Fields(i.Template.URL), "")
-	imgpath := fmt.Sprintf("%s/%s/%s/%s.jpeg", MEDIAROOT, i.User.URL, MEDIAQRCODESUBDIR, templURL+"_"+i.NameSurname)
+	imgname := fmt.Sprintf("%s.jpeg", templURL+"_"+i.NameSurname)
+	imgpath := getImgPath(MEDIAROOT, i.User.URL, MEDIAQRCODESUBDIR, imgname)
 
 	am, err := i.DB.FormAnswerGetByFieldName(i.FormID, i.Template.ID, i.Template.MoneyAmountFieldName.String)
 	if err != nil {
@@ -2674,7 +2861,23 @@ func (i *InfoPanel) QRPay(accountName string) template.HTML {
 	if err != nil {
 		log.Printf("QRPay: error generating qr image, %v", err)
 	}
-	return template.HTML(fmt.Sprintf("<img width=\"200\" height=\"200\" src=\"/%s\" alt=\"QRError\">", imgpath))
+	return imgname, imgpath
+}
+
+// QRPay TODO: we need to get fields vals here somehow
+// or ... not, db will be already filled on ThankYou page.
+func (i *InfoPanel) QRPay(accountName string) template.HTML {
+	_, imgpath := i.generateQRimg(accountName)
+	return template.HTML(fmt.Sprintf(`<img width="200" src="/%s" alt="QRError">`, imgpath))
+}
+
+func (i *InfoPanel) QRPayMail(accountName string) template.HTML {
+	imgname, imgpath := i.generateQRimg(accountName)
+	i.EmbeddedImgs = append(i.EmbeddedImgs, EmbImg{
+		NamePath: imgpath,
+		CID:      getCID(imgname, i.User.URL),
+	})
+	return template.HTML(fmt.Sprintf(`<img width="150" src="cid:%s" alt="QR Kod" />`, getCID(imgname, i.User.URL)))
 }
 
 func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
@@ -2715,7 +2918,6 @@ func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			log.Print("ErrorHTML: template executing error: ", err) //log it
 		}
-
 	}
 }
 
@@ -3160,12 +3362,20 @@ func getEmbeddedImgs(imgs, userDirPath, emailsubdir, mediaRootPath string) []Emb
 	var ei = make([]EmbImg, len(ss))
 	for i := range ss {
 		ei[i] = EmbImg{
-			NamePath: fmt.Sprintf("%s/%s/%s/%s", mediaRootPath, userDirPath, emailsubdir, ss[i]),
-			CID:      fmt.Sprintf("%s@%s.cz", removeNonAlphanumeric(ss[i]), userDirPath),
+			NamePath: getImgPath(mediaRootPath, userDirPath, emailsubdir, ss[i]),
+			CID:      getCID(ss[i], userDirPath),
 		}
 	}
 	log.Println("ei:", ei) //debug
 	return ei
+}
+
+func getCID(imgname, userURL string) string {
+	return fmt.Sprintf("%s@%s.cz", removeNonAlphanumeric(imgname), userURL)
+}
+
+func getImgPath(mediaroot, userdir, subdir, imgname string) string {
+	return fmt.Sprintf("%s/%s/%s/%s", mediaroot, userdir, subdir, imgname)
 }
 
 func removeNonAlphanumeric(str string) string {

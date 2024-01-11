@@ -144,6 +144,27 @@
     </div>
   </div>
 
+    <h3>{{.LBLNotificationsTitle}}</h3>
+    <div class="input-group">
+    <input type="text" class="form-control" id="new-notification-name" placeholder="{{.LBLNewNotificationPlaceholder}}" aria-label="{{.LBLNewNotificationPlaceholder}}" aria-describedby="basic-addon2">
+    <div class="input-group-append">
+      <button class="btn btn-outline-secondary" type="button" onclick="NewNotification()">{{.BTNAddNewNotification}}</button>
+    </div>
+  </div>
+
+  <div class="input-group">
+    <select name="ba-select" id="ba-select" class="custom-select">
+      <option value="0" selected>{{.LBLSelectNotification}}</option>
+      {{range .Notifications}}
+      <option value="{{.ID}}">{{.Name}}</option>
+      {{end}}
+    </select>
+    <div class="input-group-append">
+      <button id="ba-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()" >{{.BTNNotificationEdit}}</button>
+      <button class="btn btn-outline-secondary" type="button" onclick="DeleteNotification()" >{{.BTNNotificationDelete}}</button>
+    </div>
+  </div>
+
 
 
         <!-- <button id="add-room" class="btn btn-primary">{{.BTNAddRoom}}</button>

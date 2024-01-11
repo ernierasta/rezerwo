@@ -1,15 +1,11 @@
-var Room = 1;
-var Name = 2;
-var Surname = 3;
-var OrderStatus = 4;
-var Email = 5;
-var Notes = 6;
-var Phone = 7;
-var Price = 8;
-var Currency = 9;
-var Ordered = 10;
-var Payed = 11;
-
+var FormID = 0;
+var Status = 1;
+var LastNotif = 2;
+var NotifsSent = 3;
+var Name = 4;
+var Surname = 5;
+var Email = 6;
+var CreatedDate = 7;
 // SetSums sets sums of selected rows
 // Need as much elements with id='footX'(where X=number)
 // as there are columns
@@ -100,40 +96,44 @@ $(function() {
       'colvis',
       {
         extend: 'selected',
-        text: 'Toggle "ordered/payed"',
+        text: 'Wyślij e-mail',
         action: function ( e, dt, button, config ) {
-          indexes = dt.rows({selected: true}).indexes();
-          for (i=0; i < indexes.length;i++){
-            row = dt.row(indexes[i]).data()
-            if (row[stscol] === "ordered") {
-              row[stscol] = "payed";
-              dt.row(indexes[i]).data(row);
-              $.ajax({
-                method: "POST",
-                url: "/api/formstatus",
-                data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol] , status: "payed"})
-              });
-            } else if (row[stscol] === "payed") {
-              row[stscol] = "ordered";
-              dt.row(indexes[i]).data(row);
-              $.ajax({
-                method: "POST",
-                url: "/api/formstatus",
-                data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol] , status: "ordered"})
-              });
-            } 
-          }
-          dt.rows({selected: true}).deselect();
-          //$('#total-price').html(0);
-          //$('#total-rows').html(0);
+          var formID = table.colReorder.transpose(FormID);
+          var indexes = dt.rows({selected: true}).indexes();
+          bootbox.confirm({
+            message: "Naprawde wysłać <b>" + indexes.length + "</b> e-maili?",
+              buttons: {
+                cancel: {
+                    label: '<i class="fa fa-times"></i> Anuluj'
+                },
+                confirm: {
+                    label: '<i class="fa fa-check"></i> Wyślij'
+                }
+              },
+            callback: function(result) {
+              if (result) {
+                for (i=0; i < indexes.length;i++){
+                  var row = dt.row(indexes[i]).data();
+                  $.ajax({
+                    method: "POST",
+                    url: "/api/formanssendmail",
+                    data: JSON.stringify({formtmpl_id: Number($('#formtmpl-id').val()),forms_id: Number(row[formID])})
+                  });
+                  row[NotifsSent] = Number(row[NotifsSent]) + 1;
+                  row[LastNotif] = "Teraz";
+                  dt.row(indexes[i]).data(row);
+                }
+                dt.rows({selected: true}).deselect();
+              }
+            }
+          });
         }
       },
       {
         extend: "selected",
         text: "Kasuj",
         action: function ( e, dt, button, config ) {
-          var furnNumberCol = table.colReorder.transpose(ChairNr);
-          var roomNameCol = table.colReorder.transpose(Room);
+          var formID = table.colReorder.transpose(0);
           var indexes = dt.rows({selected: true}).indexes();
           bootbox.confirm({
             message: "Naprawde usunąć <b>" + indexes.length + "</b> zaznaczonych wpisów? Będą usunięte bezpowrotnie!",
@@ -152,7 +152,7 @@ $(function() {
                   $.ajax({
                     method: "DELETE",
                     url: "/api/formansdelete",
-                    data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol]})
+                    data: JSON.stringify({formtmpl_id: Number($('#formtmpl-id').val()),forms_id: Number(row[formID])})
                   });
                 }
                 dt.rows({selected: true}).remove().draw();
@@ -179,7 +179,13 @@ $(function() {
         }
       },
       'selectNone',
-    ]
+    ],
+    language: {
+      buttons: {
+        colvis: 'Wyświetlane kolumny',
+        selectNone: "Odznacz wszystkie",
+      }
+    }
   });
 
   // position info panel
@@ -190,7 +196,7 @@ $(function() {
   // set content of total-price-lbl, it is created in "dom" table param
   $("div.total-price-lbl").css("display", "inline");
   $("div.total-price-lbl").css("margin-left", "5px");
-  $("div.total-price-lbl").html('Wybranych: <span id="total-rows"></span></div>');
+  $("div.total-price-lbl").html('<div>Wybranych: <span id="total-rows"></span></div>');
 
   // show total sits and price on select/deselect
   table.on( 'select', function ( e, dt, items ) {

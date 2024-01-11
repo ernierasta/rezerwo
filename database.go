@@ -55,6 +55,9 @@ import (
 //ALTER TABLE forms
 //   ADD COLUMN status TEXT;
 
+//ALTER TABLE formtemplates
+//   ADD COLUMN notifications_id_fk TEXT;
+
 // Get form data:
 // SELECT display, value FROM formanswers
 // JOIN formfields ON (formanswers.formfields_id_fk=formfields.id)
@@ -239,8 +242,9 @@ type FormTemplate struct {
 	UserID               int64          `db:"users_id_fk"`
 	EventID              sql.NullInt64  `db:"events_id_fk"`
 	BankAccountID        sql.NullInt64  `db:"bankaccounts_id_fk"`
-	ThankYouMailSubject  sql.NullString `db:"thankyoumailsubject"`
-	ThankYouMailText     sql.NullString `db:"thankyoumailtext"`
+	ThankYouMailSubject  sql.NullString `db:"thankyoumailsubject"` // not used anymore
+	ThankYouMailText     sql.NullString `db:"thankyoumailtext"`    // not used anymore
+	NotificationID       sql.NullInt64  `db:"notifications_id_fk"`
 }
 
 type FormField struct {
@@ -283,10 +287,26 @@ type BankAccount struct {
 	UserID        int64          `db:"users_id_fk"`
 }
 
-type FormNotification struct {
-	ID     int64 `db:"id"`
-	Date   int64 `db:"date"`
-	FormID int64 `db:"forms_id_fk"`
+type Notification struct {
+	ID                    int64  `db:"id"`
+	Name                  string `db:"name"`
+	Type                  string `db:"type"`
+	RelatedTo             string `db:"related_to"`
+	Title                 string `db:"title"`
+	Text                  string `db:"text"`
+	EmbeddedImgsDelimited string `db:"embedded_imgs"`
+	AttachedImgsDelimited string `db:"attached_imgs"`
+	Sharable              string `db:"sharable"`
+	CreatedDate           int64  `db:"created_date"`
+	UpdatedDate           int64  `db:"updated_date"`
+	UserID                int64  `db:"users_id_fk"`
+}
+
+type FormNotificationLog struct {
+	ID             int64 `db:"id"`
+	Date           int64 `db:"date"`
+	NotificationID int64 `db:"notifications_id_fk"`
+	FormID         int64 `db:"forms_id_fk"`
 }
 
 // GetType is needed for generics
@@ -1039,8 +1059,8 @@ func (db *DB) NoteDel(noteID int64) error {
 }
 
 func (db *DB) FormTemplateAdd(t *FormTemplate) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO formtemplates (name, url, howto, banner, thankyou, thankyoumailsubject, thankyoumailtext, infopanel, content, created_date, moneyfield, users_id_fk, events_id_fk, bankaccounts_id_fk)
-	VALUES(:name, :url, :howto, :banner, :thankyou, :thankyoumailsubject, :thankyoumailtext, :infopanel, :content, :created_date, :moneyfield, :users_id_fk, :events_id_fk, :bankaccounts_id_fk)`, t)
+	ret, err := db.DB.NamedExec(`INSERT INTO formtemplates (name, url, howto, banner, thankyou, thankyoumailsubject, thankyoumailtext, infopanel, content, created_date, moneyfield, users_id_fk, events_id_fk, bankaccounts_id_fk, notifications_id_fk)
+	VALUES(:name, :url, :howto, :banner, :thankyou, :thankyoumailsubject, :thankyoumailtext, :infopanel, :content, :created_date, :moneyfield, :users_id_fk, :events_id_fk, :bankaccounts_id_fk, :notifications_id_fk)`, t)
 	if err != nil {
 		return -1, err
 	}
@@ -1141,8 +1161,8 @@ func (db *DB) FormFieldDelByName(name string, formtemplateID int64) error {
 }
 
 func (db *DB) FormAdd(f *Form) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO forms (name, surname, notes, email, created_date, users_id_fk, formtemplates_id_fk)
-	VALUES(:name, :surname, :notes, :email, :created_date, :users_id_fk, :formtemplates_id_fk)`, f)
+	ret, err := db.DB.NamedExec(`INSERT INTO forms (name, surname, notes, email, created_date, status, users_id_fk, formtemplates_id_fk)
+	VALUES(:name, :surname, :notes, :email, :created_date, :status, :users_id_fk, :formtemplates_id_fk)`, f)
 	if err != nil {
 		return -1, err
 	}
@@ -1166,8 +1186,17 @@ func (db *DB) FormGetIDByEmail(email string, FormTemplateID, UserID int64) (int6
 	if email == "" || FormTemplateID == 0 || UserID == 0 {
 		return id, fmt.Errorf("FormGetIDByEmail: empty email %q or formtemplates_id_fk %d or users_id_fk %d", email, FormTemplateID, UserID)
 	}
-	err := db.DB.Get(&id, `SELECT id FROM forms WHERE email=$1 AND users_id_fk=$2 AND  formtemplates_id_fk=$3`, email, UserID, FormTemplateID)
+	err := db.DB.Get(&id, `SELECT id FROM forms WHERE email=$1 AND users_id_fk=$2 AND formtemplates_id_fk=$3`, email, UserID, FormTemplateID)
 	return id, err
+}
+
+func (db *DB) FormGet(FormID, FormTemplateID int64) (Form, error) {
+	var f Form
+	if FormID == 0 || FormTemplateID == 0 {
+		return f, fmt.Errorf("FormGetEmailNaS: undefined FormID %d or formtemplates_id_fk %d", FormID, FormTemplateID)
+	}
+	err := db.DB.Get(&f, `SELECT * FROM forms WHERE id=$1 AND formtemplates_id_fk=$2`, FormID, FormTemplateID)
+	return f, err
 }
 
 func (db *DB) FormModByEmail(f *Form) error {
@@ -1178,6 +1207,21 @@ func (db *DB) FormModByEmail(f *Form) error {
 	return err
 }
 
+func (db *DB) FormDel(FormID, TemplateID int64) error {
+	ret, err := db.DB.Exec(`DELETE FROM forms WHERE id=$1 AND formtemplates_id_fk=$2`, FormID, TemplateID)
+	if err != nil {
+		return err
+	}
+	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return fmt.Errorf("form %d (templ: %d) not found", FormID, TemplateID)
+	}
+	return err
+}
+
 func (db *DB) FormAnswerAdd(fa *FormAnswer) (int64, error) {
 	ret, err := db.DB.NamedExec(`INSERT INTO formanswers (value, formfields_id_fk, forms_id_fk)
 	VALUES(:value, :formfields_id_fk, :forms_id_fk)`, fa)
@@ -1185,6 +1229,12 @@ func (db *DB) FormAnswerAdd(fa *FormAnswer) (int64, error) {
 		return -1, err
 	}
 	return ret.LastInsertId()
+}
+
+func (db *DB) FormAnswerGetByField(FormID, FormFieldID int64) (string, error) {
+	var fa string
+	err := db.DB.Get(&fa, `SELECT value FROM formanswers WHERE forms_id_fk=$1 AND formfields_id_fk=$2`, FormID, FormFieldID)
+	return fa, err
 }
 
 func (db *DB) FormAnswerGetByFieldDisplay(FormID, TemplateID int64, FormFieldDisplay string) (string, error) {
@@ -1226,30 +1276,45 @@ func (db *DB) FormAnswerMod(fa *FormAnswer) error {
 	return err
 }
 
-func (db *DB) FormNotificationAdd(fa *FormNotification) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO formnotifications (date, forms_id_fk)
-	VALUES(:date, :forms_id_fk)`, fa)
+func (db *DB) FormAnswerDel(FormID, TemplateID int64) error {
+	ret, err := db.DB.Exec(`DELETE FROM formanswers JOIN forms ON formanswers.forms_id_fk=forms.id WHERE forms_id_fk=$1 AND forms.formtemplates_id_fk=$2`, FormID, TemplateID) // join is just for security
+	if err != nil {
+		return err
+	}
+	affected, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return fmt.Errorf("formanswers for form %d (templ: %d) not found", FormID, TemplateID)
+	}
+	return err
+}
+
+func (db *DB) FormNotificationLogAdd(fa *FormNotificationLog) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO formnotificationslog (date, notifications_id_fk, forms_id_fk)
+	VALUES(:date, :notifications_id_fk, :forms_id_fk)`, fa)
 	if err != nil {
 		return -1, err
 	}
 	return ret.LastInsertId()
 }
 
-func (db *DB) FormNotificationGetAll(FormID int64) ([]FormNotification, error) {
-	ff := []FormNotification{}
-	err := db.DB.Select(&ff, `SELECT * FROM formnotifications WHERE forms_id_fk=$1`, FormID)
+func (db *DB) FormNotificationLogGetAll(FormID int64) ([]FormNotificationLog, error) {
+	ff := []FormNotificationLog{}
+	err := db.DB.Select(&ff, `SELECT * FROM formnotificationslog WHERE forms_id_fk=$1`, FormID)
 	return ff, err
 }
 
-func (db *DB) FormNotificationGetLast(FormID int64) (int64, error) {
+func (db *DB) FormNotificationLogGetLast(FormID int64) (int64, error) {
 	var f int64
-	err := db.DB.Get(&f, `SELECT MAX(id) FROM formnotifications WHERE forms_id_fk=$1`, FormID)
+	err := db.DB.Get(&f, `SELECT MAX(date) FROM formnotificationslog WHERE forms_id_fk=$1`, FormID)
 	return f, err
 }
 
-func (db *DB) FormNotificationGetAmount(FormID int64) (int64, error) {
+func (db *DB) FormNotificationLogGetAmount(FormID int64) (int64, error) {
 	var f int64
-	err := db.DB.Get(&f, `SELECT COUNT(id) FROM formnotifications WHERE forms_id_fk=$1`, FormID)
+	err := db.DB.Get(&f, `SELECT COUNT(id) FROM formnotificationslog WHERE forms_id_fk=$1`, FormID)
 	return f, err
 }
 
@@ -1295,6 +1360,12 @@ func (db *DB) BankAccountGetByName(name string, userID int64) (BankAccount, erro
 	c := BankAccount{}
 	err := db.DB.Get(&c, `SELECT * FROM bankaccounts WHERE name=$1 AND users_id_fk=$2 ORDER BY id DESC LIMIT 1`, name, userID)
 	return c, err
+}
+
+func (db *DB) NotificationGetAllForUser(UserID int64) ([]Notification, error) {
+	nn := []Notification{}
+	err := db.DB.Select(&nn, `SELECT * FROM Notifications WHERE users_id_fk=$1`, UserID)
+	return nn, err
 }
 
 func (db *DB) Close() {

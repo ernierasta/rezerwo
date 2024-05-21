@@ -227,7 +227,7 @@ func MailSend(n MailConfig) error {
 
 func encodeRFC2047(s string) string {
 	// use mail's rfc2047 to encode any string
-	addr := mail.Address{s, ""}
+	addr := mail.Address{Name: s, Address: ""}
 	return strings.Trim(addr.String(), " <@>")
 }
 

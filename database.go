@@ -346,8 +346,8 @@ type Notification struct {
 	RelatedTo              string         `db:"related_to"`
 	Title                  sql.NullString `db:"title"`
 	Text                   string         `db:"text"`
-	EmbeddedImgsDelimited  string         `db:"embedded_imgs"`
-	AttachedFilesDelimited string         `db:"attached_imgs"`
+	EmbeddedImgsDelimited  sql.NullString `db:"embedded_imgs"`
+	AttachedFilesDelimited sql.NullString `db:"attached_imgs"`
 	Sharable               bool           `db:"sharable"`
 	CreatedDate            int64          `db:"created_date"`
 	UpdatedDate            sql.NullInt64  `db:"updated_date"`

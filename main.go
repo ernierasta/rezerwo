@@ -714,8 +714,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				Text:            "<html><head><style>p {margin:0;}</style></head>" + ParseOrderTmpl(cstMail.Text, o) + "</html>",
 				IgnoreCert:      mailConf.IgnoreCert,
 				Hostname:        mailConf.Hostname,
-				Files:           getAttachments(cstMail.AttachedFilesDelimited, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
-				EmbededHTMLImgs: getEmbeddedImgs(cstMail.EmbeddedImgsDelimited, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
+				Files:           getAttachments(cstMail.AttachedFilesDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
+				EmbededHTMLImgs: getEmbeddedImgs(cstMail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
 			}
 
 			err = MailSend(custMail)
@@ -1913,7 +1913,7 @@ func MailEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			SubjectVal:         curMail.Title.String,
 			HTMLTextVal:        template.HTML(curMail.Text),
 			IsSharableVal:      curMail.Sharable,
-			AttachedFilesVal:   curMail.AttachedFilesDelimited,
+			AttachedFilesVal:   curMail.AttachedFilesDelimited.String,
 			CurrentRelatedTo:   curMail.RelatedTo,
 			BTNSave:            "Zapisz",
 			BTNCopy:            "Utwórz kopię",
@@ -3004,8 +3004,8 @@ func MailAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r 
 				RelatedTo:              b.RelatedTo,
 				Title:                  ToNS(b.Subject),
 				Text:                   makeSureIsHTML(b.Text),
-				EmbeddedImgsDelimited:  b.EmbeddedImgs,
-				AttachedFilesDelimited: b.AttachedFiles,
+				EmbeddedImgsDelimited:  ToNS(b.EmbeddedImgs),
+				AttachedFilesDelimited: ToNS(b.AttachedFiles),
 				Sharable:               b.Sharable,
 				CreatedDate:            now,
 				UpdatedDate:            ToNI(now),

@@ -58,6 +58,59 @@ import (
 //ALTER TABLE formtemplates
 //   ADD COLUMN notifications_id_fk TEXT;
 
+// Mods for notifications integration
+
+// ALTER TABLE events
+//   ADD COLUMN thankyou_notifications_id_fk INTEGER REFERENCES notifications(id);
+
+// ALTER TABLE events
+//   ADD COLUMN admin_notifications_id_fk INTEGER REFERENCES notifications(id);
+
+// ALTER TABLE events
+//   ADD COLUMN "bankaccounts_id_fk" INTEGER REFERENCES bankaccounts(id);
+
+//ALTER TABLE rooms
+//	ADD COLUMN sharable INTEGER;
+
+//ALTER TABLE events
+//	ADD COLUMN sharable INTEGER;
+
+// copy customers mail to notifications table
+// INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk)
+// SELECT name, 'mail', 'events', mail_subject, mail_text, mail_embeded_imgs, mail_attachments, 0, 1711746719, users_id_fk
+// FROM events
+
+// copy admin mail to notifications table
+// INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk)
+//  SELECT name||' (admin)', 'mail', 'events', admin_mail_subject, admin_mail_text, mail_embeded_imgs, mail_attachments, 0, 1711746719, users_id_fk
+// FROM events
+
+// link mails to events
+// UPDATE events SET
+// thankyou_notifications_id_fk=(SELECT id FROM notifications WHERE events.name = notifications.name),
+// admin_notifications_id_fk=(SELECT id FROM notifications WHERE events.name||' (admin)' = notifications.name)
+
+// remove mails from events table
+// ALTER TABLE events DROP COLUMN mail_subject;
+// ALTER TABLE events DROP COLUMN mail_text;
+// ALTER TABLE events DROP COLUMN admin_mail_subject;
+// ALTER TABLE events DROP COLUMN admin_mail_text;
+// ALTER TABLE events DROP COLUMN mail_attachments;
+// ALTER TABLE events DROP COLUMN mail_embeded_imgs;
+
+// copy thankyou subject/text from formtemplates to notifications
+// INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk)
+// SELECT name||' (form)', 'mail', 'forms', thankyoumailsubject, thankyoumailtext, '', '', 0, 1711746719, users_id_fk
+// FROM formtemplates
+
+// remove subject/text from formtemplates
+//
+//ALTER TABLE formtemplates DROP COLUMN thankyoumailsubject;
+//ALTER TABLE formtemplates DROP COLUMN thankyoumailtext;
+//
+//
+// END
+
 // Get form data:
 // SELECT display, value FROM formanswers
 // JOIN formfields ON (formanswers.formfields_id_fk=formfields.id)
@@ -125,6 +178,7 @@ type Room struct {
 	Description sql.NullString `db:"description"`
 	Width       int64          `db:"width"`
 	Height      int64          `db:"height"`
+	Sharable    sql.NullInt64  `db:"sharable"`
 }
 
 type Furniture struct {
@@ -157,27 +211,25 @@ type Price struct {
 }
 
 type Event struct {
-	ID                        int64          `db:"id"`
-	Name                      string         `db:"name"`
-	Date                      int64          `db:"date"`
-	FromDate                  int64          `db:"from_date"`
-	ToDate                    int64          `db:"to_date"`
-	DefaultPrice              int64          `db:"default_price"`
-	DefaultCurrency           string         `db:"default_currency"`
-	NoSitsSelectedTitle       string         `db:"no_sits_selected_title"`
-	NoSitsSelectedText        string         `db:"no_sits_selected_text"`
-	OrderHowto                string         `db:"order_howto"`
-	OrderNotesDescription     string         `db:"order_notes_desc"`
-	OrderedNoteTitle          string         `db:"ordered_note_title"`
-	OrderedNoteText           string         `db:"ordered_note_text"`
-	MailSubject               string         `db:"mail_subject"`
-	MailText                  string         `db:"mail_text"`
-	MailAttachmentsDelimited  sql.NullString `db:"mail_attachments"`
-	MailEmbeddedImgsDelimited sql.NullString `db:"mail_embeded_imgs"`
-	AdminMailSubject          string         `db:"admin_mail_subject"`
-	AdminMailText             string         `db:"admin_mail_text"`
-	HowTo                     string         `db:"how_to"`
-	UserID                    int64          `db:"users_id_fk"`
+	ID                      int64         `db:"id"`
+	Name                    string        `db:"name"`
+	Date                    int64         `db:"date"`
+	FromDate                int64         `db:"from_date"`
+	ToDate                  int64         `db:"to_date"`
+	DefaultPrice            int64         `db:"default_price"`
+	DefaultCurrency         string        `db:"default_currency"`
+	NoSitsSelectedTitle     string        `db:"no_sits_selected_title"`
+	NoSitsSelectedText      string        `db:"no_sits_selected_text"`
+	OrderHowto              string        `db:"order_howto"`
+	OrderNotesDescription   string        `db:"order_notes_desc"`
+	OrderedNoteTitle        string        `db:"ordered_note_title"`
+	OrderedNoteText         string        `db:"ordered_note_text"`
+	HowTo                   string        `db:"how_to"`
+	UserID                  int64         `db:"users_id_fk"`
+	ThankYouNotificationsID sql.NullInt64 `db:"thankyou_notifications_id_fk"`
+	AdminNotificationsID    sql.NullInt64 `db:"admin_notifications_id_fk"`
+	Sharable                sql.NullBool  `db:"sharable"`
+	BankAccountsID          sql.NullInt64 `db:"bankaccounts_id_fk"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -242,9 +294,9 @@ type FormTemplate struct {
 	UserID               int64          `db:"users_id_fk"`
 	EventID              sql.NullInt64  `db:"events_id_fk"`
 	BankAccountID        sql.NullInt64  `db:"bankaccounts_id_fk"`
-	ThankYouMailSubject  sql.NullString `db:"thankyoumailsubject"` // not used anymore
-	ThankYouMailText     sql.NullString `db:"thankyoumailtext"`    // not used anymore
-	NotificationID       sql.NullInt64  `db:"notifications_id_fk"`
+	//ThankYouMailSubject  sql.NullString `db:"thankyoumailsubject"` // not used anymore
+	//ThankYouMailText     sql.NullString `db:"thankyoumailtext"`    // not used anymore
+	NotificationID sql.NullInt64 `db:"notifications_id_fk"`
 }
 
 type FormField struct {
@@ -288,18 +340,18 @@ type BankAccount struct {
 }
 
 type Notification struct {
-	ID                    int64  `db:"id"`
-	Name                  string `db:"name"`
-	Type                  string `db:"type"`
-	RelatedTo             string `db:"related_to"`
-	Title                 string `db:"title"`
-	Text                  string `db:"text"`
-	EmbeddedImgsDelimited string `db:"embedded_imgs"`
-	AttachedImgsDelimited string `db:"attached_imgs"`
-	Sharable              string `db:"sharable"`
-	CreatedDate           int64  `db:"created_date"`
-	UpdatedDate           int64  `db:"updated_date"`
-	UserID                int64  `db:"users_id_fk"`
+	ID                     int64          `db:"id"`
+	Name                   string         `db:"name"`
+	Type                   string         `db:"type"`
+	RelatedTo              string         `db:"related_to"`
+	Title                  sql.NullString `db:"title"`
+	Text                   string         `db:"text"`
+	EmbeddedImgsDelimited  string         `db:"embedded_imgs"`
+	AttachedFilesDelimited string         `db:"attached_imgs"`
+	Sharable               bool           `db:"sharable"`
+	CreatedDate            int64          `db:"created_date"`
+	UpdatedDate            sql.NullInt64  `db:"updated_date"`
+	UserID                 int64          `db:"users_id_fk"`
 }
 
 type FormNotificationLog struct {
@@ -343,7 +395,7 @@ func (db *DB) StructureCreate() {
 	CREATE TABLE IF NOT EXISTS prices (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS customers (id INTEGER NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE, passwd TEXT NOT NULL, name TEXT, surname TEXT, phone TEXT, notes TEXT);
 	CREATE TABLE IF NOT EXISTS users_customers (users_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(users_id_fk, customers_id_fk) ON CONFLICT ROLLBACK);
-	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, no_sits_selected_title TEXT NOT NULL, no_sits_selected_text TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note_title TEXT NOT NULL, ordered_note_text TEXT NOT NULL, mail_subject TEXT NOT NULL, mail_text TEXT NOT NULL, admin_mail_subject TEXT NOT NULL, admin_mail_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
+	CREATE TABLE IF NOT EXISTS events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, no_sits_selected_title TEXT NOT NULL, no_sits_selected_text TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note_title TEXT NOT NULL, ordered_note_text TEXT NOT NULL, thankyou_notifications_id_fk INTEGER REFERENCES notifications(id), admin_notifications_id_fk INTEGER REFERENCES notifications(id),users_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS events_rooms (events_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(rooms_id_fk) REFERENCES rooms(id), UNIQUE(events_id_fk, rooms_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER, payed_date INTEGER, price INTEGER, currency TEXT, status TEXT NOT NULL, notes_id_fk INTEGER, furnitures_id_fk INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(notes_id_fk) REFERENCES notes(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
 	CREATE TABLE IF NOT EXISTS notes (id INTEGER NOT NULL PRIMARY KEY, text TEXT NOT NULL);
@@ -417,7 +469,7 @@ func (db *DB) UserDel(email string) error {
 }
 
 func (db *DB) RoomAdd(room *Room) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO rooms (name, banner_img, description, width, height) VALUES (:name, :banner_img, :description, :width, :height)`, room)
+	ret, err := db.DB.NamedExec(`INSERT INTO rooms (name, banner_img, description, width, height, sharable) VALUES (:name, :banner_img, :description, :width, :height, :sharable)`, room)
 	if err != nil {
 		return -1, err
 	}
@@ -460,10 +512,16 @@ func (db *DB) RoomGetAllByUserID(userID int64) ([]Room, error) {
 	return rooms, err
 }
 
+func (db *DB) RoomGetUsersAndSharedByUserID(userID int64) ([]Room, error) {
+	rooms := []Room{}
+	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN users_rooms ur ON r.id = ur.rooms_id_fk WHERE ur.users_id_fk = $1 OR r.`, userID)
+	return rooms, err
+}
+
 // TODO: do we need banner_img here? probably separate function for setting banner
 // would be better idea.
 func (db *DB) RoomMod(room *Room) error {
-	_, err := db.DB.NamedExec(`UPDATE rooms SET name=:name, width=:width, height=:height WHERE id=:id`, room)
+	_, err := db.DB.NamedExec(`UPDATE rooms SET name=:name, width=:width, height=:height, sharable=:sharable WHERE id=:id`, room)
 	return err
 }
 
@@ -768,8 +826,8 @@ func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) err
 }
 
 func (db *DB) EventAdd(e *Event) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, mail_subject, mail_text, admin_mail_subject, admin_mail_text, users_id_fk) 
-VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :mail_subject, :mail_text, :admin_mail_subject, :admin_mail_text, :users_id_fk)`, e)
+	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, users_id_fk, thankyou_notifications_id_fk, admin_notifications_id_fk, sharable, bankaccounts_id_fk) 
+	VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :users_id_fk, :thankyou_notifications_id_fk, :admin_notifications_id_fk, :sharable, :bankaccounts_id_fk)`, e)
 	if err != nil {
 		return -1, err
 	}
@@ -777,15 +835,15 @@ VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :n
 }
 
 // EventAddOrUpdate will increase id every update!!!
-func (db *DB) EventAddOrUpdateUnsafe(e *Event) (int64, error) {
-	log.Println("EventAddOrUpdate: probably wrong idea to use this func!")
-	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO events (name, date, from_date, to_date, default_price, default_currency, ordered_note, how_to, mail_subject, mail_text, users_id_fk) 
-VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :ordered_note, :how_to, :mail_subject, :mail_text, :users_id_fk)`, e)
-	if err != nil {
-		return -1, err
-	}
-	return ret.LastInsertId()
-}
+//func (db *DB) EventAddOrUpdateUnsafe(e *Event) (int64, error) {
+//	log.Println("EventAddOrUpdate: probably wrong idea to use this func!")
+//	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO events (name, date, from_date, to_date, default_price, default_currency, ordered_note, how_to, users_id_fk)
+//VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :ordered_note, :how_to, :users_id_fk)`, e)
+//	if err != nil {
+//		return -1, err
+//	}
+//	return ret.LastInsertId()
+//}
 
 func (db *DB) EventGetByName(eventName string) (Event, error) {
 	event := Event{}
@@ -845,11 +903,14 @@ func (db *DB) EventGetRooms(eventID int64) ([]Room, error) {
 	return rooms, err
 }
 
-func (db *DB) EventMod(event *Event) error {
+func (db *DB) EventModByID(event *Event, UserID int64) error {
 	if event.ID == 0 {
 		return fmt.Errorf("can not modify event if ID is 0")
 	}
-	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, mail_subject=:mail_subject, mail_text=:mail_text, admin_mail_subject=:admin_mail_subject, admin_mail_text=:admin_mail_text WHERE id=:id`, event)
+	if event.UserID != UserID {
+		return fmt.Errorf("event.UserID %d do not match UserID %d, can't update event", event.UserID, UserID)
+	}
+	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, thankyou_notifications_id_fk=:thankyou_notifications_id_fk, admin_notifications_id_fk=:admin_notifications_id_fk, sharable=:sharable, bankaccounts_id_fk=:bankaccounts_id_fk WHERE id=:id AND users_id_fk=:users_id_fk`, event)
 	return err
 }
 
@@ -1059,8 +1120,8 @@ func (db *DB) NoteDel(noteID int64) error {
 }
 
 func (db *DB) FormTemplateAdd(t *FormTemplate) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO formtemplates (name, url, howto, banner, thankyou, thankyoumailsubject, thankyoumailtext, infopanel, content, created_date, moneyfield, users_id_fk, events_id_fk, bankaccounts_id_fk, notifications_id_fk)
-	VALUES(:name, :url, :howto, :banner, :thankyou, :thankyoumailsubject, :thankyoumailtext, :infopanel, :content, :created_date, :moneyfield, :users_id_fk, :events_id_fk, :bankaccounts_id_fk, :notifications_id_fk)`, t)
+	ret, err := db.DB.NamedExec(`INSERT INTO formtemplates (name, url, howto, banner, thankyou, infopanel, content, created_date, moneyfield, users_id_fk, events_id_fk, bankaccounts_id_fk, notifications_id_fk)
+	VALUES(:name, :url, :howto, :banner, :thankyou, :infopanel, :content, :created_date, :moneyfield, :users_id_fk, :events_id_fk, :bankaccounts_id_fk, :notifications_id_fk)`, t)
 	if err != nil {
 		return -1, err
 	}
@@ -1086,7 +1147,7 @@ func (db *DB) FormTemplateGetByURL(URL string, UserID int64) (FormTemplate, erro
 }
 
 func (db *DB) FormTemplateModByID(t *FormTemplate) error {
-	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, url=:url, howto=:howto, banner=:banner, thankyou=:thankyou, thankyoumailsubject=:thankyoumailsubject, thankyoumailtext=:thankyoumailtext, infopanel=:infopanel, content=:content, moneyfield=:moneyfield, bankaccounts_id_fk=:bankaccounts_id_fk WHERE id=:id`, t)
+	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, url=:url, howto=:howto, banner=:banner, thankyou=:thankyou, infopanel=:infopanel, content=:content, moneyfield=:moneyfield, bankaccounts_id_fk=:bankaccounts_id_fk, notifications_id_fk=:notifications_id_fk WHERE id=:id`, t)
 	return err
 }
 
@@ -1094,7 +1155,7 @@ func (db *DB) FormTemplateModByURL(t *FormTemplate) error {
 	if t.UserID < 1 {
 		return fmt.Errorf("FormTemplateModByURL: no userID given! Update aborted. %+v", t)
 	}
-	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, content=:content, banner=:banner, howto=:howto, thankyou=:thankyou,thankyoumailsubject=:thankyoumailsubject, thankyoumailtext=:thankyoumailtext, infopanel=:infopanel, moneyfield=:moneyfield, bankaccounts_id_fk=:bankaccounts_id_fk WHERE url=:url AND users_id_fk=:users_id_fk`, t)
+	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, content=:content, banner=:banner, howto=:howto, thankyou=:thankyou, infopanel=:infopanel, moneyfield=:moneyfield, bankaccounts_id_fk=:bankaccounts_id_fk, notifications_id_fk=:notifications_id_fk WHERE url=:url AND users_id_fk=:users_id_fk`, t)
 	return err
 }
 
@@ -1277,7 +1338,10 @@ func (db *DB) FormAnswerMod(fa *FormAnswer) error {
 }
 
 func (db *DB) FormAnswerDel(FormID, TemplateID int64) error {
-	ret, err := db.DB.Exec(`DELETE FROM formanswers JOIN forms ON formanswers.forms_id_fk=forms.id WHERE forms_id_fk=$1 AND forms.formtemplates_id_fk=$2`, FormID, TemplateID) // join is just for security
+	ret, err := db.DB.Exec(`DELETE FROM formanswers
+		WHERE id IN ( SELECT fa.id FROM formanswers fa
+ 						JOIN forms ON fa.forms_id_fk=forms.id 
+						WHERE forms_id_fk=$1 AND forms.formtemplates_id_fk=$2)`, FormID, TemplateID) // join is just for security
 	if err != nil {
 		return err
 	}
@@ -1366,6 +1430,74 @@ func (db *DB) NotificationGetAllForUser(UserID int64) ([]Notification, error) {
 	nn := []Notification{}
 	err := db.DB.Select(&nn, `SELECT * FROM Notifications WHERE users_id_fk=$1`, UserID)
 	return nn, err
+}
+
+func (db *DB) NotificationGetAllRelatedToEventsForUser(UserID int64) ([]Notification, error) {
+	nn := []Notification{}
+	err := db.DB.Select(&nn, `SELECT * FROM Notifications WHERE users_id_fk=$1 AND related_to='events'`, UserID)
+	return nn, err
+}
+
+func (db *DB) NotificationGetAllRelatedToFormsForUser(UserID int64) ([]Notification, error) {
+	nn := []Notification{}
+	err := db.DB.Select(&nn, `SELECT * FROM Notifications WHERE users_id_fk=$1 AND related_to='forms'`, UserID)
+	return nn, err
+}
+
+func (db *DB) NotificationGetAllUsersAndSharable(UserID int64) ([]Notification, error) {
+	nn := []Notification{}
+	err := db.DB.Select(&nn, `SELECT * FROM Notifications WHERE users_id_fk=$1 OR sharable=1`, UserID)
+	return nn, err
+}
+
+// userID is there just to doublecheck
+func (db *DB) NotificationGetByID(id int64, userID int64) (Notification, error) {
+	c := Notification{}
+	err := db.DB.Get(&c, `SELECT * FROM notifications WHERE id=$1 AND users_id_fk=$2 ORDER BY id DESC LIMIT 1`, id, userID)
+	return c, err
+}
+
+// NotificationGetByIDUnsafe no user is check. This is useful for shared notifications,
+// where other users need to be able to access notification data.
+func (db *DB) NotificationGetByIDUnsafe(id int64) (Notification, error) {
+	c := Notification{}
+	err := db.DB.Get(&c, `SELECT * FROM notifications WHERE id=$1 ORDER BY id DESC LIMIT 1`, id)
+	return c, err
+}
+
+func (db *DB) NotificationAdd(not *Notification) (int64, error) {
+	if not.ID != 0 {
+		return -1, fmt.Errorf("NotificationAdd: ID is not 0, this is existing notification with ID:%d", not.ID)
+	}
+	ret, err := db.DB.NamedExec(`INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk) 
+	VALUES (:name, :type, :related_to, :title, :text, :embedded_imgs, :attached_imgs, :sharable, :created_date, :users_id_fk)`, not)
+	if err != nil {
+		return -1, err
+	}
+
+	return ret.LastInsertId()
+}
+
+func (db *DB) NotificationModByID(not *Notification, UserID int64) error {
+	if not.ID == 0 || not.UserID == 0 {
+		return fmt.Errorf("NotificationModByID: ID is zero: %q or UserID %d is 0", not.Name, not.UserID)
+	}
+	if not.UserID != UserID {
+		return fmt.Errorf("NotificationModByID: can not update notification %d, userID mismatch. not.User=%d vs UserID=%d", not.ID, not.UserID, UserID)
+	}
+
+	_, err := db.DB.NamedExec(`UPDATE notifications SET name=:name, type=:type, related_to=:related_to, title=:title, text=:text, embedded_imgs=:embedded_imgs, attached_imgs=:attached_imgs, sharable=:sharable, updated_date=:updated_date WHERE id=:id and users_id_fk=:users_id_fk`, not)
+
+	return err
+}
+
+// UNUSED
+func (db *DB) NotificationModByName(not *Notification) error {
+	if not.Name == "" || not.UserID == 0 {
+		return fmt.Errorf("NotificationModByName: empty name %q or UserID %d", not.Name, not.UserID)
+	}
+	_, err := db.DB.NamedExec(`UPDATE notifications SET type=:type, related_to=:related_to, title=:title, text=:text, embedded_imgs=:embedded_imgs, attached_imgs=:attached_imgs, sharable=:sharable, updated_date=:updated_date, users_id_fk=:users_id_fk`, not)
+	return err
 }
 
 func (db *DB) Close() {

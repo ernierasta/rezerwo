@@ -1,21 +1,34 @@
+
 function GoBack() {
   window.history.back();
 }
 
+var QuillMailTextEditor = new Quill('#text-editor', {
+    theme: 'snow'
+  }
+);
+
 function Save() {
   var finald = {};
-  finald.name = $('#ba-name').val();
-  finald.account = $('#ba-account').val();
-  finald.recipient = $('#ba-recipientname').val();
-  finald.message = $('#ba-message').val();
-  finald.fieldname = $('#ba-amount-field-name').val();
-  finald.varsymbol = $('#ba-varsymbol').val();
-  finald.currency = $('#ba-currency').val();
+  finald.id = $('#notification-id').val();
+  finald.userid = $('#user-id').val();
+  finald.name = $('#name').val();
+  finald.subject = $('#subject').val();
+  finald.text = QuillMailTextEditor.root.innerHTML;
+  finald.sharable = $('#sharable').is(":checked");
+  finald.relatedto = $('#related-to-select').val(); // events or formtemplates
+  finald.attachedfiles = $('#attachedfiles').val();
+  finald.embeddedimgs = $('#embeddedimgs').val();
+  //finald.message = $('#ba-message').val();
+  //finald.fieldname = $('#ba-amount-field-name').val();
+  //finald.varsymbol = $('#ba-varsymbol').val();
+  //finald.currency = $('#ba-currency').val();
 
+  console.log(finald.sharable);
 
   $.ajax({
     type: "POST",
-    url: "/api/baed",
+    url: "/api/maed",
     data: JSON.stringify(finald),
     success: function(resp) {
       console.log(resp.msg);
@@ -27,9 +40,9 @@ function Save() {
       window.setTimeout(function(){
         $("#save").removeClass("btn-success");
       },2000);
+      GoBack();
       //window.location.replace("/admin");
       //window.location.href = "/admin";
-      GoBack();
     },
     statusCode: {
       418: function(xhr) {

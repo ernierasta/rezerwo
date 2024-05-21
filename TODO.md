@@ -1,3 +1,8 @@
+2024:
+ * Add account to Event editor.
+
+
+
 * Mail is generated from form data (Name and Surname), not from stored data.
 * Send mail after setting "payed" status. Only one mail for one person.
 * Mail - send room name!

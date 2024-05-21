@@ -1,21 +1,22 @@
 {{define "head"}}<title>{{.LBLTitle}}</title>
-<script type="text/javascript" src="/js/a_event.js"></script>
 <link href="/css/admin.css" rel="stylesheet" type="text/css">
 <link href="/css/quill.snow.css" rel="stylesheet">
 <script src="/js/quill.min.js"></script>
 {{end}}
 {{define "body"}}
-  <form id="event-form" action="/admin" method="POST">
-    <div class="form-group">
-      <label for="from-date">{{.LBLID}}</label>
-      <input type="text" class="form-control" id="id"  name="id" value="{{.LBLIDValue}}" readonly>
-    </div>
+<div class="d-flex justify-content-center align-items-center">
+  <!-- <form id="event-form" action="/admin" method="POST"> -->
+  <div class="col-md-6">
+    <input type="hidden" class="form-control" id="id"  name="id" value="{{.IDVal}}" readonly>
+    <input type="hidden" id="user-id" value={{.UserIDVal}}></input>
     <div class="form-group">
       <input type="hidden" name="type" value="event">
-      <label for="name">{{.LBLName}}</label>
+      <h3>{{.LBLName}}</h3>
       <input class="form-control" id="name" name="name" aria-describedby="nameHelp" value="{{.LBLNameValue}}">
       <small id="nameHelp" class="form-text text-muted">{{.NameHelpText}}</small>
     </div>
+
+    <h3>{{.LBLTitleDates}}</h3>
     <div class="form-group">
       <label for="date">{{.LBLDate}}</label>
       <input type="date" class="form-control" id="date" name="date" value="{{.LBLDateValue}}">
@@ -28,6 +29,8 @@
       <label for="to-date">{{.LBLToDate}}</label>
       <input type="date" class="form-control" id="to-date" name="to-date" value="{{.LBLToDateValue}}">
     </div>
+
+    <h3>{{.LBLTitlePrice}}</h3>
     <div class="form-group">
       <label for="default-price">{{.LBLDefaultPrice}}</label>
       <input type="number" class="form-control" id="default-price" name="default-price" value="{{.LBLDefaultPriceValue}}">
@@ -36,22 +39,73 @@
       <label for="default-currency">{{.LBLDefaultCurrency}}</label>
       <input type="text" class="form-control" id="default-currency" name="default-currency" value="{{.LBLDefaultCurrencyValue}}">
     </div>
+
+    <h3>{{.LBLTitleMails}}</h3>
+    <div class="input-group">
+      <select name="ba-select" id="ba-select" class="custom-select">
+        <option value="0" {{if eq $.CurrentBankAccount 0}}selected{{end}}>{{.LBLSelectBankAccount}}</option>
+        {{range .BankAccounts}}
+        <option value="{{.ID}}" {{if eq $.CurrentBankAccount .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      <div class="input-group-append">
+        <button id="ba-edit" class="btn btn-outline-secondary" type="button" onclick="EditBankAccount()" >{{.BTNBAEdit}}</button>
+        <button class="btn btn-outline-secondary" type="button" onclick="DeleteBankAccount()" >{{.BTNBADelete}}</button>
+      </div>
+    </div>
+
+    <label for="mail-thankyou-select">{{.LBLSelectThankYouMail}}</label>
+    <div class="input-group">
+      <select name="mail-thankyou-select" id="mail-thankyou-select" class="custom-select">
+        <option value="0" {{if eq $.CurrentThankYouMail 0}}selected{{end}}>{{.LBLSelectMailHint}}</option>
+        {{range .Notifications}}
+        <option value="{{.ID}}" {{if eq $.CurrentThankYouMail .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      <div class="input-group-append">
+        <button id="mail-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()" >{{.BTNNotificationEdit}}</button>
+      </div>
+    </div>
+    <label for="mail-admin-select">{{.LBLSelectAdminMail}}</label>
+    <div class="input-group">
+      <select name="mail-admin-select" id="mail-admin-select" class="custom-select">
+        <option value="0" {{if eq $.CurrentAdminMail 0}}selected{{end}}>{{.LBLSelectAdminMailHint}}</option>
+        {{range .Notifications}}
+        <option value="{{.ID}}" {{if eq $.CurrentAdminMail .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      <div class="input-group-append">
+        <button id="mail-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()" >{{.BTNNotificationEdit}}</button>
+      </div>
+    </div>
+
+    <h3>{{.LBLTitleNoSitsSelected}}</h3>
     <div class="form-group">
-      <label for="mail-subject">{{.LBLMailSubject}}</label>
-      <input type="text" class="form-control" id="mail-subject" name="mail-subject" value="{{.LBLMailSubjectValue}}">
+      <label for="no-sits-selected-title">{{.LBLNoSitsSelectedTitle}}</label>
+      <input type="text" class="form-control" id="no-sits-selected-title" name="no-sits-selected-title" value="{{.NoSitsSelectedTitleValue}}">
     </div>
     <div class="form-group">
-      <label for="mail-text">{{.LBLMailText}}</label>
-      <textarea rows="3" class="form-control" id="mail-text" name="mail-text">{{.LBLMailTextValue}}</textarea>
+      <p id="admin-mail-text-label">{{.LBLNoSitsSelectedText}}</p>
+      <div id="no-sits-editor">
+        {{.HTMLNoSitsSelectedTextValue}}
+      </div>
+    </div>
+    <input type="checkbox" id="sharable" name="sharable" {{if .IsSharableVal}}checked{{end}}>
+    <label for="sharable">{{.LBLSharable}}</label>
+
+    <h3>{{.LBLTitleHowToOrder}}</h3>
+    <div class="form-group">
+      <label for="order_notes_desc">{{.LBLOrderDescription}}</label>
+      <textarea rows="3" class="form-control" id="order_notes_desc" name="order_notes_desc">{{.OrderDescriptionValue}}</textarea>
     </div>
     <div class="form-group">
-      <label for="admin-mail-subject">{{.LBLAdminMailSubject}}</label>
-      <input type="text" class="form-control" id="admin-mail-subject" name="admin-mail-subject" value="{{.LBLAdminMailSubjectValue}}">
+      <p id="order-howto-editor-label">{{.LBLOrderHowTo}}</p>
+      <div id="order-howto-editor">
+        {{.HTMLOrderHowToValue}}
+      </div>
     </div>
-    <div class="form-group">
-      <label for="admin-mail-text">{{.LBLAdminMailText}}</label>
-      <textarea rows="3" class="form-control" id="admin-mail-text" name="admin-mail-text">{{.LBLAdminMailTextValue}}</textarea>
-    </div>
+
+    <h3>{{.LBLTitleOrdered}}</h3>
     <div class="form-group">
       <label for="ordered-note-title">{{.LBLOrderedNoteTitle}}</label>
       <input type="text" class="form-control" id="ordered-note-title" name="ordered-note-title" value="{{.LBLOrderedNoteTitleValue}}">
@@ -62,6 +116,9 @@
         {{.HTMLOrderedNoteTextValue}}
       </div>
     </div>
+
+
+    <h3>{{.LBLTitleRoomLegend}}</h3>
     <div class="form-group">
       <p id="howto-editor-label">{{.LBLHowto}}</p>
       <div id="howto-editor">
@@ -70,7 +127,47 @@
     </div>
     <textarea name="html-ordered-note-text" hidden></textarea>
     <textarea name="html-howto" hidden></textarea>
-    <button id="save-event" type="submit" class="btn btn-primary" onsubmit="EventDetailSubmit()">{{.BTNSave}}</button>
+
+    <!--
+    <label for="mail-th-select">{{.LBLSelectThankYouMail}}</label>
+    <div class="input-group">
+      <select name="mail-thankyou-select" id="mail-thankyou-select" class="custom-select">
+        <option value="0" {{if eq $.CurrentThankYouMail 0}}selected{{end}}>{{.LBLSelectMailHint}}</option>
+        {{range .Notifications}}
+        <option value="{{.ID}}" {{if eq $.CurrentThankYouMail .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      <div class="input-group-append">
+        <button id="mail-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()" >{{.BTNNotificationEdit}}</button>
+      </div>
+    </div>
+    -->
+
+    <div class="form-group">
+      <label for="rooms">{{.LBLRooms}}</label>
+      <input class="form-control" id="rooms" name="rooms" aria-describedby="nameHelp" value="{{.RoomsVal}}">
+      <small id="nameHelp" class="form-text text-muted">{{.RoomsHelpText}}</small>
+    </div>
+
+    
+    <div class="input-group">
+        <select name="room-select" id="room-select" class="custom-select">
+          <option value="0" selected>{{.LBLRoomsSelect}}</option>
+          {{range .Rooms}}
+          <option value="{{.ID}}">{{.Name}}</option>
+          {{end}}
+        </select>
+        <div class="input-group-append">
+          <button id="edit-room" class="btn btn-outline-secondary" type="button" onclick="RoomAssign()" >{{.BTNRoomAdd}}</button>
+          <button class="btn btn-outline-secondary" type="button" onclick="ClearRooms()">{{.BTNClearRooms}}</button>
+        </div>
+      </div>
+
+
+    <button id="save-event" type="button" class="btn btn-primary" onclick="Save()">{{.BTNSave}}</button>
     <button id="cancel" type="button" class="btn btn-secondary" onclick="GoBack()">{{.BTNCancel}}</button>
-  </form>
+  <!-- </form> -->
+  </div>
+</div>
+<script type="text/javascript" src="/js/a_event.js"></script>
 {{end}}

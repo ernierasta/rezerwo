@@ -26,22 +26,26 @@
         {{.HTMLFormHowToVal}}
       </div>
     </div>
+
     <h4>{{.LBLThankYouTitle}}</h4>
+    
     <div class="form-group">
       <p id="thankyou-editor-label">{{.LBLFormThankYou}}</p>
       <div id="thankyou-editor">
         {{.HTMLFormThankYouVal}}
       </div>
     </div>
-    <h4>{{.LBLThankYouMailTitle}}</h4>
-    <div class="form-group">
-      <label for="form-name">{{.LBLFormThankYouMailSubject}}</label>
-      <input type="text" class="form-control" id="mail-subject" name="mail-subject" value="{{.FormThankYouMailSubjectVal}}">
-    </div>
-    <div class="form-group">
-      <p id="thankyou-mail-editor-label">{{.LBLFormThankYouMail}}</p>
-      <div id="thankyou-mail-editor">
-        {{.HTMLFormThankYouMailVal}}
+
+    <label for="mail-thankyou-select">{{.LBLSelectThankYouMail}}</label>
+    <div class="input-group">
+      <select name="mail-thankyou-select" id="mail-thankyou-select" class="custom-select">
+        <option value="0" {{if eq $.CurrentThankYouMail 0}}selected{{end}}>{{.LBLSelectMailHint}}</option>
+        {{range .Notifications}}
+        <option value="{{.ID}}" {{if eq $.CurrentThankYouMail .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      <div class="input-group-append">
+        <button id="mail-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()" >{{.BTNNotificationEdit}}</button>
       </div>
     </div>
   
@@ -54,9 +58,9 @@
   
     <h2>{{.LBLBankAccountsSelectTitle}}</h2>
     <select name="qrpay-select" id="qrpay-select" class="custom-select">
-      <option value="0" selected>{{.LBLSelectBankAccount}}</option>
+      <option value="0" {{if eq $.CurrentBankAccount 0}}selected{{end}}>{{.LBLSelectBankAccount}}</option>
       {{range .BankAccounts}}
-      <option value="{{.ID}}">{{.Name}}</option>
+      <option value="{{.ID}}" {{if eq $.CurrentBankAccount .ID}}selected{{end}}>{{.Name}}</option>
       {{end}}
     </select>
   

@@ -12,7 +12,10 @@ function SendFormData() {
   // send data and uri ()
   var finald = {};
   finald.uri = window.location.pathname;
+  finald.uniqid = $('#uniqid').text();
   finald.data = formRender.userData;
+
+  console.log("uniqid: " + finald.uniqid);
 
   $.ajax({
     type: "POST",

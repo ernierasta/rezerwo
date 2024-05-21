@@ -2,19 +2,21 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
@@ -77,6 +79,7 @@ func main() {
 	http.HandleFunc("/admin/formeditor", FormEditor(db, lang, cookieStore))
 	http.HandleFunc("/admin/formraport", FormRaport(db, lang, cookieStore))
 	http.HandleFunc("/admin/bankacceditor", BankAccountEditor(db, lang, cookieStore))
+	http.HandleFunc("/admin/maileditor", MailEditor(db, lang, cookieStore))
 	http.HandleFunc("/passreset", PasswdReset(db))
 	http.HandleFunc("/api/login", LoginAPI(db, cookieStore))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
@@ -87,11 +90,13 @@ func main() {
 	http.HandleFunc("/api/resstatus", ReservationChangeStatusAPI(db))
 	http.HandleFunc("/api/resdelete", ReservationDeleteAPI(db))
 	http.HandleFunc("/api/formstatus", FormChangeStatusAPI(db))
+	http.HandleFunc("/api/eved", EventAddMod(db, loc, dateFormat, cookieStore))
 	http.HandleFunc("/api/formed", FormTemplateAddMod(db, cookieStore))
 	http.HandleFunc("/api/baed", BankAccountAddMod(db, cookieStore))
-	http.HandleFunc("/api/formans", FormAddMod(db, cookieStore))
+	http.HandleFunc("/api/formans", FormAddMod(db, mailConf, cookieStore))
 	http.HandleFunc("/api/formansdelete", FormAnsDelete(db, cookieStore))
 	http.HandleFunc("/api/formanssendmail", FormAnsSendMail(db, mailConf, cookieStore))
+	http.HandleFunc("/api/maed", MailAddMod(db, cookieStore))
 
 	log.Fatal(http.ListenAndServe(":3002", nil))
 }
@@ -152,30 +157,27 @@ Dziękujemy serdecznie!
 
 Zarząd MSz przy PSP w Karwinie-Frysztacie
 `
-	mailTextP := `Szanowni Państwo,
-dziękujemy za dokonanie rezerwacji biletów na BAL POLSKI organizowany 
-miejskimi kołami PZKO w Karwinie.
-Niniejszym mailem potwierdzamy zamówienie miejsc: {{.Sits}}.
-Łączny koszt biletów wynosi: {{.TotalPrice}}.
-Bal odbędzie się w piątek 24 stycznia 2020 od godziny 19:00 w Domu 
-Przyjaźni w Karwinie.
-
-Uwaga! Dokonali Państwo tylko rezerwacji biletów.
-Sprzedaż biletów odbędzie się w środę 4.12.2019 w Domu Polskim MK PZKO 
-Karwina-Frysztat od 16:30 do 18:00.
-Dodatkowy termin zakupu biletów to środa 11.12.2019 od 16:30 do 18:00 w 
-tym samym miejscu.
-
-Zarezerwowane miejsca, które po 11.12.2019 nie zostaną opłacone, 
-zostaną zwolnione.
-
-W przypadku pytań lub wątpliwości prosimy o kontakt mailowy -
-pzkokarwina@pzkokarwina.cz
-
-Dziękujemy serdecznie!
-
-Organizatorzy BALU POLSKIEGO w Karwinie
-`
+	_ = mailText
+	mailTextP := `<html>
+Szanowni Państwo,<br />
+dziękujemy za dokonanie rezerwacji biletów na Bal Macierzy Szkolnej przy PSP w Karwinie-Frysztacie.<br />
+Niniejszym mailem potwierdzamy zamówienie miejsc: {{.Sits}}.<br />
+Łączna kwota biletów wynosi: <b>{{.TotalPrice}}</b>.<br />
+Bal rozpocznie się w piątek <b>26 stycznia 2023</b> o godzinie 19:00 w Domu Przyjaźni w Karwinie.<br />
+<br />
+Uwaga! Dokonali Państwo tylko rezerwacji biletów.<br />
+<br />
+Kupić bilety można we <b>wtorek 12.12.2023 od 15:30 - 16:30</b>. Główne wejście do szkoły. <br />
+ <br />
+Cena biletu wynosi 500 Kč. Płatność tylko i wyłącznie gotówką!<br />
+ <br />
+Dziękujemy serdecznie!<br />
+<br />
+Zarząd MSz przy PSP w Karwinie-Frysztacie<br />
+<br />
+W przypadku pytań lub wątpliwości zapraszam do kontaktu pod adresem karwina@macierz.cz.<br />
+</html>`
+	_ = mailTextP
 
 	roomDescription1 := `<div class="alert alert-warning" role="alert">Zapraszamy również na Balkon na 1. piętrze, tam pozostało jeszcze sporo wolnych miejsc.</div>
 Koło Macierzy Szkolnej zaprasza wszystkich na bal pt. <b>„ROZTAŃCZMY PRZYJAŹŃ …”</b>,<br />
@@ -205,8 +207,8 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	noSitsSelTitle := "Nie wybrano siedzeń!"
 	noSitsSelText := `Nie wybrano siedzeń. Prosimy kliknąć na wolne krzesła, czyli w kolorze <b class="free-text">zielonym</b> i zamówić ponownie.<br />Jeżeli nie ma wolnych krzeseł na parterze, prosimy sprawdzić na balkonie.`
 
-	adminMailSubject := "Rezerwacja: {{.Name}} {{.Surname}}, {{.TotalPrice}}"
-	adminMailText := "{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}} sale: {{.Rooms}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}"
+	//adminMailSubject := "Rezerwacja: {{.Name}} {{.Surname}}, {{.TotalPrice}}"
+	//adminMailText := "{{.Name}} {{.Surname}}\nkrzesła: {{.Sits}} sale: {{.Rooms}}\nŁączna cena: {{.TotalPrice}}\nEmail: {{.Email}}\nTel: {{.Phone}}\nNotatki:{{.Notes}}"
 
 	db := DBInit("db.sql")
 	db.MustConnect()
@@ -236,7 +238,7 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	if err != nil {
 		log.Println(err)
 	}
-	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", NoSitsSelectedTitle: noSitsSelTitle, NoSitsSelectedText: noSitsSelText, OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNoteTitle: orderedNoteTitle, OrderedNoteText: orderedNoteText, MailSubject: "Rezerwacja biletów na Bal Macierzy", MailText: mailText, AdminMailSubject: adminMailSubject, AdminMailText: adminMailText, HowTo: howto, UserID: 1})
+	eID, err := db.EventAdd(&Event{ID: 1, Name: "Bal MS Karwina", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", NoSitsSelectedTitle: noSitsSelTitle, NoSitsSelectedText: noSitsSelText, OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNoteTitle: orderedNoteTitle, OrderedNoteText: orderedNoteText, HowTo: howto, UserID: 1})
 	if err != nil {
 		log.Println(err)
 	}
@@ -273,7 +275,7 @@ Na podany przez Państwa mail zostanie wysłany mail z potwierdzeniem rezerwacji
 	if err != nil {
 		log.Println(err)
 	}
-	eIDP, err := db.EventAdd(&Event{ID: 2, Name: "Bal polski", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", NoSitsSelectedTitle: noSitsSelTitle, NoSitsSelectedText: noSitsSelText, OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNoteTitle: orderedNoteTitle, OrderedNoteText: orderedNoteText, MailSubject: "Rezerwacja biletów na Bal polski", MailText: mailTextP, AdminMailSubject: adminMailSubject, AdminMailText: adminMailText, HowTo: howtoP, UserID: uIDP})
+	eIDP, err := db.EventAdd(&Event{ID: 2, Name: "Bal polski", Date: 1581033600, FromDate: 1572998400, ToDate: 1580860800, DefaultPrice: 400, DefaultCurrency: "Kč", NoSitsSelectedTitle: noSitsSelTitle, NoSitsSelectedText: noSitsSelText, OrderHowto: orderHowto, OrderNotesDescription: "Prosimy o podanie nazwisk wszystkich rodzin, dla których przeznaczone są bilety.", OrderedNoteTitle: orderedNoteTitle, OrderedNoteText: orderedNoteText, HowTo: howtoP, UserID: uIDP})
 	if err != nil {
 		log.Println(err)
 	}
@@ -625,10 +627,21 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			if err != nil {
 				log.Printf("error: ReservationOrderStatusHTML: problem getting event by ID: %q, err: %v", o.EventID, err)
 			}
+
 			user, err = db.UserGetByID(event.UserID) // TODO: the same trick here, should be ok
 			if err != nil {
 				log.Printf("error: ReservationOrderStatusHTML: problem getting user by ID(from events table): %q, err: %v", event.UserID, err)
 			}
+			cstMail, err := db.NotificationGetByID(event.ThankYouNotificationsID.Int64, user.ID)
+			if err != nil {
+				log.Printf("ReservationOrderStatusHTML: problem getting cust notification by ID: %q, err: %v", event.ThankYouNotificationsID.Int64, err)
+			}
+
+			adminMail, err := db.NotificationGetByID(event.AdminNotificationsID.Int64, user.ID)
+			if err != nil {
+				log.Printf("ReservationOrderStatusHTML: problem getting admin notification by ID: %q, err: %v", event.AdminNotificationsID.Int64, err)
+			}
+
 			//TODO: this will fail for returning user, maybe check if exist and do not insert?
 			err = db.CustomerAppendToUser(user.ID, cID)
 			if err != nil {
@@ -685,6 +698,9 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				log.Println(err)
 			}
 
+			// TODO: we are adding <html> tag, so mails are recognized as HTML, we are also modying default <p> tag margin
+			// Shouldn't we do it in some more logical place? Or even make it editable by user?
+
 			custMail := MailConfig{
 				Server:          mailConf.Server,
 				Port:            mailConf.Port,
@@ -694,12 +710,12 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				ReplyTo:         user.Email,                                    // we wont they reply to organizators mail
 				Sender:          mailConf.Sender,
 				To:              []string{o.Email},
-				Subject:         event.MailSubject,
-				Text:            ParseOrderTmpl(event.MailText, o),
+				Subject:         cstMail.Title.String,
+				Text:            "<html><head><style>p {margin:0;}</style></head>" + ParseOrderTmpl(cstMail.Text, o) + "</html>",
 				IgnoreCert:      mailConf.IgnoreCert,
 				Hostname:        mailConf.Hostname,
-				Files:           getAttachments(event.MailAttachmentsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
-				EmbededHTMLImgs: getEmbeddedImgs(event.MailEmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
+				Files:           getAttachments(cstMail.AttachedFilesDelimited, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
+				EmbededHTMLImgs: getEmbeddedImgs(cstMail.EmbeddedImgsDelimited, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
 			}
 
 			err = MailSend(custMail)
@@ -716,8 +732,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				ReplyTo:    mailConf.From,
 				Sender:     mailConf.From,
 				To:         append(adminMails, user.Email),
-				Subject:    ParseOrderTmpl(event.AdminMailSubject, o),
-				Text:       ParseOrderTmpl(event.AdminMailText, o),
+				Subject:    ParseOrderTmpl(adminMail.Title.String, o),
+				Text:       "<html><head><style>p {margin:0;}</style></head>" + ParseOrderTmpl(adminMail.Text, o) + "</html>",
 				IgnoreCert: mailConf.IgnoreCert,
 				Hostname:   mailConf.Hostname,
 			}
@@ -746,7 +762,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			BTNOk:         "OK",
 		}
 
-		t := template.Must(template.ParseFiles("tmpl/order-status.html", "tmpl/base.html"))
+		t := template.Must(template.ParseFiles("tmpl/order-status.html", "tmpl/a_base.html"))
 		err := t.ExecuteTemplate(w, "base", p)
 		if err != nil {
 			log.Print("Reservation template executing error: ", err)
@@ -817,7 +833,7 @@ func GetPageVarsFromDB(db *DB, roomID, eventID int64) Page {
 
 type ReservationOrderVars struct {
 	Event                               Event
-	LBLOrderHowto                       string
+	LBLOrderHowtoHTML                   template.HTML
 	LBLLang                             string
 	LBLTitle                            string
 	LBLCountdownDescription             string
@@ -910,7 +926,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 		//p := GetPageVarsFromDB(db, roomName, eventName)
 		pEN := ReservationOrderVars{
 			Event:                 event,
-			LBLOrderHowto:         event.OrderHowto,
+			LBLOrderHowtoHTML:     template.HTML(event.OrderHowto),
 			LBLLang:               lang,
 			LBLTitle:              "Order",
 			LBLEmail:              "Email",
@@ -940,7 +956,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 
 		p := ReservationOrderVars{
 			Event:                   event,
-			LBLOrderHowto:           event.OrderHowto,
+			LBLOrderHowtoHTML:       template.HTML(event.OrderHowto),
 			LBLLang:                 lang,
 			LBLTitle:                "Zamówienie",
 			LBLCountdownDescription: "Sesja wygaśnie, kiedy skończy się odliczanie:",
@@ -1066,7 +1082,14 @@ type AdminMainPageVars struct {
 	LBLSelectNotification         string
 	BTNAddNewNotification         string
 	BTNNotificationEdit           string
-	BTNNotifictionDelete          string
+	BTNNotificationDelete         string
+	LBLNotificationIsShared       string
+	UserID                        int64
+	MyNotif                       string
+	SharedNotif                   string
+	NotifRelatedToEvent           string
+	NotifRelatedToForm            string
+	NotifRelatedToEventCode       string
 }
 
 func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -1085,58 +1108,60 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 		dtype := ""
 		// if event/room detail form sent some data,
 		// save them to db and show result
-		if r.Method == "POST" {
-			err := r.ParseForm()
-			if err != nil {
-				log.Printf("error parsing form data:, err: %v", err)
-			}
-			dtype = r.FormValue("type")
-			if dtype == "event" {
-				id, err := strconv.Atoi(r.FormValue("id"))
-				if err != nil {
-					log.Printf("problem converting %q to number, err: %v", r.FormValue("id"), err)
-				}
-				d, err := time.ParseInLocation(dateFormat, r.FormValue("date"), loc)
-				if err != nil {
-					log.Println(err)
-				}
+		//if r.Method == "POST" {
+		//	// TODO: remove this section!
+		//	// I had remade it, so post goes to /eved api url
+		//	err := r.ParseForm()
+		//	if err != nil {
+		//		log.Printf("error parsing form data:, err: %v", err)
+		//	}
+		//	dtype = r.FormValue("type")
+		//	if dtype == "event" {
+		//		id, err := strconv.Atoi(r.FormValue("id"))
+		//		if err != nil {
+		//			log.Printf("problem converting %q to number, err: %v", r.FormValue("id"), err)
+		//		}
+		//		d, err := time.ParseInLocation(dateFormat, r.FormValue("date"), loc)
+		//		if err != nil {
+		//			log.Println(err)
+		//		}
 
-				fd, err := time.ParseInLocation(dateFormat, r.FormValue("from-date"), loc)
-				if err != nil {
-					log.Println(err)
-				}
-				td, err := time.ParseInLocation(dateFormat, r.FormValue("to-date"), loc)
-				if err != nil {
-					log.Println(err)
-				}
-				dp, err := strconv.Atoi(r.FormValue("default-price"))
-				if err != nil {
-					log.Println(err)
-				}
+		//		fd, err := time.ParseInLocation(dateFormat, r.FormValue("from-date"), loc)
+		//		if err != nil {
+		//			log.Println(err)
+		//		}
+		//		td, err := time.ParseInLocation(dateFormat, r.FormValue("to-date"), loc)
+		//		if err != nil {
+		//			log.Println(err)
+		//		}
+		//		dp, err := strconv.Atoi(r.FormValue("default-price"))
+		//		if err != nil {
+		//			log.Println(err)
+		//		}
 
-				e := Event{
-					ID: int64(id),
-				}
-				_ = e //TODO
-				e.Name = r.FormValue("name")
-				e.Date = d.Unix()
-				e.FromDate = fd.Unix()
-				e.ToDate = td.Unix()
-				e.DefaultPrice = int64(dp)
-				e.DefaultCurrency = r.FormValue("default-currency")
-				e.MailSubject = r.FormValue("mail-subject")
-				e.AdminMailSubject = r.FormValue("admin-mail-subject")
-				e.AdminMailText = r.FormValue("admin-mail-text")
-				e.HowTo = r.FormValue("html-howto")
-				e.OrderedNoteTitle = r.FormValue("ordered-note-title")
-				e.OrderedNoteText = r.FormValue("html-ordered-note-text")
+		//		e := Event{
+		//			ID: int64(id),
+		//		}
+		//		_ = e //TODO
+		//		e.Name = r.FormValue("name")
+		//		e.Date = d.Unix()
+		//		e.FromDate = fd.Unix()
+		//		e.ToDate = td.Unix()
+		//		e.DefaultPrice = int64(dp)
+		//		e.DefaultCurrency = r.FormValue("default-currency")
+		//		e.MailSubject = r.FormValue("mail-subject")
+		//		e.AdminMailSubject = r.FormValue("admin-mail-subject")
+		//		e.AdminMailText = r.FormValue("admin-mail-text")
+		//		e.HowTo = r.FormValue("html-howto")
+		//		e.OrderedNoteTitle = r.FormValue("ordered-note-title")
+		//		e.OrderedNoteText = r.FormValue("html-ordered-note-text")
 
-				log.Printf("%+v", e)
-				org, _ := db.EventGetByID(e.ID)
-				log.Printf("org: %+v", org)
-				log.Println("test equal, is:", reflect.DeepEqual(e, org))
-			}
-		} // POST END
+		//		log.Printf("%+v", e)
+		//		org, _ := db.EventGetByID(e.ID)
+		//		log.Printf("org: %+v", org)
+		//		log.Println("test equal, is:", reflect.DeepEqual(e, org))
+		//	}
+		//} // POST END
 
 		// Prepare form with rooms and events
 		rooms, err := db.RoomGetAllByUserID(user.ID)
@@ -1145,7 +1170,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 		}
 		events, err := db.EventGetAllByUserID(user.ID)
 		if err != nil {
-			log.Printf("AdminMainPage: error getting event by name: %q, err: %v", "TODO", err)
+			log.Printf("AdminMainPage: error getting all events by userID: %d, err: %v", user.ID, err)
 		}
 		formTempls, err := db.FormTemplateGetAll(user.ID)
 		if err != nil {
@@ -1156,7 +1181,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 			log.Printf("AdminMainPage: error getting all bankaccounts for user %d, %v", user.ID, err)
 		}
 
-		notifs, err := db.NotificationGetAllForUser(user.ID)
+		notifs, err := db.NotificationGetAllUsersAndSharable(user.ID)
 		if err != nil {
 			log.Printf("AdminMainPage: error getting all notifications for user %d, %v", user.ID, err)
 		}
@@ -1203,7 +1228,14 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				LBLSelectNotification:         "Choose notification ...",
 				BTNAddNewNotification:         "Add new",
 				BTNNotificationEdit:           "Edit",
-				BTNNotifictionDelete:          "Delete",
+				BTNNotificationDelete:         "Delete",
+				LBLNotificationIsShared:       "shared",
+				UserID:                        user.ID,
+				MyNotif:                       "my",
+				SharedNotif:                   "*",
+				NotifRelatedToEvent:           "rezerw",
+				NotifRelatedToForm:            "form",
+				NotifRelatedToEventCode:       "events",
 			},
 		}
 
@@ -1232,11 +1264,11 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				BTNShowRaports:                "Wyświetl raporty",
 				LBLForms:                      "Formularze",
 				LBLNewForm:                    "Nowy formularz",
-				BTNAddForm:                    "Nowy formlarz",
-				LBLNewFormPlaceholder:         "Podaj unikatową nazwę formularza",
+				BTNAddForm:                    "Nowy formularz",
+				LBLNewFormPlaceholder:         "Unikatowa nazwa",
 				LBLSelectForm:                 "Wybierz formularz ...",
 				LBLNewFormURL:                 "URL formularza",
-				LBLNewFormURLPlaceholder:      "Podaj unikatową - będzie tworzyła odnośnik do forma",
+				LBLNewFormURLPlaceholder:      "Odnośnik (bez PL znaków/spacji)",
 				BTNEditForm:                   "Edytuj formularz",
 				LBLSelectFormRaport:           "Wybierz raport do formularza ...",
 				BTNShowFormRaports:            "Wyświetl",
@@ -1251,7 +1283,14 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				LBLSelectNotification:         "Wybierz notyfikację ...",
 				BTNAddNewNotification:         "Dodaj",
 				BTNNotificationEdit:           "Edytuj",
-				BTNNotifictionDelete:          "Usuń",
+				BTNNotificationDelete:         "Usuń",
+				LBLNotificationIsShared:       "Notyfikacje oznaczone (*) są notyfikacjami współdzielonymi.",
+				UserID:                        user.ID,
+				MyNotif:                       "moja",
+				SharedNotif:                   "*",
+				NotifRelatedToEvent:           "rezerw",
+				NotifRelatedToForm:            "form",
+				NotifRelatedToEventCode:       "events",
 			},
 		}
 
@@ -1274,8 +1313,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 type EventEditorVars struct {
 	LBLLang                                                  string
 	LBLTitle                                                 string
-	LBLID                                                    string
-	LBLIDValue                                               int64
+	IDVal, UserIDVal                                         int64
 	LBLName, LBLNameValue                                    string
 	NameHelpText                                             string
 	LBLDate, LBLDateValue                                    string
@@ -1284,81 +1322,282 @@ type EventEditorVars struct {
 	LBLDefaultPrice                                          string
 	LBLDefaultPriceValue                                     int64
 	LBLDefaultCurrency, LBLDefaultCurrencyValue              string
-	LBLMailSubject, LBLMailSubjectValue                      string
-	LBLMailText, LBLMailTextValue                            string
-	LBLAdminMailSubject, LBLAdminMailSubjectValue            string
-	LBLAdminMailText, LBLAdminMailTextValue                  string
+	LBLSelectThankYouMail, LBLSelectMailHint                 string
+	LBLSelectAdminMail, LBLSelectAdminMailHint               string
+	CurrentThankYouMail, CurrentAdminMail                    int64
 	LBLOrderedNoteTitleValue                                 string
 	LBLOrderedNoteTitle, LBLHowto, LBLOrderedNoteText        string
 	HTMLOrderedNoteText, HTMLHowTo, HTMLOrderedNoteTextValue template.HTML
 	BTNSave                                                  string
 	BTNCancel                                                string
+	Notifications                                            []Notification
+	BTNNotificationEdit                                      string
+	LBLNoSitsSelectedTitle, LBLNoSitsSelectedText            string
+	HTMLNoSitsSelectedTextValue                              template.HTML
+	NoSitsSelectedTitleValue                                 string
+	LBLOrderHowTo                                            string
+	HTMLOrderHowToValue                                      template.HTML
+	LBLOrderDescription                                      string
+	OrderDescriptionValue                                    string
+	LBLSharable                                              string
+	IsSharableVal                                            bool
+	LBLRoomsSelect                                           string
+	LBLSelectRoomHint                                        string
+	Rooms                                                    []Room
+	BTNRoomAdd                                               string
+	LBLRooms                                                 string
+	RoomsVal                                                 string
+	RoomsHelpText                                            string
+	BTNClearRooms                                            string
+	LBLCurrentRooms                                          string
+	CurrentBankAccount                                       int64
+	BTNBAEdit                                                string
+	BTNBADelete                                              string
+	LBLSelectBankAccount                                     string
+	BankAccounts                                             []BankAccount
+	LBLTitleDates                                            string
+	LBLTitlePrice                                            string
+	LBLTitleMails                                            string
+	LBLTitleNoSitsSelected                                   string
+	LBLTitleHowToOrder                                       string
+	LBLTitleOrdered                                          string
+	LBLTitleRoomLegend                                       string
+	LBLTitleSharable                                         string
 }
 
 func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			_, _, _, err := InitSession(w, r, cs, "/admin/login", true)
+			_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
 
 			if err != nil {
 				log.Printf("info: EventEditor: %v", err)
 				return
 			}
+
+			user, err := db.UserGetByEmail(email)
+			if err != nil {
+				log.Printf("error: AdminReservations: can't get user %q by mail, err: %v", email, err)
+			}
+
 			err = r.ParseForm()
 			if err != nil {
 				log.Printf("EventEditor: problem parsing form data, err: %v", err)
 			}
+
+			var event Event
+			var srooms = ""
+
 			eventID, err := strconv.ParseInt(r.FormValue("event-id"), 10, 64)
 			if err != nil {
-				log.Printf("error converting eventID to int, err: %v", err)
-			}
-			event, err := db.EventGetByID(eventID)
-			if err != nil {
-				log.Printf("error retrieving event with ID: %q from DB, err: %v", eventID, err)
+				name := r.FormValue("name")
+				event = Event{
+					Name:   name,
+					UserID: user.ID,
+				}
+				if name == "" {
+					log.Printf("EventEditor: error retrieving event, no valid ID %q, nor name %q", eventID, name)
+				}
+			} else {
+				event, err = db.EventGetByID(eventID)
+				if err != nil {
+					log.Printf("EventEditor: error retrieving event with ID: %q from DB, err: %v", eventID, err)
+				}
+				evrooms, err := db.EventGetRooms(event.ID)
+				if err != nil {
+					log.Printf("EventEditor: error getting rooms for event %d, %v", event.ID, err)
+				}
+				// get string with ID's separated by comma
+				srooms = getRoomsString(evrooms)
 			}
 
-			rp := EventEditorVars{
-				LBLLang:                  lang,
-				LBLTitle:                 "Event details",
-				LBLID:                    "ID",
-				LBLIDValue:               event.ID,
-				LBLName:                  "Name",
-				LBLNameValue:             event.Name,
-				NameHelpText:             "Name help text",
-				LBLDate:                  "Date",
-				LBLDateValue:             ToDate(event.Date),
-				LBLFromDate:              "Reservation starts",
-				LBLFromDateValue:         ToDate(event.FromDate),
-				LBLToDate:                "Reservation ends",
-				LBLToDateValue:           ToDate(event.ToDate),
-				LBLDefaultPrice:          "Default chair price",
-				LBLDefaultPriceValue:     event.DefaultPrice,
-				LBLDefaultCurrency:       "Default currency",
-				LBLDefaultCurrencyValue:  event.DefaultCurrency,
-				LBLMailSubject:           "Customer mail subject",
-				LBLMailSubjectValue:      event.MailSubject,
-				LBLMailText:              "Customer mail text",
-				LBLMailTextValue:         event.MailText,
-				LBLAdminMailSubject:      "Admin mail subject",
-				LBLAdminMailSubjectValue: event.AdminMailSubject,
-				LBLAdminMailText:         "Admin mail text",
-				LBLAdminMailTextValue:    event.AdminMailText,
-				BTNSave:                  "Save",
-				BTNCancel:                "Cancel",
-				LBLHowto:                 "Howto room legend",
-				HTMLHowTo:                template.HTML(event.HowTo),
-				LBLOrderedNoteTitle:      "After ordered note title",
-				LBLOrderedNoteTitleValue: event.OrderedNoteTitle,
-				LBLOrderedNoteText:       "After ordered note text",
-				HTMLOrderedNoteTextValue: template.HTML(event.OrderedNoteText),
+			notifs, err := db.NotificationGetAllRelatedToEventsForUser(user.ID)
+			if err != nil {
+				log.Printf("EventEditor: error getting notifications for user %d, %v", user.ID, err)
 			}
-			t := template.Must(template.ParseFiles("tmpl/a_event.html", "tmpl/base.html"))
-			err = t.ExecuteTemplate(w, "base", rp)
+
+			userrooms, err := db.RoomGetAllByUserID(user.ID)
+			if err != nil {
+				log.Printf("EventEditor: error getting rooms for user %d, %v", user.ID, err)
+			}
+
+			bankAccs, err := db.BankAccountGetAll(user.ID)
+			if err != nil {
+				log.Printf("EventEditor: error getting all bankaccounts for user %d, %v", user.ID, err)
+			}
+
+			rpEN := EventEditorVars{
+				LBLLang:                 lang,
+				LBLTitle:                "Event details",
+				IDVal:                   event.ID,
+				UserIDVal:               event.UserID,
+				LBLName:                 "Name",
+				LBLNameValue:            event.Name,
+				NameHelpText:            "Name help text",
+				LBLDate:                 "Date",
+				LBLDateValue:            ToDate(event.Date),
+				LBLFromDate:             "Reservation starts",
+				LBLFromDateValue:        ToDate(event.FromDate),
+				LBLToDate:               "Reservation ends",
+				LBLToDateValue:          ToDate(event.ToDate),
+				LBLDefaultPrice:         "Default chair price",
+				LBLDefaultPriceValue:    event.DefaultPrice,
+				LBLDefaultCurrency:      "Default currency",
+				LBLDefaultCurrencyValue: event.DefaultCurrency,
+				//LBLMailSubject:              "Customer mail subject",
+				//LBLMailSubjectValue:         event.MailSubject,
+				//LBLMailText:                 "Customer mail text",
+				//LBLMailTextValue:            event.MailText,
+				//LBLAdminMailSubject:         "Admin mail subject",
+				//LBLAdminMailSubjectValue:    event.AdminMailSubject,
+				//LBLAdminMailText:            "Admin mail text",
+				//LBLAdminMailTextValue:       event.AdminMailText,
+				BTNNotificationEdit:         "Edit",
+				BTNSave:                     "Save",
+				BTNCancel:                   "Cancel",
+				LBLHowto:                    "Howto room legend",
+				HTMLHowTo:                   template.HTML(event.HowTo),
+				LBLOrderedNoteTitle:         "After ordered note title",
+				LBLOrderedNoteTitleValue:    event.OrderedNoteTitle,
+				LBLOrderedNoteText:          "After ordered note text",
+				HTMLOrderedNoteTextValue:    template.HTML(event.OrderedNoteText),
+				Notifications:               notifs,
+				LBLSelectBankAccount:        "Select bank account (for QR code) ...",
+				BankAccounts:                bankAccs,
+				CurrentBankAccount:          event.BankAccountsID.Int64,
+				BTNBAEdit:                   "Edit",
+				BTNBADelete:                 "Delete",
+				CurrentThankYouMail:         event.ThankYouNotificationsID.Int64,
+				CurrentAdminMail:            event.AdminNotificationsID.Int64,
+				LBLSelectThankYouMail:       "After order (cust.)",
+				LBLSelectAdminMail:          "After order (admin)",
+				LBLSelectMailHint:           "Select customer mail",
+				LBLSelectAdminMailHint:      "Select admin mail",
+				LBLNoSitsSelectedTitle:      "No sits selected title",
+				NoSitsSelectedTitleValue:    event.NoSitsSelectedTitle,
+				LBLNoSitsSelectedText:       "No sits select text",
+				HTMLNoSitsSelectedTextValue: template.HTML(event.NoSitsSelectedText),
+				LBLOrderHowTo:               "How to order",
+				HTMLOrderHowToValue:         template.HTML(event.OrderHowto),
+				LBLOrderDescription:         "Order description text",
+				OrderDescriptionValue:       event.OrderNotesDescription,
+				IsSharableVal:               event.Sharable.Bool,
+				LBLSharable:                 "Shared",
+				LBLRoomsSelect:              "Add room to this event",
+				LBLSelectRoomHint:           "Here are all rooms ID's related to this event",
+				Rooms:                       userrooms,
+				BTNRoomAdd:                  "Assign",
+				LBLRooms:                    "Rooms",
+				RoomsVal:                    srooms,
+				RoomsHelpText:               "Assign one or more rooms to event",
+				BTNClearRooms:               "Unassign all rooms",
+				LBLCurrentRooms:             "Currently assigned rooms",
+				LBLTitleDates:               "When?",
+				LBLTitlePrice:               "How much?",
+				LBLTitleMails:               "E-mails",
+				LBLTitleOrdered:             "After order - thank you",
+				LBLTitleHowToOrder:          "How to order",
+				LBLTitleNoSitsSelected:      "When no sits selected",
+				LBLTitleRoomLegend:          "Room legend, price, ...",
+				LBLTitleSharable:            "Shared",
+			}
+
+			rpPL := EventEditorVars{
+				LBLLang:                 lang,
+				LBLTitle:                "Szczegóły imprezy",
+				IDVal:                   event.ID,
+				UserIDVal:               event.UserID,
+				LBLName:                 "Nazwa",
+				LBLNameValue:            event.Name,
+				NameHelpText:            "Nazwa powinna być unikatowa, np. Bal 2026",
+				LBLDate:                 "Data",
+				LBLDateValue:            ToDate(event.Date),
+				LBLFromDate:             "Początek rezerwacji",
+				LBLFromDateValue:        ToDate(event.FromDate),
+				LBLToDate:               "Koniec rezerwacji",
+				LBLToDateValue:          ToDate(event.ToDate),
+				LBLDefaultPrice:         "Cena za miejsce",
+				LBLDefaultPriceValue:    event.DefaultPrice,
+				LBLDefaultCurrency:      "Waluta (Kč, Zł, ...)",
+				LBLDefaultCurrencyValue: event.DefaultCurrency,
+				//LBLMailSubject:              "Tytuł maila do zamawiającego",
+				//LBLMailSubjectValue:         event.MailSubject,
+				//LBLMailText:                 "Treść maila do zamawiającego",
+				//LBLMailTextValue:            event.MailText,
+				//LBLAdminMailSubject:         "Temat maila do administratora",
+				//LBLAdminMailSubjectValue:    event.AdminMailSubject,
+				//LBLAdminMailText:            "Treść maila do administratora",
+				//LBLAdminMailTextValue:       event.AdminMailText,
+				BTNNotificationEdit:         "Edytuj",
+				BTNSave:                     "Zapisz",
+				BTNCancel:                   "Anuluj",
+				LBLHowto:                    "Legenda pomieszczenia - podaj cenę biletu, program",
+				HTMLHowTo:                   template.HTML(event.HowTo),
+				LBLOrderedNoteTitle:         "Tytuł wyświetlany po zamówieniu",
+				LBLOrderedNoteTitleValue:    event.OrderedNoteTitle,
+				LBLOrderedNoteText:          "Tekst wyświetlany po zamówieniu",
+				HTMLOrderedNoteTextValue:    template.HTML(event.OrderedNoteText),
+				LBLSelectBankAccount:        "Wybierz konto bankowe (dla QR kodu) ...",
+				BankAccounts:                bankAccs,
+				CurrentBankAccount:          event.BankAccountsID.Int64,
+				BTNBAEdit:                   "Edytuj",
+				BTNBADelete:                 "Kasuj",
+				Notifications:               notifs,
+				CurrentThankYouMail:         event.ThankYouNotificationsID.Int64,
+				CurrentAdminMail:            event.AdminNotificationsID.Int64,
+				LBLSelectThankYouMail:       "Mail po zamówieniu",
+				LBLSelectAdminMail:          "Mail po zamówieniu (admin)",
+				LBLSelectMailHint:           "Wybierz mail do zamawiającego",
+				LBLSelectAdminMailHint:      "Wybierz mail do administratora",
+				LBLNoSitsSelectedTitle:      "Nie wybrano siedzień - tytuł",
+				NoSitsSelectedTitleValue:    event.NoSitsSelectedTitle,
+				LBLNoSitsSelectedText:       "Nie wybrano siedzeń - tekst",
+				HTMLNoSitsSelectedTextValue: template.HTML(event.NoSitsSelectedText),
+				LBLOrderHowTo:               "Podpowiedź jak zamówić",
+				HTMLOrderHowToValue:         template.HTML(event.OrderHowto),
+				LBLOrderDescription:         "Podpowiedź w formularzu zamówienia",
+				OrderDescriptionValue:       event.OrderNotesDescription,
+				LBLSharable:                 "Współdzielona",
+				IsSharableVal:               event.Sharable.Bool,
+				LBLRoomsSelect:              "Dodaj pomieszczenie do tego wydarzenia ...",
+				LBLSelectRoomHint:           "ID przypisanych pomieszczeń (musi być przynajmniej jedno!)",
+				Rooms:                       userrooms,
+				BTNRoomAdd:                  "Przypisz",
+				LBLRooms:                    "Pomieszczenia (ID w nawiasie)",
+				RoomsVal:                    srooms,
+				RoomsHelpText:               "Przypisz jeden lub więcej pomieszczeń do imprezy",
+				BTNClearRooms:               "Usuń przypisanie",
+				LBLCurrentRooms:             "Przypisane pomieszczenia",
+				LBLTitleDates:               "Kiedy?",
+				LBLTitlePrice:               "Za ile?",
+				LBLTitleMails:               "Maile",
+				LBLTitleOrdered:             "Wyświetl po zamówieniu",
+				LBLTitleHowToOrder:          "Jak zamówić",
+				LBLTitleNoSitsSelected:      "Kiedy nie wybrano siedzeń",
+				LBLTitleRoomLegend:          "Legenda pomieszczenia(-eń), ceny, ...",
+				LBLTitleSharable:            "Współdzielone",
+			}
+
+			_ = rpEN
+
+			t := template.Must(template.ParseFiles("tmpl/a_event.html", "tmpl/a_base.html"))
+			err = t.ExecuteTemplate(w, "base", rpPL)
 			if err != nil {
 				log.Print("AdminEventEditor template executing error: ", err)
 			}
 		}
 	}
+}
+
+func getRoomsString(rr []Room) string {
+	if len(rr) == 0 {
+		return ""
+	}
+	var s string
+	for i := range rr {
+		s += fmt.Sprintf("%d,", rr[i].ID)
+	}
+	return s[:len(s)-1]
 }
 
 type AdminReservationsVars struct {
@@ -1566,13 +1805,128 @@ func BankAccountEditor(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 			BTNSave:              "Zapisz",
 		}
 
-		t := template.Must(template.ParseFiles("tmpl/a_bankaccount.html", "tmpl/base.html"))
+		t := template.Must(template.ParseFiles("tmpl/a_bankaccount.html", "tmpl/a_base.html"))
 		err = t.ExecuteTemplate(w, "base", pPL)
 		if err != nil {
 			log.Print("ErrorHTML: template executing error: ", err) //log it
 		}
 	}
 
+}
+
+type EventOrForm struct {
+	ID    int64
+	Table string
+	Name  string
+}
+
+type MailEditorVars struct {
+	LBLLang            string
+	LBLTitle           string
+	NotificationIDVal  int64
+	UserIDVal          int64
+	LBLMailTitle       string
+	LBLHowTo           string
+	LBLSubject         string
+	LBLTextHowTo       string
+	LBLTextTitle       string
+	LBLName            string
+	LBLType            string
+	LBLRelatedTo       string
+	LBLSelectRelatedTo string
+	LBLEmbeddedImgs    string
+	EmbeddedImgsVal    string
+	NameVal            string
+	SubjectVal         string
+	HTMLTextVal        template.HTML
+	BTNSave            string
+	BTNCopy            string
+	BTNCancel          string
+	IsSharableVal      bool
+	LBLRelatedToEvents string
+	LBLRelatedToForms  string
+	LBLSharable        string
+	LBLAttachedFiles   string
+	AttachedFilesVal   string
+	CurrentRelatedTo   string // events or formtemplates
+	IsOwner            bool
+}
+
+func MailEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("MailEditor: problem getting session %v", err)
+			return
+		}
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("MailEditor: problem getting user by mail %q, err: %v", email, err)
+		}
+
+		var curMail Notification
+
+		err = r.ParseForm()
+		if err != nil {
+			log.Printf("MailEditor: problem parsing form data, err: %v", err)
+		}
+		mailIDs := r.FormValue("mail-id")
+		log.Println(mailIDs) //debug
+		mailID, err := strconv.ParseInt(mailIDs, 10, 64)
+		if err != nil {
+			// it is probably new main/notification, so name is sent
+			name := r.FormValue("name")
+			curMail = Notification{
+				Name: name,
+			}
+			if name == "" {
+				log.Printf("MailEditor: error retrieving notification, no valid ID %q and name %q", mailIDs, name)
+			}
+		} else {
+			curMail, err = db.NotificationGetByIDUnsafe(mailID)
+			if err != nil {
+				log.Printf("MailEditor: problem getting notification by id %d, %v", mailID, err)
+			}
+		}
+
+		pPL := MailEditorVars{
+			LBLLang:            lang,
+			LBLType:            "Typ notyfikacji",
+			LBLTitle:           "Edycja notyfikacji (mailowej)",
+			NotificationIDVal:  curMail.ID,
+			UserIDVal:          curMail.UserID,
+			LBLMailTitle:       "Edycja notyfikacji",
+			LBLName:            "Nazwa notyfikacji (jak będzie wyświelana w Rezerwo):",
+			LBLHowTo:           "Podaj namiary na konto, dla którego ma być wygenerowany kod QR. IBAN stwierdź z kodu wygenerowanego przez aplikację bankowości mobilnej.",
+			LBLSubject:         "Tytuł notyfikacji (e-mail)",
+			LBLTextHowTo:       "Pomoc do notyfikacji, zmienne, obrazki w tekscie, QR kody, ... ",
+			LBLTextTitle:       "Tekst notyfikacji (e-mail)",
+			LBLRelatedTo:       "Powiązane z",
+			LBLSelectRelatedTo: "Wybierz imprezę lub formularz",
+			LBLRelatedToEvents: "Wydarzenie (rezerwacje)",
+			LBLRelatedToForms:  "Formularz (deklaracja i inne bez mapy pomieszczenia)",
+			LBLSharable:        "Udostępnij ten szablon dla innych",
+			LBLEmbeddedImgs:    "Obrazki w treści maila (format: obrazek.jpeg;obrazek2.jpeg), w treści maila użyj: CID:obrazekjpeg@nazwaorg(z URL)",
+			LBLAttachedFiles:   "Załączniki (format: plik.txt;plik2.jpeg)",
+			NameVal:            curMail.Name,
+			SubjectVal:         curMail.Title.String,
+			HTMLTextVal:        template.HTML(curMail.Text),
+			IsSharableVal:      curMail.Sharable,
+			AttachedFilesVal:   curMail.AttachedFilesDelimited,
+			CurrentRelatedTo:   curMail.RelatedTo,
+			BTNSave:            "Zapisz",
+			BTNCopy:            "Utwórz kopię",
+			BTNCancel:          "Anuluj",
+			IsOwner:            curMail.UserID == user.ID,
+		}
+
+		t := template.Must(template.ParseFiles("tmpl/a_mail_editor.html", "tmpl/a_base.html"))
+		err = t.ExecuteTemplate(w, "base", pPL)
+		if err != nil {
+			log.Print("ErrorHTML: template executing error: ", err) //log it
+		}
+	}
 }
 
 type FormEditorVars struct {
@@ -1594,18 +1948,20 @@ type FormEditorVars struct {
 	HTMLFormInfoPanelVal       template.HTML
 	LBLSelectBankAccount       string
 	LBLBankAccountsSelectTitle string
+	LBLSelectThankYouMail      string
+	LBLSelectMailHint          string
+	CurrentThankYouMail        int64
 	LBLMoneyField              string
 	MoneyFieldVal              string
 	BTNSave                    string
 	BTNClose                   string
 	BTNSelect                  string
 	BankAccounts               []BankAccount
-	LBLFormThankYouMailSubject string
-	FormThankYouMailSubjectVal string
-	LBLFormThankYouMail        string
-	HTMLFormThankYouMailVal    template.HTML
+	BTNNotificationEdit        string
 	LBLThankYouTitle           string
 	LBLThankYouMailTitle       string
+	CurrentBankAccount         int64
+	Notifications              []Notification
 }
 
 func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -1649,9 +2005,17 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			formTempl.Content.String = `[{"type":"text","required":true,"label":"Imię","className":"form-control row-1 col-md-3","name":"name-REQUIRED","access":false,"subtype":"text","maxlength":30},{"type":"text","required":true,"label":"Nazwisko","className":"form-control row-1 col-md-4","name":"surname-REQUIRED","access":false,"subtype":"text","maxlength":50},{"type":"text","subtype":"email","required":true,"label":"E-mail","className":"form-control row-1 col-md-5","name":"email-REQUIRED","access":false,"maxlength":50}]`
 		}
 
-		curBA, err := db.BankAccountGetByID(formTempl.BankAccountID.Int64, user.ID)
+		var curBA BankAccount
+		if formTempl.BankAccountID.Int64 != 0 {
+			curBA, err = db.BankAccountGetByID(formTempl.BankAccountID.Int64, user.ID)
+			if err != nil {
+				log.Printf("FormEditor: can not get current bank account %d, %v", formTempl.BankAccountID.Int64, err)
+			}
+		}
+
+		notifs, err := db.NotificationGetAllRelatedToFormsForUser(user.ID)
 		if err != nil {
-			log.Printf("FormEditor: can not get current bank account %d, %v", formTempl.BankAccountID.Int64, err)
+			log.Printf("FormEditor: error getting notifications for user %d, %v", user.ID, err)
 		}
 
 		pPL := FormEditorVars{
@@ -1676,17 +2040,19 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			LBLMoneyField:              "Nazwa pola zawierającego ilość pieniedzy:",
 			MoneyFieldVal:              chooseEmail(curBA.AmountField.String, formTempl.MoneyAmountFieldName.String),
 			BankAccounts:               ba,
+			CurrentBankAccount:         formTempl.BankAccountID.Int64,
 			BTNClose:                   "Zamknij",
 			BTNSelect:                  "Wybierz",
-			LBLFormThankYouMailSubject: "Tytuł maila:",
-			FormThankYouMailSubjectVal: formTempl.ThankYouMailSubject.String,
-			LBLFormThankYouMail:        "Treść maila:",
-			HTMLFormThankYouMailVal:    template.HTML(formTempl.ThankYouMailText.String),
 			LBLThankYouTitle:           "Wiadomość po wypełnieniu (podsumowanie + podziękowanie)",
 			LBLThankYouMailTitle:       "E-mail z podsumowaniem, podziękowaniem",
+			LBLSelectThankYouMail:      "Wybierz mail, który zostanie wysłany natychmiast po wypełnieniu formularza",
+			LBLSelectMailHint:          "Wybierz mail ...",
+			CurrentThankYouMail:        formTempl.NotificationID.Int64,
+			BTNNotificationEdit:        "Edytuj",
+			Notifications:              notifs,
 		}
 
-		t := template.Must(template.ParseFiles("tmpl/a_form_editor.html", "tmpl/base.html"))
+		t := template.Must(template.ParseFiles("tmpl/a_form_editor.html", "tmpl/a_base.html"))
 		err = t.ExecuteTemplate(w, "base", pPL)
 		if err != nil {
 			log.Print("ErrorHTML: template executing error: ", err) //log it
@@ -2188,17 +2554,162 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 	}
 }
 
+type EventJson struct {
+	ID                    string `json:"id"`
+	Name                  string `json:"name"`
+	Date                  string `json:"date"`
+	FromDate              string `json:"from_date"`
+	ToDate                string `json:"to_date"`
+	DefaultPrice          string `json:"price"`
+	DefaultCurrency       string `json:"currency"`
+	NoSitsSelectedTitle   string `json:"no_sits_selected_title"`
+	NoSitsSelectedText    string `json:"no_sits_selected_text"`
+	OrderHowto            string `json:"order_howto"`
+	OrderNotesDescription string `json:"order_notes_desc"`
+	OrderedNoteTitle      string `json:"ordered_note_title"`
+	OrderedNoteText       string `json:"ordered_note_text"`
+	//MailSubject               string `json:"mail_subject"`
+	//MailText                  string `json:"mail_text"`
+	//MailAttachmentsDelimited  string `json:"mail_attachments"`
+	//MailEmbeddedImgsDelimited string `json:"mail_embeded_imgs"`
+	//AdminMailSubject          string `json:"admin_mail_subject"`
+	//AdminMailText             string `json:"admin_mail_text"`
+	HowTo          string `json:"how_to"`
+	UserID         string `json:"user_id"`
+	ThankYouMailID string `json:"thankyou_notifications_id_fk"`
+	AdminMailID    string `json:"admin_notifications_id_fk"`
+	Sharable       bool   `json:"sharable"`
+	BankAccountID  string `json:"bank_account_id"`
+	Rooms          string `json:"rooms"`
+}
+
+// EventAddMod is API func
+func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var eventJson EventJson
+
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("EventNew: session error: %v", err)
+			return
+		}
+
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("EventNew: can not get user by mail %q, %v", email, err)
+			return
+		}
+
+		if r.Method == "POST" {
+			bodyJson, err := io.ReadAll(r.Body)
+			if err != nil {
+				log.Println("EventAddMod: error reading event json sent from event editor,", err)
+			}
+			err = json.Unmarshal(bodyJson, &eventJson)
+			if err != nil {
+				log.Println(err)
+			}
+
+			date, err := ToUnix(eventJson.Date, loc, dF)
+			if err != nil {
+				log.Printf("EventAddMod: error converting date string %q to int64, %v", eventJson.Date, err)
+			}
+
+			fromDate, err := ToUnix(eventJson.FromDate, loc, dF)
+			if err != nil {
+				log.Printf("EventAddMod: error converting fromDate string %q to int64, %v", eventJson.FromDate, err)
+			}
+			toDate, err := ToUnix(eventJson.ToDate, loc, dF)
+			if err != nil {
+				log.Printf("EventAddMod: error converting toDate string %q to int64, %v", eventJson.ToDate, err)
+			}
+			price, err := strconv.ParseInt(eventJson.DefaultPrice, 10, 64)
+			if err != nil {
+				log.Printf("EventAddMod: error converting price string %q to int64, %v", eventJson.DefaultPrice, err)
+			}
+			id, err := strconv.ParseInt(eventJson.ID, 10, 64)
+			if err != nil {
+				log.Printf("EventAddMod: error converting id string %q to int64, %v", eventJson.ID, err)
+			}
+			userid, err := strconv.ParseInt(eventJson.UserID, 10, 64)
+			if err != nil {
+				log.Printf("EventAddMod: error converting userid string %q to int64, %v", eventJson.UserID, err)
+			}
+			thankYouMailID, err := strconv.ParseInt(eventJson.ThankYouMailID, 10, 64)
+			if err != nil {
+				log.Printf("EventAddMod: error converting current ThankYou string %q to int64, %v", eventJson.ThankYouMailID, err)
+			}
+			adminMailID, err := strconv.ParseInt(eventJson.AdminMailID, 10, 64)
+			if err != nil {
+				log.Printf("EventAddMod: error converting current adminMail string %q to int64, %v", eventJson.AdminMailID, err)
+			}
+			bankAccountID, err := strconv.ParseInt(eventJson.BankAccountID, 10, 64)
+			if err != nil {
+				log.Printf("EventAddMod: error converting current bankAccountID string %q to int64, %v", eventJson.BankAccountID, err)
+			}
+
+			ev := &Event{
+				ID:                      id,
+				Name:                    eventJson.Name,
+				Date:                    date,
+				FromDate:                fromDate,
+				ToDate:                  toDate,
+				DefaultPrice:            price,
+				DefaultCurrency:         eventJson.DefaultCurrency,
+				NoSitsSelectedTitle:     eventJson.NoSitsSelectedTitle,
+				NoSitsSelectedText:      eventJson.NoSitsSelectedText,
+				OrderHowto:              eventJson.OrderHowto,
+				OrderNotesDescription:   eventJson.OrderNotesDescription,
+				OrderedNoteTitle:        eventJson.OrderedNoteTitle,
+				OrderedNoteText:         eventJson.OrderedNoteText,
+				ThankYouNotificationsID: ToNI(thankYouMailID),
+				AdminNotificationsID:    ToNI(adminMailID),
+				HowTo:                   eventJson.HowTo,
+				UserID:                  userid,
+				Sharable:                ToNB(eventJson.Sharable),
+				BankAccountsID:          ToNI(bankAccountID),
+			}
+
+			spew.Dump(ev) // DEBUG
+
+			var lastid int64
+
+			if id != 0 { // when it is existing event
+				//but from other user - create copy
+				if userid != user.ID {
+					ev.ID = 0
+					ev.UserID = user.ID
+					ev.Sharable = ToNB(false)
+					lastid, err = db.EventAdd(ev)
+				} else { // it is existing event, and belongs to user
+					err = db.EventModByID(ev, user.ID)
+				}
+
+			} else { // it is new event
+				lastid, err = db.EventAdd(ev)
+			}
+
+			if err != nil {
+				log.Printf("EventAddMod: insert and update of %v failed, %v", ev, err)
+				http.Error(w, fmt.Sprintf(`{"msg":"Nie udało się zapisać imprezy!\n%s"}`, err.Error()), http.StatusTeapot) // 418
+			} else {
+				w.Write([]byte(fmt.Sprintf(`{"msg":"inserted or updated %d (%s)"}`, lastid, ev.Name)))
+			}
+		}
+	}
+}
+
 type FormTemplJson struct {
-	Name                string         `json:"name"`
-	URL                 string         `json:"url"`
-	Banner              string         `json:"banner"`
-	HowTo               string         `json:"howto"`
-	ThankYou            string         `json:"thankyou"`
-	ThankYouMailSubject string         `json:"thankyoumailsubject"`
-	ThankYouMailText    string         `json:"thankyoumailtext"`
-	InfoPanel           string         `json:"infopanel"`
-	MoneyField          string         `json:"moneyfield"`
-	Content             []FormFieldDef `json:"content"`
+	Name           string         `json:"name"`
+	URL            string         `json:"url"`
+	Banner         string         `json:"banner"`
+	HowTo          string         `json:"howto"`
+	ThankYou       string         `json:"thankyou"`
+	ThankYouMailID string         `json:"thankyoumail"`
+	InfoPanel      string         `json:"infopanel"`
+	BankAccount    string         `json:"bankaccount"`
+	MoneyField     string         `json:"moneyfield"`
+	Content        []FormFieldDef `json:"content"`
 }
 
 type FormTemplRawContent struct {
@@ -2249,6 +2760,8 @@ func FormTemplateAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 
 			//log.Println("fields:")
 			//log.Println(formTemplJson.Content)
+			log.Println("BA:")
+			log.Println(formTemplJson.BankAccount)
 			log.Println("raw json:")
 			log.Println(string(bodyJson))
 
@@ -2256,6 +2769,16 @@ func FormTemplateAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 			if err != nil {
 				log.Printf("FormTemplateAddMod: error marshalling fields to the string, err: %v", err)
 				return
+			}
+
+			baID, err := strconv.ParseInt(formTemplJson.BankAccount, 10, 64)
+			if err != nil {
+				log.Printf("FormTemplateAddMod: error converting bankaccount string %q to int64, %v", formTemplJson.BankAccount, err)
+			}
+
+			notifID, err := strconv.ParseInt(formTemplJson.ThankYouMailID, 10, 64)
+			if err != nil {
+				log.Printf("FormTemplateAddMod: error converting ThankYouMailID string %q to int64, %v", formTemplJson.ThankYouMailID, err)
 			}
 
 			//log.Println("raw json content:", string(rawContent.Content))
@@ -2267,9 +2790,9 @@ func FormTemplateAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 				HowTo:                ToNS(formTemplJson.HowTo),
 				Banner:               ToNS(formTemplJson.Banner),
 				ThankYou:             ToNS(formTemplJson.ThankYou),
-				ThankYouMailSubject:  ToNS(formTemplJson.ThankYouMailSubject),
-				ThankYouMailText:     ToNS(formTemplJson.ThankYouMailText),
+				NotificationID:       ToNI(notifID),
 				InfoPanel:            ToNS(formTemplJson.InfoPanel),
+				BankAccountID:        ToNI(baID),
 				MoneyAmountFieldName: ToNS(formTemplJson.MoneyField),
 				CreatedDate:          time.Now().Unix(),
 				Content:              ToNS(string(rawContent.Content)),
@@ -2426,6 +2949,97 @@ func BankAccountAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWri
 	}
 }
 
+type MailJson struct {
+	ID            string `json:"id"`
+	UserID        string `json:"userid"`
+	Name          string `json:"name"`
+	Subject       string `json:"subject"`
+	Text          string `json:"text"`
+	Sharable      bool   `json:"sharable"`
+	RelatedTo     string `json:"relatedto"` // events or formtemplates
+	EmbeddedImgs  string `json:"embeddedimgs"`
+	AttachedFiles string `json:"attachedfiles"`
+}
+
+func MailAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("MailAddMod: session error: %v", err)
+			return
+		}
+
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("MailAddMod: can not get user by mail %q, %v", email, err)
+			return
+		}
+
+		if r.Method == "POST" {
+			var b MailJson
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&b)
+			if err != nil {
+				log.Printf("MailAddMod: error reading json answer, %v", err)
+			}
+
+			//log.Printf("%+v", b) // debug
+
+			now := time.Now().Unix()
+
+			id, err := strconv.ParseInt(b.ID, 10, 64)
+			if err != nil {
+				log.Printf("MailAddMod: error converting id %q to int64, %v", b.ID, err)
+			}
+
+			userid, err := strconv.ParseInt(b.UserID, 10, 64)
+			if err != nil {
+				log.Printf("MailAddMod: error converting userID %q to int64, %v", b.UserID, err)
+			}
+
+			not := &Notification{
+				ID:                     id,
+				Name:                   b.Name,
+				Type:                   "mail", // for now only option
+				RelatedTo:              b.RelatedTo,
+				Title:                  ToNS(b.Subject),
+				Text:                   makeSureIsHTML(b.Text),
+				EmbeddedImgsDelimited:  b.EmbeddedImgs,
+				AttachedFilesDelimited: b.AttachedFiles,
+				Sharable:               b.Sharable,
+				CreatedDate:            now,
+				UpdatedDate:            ToNI(now),
+				UserID:                 userid,
+			}
+
+			var lastid int64
+
+			// when it is existing notifications
+			if id != 0 {
+				//but from other user - create copy
+				if userid != user.ID {
+					not.ID = 0
+					not.UserID = user.ID
+					not.Sharable = false // do not share copy of notification by default
+					lastid, err = db.NotificationAdd(not)
+				} else { // it is existing notifications, and belongs to user
+					log.Println("we have existing")
+					err = db.NotificationModByID(not, user.ID)
+				}
+			} else { // it is new notification
+				lastid, err = db.NotificationAdd(not)
+			}
+
+			if err != nil {
+				log.Printf("MailAddMod: insert and update of %v failed, %v", not, err)
+				http.Error(w, fmt.Sprintf(`{"msg":"Nie udało się zapisać notyfikacji!\n%s"}`, err.Error()), http.StatusTeapot) // 418
+			} else {
+				w.Write([]byte(fmt.Sprintf(`{"msg":"inserted or updated %d (%s)"}`, lastid, b.Name)))
+			}
+		}
+	}
+}
+
 type FormFieldType interface {
 	FormField | FormFieldDef
 	GetName() string
@@ -2458,8 +3072,9 @@ func isTypeIgnored(t string) bool {
 }
 
 type FormAnsData struct {
-	URI  string            `json:"uri"`
-	Data []FormAnswersJson `json:"data"`
+	URI    string            `json:"uri"`
+	UniqID string            `json:"uniqid"`
+	Data   []FormAnswersJson `json:"data"`
 }
 
 type FormAnswersJson struct {
@@ -2467,8 +3082,8 @@ type FormAnswersJson struct {
 	UserData []string `json:"userData"`
 }
 
-// FormAddMod is API func
-func FormAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+// FormAddMod is API func to write form answer to DB and send mail with summary
+func FormAddMod(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var formAnsJson FormAnsData
 
@@ -2505,12 +3120,12 @@ func FormAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r 
 				return
 			}
 
-			log.Println("fields:")
-			log.Println(formAnsJson)
+			log.Println("answer parsed json:", formAnsJson)
 			//log.Println("raw json:")
 			//log.Println(string(bodyJson))
 
-			name, surname, email := getBasicFields(formAnsJson.Data)
+			// we can have name, surname, email or UniqID (for anonymous forms)
+			name, surname, email := getBasicFields(formAnsJson.Data, formAnsJson.UniqID)
 
 			f := &Form{
 				Name:           ToNS(name),
@@ -2555,7 +3170,7 @@ func FormAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r 
 				var v sql.NullString
 				var fi FormField
 				n := isFieldIn(formAnsJson.Data[i].Name, formfields)
-				if n > 0 {
+				if n > -1 {
 					fi = formfields[n]
 				} else {
 					continue // ignore fields with empty names
@@ -2584,6 +3199,28 @@ func FormAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r 
 
 				}
 			}
+			// Send mail after form submission.
+			mail, err := db.NotificationGetByID(templ.NotificationID.Int64, user.ID)
+			if err != nil {
+				log.Printf("FormAnsSendMail: error getting mail with ID: %d, err: %v", templ.NotificationID.Int64, err)
+			}
+
+			err = prepareAndSendMail(
+				f.Email.String,
+				f.Surname.String,
+				f.Name.String,
+				mail.Title.String,
+				makeSureIsHTML(mail.Text),
+				user,
+				FormID,
+				templ,
+				db,
+				mailConf,
+			)
+
+			if err != nil {
+				log.Printf("FormAnsSendMail: error sending, %v", err)
+			}
 		}
 	}
 }
@@ -2594,7 +3231,6 @@ type FormAnsManipulateJson struct {
 	NotificationID int64 `json:"notification_id"`
 }
 
-// TODO: implement
 func FormAnsDelete(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "DELETE" {
@@ -2625,8 +3261,6 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			var m FormAnsManipulateJson
-			var parsedThankYouMail bytes.Buffer
-			var mtext, msubject string
 
 			_, _, userEmail, err := InitSession(w, r, cs, "/admin/login", true)
 			if err != nil {
@@ -2653,67 +3287,94 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 				log.Println("FormAnsSendMail: error reading form template json sent from form editor,", err)
 			}
 
-			log.Printf("%+v, email: %s", m, form.Email.String) // debug
+			//log.Printf("%+v, email: %s", m, form.Email.String) // debug
 
 			formTempl, err := db.FormTemplateGetByID(m.FormTemplateID, user.ID)
 			if err != nil {
-				log.Printf("error retrieving formTemplate with ID: %q from DB, err: %v", m.FormTemplateID, err)
+				log.Printf("FormAnsSendMail: error retrieving formTemplate with ID: %d from DB, err: %v", m.FormTemplateID, err)
 			}
 
-			// decide which mail template to use
-			if m.NotificationID == 0 {
-				mtext = makeSureIsHTML(formTempl.ThankYouMailText.String)
-				msubject = formTempl.ThankYouMailSubject.String
+			mail, err := db.NotificationGetByID(formTempl.NotificationID.Int64, user.ID)
+			if err != nil {
+				log.Printf("FormAnsSendMail: error getting mail with ID: %d, err: %v", formTempl.NotificationID.Int64, err)
+			}
+
+			err = prepareAndSendMail(
+				form.Email.String,
+				form.Surname.String,
+				form.Name.String,
+				mail.Title.String,
+				makeSureIsHTML(mail.Text),
+				user,
+				m.FormID,
+				formTempl,
+				db,
+				mailConf,
+			)
+
+			if err != nil {
+				log.Printf("FormAnsSendMail: error sending, %v", err)
 			} else {
-				log.Println("FormAnsSendMail: UNIMPLEMENTED, simply take it from notification table")
-			}
-
-			nsn := form.Surname.String + "_" + form.Name.String
-
-			thp := &InfoPanel{FormFuncs{DB: db, User: user, Template: formTempl, FormID: m.FormID, NameSurname: nsn}}
-
-			tmpl, err := template.New("thankyou").Parse(mtext)
-			if err != nil {
-				log.Printf("FormThankYou: error parsing InfoPanel template, %v", err)
-			}
-			err = tmpl.ExecuteTemplate(&parsedThankYouMail, "thankyou", thp)
-			if err != nil {
-				log.Printf("FormThankYouMail: error executing ThankYou template, %v", err)
-			}
-
-			log.Println("MAIL TEXT:", parsedThankYouMail.String())
-
-			mail := MailConfig{
-				Server:          mailConf.Server,
-				Port:            mailConf.Port,
-				User:            mailConf.User,
-				Pass:            mailConf.Pass,
-				From:            chooseEmail(user.Email, user.AltEmail.String), // choose user (organizators) mails. Use primary email if alt_email is NULL. Otherwise use alt_email.
-				ReplyTo:         user.Email,                                    // we wont they reply to organizators mail
-				Sender:          mailConf.Sender,
-				To:              []string{form.Email.String},
-				Subject:         msubject,
-				Text:            parsedThankYouMail.String(),
-				IgnoreCert:      mailConf.IgnoreCert,
-				Hostname:        mailConf.Hostname,
-				EmbededHTMLImgs: thp.EmbeddedImgs,
-			}
-
-			err = MailSend(mail)
-			if err != nil {
-				log.Println(err)
-			} else {
+				// write info to db about sent mail (FormNotificationLog table)
 				_, err := db.FormNotificationLogAdd(&FormNotificationLog{
 					Date:           time.Now().Unix(),
 					NotificationID: m.NotificationID,
 					FormID:         m.FormID,
 				})
 				if err != nil {
-					log.Printf("MailSend: error logging mail sent %v", err)
+					log.Printf("prepareAndSendMail: error writting to DB - logging sent mail info, %v", err)
 				}
 			}
+
 		}
 	}
+}
+
+// prepareAndSendMail will prepare mail text and send mail
+func prepareAndSendMail(email, name, surname, msubject, mtext string, user User, formID int64, formTempl FormTemplate, db *DB, mailConf *MailConfig) error {
+	var parsedThankYouMail bytes.Buffer
+
+	// if email is empty we assume it anonymous form. We will not send any mail
+	if email == "" {
+		return fmt.Errorf("prepareAndSendMail: no mail sent for %v, empty mail(anonymous form?)", formID)
+	}
+
+	nsn := surname + "_" + name
+
+	thp := &FormFuncs{DB: db, User: user, Template: formTempl, FormID: formID, NameSurname: nsn}
+
+	tmpl, err := template.New("thankyou").Parse(mtext)
+	if err != nil {
+		log.Printf("prepareAndSendMail: error parsing ThankYou mail template, %v", err)
+	}
+	err = tmpl.ExecuteTemplate(&parsedThankYouMail, "thankyou", thp)
+	if err != nil {
+		log.Printf("prepareAndSendMail: error executing ThankYou template, %v", err)
+	}
+
+	log.Println("MAIL TEXT:", parsedThankYouMail.String()) // DEBUG
+
+	mail := MailConfig{
+		Server:          mailConf.Server,
+		Port:            mailConf.Port,
+		User:            mailConf.User,
+		Pass:            mailConf.Pass,
+		From:            chooseEmail(user.Email, user.AltEmail.String), // choose user (organizators) mails. Use primary email if alt_email is NULL. Otherwise use alt_email.
+		ReplyTo:         user.Email,                                    // it is ignored anyway
+		Sender:          mailConf.Sender,
+		To:              []string{email},
+		Subject:         msubject,
+		Text:            parsedThankYouMail.String(),
+		IgnoreCert:      mailConf.IgnoreCert,
+		Hostname:        mailConf.Hostname,
+		EmbededHTMLImgs: thp.EmbeddedImgs,
+	}
+
+	err = MailSend(mail)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // parseFormURI parses: /form/org/formname
@@ -2733,7 +3394,7 @@ func makeSureIsHTML(s string) string {
 	return "<html>" + s + "</html>"
 }
 
-func getBasicFields(j []FormAnswersJson) (string, string, string) {
+func getBasicFields(j []FormAnswersJson, uniqID string) (string, string, string) {
 	var name, surname, email string
 	log.Println("json:", j)
 	for i := range j {
@@ -2753,6 +3414,10 @@ func getBasicFields(j []FormAnswersJson) (string, string, string) {
 			}
 		}
 	}
+	if surname == "" {
+		name = "- Anon -"
+		surname = uniqID
+	}
 	log.Println(name, surname, email)
 	return name, surname, email
 }
@@ -2767,14 +3432,12 @@ func isEmpty[T comparable](t []T) bool {
 type FormRendererVars struct {
 	LBLLang       string
 	LBLTitle      string
+	UniqIDTitle   string
+	UniqID        string // used for anonymous
 	LBLHowTo      template.HTML
 	FormDataVal   template.JS
 	FormInfoPanel template.HTML
 	BTNSave       string
-}
-
-type InfoPanel struct {
-	FormFuncs
 }
 
 type FormFuncs struct {
@@ -2792,7 +3455,8 @@ type FormFuncs struct {
 // Sum returns sum of given form field.
 // form field can be specified by name or display value,
 // where name is always checked first.
-func (i *InfoPanel) Sum(FormFieldName string) string {
+// This function is forms specific!
+func (i *FormFuncs) Sum(FormFieldName string) string {
 	var sum int64
 	if strings.ToLower(FormFieldName) == "forms" {
 		amm, err := i.DB.FormGetAmmount(i.User.ID, i.Template.ID)
@@ -2819,7 +3483,9 @@ func (i *InfoPanel) Sum(FormFieldName string) string {
 	return strconv.FormatInt(sum, 10)
 }
 
-func (i *InfoPanel) Field(FormFieldName string) string {
+// Field shows form field value as is in db.
+// This function is forms specific!
+func (i *FormFuncs) Field(FormFieldName string) string {
 	FieldID, err := i.DB.FormFieldGetIDByName(FormFieldName, i.Template.ID)
 	if err != nil {
 		FieldID, err = i.DB.FormFieldGetIDByDisplay(FormFieldName, i.Template.ID)
@@ -2834,7 +3500,7 @@ func (i *InfoPanel) Field(FormFieldName string) string {
 	return s
 }
 
-func (i *InfoPanel) generateQRimg(accountName string) (string, string) {
+func (i *FormFuncs) generateQRimg(accountName string) (string, string) {
 	ba, err := i.DB.BankAccountGetByName(accountName, i.User.ID)
 	if err != nil {
 		log.Printf("QRPay: no account with this name found, name given by admin: %q, userID: %d(%s), %v", accountName, i.User.ID, i.User.URL, err)
@@ -2866,12 +3532,12 @@ func (i *InfoPanel) generateQRimg(accountName string) (string, string) {
 
 // QRPay TODO: we need to get fields vals here somehow
 // or ... not, db will be already filled on ThankYou page.
-func (i *InfoPanel) QRPay(accountName string) template.HTML {
+func (i *FormFuncs) QRPay(accountName string) template.HTML {
 	_, imgpath := i.generateQRimg(accountName)
 	return template.HTML(fmt.Sprintf(`<img width="200" src="/%s" alt="QRError">`, imgpath))
 }
 
-func (i *InfoPanel) QRPayMail(accountName string) template.HTML {
+func (i *FormFuncs) QRPayMail(accountName string) template.HTML {
 	imgname, imgpath := i.generateQRimg(accountName)
 	i.EmbeddedImgs = append(i.EmbeddedImgs, EmbImg{
 		NamePath: imgpath,
@@ -2883,13 +3549,14 @@ func (i *InfoPanel) QRPayMail(accountName string) template.HTML {
 func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var parsedInfoPanel bytes.Buffer
+		var uniqID string
 
 		user, templ, err := getOrganizationAndForm(w, r, db, lang)
 		if err != nil {
 			return // just end function, errors had been sent
 		}
 
-		infp := &InfoPanel{FormFuncs{DB: db, User: user, Template: templ}}
+		infp := &FormFuncs{DB: db, User: user, Template: templ}
 
 		tmpl, err := template.New("infopanel").Parse(templ.InfoPanel.String)
 		if err != nil {
@@ -2900,6 +3567,13 @@ func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 			log.Printf("FormRenderer: error executing InfoPanel template, %v", err)
 		}
 
+		if !strings.Contains(templ.Content.String, "surname-REQUIRED") {
+			// this anonymous form
+			b := make([]byte, 4) //equals 8 characters
+			rand.Read(b)
+			uniqID = hex.EncodeToString(b)
+		}
+
 		log.Println(parsedInfoPanel.String())
 
 		// now actuall rendering
@@ -2907,6 +3581,8 @@ func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 		pPL := FormRendererVars{
 			LBLLang:       lang,
 			LBLTitle:      templ.Name,
+			UniqIDTitle:   "Unikatowe ID formularza: ",
+			UniqID:        uniqID,
 			LBLHowTo:      template.HTML(templ.HowTo.String),
 			FormDataVal:   template.JS(templ.Content.String),
 			FormInfoPanel: template.HTML(parsedInfoPanel.String()),
@@ -2957,7 +3633,7 @@ func FormThankYou(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 
 		nsn := surname + "_" + name
 
-		thp := &InfoPanel{FormFuncs{DB: db, User: user, Template: templ, FormID: formID, NameSurname: nsn}}
+		thp := &FormFuncs{DB: db, User: user, Template: templ, FormID: formID, NameSurname: nsn}
 
 		tmpl, err := template.New("thankyou").Parse(templ.ThankYou.String)
 		if err != nil {
@@ -3213,6 +3889,13 @@ func ToNI(i int64) sql.NullInt64 {
 	}
 }
 
+func ToNB(b bool) sql.NullBool {
+	return sql.NullBool{
+		Bool:  b,
+		Valid: true,
+	}
+}
+
 func ToDate(unix int64) string {
 	t := time.Unix(unix, 0)
 	return t.Format("2006-01-02")
@@ -3221,6 +3904,14 @@ func ToDate(unix int64) string {
 func ToDateTime(unix int64) string {
 	t := time.Unix(unix, 0)
 	return t.Format("2006-01-02 15:04")
+}
+
+func ToUnix(s string, loc *time.Location, df string) (int64, error) {
+	t, err := time.ParseInLocation(df, s, loc)
+	if err == nil {
+		return t.Unix(), nil
+	}
+	return -1, err
 }
 
 func InitSession(w http.ResponseWriter, r *http.Request, cookieStore *sessions.CookieStore, onErrRedir string, requiredAdmin bool) (*sessions.Session, string, string, error) {

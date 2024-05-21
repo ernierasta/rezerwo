@@ -8,6 +8,7 @@
     <div class="col-md-6">
       <h4>{{.LBLTitle}}</h4>
       <p>{{.LBLHowTo}}</p>
+      {{if ne .UniqID ""}}<p>{{.UniqIDTitle}}<b id='uniqid'>{{.UniqID}}</b></p>{{end}}
       <form id="form-rendered">
         <div id="fb-render"></div>
       </form>

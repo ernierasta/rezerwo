@@ -30,9 +30,14 @@ function Post(path, params, method='post') {
 
 function EventEdit() {
   var eventID = $('#events-select :selected').val();
-  console.log(eventID);
   Post("/admin/event", {"event-id": eventID});
 }
+
+function NewEvent() {
+  name = $('#new-event-name').val();
+  Post("/admin/event", {"name": name });
+}
+
 
 function RoomEdit() {
   $('#room-event').modal();
@@ -79,4 +84,18 @@ function EditBankAccount() {
 function DeleteBankAccount() {
   var baID = $('#ba-select :selected').val();
   Post("/admin/bankacceditor", {"ba-id": baID, "action": "delete"});
+}
+
+function NewNotification() {
+  name = $('#new-notification-name').val();
+  Post("/admin/maileditor", {"name": name });
+}
+
+function EditNotification() {
+  var baID = $('#notification-select :selected').val();
+  Post("/admin/maileditor", {"mail-id": baID});
+}
+function DeleteNotification() {
+  var baID = $('#notification-select :selected').val();
+  Post("/admin/maileditor", {"mail-id": baID, "action": "delete"});
 }

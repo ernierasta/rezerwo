@@ -45,9 +45,9 @@
     <div class="col-md-6">
       <h3>{{.LBLEvents}}</h3>
       <div class="input-group">
-        <input type="text" class="form-control" placeholder="{{.LBLNewEventPlaceholder}}" aria-label="{{.LBLNewEventPlaceholder}}" aria-describedby="basic-addon2">
+        <input type="text" id="new-event-name" class="form-control" placeholder="{{.LBLNewEventPlaceholder}}" aria-label="{{.LBLNewEventPlaceholder}}" aria-describedby="basic-addon2">
         <div class="input-group-append">
-          <button class="btn btn-outline-secondary" type="button">{{.BTNAddEvent}}</button>
+          <button class="btn btn-outline-secondary" type="button" onclick="NewEvent()">{{.BTNAddEvent}}</button>
         </div>
       </div>
     
@@ -152,15 +152,16 @@
     </div>
   </div>
 
+  <label for="notification-select">{{.LBLNotificationIsShared}}</label>
   <div class="input-group">
-    <select name="ba-select" id="ba-select" class="custom-select">
+    <select name="notification-select" id="notification-select" class="custom-select">
       <option value="0" selected>{{.LBLSelectNotification}}</option>
       {{range .Notifications}}
-      <option value="{{.ID}}">{{.Name}}</option>
+      <option value="{{.ID}}">{{.Name}}{{if eq .RelatedTo $.NotifRelatedToEventCode}} ({{$.NotifRelatedToEvent}}){{else}} ({{$.NotifRelatedToForm}}){{end}}{{if eq .UserID $.UserID}} ({{$.MyNotif}}){{end}}{{if .Sharable}} ({{$.SharedNotif}}){{end}}</option>
       {{end}}
     </select>
     <div class="input-group-append">
-      <button id="ba-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()" >{{.BTNNotificationEdit}}</button>
+      <button id="mail-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()" >{{.BTNNotificationEdit}}</button>
       <button class="btn btn-outline-secondary" type="button" onclick="DeleteNotification()" >{{.BTNNotificationDelete}}</button>
     </div>
   </div>

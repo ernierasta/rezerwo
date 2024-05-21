@@ -27,11 +27,6 @@ var QuillThankYouEditor = new Quill('#thankyou-editor', {
   }
 );
 
-var QuillThankYouMailEditor = new Quill('#thankyou-mail-editor', {
-    theme: 'snow'
-  }
-);
-
 var QuillInfoPanelEditor = new Quill('#infopanel-editor', {
     theme: 'snow'
   }
@@ -52,10 +47,10 @@ function SendFormDef(data) {
   finald.howto = QuillHowToEditor.root.innerHTML;
   finald.banner = $('#form-banner').val();
   finald.thankyou = QuillThankYouEditor.root.innerHTML;
-  finald.thankyoumailsubject = $('#mail-subject').val();
-  finald.thankyoumailtext = QuillThankYouMailEditor.root.innerHTML;
   finald.infopanel = QuillInfoPanelEditor.root.innerHTML;
   finald.moneyfield = $('#money-field').val();
+  finald.bankaccount = $('#qrpay-select').val();
+  finald.thankyoumail = $('#mail-thankyou-select').val();
 
   // remove all trailing <br> from end of label json field
   // it some kind of bug in formBuilder
@@ -80,7 +75,7 @@ function SendFormDef(data) {
       window.setTimeout(function(){
         $("#save").removeClass("btn-success");
       },2000);
-      //window.location.replace("/admin");
+      window.location.replace("/admin");
       //window.location.href = "/admin";
     },
     statusCode: {

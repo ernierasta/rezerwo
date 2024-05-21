@@ -1,0 +1,55 @@
+{{define "head"}}
+  <title>{{.LBLTitle}}</title>
+  <link href="/css/quill.snow.css" rel="stylesheet">
+  <script src="/js/quill.min.js"></script>
+{{end}}
+{{define "body"}}
+
+<div class="d-flex justify-content-center align-items-center">
+  <div class="col-md-6">
+    <h4>{{.LBLMailTitle}}</h4>
+    <div> {{.LBLHowTo}}</div>
+    <br />
+    <input type="hidden" id="notification-id" value={{.NotificationIDVal}}></input>
+    <input type="hidden" id="user-id" value={{.UserIDVal}}></input>
+    <div class="form-group">
+      <label for="name">{{.LBLName}}</label>
+      <input type="text" class="form-control" id="name" name="name" value="{{.NameVal}}" required>
+      <label for="type">{{.LBLType}}</label>
+      <select name="type-select" id="type-select" class="custom-select">
+        <option value="mail" selected>E-mail</option>
+      </select>
+      <label for="related-to-select">{{.LBLRelatedTo}}</label>
+      <select name="related-to-select" id="related-to-select" class="custom-select">
+        <option value="" {{if eq $.CurrentRelatedTo ""}}selected{{end}}>{{.LBLSelectRelatedTo}}</option>
+        <option value="events" {{if eq $.CurrentRelatedTo "events"}}selected{{end}}>{{.LBLRelatedToEvents}}</option>
+        <option value="formtemplates" {{if eq $.CurrentRelatedTo "formtemplates"}}selected{{end}}>{{.LBLRelatedToForms}}</option>
+      </select>
+      <input type="checkbox" id="sharable" name="sharable" {{if .IsSharableVal}}checked{{end}}>
+      <label for="sharable">{{.LBLSharable}}</label>
+      <br />
+      <label for="subject">{{.LBLSubject}}</label>
+      <input type="text" class="form-control" id="subject" name="subject" value="{{.SubjectVal}}" required>
+      <h4>{{.LBLTextTitle}}</h4>
+      <div class="form-group">
+        <p id="text-label">{{.LBLTextHowTo}}</p>
+        <div id="text-editor">
+          {{.HTMLTextVal}}
+        </div>
+      </div>
+      <label for="embeddedimgs">{{.LBLEmbeddedImgs}}</label>
+      <input type="text" class="form-control" id="embeddedimgs" name="embeddedimgs" value="{{.EmbeddedImgsVal}}">
+      <label for="attachedfiles">{{.LBLAttachedFiles}}</label>
+      <input type="text" class="form-control" id="attachedfiles" name="attachedfiles" value="{{.AttachedFilesVal}}">
+    </div>
+    {{if .IsOwner}}
+    <button id="save" class="btn btn-primary" onclick="Save()">{{.BTNSave}}</button>
+    {{else}}
+    <button id="save" class="btn btn-primary" onclick="Save()">{{.BTNCopy}}</button>
+    {{end}}
+    <button id="save" class="btn btn-primary" onclick="GoBack()">{{.BTNCancel}}</button>
+  </div>
+</div>
+<script type="text/javascript" src="/js/a_mail_editor.js"></script>
+
+{{end}}

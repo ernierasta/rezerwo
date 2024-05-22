@@ -94,7 +94,7 @@ func main() {
 	http.HandleFunc("/api/eved", EventAddMod(db, loc, dateFormat, cookieStore))
 	http.HandleFunc("/api/formed", FormTemplateAddMod(db, cookieStore))
 	http.HandleFunc("/api/baed", BankAccountAddMod(db, cookieStore))
-	http.HandleFunc("/api/formans", FormAddMod(db, mailConf, cookieStore))
+	http.HandleFunc("/api/formans", FormAddMod(db, mailConf))
 	http.HandleFunc("/api/formansdelete", FormAnsDelete(db, cookieStore))
 	http.HandleFunc("/api/formanssendmail", FormAnsSendMail(db, mailConf, cookieStore))
 	http.HandleFunc("/api/maed", MailAddMod(db, cookieStore))

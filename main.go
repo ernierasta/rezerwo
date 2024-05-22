@@ -3095,17 +3095,11 @@ type FormAnswersJson struct {
 }
 
 // FormAddMod is API func to write form answer to DB and send mail with summary
-func FormAddMod(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var formAnsJson FormAnsData
 
 		if r.Method == "POST" {
-
-			_, _, _, err := InitSession(w, r, cs, "/admin/login", true)
-			if err != nil {
-				log.Printf("FormAddMod: session error: %v", err)
-				return
-			}
 
 			bodyJson, err := io.ReadAll(r.Body)
 			if err != nil {

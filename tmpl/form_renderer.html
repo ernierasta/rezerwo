@@ -5,9 +5,17 @@
 {{end}}
 {{define "body"}}
   <div class="d-flex justify-content-center align-items-center">
+      <div class="col-md-8">
+        <h4>{{.LBLTitle}}</h4>
+        <p>{{.LBLHowTo}}</p>
+      </div>
+  </div>
+  <div class="d-flex justify-content-center align-items-center">
+    {{if eq .FormInfoPanel ""}}
+    <div class="col-md-8">
+    {{else}}
     <div class="col-md-6">
-      <h4>{{.LBLTitle}}</h4>
-      <p>{{.LBLHowTo}}</p>
+    {{end}}
       {{if ne .UniqID ""}}<p>{{.UniqIDTitle}}<b id='uniqid'>{{.UniqID}}</b></p>{{end}}
       <form id="form-rendered">
         <div id="fb-render"></div>
@@ -16,9 +24,11 @@
         <button id="save" class="btn btn-primary mt-3" onclick="SendFormData()">{{.BTNSave}}</button>
       </div>
     </div>
+    {{if ne .FormInfoPanel ""}}
     <div id="infopanel">
       {{.FormInfoPanel}}
     </div>
+    {{end}}
   </div>
   <script>
     // we are setting it here, I can not figure out how to get setData to work after render

@@ -2034,7 +2034,7 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			FormDataVal:                formTempl.Content.String,
 			HTMLFormHowToVal:           template.HTML(formTempl.HowTo.String),
 			HTMLFormThankYouVal:        template.HTML(formTempl.ThankYou.String),
-			HTMLFormInfoPanelVal:       template.HTML(formTempl.InfoPanel.String),
+			HTMLFormInfoPanelVal:       template.HTML(reallyEmpty(formTempl.InfoPanel.String)),
 			LBLBankAccountsSelectTitle: "Konta bankowe:",
 			LBLSelectBankAccount:       "Wybierz konto ...",
 			LBLMoneyField:              "Nazwa pola zawierającego ilość pieniedzy:",
@@ -2058,6 +2058,14 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			log.Print("ErrorHTML: template executing error: ", err) //log it
 		}
 	}
+}
+
+func reallyEmpty(s string) string {
+	log.Printf("after trimming: %s", strings.TrimSpace(s))
+	if strings.TrimSpace(s) == "<p><br></p>" {
+		return ""
+	}
+	return s
 }
 
 type FormRapRow struct {
@@ -2791,7 +2799,7 @@ func FormTemplateAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 				Banner:               ToNS(formTemplJson.Banner),
 				ThankYou:             ToNS(formTemplJson.ThankYou),
 				NotificationID:       ToNI(notifID),
-				InfoPanel:            ToNS(formTemplJson.InfoPanel),
+				InfoPanel:            ToNS(reallyEmpty(formTemplJson.InfoPanel)),
 				BankAccountID:        ToNI(baID),
 				MoneyAmountFieldName: ToNS(formTemplJson.MoneyField),
 				CreatedDate:          time.Now().Unix(),
@@ -3574,7 +3582,7 @@ func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 			uniqID = hex.EncodeToString(b)
 		}
 
-		log.Println(parsedInfoPanel.String())
+		log.Println(parsedInfoPanel.String()) // DEBUG
 
 		// now actuall rendering
 
@@ -3585,7 +3593,7 @@ func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 			UniqID:        uniqID,
 			LBLHowTo:      template.HTML(templ.HowTo.String),
 			FormDataVal:   template.JS(templ.Content.String),
-			FormInfoPanel: template.HTML(parsedInfoPanel.String()),
+			FormInfoPanel: template.HTML(reallyEmpty(parsedInfoPanel.String())),
 			BTNSave:       "Wyślij!",
 		}
 

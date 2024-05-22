@@ -1,6 +1,6 @@
 2024:
- * Add account to Event editor.
 
+* bug when adding new notification, users_id is 0, should be current user id!
 
 
 * Mail is generated from form data (Name and Surname), not from stored data.

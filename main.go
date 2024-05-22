@@ -19,6 +19,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/microcosm-cc/bluemonday"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -2062,7 +2063,8 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 
 func reallyEmpty(s string) string {
 	log.Printf("after trimming: %s", strings.TrimSpace(s))
-	if strings.TrimSpace(s) == "<p><br></p>" {
+	t := bluemonday.StripTagsPolicy()
+	if t.Sanitize(s) == "" {
 		return ""
 	}
 	return s

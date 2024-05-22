@@ -161,7 +161,7 @@ function Save() {
   finald.thankyou_notifications_id_fk = $('#mail-thankyou-select').val();
   finald.admin_notifications_id_fk = $('#mail-admin-select').val();
   finald.sharable = $('#sharable').is(":checked");
-  //finald.relatedto = $('#related-to-select').val(); // events or formtemplates
+  //finald.relatedto = $('#related-to-select').val(); // events or forms
   //console.log(finald.sharable);
 
 

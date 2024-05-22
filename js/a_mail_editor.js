@@ -16,7 +16,7 @@ function Save() {
   finald.subject = $('#subject').val();
   finald.text = QuillMailTextEditor.root.innerHTML;
   finald.sharable = $('#sharable').is(":checked");
-  finald.relatedto = $('#related-to-select').val(); // events or formtemplates
+  finald.relatedto = $('#related-to-select').val(); // events or forms
   finald.attachedfiles = $('#attachedfiles').val();
   finald.embeddedimgs = $('#embeddedimgs').val();
   //finald.message = $('#ba-message').val();

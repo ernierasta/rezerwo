@@ -23,7 +23,7 @@
       <select name="related-to-select" id="related-to-select" class="custom-select">
         <option value="" {{if eq $.CurrentRelatedTo ""}}selected{{end}}>{{.LBLSelectRelatedTo}}</option>
         <option value="events" {{if eq $.CurrentRelatedTo "events"}}selected{{end}}>{{.LBLRelatedToEvents}}</option>
-        <option value="formtemplates" {{if eq $.CurrentRelatedTo "formtemplates"}}selected{{end}}>{{.LBLRelatedToForms}}</option>
+        <option value="forms" {{if eq $.CurrentRelatedTo "forms"}}selected{{end}}>{{.LBLRelatedToForms}}</option>
       </select>
       <input type="checkbox" id="sharable" name="sharable" {{if .IsSharableVal}}checked{{end}}>
       <label for="sharable">{{.LBLSharable}}</label>

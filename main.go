@@ -1849,7 +1849,7 @@ type MailEditorVars struct {
 	LBLSharable        string
 	LBLAttachedFiles   string
 	AttachedFilesVal   string
-	CurrentRelatedTo   string // events or formtemplates
+	CurrentRelatedTo   string // events or forms
 	IsOwner            bool
 }
 
@@ -2018,6 +2018,8 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 		if err != nil {
 			log.Printf("FormEditor: error getting notifications for user %d, %v", user.ID, err)
 		}
+
+		log.Printf("notifictions: %v", notifs) // DEBUG
 
 		pPL := FormEditorVars{
 			LBLTitle:                   "Edytor deklaracji",
@@ -2966,7 +2968,7 @@ type MailJson struct {
 	Subject       string `json:"subject"`
 	Text          string `json:"text"`
 	Sharable      bool   `json:"sharable"`
-	RelatedTo     string `json:"relatedto"` // events or formtemplates
+	RelatedTo     string `json:"relatedto"` // events or forms
 	EmbeddedImgs  string `json:"embeddedimgs"`
 	AttachedFiles string `json:"attachedfiles"`
 }
@@ -3578,7 +3580,7 @@ func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 		}
 
 		if !strings.Contains(templ.Content.String, "surname-REQUIRED") {
-			// this anonymous form
+			// this is anonymous form
 			b := make([]byte, 4) //equals 8 characters
 			rand.Read(b)
 			uniqID = hex.EncodeToString(b)

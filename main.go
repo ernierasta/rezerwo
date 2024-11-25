@@ -3158,7 +3158,8 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 					if err != nil {
 						log.Printf("FormAddMod: can not get FormID via email %q, templateID %d, userID %d, %v", f.Email.String, templ.ID, user.ID, err)
 					}
-					w.Write([]byte(fmt.Sprintf(`{"formid":"%d"}`, FormID)))
+					//w.Write([]byte(fmt.Sprintf(`{"formid":"%d"}`, FormID)))
+					w.Write([]byte(fmt.Sprintf(`{"formid":"%d", "name":"%s", "surname":"%s", "templurl":"%s"}`, FormID, name, surname, templ.URL)))
 				}
 			} else {
 				w.Write([]byte(fmt.Sprintf(`{"formid":"%d", "name":"%s", "surname":"%s", "templurl":"%s"}`, FormID, name, surname, templ.URL)))

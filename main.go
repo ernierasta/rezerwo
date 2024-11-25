@@ -3150,7 +3150,7 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 				log.Printf("FormAddMod: insert failed, probably already exists in db, %v", err)
 				err := db.FormModByEmail(f)
 				if err != nil {
-					log.Printf("FormTemplateAddMod: insert and update faied! %v", err)
+					log.Printf("FormAddMod: insert and update failed! %v", err)
 					http.Error(w, fmt.Sprintf(`{"msg":"Nie udało się zapisać formularza!\n%s"}`, err.Error()), http.StatusTeapot) // 418
 					return
 				} else {
@@ -3158,7 +3158,7 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 					if err != nil {
 						log.Printf("FormAddMod: can not get FormID via email %q, templateID %d, userID %d, %v", f.Email.String, templ.ID, user.ID, err)
 					}
-					w.Write([]byte(fmt.Sprintf(`{"id":"%d"}`, FormID)))
+					w.Write([]byte(fmt.Sprintf(`{"formid":"%d"}`, FormID)))
 				}
 			} else {
 				w.Write([]byte(fmt.Sprintf(`{"formid":"%d", "name":"%s", "surname":"%s", "templurl":"%s"}`, FormID, name, surname, templ.URL)))

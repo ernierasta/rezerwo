@@ -754,11 +754,15 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 		}
 
+		// now parse "OrderedNoteText" template to show qrcode
+		// we ignore embimg - it will be empty
+		stsText, _ := ParseOrderTmpl(event.OrderedNoteText, o, db, user)
+
 		pEN := ReservationOrderStatusVars{
 			LBLLang:       lang,
 			LBLTitle:      "Order status",
 			LBLStatus:     event.OrderedNoteTitle,
-			LBLStatusText: template.HTML(event.OrderedNoteText),
+			LBLStatusText: template.HTML(stsText),
 			BTNOk:         "OK",
 		}
 		_ = pEN
@@ -767,7 +771,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			LBLLang:       lang,
 			LBLTitle:      "Zamówiono bilety!",
 			LBLStatus:     event.OrderedNoteTitle,
-			LBLStatusText: template.HTML(event.OrderedNoteText),
+			LBLStatusText: template.HTML(stsText),
 			BTNOk:         "OK",
 		}
 
@@ -3519,8 +3523,6 @@ func (i *FormFuncs) generateQRimg(accountName string) (string, string) {
 	return GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID)
 }
 
-// QRPay TODO: we need to get fields vals here somehow
-// or ... not, db will be already filled on ThankYou page.
 func (i *FormFuncs) QRPay(accountName string) template.HTML {
 	_, imgpath := i.generateQRimg(accountName)
 	return template.HTML(fmt.Sprintf(`<img width="200" src="/%s" alt="QRError">`, imgpath))
@@ -3553,6 +3555,11 @@ type OrderFuncs struct {
 func (o *OrderFuncs) generateQRimg(accountName string) (string, string) {
 	etp := FormTemplate{}
 	return GenerateQRimg(accountName, o.DB, o.User, etp, o.NameSurname, o.TotalPrice, -1)
+}
+
+func (o *OrderFuncs) QRPay(accountName string) template.HTML {
+	_, imgpath := o.generateQRimg(accountName)
+	return template.HTML(fmt.Sprintf(`<img width="200" src="/%s" alt="QRError">`, imgpath))
 }
 
 func (o *OrderFuncs) QRPayMail(accountName string) template.HTML {
@@ -3699,7 +3706,7 @@ func FormThankYou(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 
 		tmpl, err := template.New("thankyou").Parse(templ.ThankYou.String)
 		if err != nil {
-			log.Printf("FormThankYou: error parsing InfoPanel template, %v", err)
+			log.Printf("FormThankYou: error parsing thankyou(qrcode) template, %v", err)
 		}
 		err = tmpl.ExecuteTemplate(&parsedThankYou, "thankyou", thp)
 		if err != nil {

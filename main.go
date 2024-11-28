@@ -702,6 +702,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			// TODO: we are adding <html> tag, so mails are recognized as HTML, we are also modying default <p> tag margin
 			// Shouldn't we do it in some more logical place? Or even make it editable by user?
 
+			parsed, embimgs := ParseOrderTmpl(cstMail.Text, o, db, user)
+
 			custMail := MailConfig{
 				Server:          mailConf.Server,
 				Port:            mailConf.Port,
@@ -712,18 +714,24 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				Sender:          mailConf.Sender,
 				To:              []string{o.Email},
 				Subject:         cstMail.Title.String,
-				Text:            "<html><head><style>p {margin:0;}</style></head>" + ParseOrderTmpl(cstMail.Text, o) + "</html>",
+				Text:            "<html><head><style>p {margin:0;}</style></head>" + parsed + "</html>",
 				IgnoreCert:      mailConf.IgnoreCert,
 				Hostname:        mailConf.Hostname,
 				Files:           getAttachments(cstMail.AttachedFilesDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
 				EmbededHTMLImgs: getEmbeddedImgs(cstMail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT),
 			}
 
+			// append qrcode to EmbeddedImgs
+			for i := range embimgs {
+				custMail.EmbededHTMLImgs = append(custMail.EmbededHTMLImgs, embimgs[i])
+			}
 			err = MailSend(custMail)
 			if err != nil {
 				log.Println(err)
 			}
 
+			subj, _ := ParseOrderTmpl(adminMail.Title.String, o, db, user) // ignoring EmbImg, no qr code here
+			text, _ := ParseOrderTmpl(adminMail.Text, o, db, user)
 			userMail := MailConfig{
 				Server:     mailConf.Server,
 				Port:       mailConf.Port,
@@ -733,8 +741,8 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				ReplyTo:    mailConf.From,
 				Sender:     mailConf.From,
 				To:         append(adminMails, user.Email),
-				Subject:    ParseOrderTmpl(adminMail.Title.String, o),
-				Text:       "<html><head><style>p {margin:0;}</style></head>" + ParseOrderTmpl(adminMail.Text, o) + "</html>",
+				Subject:    subj,
+				Text:       "<html><head><style>p {margin:0;}</style></head>" + text + "</html>",
 				IgnoreCert: mailConf.IgnoreCert,
 				Hostname:   mailConf.Hostname,
 			}
@@ -3339,7 +3347,7 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 
 // prepareAndSendMail will prepare mail text and send mail
 func prepareAndSendMail(email, name, surname, msubject, mtext string, user User, formID int64, formTempl FormTemplate, db *DB, mailConf *MailConfig) error {
-	var parsedThankYouMail bytes.Buffer
+	var parsedMail bytes.Buffer
 
 	// if email is empty we assume it anonymous form. We will not send any mail
 	if email == "" {
@@ -3354,12 +3362,12 @@ func prepareAndSendMail(email, name, surname, msubject, mtext string, user User,
 	if err != nil {
 		log.Printf("prepareAndSendMail: error parsing ThankYou mail template, %v", err)
 	}
-	err = tmpl.ExecuteTemplate(&parsedThankYouMail, "thankyou", thp)
+	err = tmpl.ExecuteTemplate(&parsedMail, "thankyou", thp)
 	if err != nil {
 		log.Printf("prepareAndSendMail: error executing ThankYou template, %v", err)
 	}
 
-	log.Println("MAIL TEXT:", parsedThankYouMail.String()) // DEBUG
+	log.Println("MAIL TEXT:", parsedMail.String()) // DEBUG
 
 	mail := MailConfig{
 		Server:          mailConf.Server,
@@ -3371,7 +3379,7 @@ func prepareAndSendMail(email, name, surname, msubject, mtext string, user User,
 		Sender:          mailConf.Sender,
 		To:              []string{email},
 		Subject:         msubject,
-		Text:            parsedThankYouMail.String(),
+		Text:            parsedMail.String(),
 		IgnoreCert:      mailConf.IgnoreCert,
 		Hostname:        mailConf.Hostname,
 		EmbededHTMLImgs: thp.EmbeddedImgs,
@@ -3508,33 +3516,7 @@ func (i *FormFuncs) Field(FormFieldName string) string {
 }
 
 func (i *FormFuncs) generateQRimg(accountName string) (string, string) {
-	ba, err := i.DB.BankAccountGetByName(accountName, i.User.ID)
-	if err != nil {
-		log.Printf("QRPay: no account with this name found, name given by admin: %q, userID: %d(%s), %v", accountName, i.User.ID, i.User.URL, err)
-	}
-
-	templURL := strings.Join(strings.Fields(i.Template.URL), "")
-	imgname := fmt.Sprintf("%s.jpeg", templURL+"_"+i.NameSurname)
-	imgpath := getImgPath(MEDIAROOT, i.User.URL, MEDIAQRCODESUBDIR, imgname)
-
-	am, err := i.DB.FormAnswerGetByFieldName(i.FormID, i.Template.ID, i.Template.MoneyAmountFieldName.String)
-	if err != nil {
-		am, err = i.DB.FormAnswerGetByFieldDisplay(i.FormID, i.Template.ID, i.Template.MoneyAmountFieldName.String)
-		if err != nil {
-			log.Printf("QRPay: problem getting money amount field name and display %q, FormID %d, %v", i.Template.MoneyAmountFieldName.String, i.FormID, err)
-		}
-	}
-	ami, err := strconv.ParseInt(am, 10, 64)
-	if err != nil {
-		log.Printf("QRPay: error converting money amount to int64 %q, %v", am, err)
-	}
-	qr := NewQRPayment(ba.IBAN, ba.RecipientName.String, float64(ami), ba.Currency, ba.Message.String+"_"+i.NameSurname, ba.VarSymbol.Int64)
-	log.Println(ba)
-	err = qr.GenCode(imgpath)
-	if err != nil {
-		log.Printf("QRPay: error generating qr image, %v", err)
-	}
-	return imgname, imgpath
+	return GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID)
 }
 
 // QRPay TODO: we need to get fields vals here somehow
@@ -3551,6 +3533,79 @@ func (i *FormFuncs) QRPayMail(accountName string) template.HTML {
 		CID:      getCID(imgname, i.User.URL),
 	})
 	return template.HTML(fmt.Sprintf(`<img width="150" src="cid:%s" alt="QR Kod" />`, getCID(imgname, i.User.URL)))
+}
+
+type OrderFuncs struct {
+	EventID             int64
+	TotalPrice          string
+	Sits, Prices, Rooms string
+	Email               string
+	Password            string
+	Name, Surname       string
+	Phone, Notes        string
+
+	DB           *DB
+	User         User
+	NameSurname  string
+	EmbeddedImgs []EmbImg
+}
+
+func (o *OrderFuncs) generateQRimg(accountName string) (string, string) {
+	etp := FormTemplate{}
+	return GenerateQRimg(accountName, o.DB, o.User, etp, o.NameSurname, o.TotalPrice, -1)
+}
+
+func (o *OrderFuncs) QRPayMail(accountName string) template.HTML {
+	imgname, imgpath := o.generateQRimg(accountName)
+	o.EmbeddedImgs = append(o.EmbeddedImgs, EmbImg{
+		NamePath: imgpath,
+		CID:      getCID(imgname, o.User.URL),
+	})
+	return template.HTML(fmt.Sprintf(`<img width="150" src="cid:%s" alt="QR Kod" />`, getCID(imgname, o.User.URL)))
+}
+
+func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurname, TotalPrice string, FormID int64) (string, string) {
+	ba, err := db.BankAccountGetByName(accountName, u.ID)
+	if err != nil {
+		log.Printf("GenerateQRimg: no account with this name found, name given by admin: %q, userID: %d(%s), %v", accountName, u.ID, u.URL, err)
+	}
+
+	templURL := strings.Join(strings.Fields(t.URL), "")
+	imgname := fmt.Sprintf("%s.jpeg", templURL+"_"+NameSurname)
+	imgpath := getImgPath(MEDIAROOT, u.URL, MEDIAQRCODESUBDIR, imgname)
+
+	eft := FormTemplate{}
+	am := ""
+	// get money ammount
+	if t != eft {
+		am, err = db.FormAnswerGetByFieldName(FormID, t.ID, t.MoneyAmountFieldName.String)
+		if err != nil {
+			am, err = db.FormAnswerGetByFieldDisplay(FormID, t.ID, t.MoneyAmountFieldName.String)
+			if err != nil {
+				log.Printf("GenerateQRimg: problem getting money ammount field name and display %q, FormID %d, %v", t.MoneyAmountFieldName.String, FormID, err)
+			}
+		}
+	} else {
+		// this is event
+		ss := strings.Split(TotalPrice, " ")
+		if len(ss) == 2 {
+			am = ss[0]
+		} else {
+			am = TotalPrice
+		}
+	}
+
+	ami, err := strconv.ParseInt(am, 10, 64)
+	if err != nil {
+		log.Printf("GenerateQRimg: error converting money amount to int64 %q, %v", am, err)
+	}
+	qr := NewQRPayment(ba.IBAN, ba.RecipientName.String, float64(ami), ba.Currency, ba.Message.String+"_"+NameSurname, ba.VarSymbol.Int64)
+	log.Println(ba)
+	err = qr.GenCode(imgpath)
+	if err != nil {
+		log.Printf("GenerateQRimg: error generating qr image, %v", err)
+	}
+	return imgname, imgpath
 }
 
 func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
@@ -3857,19 +3912,39 @@ type Order struct {
 	Phone, Notes        string
 }
 
-func ParseOrderTmpl(t string, o Order) string {
+func ParseOrderTmpl(t string, o Order, db *DB, user User) (string, []EmbImg) {
 	var buf bytes.Buffer
-	tmpl, err := template.New("test").Parse(t)
-	if err != nil {
-		log.Printf("error parsing template %q, order %+v, err: %v", t, o, err)
-		return t
+
+	nsn := o.Surname + "_" + o.Name
+
+	of := &OrderFuncs{
+		EventID:     o.EventID,
+		TotalPrice:  o.TotalPrice,
+		Sits:        o.Sits,
+		Prices:      o.Prices,
+		Rooms:       o.Rooms,
+		Email:       o.Email,
+		Password:    o.Password,
+		Name:        o.Name,
+		Surname:     o.Surname,
+		Phone:       o.Phone,
+		Notes:       o.Notes,
+		DB:          db,
+		User:        user,
+		NameSurname: nsn,
 	}
-	err = tmpl.Execute(&buf, o)
+
+	tmpl, err := template.New("ordermail").Parse(t)
 	if err != nil {
-		log.Printf("error executing template %q, order %+v, err: %v", t, o, err)
-		return t
+		log.Printf("error parsing template %q, OrderFuncs %+v, err: %v", t, of, err)
+		return t, []EmbImg{}
 	}
-	return buf.String()
+	err = tmpl.Execute(&buf, of)
+	if err != nil {
+		log.Printf("error executing template %q, OrderFuncs %+v, err: %v", t, of, err)
+		return t, []EmbImg{}
+	}
+	return buf.String(), of.EmbeddedImgs
 }
 
 func ToNS(s string) sql.NullString {

@@ -7,7 +7,11 @@ function SendFormData() {
   // so you can use it to check manually (but then build in validator is not working)
   // TODO: customize it, howto:
   // https://developer.mozilla.org/en-US/docs/Web/API/HTMLObjectElement/setCustomValidity
-  document.getElementById('form-rendered').reportValidity();
+  valid = document.getElementById('form-rendered').reportValidity();
+
+  if (!valid) {
+    return;
+  }
 
   // send data and uri ()
   var finald = {};

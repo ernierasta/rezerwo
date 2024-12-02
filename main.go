@@ -755,6 +755,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 		}
 
 		// now parse "OrderedNoteText" template to show qrcode
+		// after posting form
 		// we ignore embimg - it will be empty
 		stsText, _ := ParseOrderTmpl(event.OrderedNoteText, o, db, user)
 
@@ -2667,9 +2668,21 @@ func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore
 			if err != nil {
 				log.Printf("EventAddMod: error converting current adminMail string %q to int64, %v", eventJson.AdminMailID, err)
 			}
+			// for now not used
 			bankAccountID, err := strconv.ParseInt(eventJson.BankAccountID, 10, 64)
 			if err != nil {
 				log.Printf("EventAddMod: error converting current bankAccountID string %q to int64, %v", eventJson.BankAccountID, err)
+			}
+			rr := strings.Split(eventJson.Rooms, ",")
+			for i := range rr {
+				roomID, err := strconv.ParseInt(rr[i], 10, 64)
+				if err != nil {
+					log.Printf("EventAddMod: error converting room id %q to int64, %v", rr[i], err)
+				}
+				err = db.RoomEventAdd(id, roomID)
+				if err != nil {
+					log.Printf("EventAddMod: error (it may be normal if already exists) adding room %d, to event %d, %v", roomID, id, err)
+				}
 			}
 
 			ev := &Event{

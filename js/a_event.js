@@ -108,26 +108,28 @@ var QuillOrderNoteEditor = new Quill('#order-note-editor', {
   theme: 'snow'
 });
 
-const toolbarOptions = [
-  [{ 'header': [1, 2, 3, false] }],
-  ['bold', 'italic', 'underline'],        // toggled buttons
-  ['link'],
+// we will use ordinary editor, Quill strips color tags.
 
-  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-  [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+//const toolbarOptions = [
+//  [{ 'header': [1, 2, 3, false] }],
+//  ['bold', 'italic', 'underline'],        // toggled buttons
+//  ['link'],
+//
+//  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+//  [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+//
+//  [{ 'color': ['#28a745','#ffc107', '#fd7e14', '#dc3545', '#403734'] }],          // dropdown with defaults from theme
+//  [{ 'align': [] }],
+//
+//  ['clean']                                         // remove formatting button
+//];
 
-  [{ 'color': ['#28a745','#ffc107', '#fd7e14', '#dc3545', '#403734'] }],          // dropdown with defaults from theme
-  [{ 'align': [] }],
-
-  ['clean']                                         // remove formatting button
-];
-
-var QuillHowtoEditor = new Quill('#howto-editor', {
-  modules: {
-    toolbar: toolbarOptions
-  },
-  theme: 'snow'
-});
+//var QuillHowtoEditor = new Quill('#howto-editor', {
+//  modules: {
+//    toolbar: toolbarOptions
+//  },
+//  theme: 'snow'
+//});
 
 var QuillOrderHowtoEditor = new Quill('#order-howto-editor', {
   theme: 'snow'
@@ -145,7 +147,8 @@ function Save() {
   finald.currency = $('#default-currency').val();
   finald.no_sits_selected_title = $('#no-sits-selected-title').val();
   finald.no_sits_selected_text = QuillNoSitsEditor.root.innerHTML;
-  finald.how_to = QuillHowtoEditor.root.innerHTML;
+  //finald.how_to = QuillHowtoEditor.root.innerHTML;
+  finald.how_to = $('#howto-text').val();
   finald.order_howto = QuillOrderHowtoEditor.root.innerHTML;
   finald.order_notes_desc = $('#order_notes_desc').val();
   finald.ordered_note_title = $('#ordered-note-title').val();
@@ -161,6 +164,7 @@ function Save() {
   finald.thankyou_notifications_id_fk = $('#mail-thankyou-select').val();
   finald.admin_notifications_id_fk = $('#mail-admin-select').val();
   finald.sharable = $('#sharable').is(":checked");
+  finald.rooms = $('#rooms').val();
   //finald.relatedto = $('#related-to-select').val(); // events or forms
   //console.log(finald.sharable);
 

@@ -41,6 +41,7 @@
     </div>
 
     <h3>{{.LBLTitleMails}}</h3>
+    <!--
     <div class="input-group">
       <select name="ba-select" id="ba-select" class="custom-select">
         <option value="0" {{if eq $.CurrentBankAccount 0}}selected{{end}}>{{.LBLSelectBankAccount}}</option>
@@ -53,6 +54,7 @@
         <button class="btn btn-outline-secondary" type="button" onclick="DeleteBankAccount()" >{{.BTNBADelete}}</button>
       </div>
     </div>
+    -->
 
     <label for="mail-thankyou-select">{{.LBLSelectThankYouMail}}</label>
     <div class="input-group">
@@ -122,7 +124,7 @@
     <div class="form-group">
       <p id="howto-editor-label">{{.LBLHowto}}</p>
       <div id="howto-editor">
-        {{.HTMLHowTo}}
+          <textarea rows="8" cols="87" class="form-group" id="howto-text" name="howto-text">{{.HTMLHowTo}}</textarea>
       </div>
     </div>
     <textarea name="html-ordered-note-text" hidden></textarea>

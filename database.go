@@ -361,6 +361,15 @@ type FormNotificationLog struct {
 	FormID         int64 `db:"forms_id_fk"`
 }
 
+type EventAddon struct {
+	ID       int64          `db:"id"`
+	Name     string         `db:"name"`
+	Price    sql.NullInt64  `db:"price"`
+	Currency sql.NullString `db:"currency"`
+	EventID  int64          `db:"events_id_fk"`
+	UserID   int64          `db:"users_id_fk"`
+}
+
 // GetType is needed for generics
 func (f FormField) GetType() string {
 	return f.Type
@@ -498,6 +507,11 @@ func (db *DB) RoomGetAllForEventID(eventID int64) ([]Room, error) {
 	rooms := []Room{}
 	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN events_rooms er ON r.id = er.rooms_id_fk WHERE er.events_id_fk = $1`, eventID)
 	return rooms, err
+}
+
+func (db *DB) RoomEventAdd(eventID, roomID int64) error {
+	_, err := db.DB.NamedExec(`INSERT INTO events_rooms (events_id_fk, rooms_id_fk) VALUES (:events_id_fk, :rooms_id_fk)`, map[string]interface{}{"events_id_fk": eventID, "rooms_id_fk": roomID})
+	return err
 }
 
 func (db *DB) RoomGetAll() ([]Room, error) {
@@ -1489,6 +1503,25 @@ func (db *DB) NotificationModByID(not *Notification, UserID int64) error {
 	_, err := db.DB.NamedExec(`UPDATE notifications SET name=:name, type=:type, related_to=:related_to, title=:title, text=:text, embedded_imgs=:embedded_imgs, attached_imgs=:attached_imgs, sharable=:sharable, updated_date=:updated_date WHERE id=:id and users_id_fk=:users_id_fk`, not)
 
 	return err
+}
+
+func (db *DB) EventAddonGetAllByEvent(EventID int64) ([]EventAddon, error) {
+	adds := []EventAddon{}
+	err := db.DB.Select(&adds, `SELECT * FROM eventsaddons WHERE
+								and events_id_fk = $1`, EventID)
+	return adds, err
+}
+
+func (db *DB) EventAddonAdd(e EventAddon) (int64, error) {
+	if e.Name == "" || e.EventID == 0 {
+		return -1, fmt.Errorf("EventAddonAdd: Name (%s) or EventID (%d) is empty", e.Name, e.EventID)
+	}
+	ret, err := db.DB.NamedExec(`INSERT INTO eventsaddons (name, price, currency, events_id_fk, users_id_fk) 
+	VALUES (:name, :price, :currency, :events_id_fk, :users_id_fk)`, e)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
 }
 
 // UNUSED

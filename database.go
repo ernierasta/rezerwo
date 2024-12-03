@@ -296,7 +296,8 @@ type FormTemplate struct {
 	BankAccountID        sql.NullInt64  `db:"bankaccounts_id_fk"`
 	//ThankYouMailSubject  sql.NullString `db:"thankyoumailsubject"` // not used anymore
 	//ThankYouMailText     sql.NullString `db:"thankyoumailtext"`    // not used anymore
-	NotificationID sql.NullInt64 `db:"notifications_id_fk"`
+	NotificationID      sql.NullInt64 `db:"notifications_id_fk"`
+	AdminNotificationID sql.NullInt64 `db:"admin_notifications_id_fk"`
 }
 
 type FormField struct {

@@ -3253,6 +3253,35 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 			if err != nil {
 				log.Printf("FormAnsSendMail: error sending, %v", err)
 			}
+
+			// Check if admin mail template is defined
+			if !templ.AdminNotificationID.Valid {
+				log.Println("FormAnsSendMail: admin mail template is not defined")
+				return
+			}
+			// It is defined, so send mail to admin
+			adminMail, err := db.NotificationGetByID(templ.AdminNotificationID.Int64, user.ID)
+			if err != nil {
+				log.Printf("FormAnsSendMail: error getting admin mail with ID: %d, err: %v", templ.AdminNotificationID.Int64, err)
+			}
+
+			err = prepareAndSendMail(
+				chooseEmail(user.Email, user.AltEmail.String), // send to alt mail if defined
+				f.Surname.String,
+				f.Name.String,
+				adminMail.Title.String,
+				makeSureIsHTML(adminMail.Text),
+				user,
+				FormID,
+				templ,
+				db,
+				mailConf,
+			)
+
+			if err != nil {
+				log.Printf("FormAnsSendMail: error sending admin mail, %v", err)
+			}
+
 		}
 	}
 }
@@ -3384,7 +3413,7 @@ func prepareAndSendMail(email, name, surname, msubject, mtext string, user User,
 		log.Printf("prepareAndSendMail: error executing ThankYou template, %v", err)
 	}
 
-	log.Println("MAIL TEXT:", parsedMail.String()) // DEBUG
+	//log.Println("MAIL TEXT:", parsedMail.String()) // DEBUG
 
 	mail := MailConfig{
 		Server:          mailConf.Server,

@@ -2,14 +2,18 @@
 var options = {
   i18n: {
     locale: 'pl-PL',
-    location: '/js/'
-    //location: 'http://languagefile.url/directory/'
+    location: '/js/',
+     //location: 'http://languagefile.url/directory/'
     //extension: '.ext'
     //override: {
     //    'en-US': {...}
     //}
-  }
+  },
+  templates: templates,
+  fields: customFields,
+  typeUserAttrs: userAttrs
 };
+
 
 var fbEditor = document.getElementById('fb-editor');
 var formBuilder = $(fbEditor).formBuilder(options);

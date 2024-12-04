@@ -22,6 +22,7 @@
       </form>
       <div class="d-flex justify-content-center">
         <button id="save" class="btn btn-primary mt-3" onclick="SendFormData()">{{.BTNSave}}</button>
+        <p></p>
       </div>
     </div>
     {{if ne .FormInfoPanel ""}}
@@ -30,6 +31,8 @@
     </div>
     {{end}}
   </div>
+
+  <script type="text/javascript" src="/js/form-field-multiplier.js"></script>
   <script>
     // we are setting it here, I can not figure out how to get setData to work after render
     var renderDiv = $('#fb-render');
@@ -38,7 +41,11 @@
             i18n: {
                 locale: 'pl-PL',
                 location: '/js/'
-            }//,
+            },
+            templates: templates, // here we added custom
+            fields: customFields,
+            typeUserAttrs: userAttrs
+
             //layoutTemplates: {
             //  default: function(field, label, help, data) {
             //    $(field).addClass('form-control'); // add form-control to all fields (bootstrap)

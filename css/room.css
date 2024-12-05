@@ -4,7 +4,8 @@
 }
 
 #content-wrap {
-  padding-bottom: 2.5rem; /* Footer height */
+  padding-bottom: 2.5rem;
+  /* Footer height */
 }
 
 #meta {
@@ -309,5 +310,3 @@
   z-index: 100;
   border: 1px dotted black;
 }
-
-/*# sourceMappingURL=room.css.map */

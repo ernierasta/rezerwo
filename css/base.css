@@ -1,3 +1,7 @@
 header {
   background: lightgrey;
 }
+
+body {
+  padding-bottom: 50px;
+}

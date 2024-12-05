@@ -22,9 +22,31 @@ document.getElementById('save').addEventListener('click', function() {
     SendFormDef(formBuilder.actions.getData('json', true));
 });
 
+
+const toolbarOptions = [
+  [{ 'header': [1, 2, 3, false] }],
+  ['bold', 'italic', 'underline'],        // toggled buttons
+  ['link', 'image', 'video'],
+
+  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+  [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+
+  [{ 'color': ['#28a745','#ffc107', '#fd7e14', '#dc3545', '#403734'] }],          // dropdown with defaults from theme
+  [{ 'align': [] }],
+
+  ['clean']                                         // remove formatting button
+];
+
 var QuillHowToEditor = new Quill('#howto-editor', {
-    theme: 'snow'
-  });
+  modules: {
+    toolbar: toolbarOptions
+  },
+  theme: 'snow'
+});
+
+//var QuillHowToEditor = new Quill('#howto-editor', {
+//    theme: 'snow'
+//  });
 
 var QuillThankYouEditor = new Quill('#thankyou-editor', {
     theme: 'snow'

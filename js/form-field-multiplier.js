@@ -36,7 +36,7 @@ const templates = {
  const customFields = [{
       label: 'Wielokrotność',
       type: 'multiplierField',
-      icon: ''
+      icon: '×'
       //multiplier: 600 // Default multiplier value
     }]
 

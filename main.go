@@ -3561,6 +3561,25 @@ func (i *FormFuncs) Field(FormFieldName string) string {
 	return s
 }
 
+// this functions allows to get separated data from multiplicateField (3 * 500 = 1500)
+func (i *FormFuncs) MAmmount(FormFieldName string) string {
+	s := i.Field(FormFieldName)
+	amm, _, _ := ConvertMultiplicationToAmmountMultiplTotal(s)
+	return amm
+}
+
+func (i *FormFuncs) MMultipl(FormFieldName string) string {
+	s := i.Field(FormFieldName)
+	_, mult, _ := ConvertMultiplicationToAmmountMultiplTotal(s)
+	return mult
+}
+
+func (i *FormFuncs) MTotal(FormFieldName string) string {
+	s := i.Field(FormFieldName)
+	_, _, total := ConvertMultiplicationToAmmountMultiplTotal(s)
+	return total
+}
+
 func (i *FormFuncs) generateQRimg(accountName string) (string, string) {
 	return GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID)
 }
@@ -3626,7 +3645,7 @@ func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurna
 	eft := FormTemplate{}
 	am := ""
 	// get money ammount
-	if t != eft {
+	if t != eft { // it is form
 		am, err = db.FormAnswerGetByFieldName(FormID, t.ID, t.MoneyAmountFieldName.String)
 		if err != nil {
 			am, err = db.FormAnswerGetByFieldDisplay(FormID, t.ID, t.MoneyAmountFieldName.String)
@@ -3634,6 +3653,8 @@ func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurna
 				log.Printf("GenerateQRimg: problem getting money ammount field name and display %q, FormID %d, %v", t.MoneyAmountFieldName.String, FormID, err)
 			}
 		}
+		// check and convert to sum if is from multiplicateField (it will be "3 * 500 = 1500")
+		_, _, am = ConvertMultiplicationToAmmountMultiplTotal(am)
 	} else {
 		// this is event
 		ss := strings.Split(TotalPrice, " ")
@@ -3655,6 +3676,28 @@ func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurna
 		log.Printf("GenerateQRimg: error generating qr image, %v", err)
 	}
 	return imgname, imgpath
+}
+
+func ConvertMultiplicationToAmmountMultiplTotal(s string) (string, string, string) {
+	sum := ""
+	ammount := ""
+	multiplier := ""
+
+	// if string doesn't contains "=" then it is ordinary ammount
+	if strings.Contains(s, "=") {
+		ss := strings.Split(s, "=")
+		sum = strings.TrimSpace(ss[len(ss)-1])
+		if strings.Contains(ss[0], "*") {
+			sm := strings.Split(ss[0], "*")
+			ammount = strings.TrimSpace(sm[0])
+			multiplier = strings.TrimSpace(sm[1])
+		} else {
+			log.Printf("ConvertMultiplicationToAmmountMultiplSum: no '*' symbol in %q", s)
+		}
+	} else {
+		return "", "", s // returning as is
+	}
+	return ammount, multiplier, sum
 }
 
 func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {

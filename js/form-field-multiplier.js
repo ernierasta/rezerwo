@@ -7,7 +7,7 @@ const templates = {
     console.log(fieldData);
     return {
       field: `<div>
-<input type="number" class="multiplier-input" name="${fieldData.name}-input" />
+<input type="number" class="multiplier-input ${fieldData.className}" name="${fieldData.name}-input" />
 <span class="multiplier-pre"></span><span name="${fieldData.name}-span" class="${fieldData.name}-value"></span><span class="multiplier-post"></span><input type="hidden" name="${fieldData.name}" class="${fieldData.name}-hidden"></input>
 </div>`,
       onRender: function() {
@@ -25,7 +25,7 @@ const templates = {
           const value = Number(input.value) || 0;
           preDisp.textContent = `${pre}`;
           valueDisp.textContent = `${value * multiplier}`;
-          valueHidden.value = `${value * multiplier}`; // we read value from this hidden input
+          valueHidden.value = `${value} * ${multiplier} = ${value * multiplier}`; // we read value from this hidden input
           postDisp.textContent = `${post}`;
         });
       }

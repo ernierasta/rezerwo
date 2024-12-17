@@ -40,7 +40,12 @@
             formData: {{.FormDataVal}},
             i18n: {
                 locale: 'pl-PL',
-                location: '/js/'
+                location: '/js/',
+                override: {
+                    'pl-PL': {
+                        other: 'Inne'
+                    }
+                }
             },
             templates: templates, // here we added custom
             fields: customFields,

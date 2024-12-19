@@ -3208,7 +3208,12 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 					continue // ignore fields with empty names
 				}
 				if !isEmpty(formAnsJson.Data[i].UserData) {
-					v = ToNS(formAnsJson.Data[i].UserData[0])
+					// if checkbox or other form of "multiple answers", join them to one string
+					if len(formAnsJson.Data[i].UserData) > 1 {
+						v = ToNS(strings.Join(formAnsJson.Data[i].UserData, ", "))
+					} else {
+						v = ToNS(formAnsJson.Data[i].UserData[0])
+					}
 				} else {
 					v = ToNS("")
 				}

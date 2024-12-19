@@ -4,7 +4,7 @@
 // Define the custom field template
 const templates = {
   multiplierField: function(fieldData) {
-    console.log(fieldData);
+    //console.log(fieldData);
     return {
       field: `<div>
 <input type="number" class="multiplier-input ${fieldData.className}" name="${fieldData.name}-input" />

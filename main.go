@@ -3534,6 +3534,7 @@ func (i *FormFuncs) Sum(FormFieldName string) string {
 
 	log.Println("field id:", id)
 	nrs, err := i.DB.FormAnswerGetAllAnswersForFieldInts(id)
+	log.Println("nrs: %v", nrs)
 	if err != nil {
 		log.Printf("Sum: can not get data for field %s(id:%d), %v", FormFieldName, id, err)
 	}

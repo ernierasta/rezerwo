@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -3522,14 +3523,14 @@ type FormFuncs struct {
 // form field can be specified by name or display value,
 // where name is always checked first.
 // This function is forms specific!
-func (i *FormFuncs) Sum(FormFieldName string) string {
+func (i *FormFuncs) Sum(FormFieldName string) template.HTML {
 	var sum int64
 	if strings.ToLower(FormFieldName) == "forms" {
 		amm, err := i.DB.FormGetAmmount(i.User.ID, i.Template.ID)
 		if err != nil {
 			log.Printf("Sum: error getting ammount of forms for user %q, formTemplID %d, %v", i.User.URL, i.Template.ID, err)
 		}
-		return strconv.FormatInt(amm, 10)
+		return template.HTML(strconv.FormatInt(amm, 10))
 	}
 	id, err := i.DB.FormFieldGetIDByName(FormFieldName, i.Template.ID)
 	if err != nil {
@@ -3537,17 +3538,52 @@ func (i *FormFuncs) Sum(FormFieldName string) string {
 		id, err = i.DB.FormFieldGetIDByDisplay(FormFieldName, i.Template.ID)
 	}
 
-	log.Println("field id:", id)
 	nrs, err := i.DB.FormAnswerGetAllAnswersForFieldInts(id)
-	log.Println("nrs: %v", nrs)
+	//log.Printf("field id: %v, nrs: %v", id, nrs)
 	if err != nil {
 		log.Printf("Sum: can not get data for field %s(id:%d), %v", FormFieldName, id, err)
-	}
-	for i := range nrs {
-		sum += nrs[i]
+	} else { // there are numbers, so return ordinary sum
+		for i := range nrs {
+			sum += nrs[i]
+		}
+		return template.HTML(strconv.FormatInt(sum, 10))
 	}
 
-	return strconv.FormatInt(sum, 10)
+	// Let's sum string answers, we are counting the same string separated by ', ' across
+	// all answers in given field
+	strs, err := i.DB.FormAnswerGetAllAnswersForFieldStrings(id)
+	type kv struct {
+		K string
+		V int
+	}
+	m := map[string]int{}
+	for i := range strs {
+		ss := strings.Split(strs[i], ", ")
+		for n := range ss {
+			val, ok := m[ss[n]]
+			if ok {
+				m[ss[n]] = val + 1
+			} else {
+				m[ss[n]] = 1
+			}
+		}
+	}
+	// let's sort result by ammount
+	kvs := []kv{}
+	for k, v := range m {
+		kvs = append(kvs, kv{k, v})
+	}
+	sort.Slice(kvs, func(i, j int) bool {
+		return kvs[i].V > kvs[j].V
+	})
+
+	out := "<ul class=\"sum-list\">"
+	for _, kv := range kvs { // format strings for new line - I do not like it hardcoded
+		out += fmt.Sprintf("<li class=\"sum-list-el\">%s: <b>%d</b></li>", kv.K, kv.V)
+	}
+	out += "</ul>"
+	return template.HTML(out)
+
 }
 
 // Field shows form field value as is in db.

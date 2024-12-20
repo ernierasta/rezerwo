@@ -1340,7 +1340,14 @@ func (db *DB) FormAnswerGetAllForTemplate(FormTemplateID int64) ([]FormAnswer, e
 // FormAnswerGetAllAnswersForFieldInts works only for data which can be converted to int64
 func (db *DB) FormAnswerGetAllAnswersForFieldInts(FieldID int64) ([]int64, error) {
 	fa := []int64{}
-	err := db.DB.Select(&fa, `SELECT Value FROM formanswers WHERE formfields_id_fk=$1`, FieldID)
+	err := db.DB.Select(&fa, `SELECT Value FROM formanswers WHERE formfields_id_fk=$1 and Value IS NOT NULL`, FieldID)
+	return fa, err
+}
+
+// FormAnswerGetAllAnswersForFieldStrings works only for data which can be converted to int64
+func (db *DB) FormAnswerGetAllAnswersForFieldStrings(FieldID int64) ([]string, error) {
+	fa := []string{}
+	err := db.DB.Select(&fa, `SELECT Value FROM formanswers WHERE formfields_id_fk=$1 and Value IS NOT NULL`, FieldID)
 	return fa, err
 }
 

@@ -83,11 +83,14 @@ $(function() {
           var stscol = table.colReorder.transpose(OrderStatus);
           var furnNumberCol = table.colReorder.transpose(ChairNr);
           var roomNameCol = table.colReorder.transpose(Room);
+          var payedCol = table.colReorder.transpose(Payed);
+          var now = new Date();
           indexes = dt.rows({selected: true}).indexes();
           for (i=0; i < indexes.length;i++){
             row = dt.row(indexes[i]).data()
             if (row[stscol] === "ordered") {
               row[stscol] = "payed";
+              row[payedCol] = now.toISOString().slice(0, 16).replace('T', ' ');
               dt.row(indexes[i]).data(row);
               $.ajax({
                 method: "POST",
@@ -96,6 +99,7 @@ $(function() {
               });
             } else if (row[stscol] === "payed") {
               row[stscol] = "ordered";
+              row[payedCol] = "1970-01-01 01:00";
               dt.row(indexes[i]).data(row);
               $.ajax({
                 method: "POST",

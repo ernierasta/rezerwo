@@ -1668,6 +1668,11 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 			log.Printf("error: AdminReservations: can not get reservations for event ID: %d and user ID: %d, err: %v", eventID, user.ID, err)
 		}
 
+		for i := range rf {
+			rf[i].PayedDateS = ToDateTime(rf[i].PayedDate.Int64)
+			rf[i].OrderedDateS = ToDateTime(rf[i].OrderedDate.Int64)
+		}
+
 		enP := AdminReservationsVars{
 			LBLLang:          lang,
 			EventID:          eventID,
@@ -1688,9 +1693,31 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 			THPayedDate:      "Payed",
 			ReservationsFull: rf,
 		}
+		_ = enP
+
+		plP := AdminReservationsVars{
+			LBLLang:          lang,
+			EventID:          eventID,
+			LBLTitle:         "Rezerwacje",
+			LBLTotalPrice:    "Łącznie",
+			LBLTotalSits:     "Bilety łącznie",
+			THChairNumber:    "Nr krzesła",
+			THRoomName:       "Pomieszczenie",
+			THCustName:       "Imię",
+			THCustSurname:    "Nazwisko",
+			THCustEmail:      "Email",
+			THCustPhone:      "Telefon",
+			THPrice:          "Cena",
+			THCurrency:       "Waluta",
+			THStatus:         "Status",
+			THNotes:          "Notatki",
+			THOrderedDate:    "Zamówiono",
+			THPayedDate:      "Zapłacono",
+			ReservationsFull: rf,
+		}
 
 		t := template.Must(template.ParseFiles("tmpl/a_reservations.html", "tmpl/base.html"))
-		err = t.ExecuteTemplate(w, "base", enP)
+		err = t.ExecuteTemplate(w, "base", plP)
 		if err != nil {
 			log.Print("AdminReservations template executing error: ", err)
 		}

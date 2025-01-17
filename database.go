@@ -244,11 +244,13 @@ type EventFull struct {
 }
 
 type Reservation struct {
-	ID          int64          `db:"id"`
-	OrderedDate sql.NullInt64  `db:"ordered_date"`
-	PayedDate   sql.NullInt64  `db:"payed_date"`
-	Price       sql.NullInt64  `db:"price"`
-	Currency    sql.NullString `db:"currency"`
+	ID           int64          `db:"id"`
+	OrderedDate  sql.NullInt64  `db:"ordered_date"`
+	OrderedDateS string         `db:"-"`
+	PayedDate    sql.NullInt64  `db:"payed_date"`
+	PayedDateS   string         `db:"-"`
+	Price        sql.NullInt64  `db:"price"`
+	Currency     sql.NullString `db:"currency"`
 	// Status: free, marked, ordered, confirmed, disabled
 	Status      string        `db:"status"`
 	NoteID      sql.NullInt64 `db:"notes_id_fk"`

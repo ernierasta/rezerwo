@@ -21,6 +21,9 @@ var formBuilder = $(fbEditor).formBuilder(options);
 document.getElementById('save').addEventListener('click', function() {
     SendFormDef(formBuilder.actions.getData('json', true));
 });
+document.getElementById('saveandclose').addEventListener('click', function() {
+    SendFormDef(formBuilder.actions.getData('json', true), true);
+});
 
 
 const toolbarOptions = [
@@ -64,7 +67,7 @@ function NewBankAccount(){
 }
 
 
-function SendFormDef(data) {
+function SendFormDef(data, redirect = false) {
 
   var finald = {};
   dataj = JSON.parse(data);
@@ -101,8 +104,10 @@ function SendFormDef(data) {
       window.setTimeout(function(){
         $("#save").removeClass("btn-success");
       },2000);
-      window.location.replace("/admin");
-      //window.location.href = "/admin";
+      if (redirect) {
+        window.location.replace("/admin");
+        //window.location.href = "/admin";
+      }
     },
     statusCode: {
       418: function(xhr) {

@@ -1996,6 +1996,7 @@ type FormEditorVars struct {
 	LBLMoneyField              string
 	MoneyFieldVal              string
 	BTNSave                    string
+	BTNSaveAndClose 					 string
 	BTNClose                   string
 	BTNSelect                  string
 	BankAccounts               []BankAccount
@@ -2072,6 +2073,7 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			LBLFormThankYou:            "Komunikat/podziękowanie po wypełnienieniu formularza:",
 			LBLFormInfoPanel:           "Panel boczny formularza (np. zliczanie aktualnych wartości):",
 			BTNSave:                    "Zapisz",
+			BTNSaveAndClose: 						"Zapisz i zamknij",
 			FormNameVal:                formTempl.Name,
 			FormURLVal:                 formTempl.URL,
 			FormBannerVal:              formTempl.Banner.String,

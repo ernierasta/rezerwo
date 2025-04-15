@@ -99,6 +99,8 @@ func main() {
 	http.HandleFunc("/api/formansdelete", FormAnsDelete(db, cookieStore))
 	http.HandleFunc("/api/formanssendmail", FormAnsSendMail(db, mailConf, cookieStore))
 	http.HandleFunc("/api/maed", MailAddMod(db, cookieStore))
+	http.HandleFunc("/api/formstmpls", FormTemplsGetAPI(db, cookieStore))
+	http.HandleFunc("/api/formdefs", GenerateFormDefsAPI(db, cookieStore))
 
 	log.Fatal(http.ListenAndServe(":3002", nil))
 }
@@ -1996,7 +1998,7 @@ type FormEditorVars struct {
 	LBLMoneyField              string
 	MoneyFieldVal              string
 	BTNSave                    string
-	BTNSaveAndClose 					 string
+	BTNSaveAndClose            string
 	BTNClose                   string
 	BTNSelect                  string
 	BankAccounts               []BankAccount
@@ -2073,7 +2075,7 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			LBLFormThankYou:            "Komunikat/podziękowanie po wypełnienieniu formularza:",
 			LBLFormInfoPanel:           "Panel boczny formularza (np. zliczanie aktualnych wartości):",
 			BTNSave:                    "Zapisz",
-			BTNSaveAndClose: 						"Zapisz i zamknij",
+			BTNSaveAndClose:            "Zapisz i zamknij",
 			FormNameVal:                formTempl.Name,
 			FormURLVal:                 formTempl.URL,
 			FormBannerVal:              formTempl.Banner.String,
@@ -3523,6 +3525,193 @@ func isEmpty[T comparable](t []T) bool {
 		return false
 	}
 	return true
+}
+
+func FormTemplsGetAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		type FTJson struct {
+			ID   int
+			Name string
+		}
+
+		fts := []FTJson{}
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("info: FormTemplsGetAPI: %v", err)
+			return
+		}
+		user, err := db.UserGetByEmail(email)
+
+		if r.Method == "GET" {
+			ff, err := db.FormTemplateGetAll(user.ID)
+			if err != nil {
+				log.Printf("FormTemplsGetAPI: error getting formtemplates from db, %v", err)
+			}
+			for i := range ff {
+				fts = append(fts, FTJson{
+					ID:   int(ff[i].ID),
+					Name: ff[i].Name,
+				})
+			}
+			// Set content type
+			w.Header().Set("Content-Type", "application/json")
+
+			// Encode and write JSON
+			if err := json.NewEncoder(w).Encode(fts); err != nil {
+				log.Printf("FormTemplsGetAPI: error encoding json, %v", err)
+				http.Error(w, "Failed to encode JSON", http.StatusTeapot)
+			}
+		}
+	}
+}
+
+// GenFormDefsDeltaOp represents a single operation in Quill's Delta format
+type GenFormDefsDeltaOp struct {
+	Insert     interface{}            `json:"insert"`
+	Attributes map[string]interface{} `json:"attributes,omitempty"`
+}
+
+// GenFormDefsDelta represents a Quill Delta object
+type GenFormDefsDelta struct {
+	Ops []GenFormDefsDeltaOp `json:"ops"`
+}
+
+func GenerateFormDefsAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		type DefJson struct {
+			DefType     string `json:"type"`
+			FormTemplID int64  `json:"id"`
+		}
+		type Response struct {
+			Msg GenFormDefsDelta `json:"msg"`
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		_, _, _, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("info: session error: %v", err)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		defer r.Body.Close()
+		var dj DefJson
+		if err := json.NewDecoder(r.Body).Decode(&dj); err != nil {
+			log.Printf("GenerateFormDefsAPI: failed to decode JSON: %v", err)
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		infopanel, notif := generateFormData(dj.FormTemplID, db)
+		var res Response
+		switch dj.DefType {
+		case "notification":
+			res = Response{Msg: notif}
+		case "infopanel":
+			res = Response{Msg: infopanel}
+		default:
+			res = Response{
+				Msg: GenFormDefsDelta{
+					Ops: []GenFormDefsDeltaOp{
+						{Insert: fmt.Sprintf("unknown type: %s", dj.DefType)},
+					},
+				},
+			}
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			log.Printf("error: failed to encode response: %v", err)
+		}
+	}
+}
+
+// generateFormData generates Delta objects for sidebar/info panel (first returned struct)
+// delta object is json object which quill editor expects
+// mail notification (second struct)
+// returned text is in Polish, as we currently need only this
+func generateFormData(formTemplID int64, db *DB) (GenFormDefsDelta, GenFormDefsDelta) {
+	sidebar := GenFormDefsDelta{Ops: []GenFormDefsDeltaOp{}}
+	notification := GenFormDefsDelta{Ops: []GenFormDefsDeltaOp{}}
+
+	ff, err := db.FormFieldGetAllForTmpl(formTemplID)
+	if err != nil {
+		log.Printf("generateFormData: error getting form data, %v", err)
+		return GenFormDefsDelta{}, GenFormDefsDelta{}
+	}
+
+	// Sidebar Delta: Equivalent to <h2>Aktualny stan:</h2> Ilość deklaracji: <b>{{.Sum "forms"}}</b><br>
+	sidebar.Ops = append(sidebar.Ops,
+		GenFormDefsDeltaOp{
+			Insert:     "Aktualny stan:",
+			Attributes: map[string]interface{}{"header": 2},
+		},
+		GenFormDefsDeltaOp{Insert: "\n"},
+		GenFormDefsDeltaOp{Insert: "Ilość deklaracji: "},
+		GenFormDefsDeltaOp{
+			Insert:     "{{.Sum \"forms\"}}",
+			Attributes: map[string]interface{}{"bold": true},
+		},
+		GenFormDefsDeltaOp{Insert: "\n"},
+	)
+
+	log.Printf("Fields from db: %+v\n", ff) //debug
+
+	// Add dynamic fields for sidebar and notification
+	for _, f := range ff {
+		// Sidebar: Equivalent to Display: <b>{{.Sum "name"}}/</b><br>
+		sidebar.Ops = append(sidebar.Ops,
+			GenFormDefsDeltaOp{Insert: f.Display + ": "},
+			GenFormDefsDeltaOp{
+				Insert:     fmt.Sprintf("{{.Sum \"%s\"}}/", f.Name),
+				Attributes: map[string]interface{}{"bold": true},
+			},
+			GenFormDefsDeltaOp{Insert: "\n"},
+		)
+
+		// Notification: Equivalent to Display: <b>{{.Field "name"}}</b><br>
+		notification.Ops = append(notification.Ops, generateFormDataForNotif(f)...)
+	}
+
+	return sidebar, notification
+}
+
+func generateFormDataForNotif(f FormField) []GenFormDefsDeltaOp {
+	var out []GenFormDefsDeltaOp
+
+	switch f.Type {
+	case "multiplierField":
+		out = []GenFormDefsDeltaOp{
+			GenFormDefsDeltaOp{Insert: f.Display + ": "},
+			GenFormDefsDeltaOp{
+				Insert:     fmt.Sprintf("{{.MAmmount \"%s\"}}", f.Name),
+				Attributes: map[string]interface{}{"bold": true},
+			},
+			GenFormDefsDeltaOp{Insert: " biletów, cena: "},
+			GenFormDefsDeltaOp{
+				Insert:     fmt.Sprintf("{{.MTotal \"%s\"}}", f.Name),
+				Attributes: map[string]interface{}{"bold": true},
+			},
+			GenFormDefsDeltaOp{Insert: " Kč"},
+			GenFormDefsDeltaOp{Insert: "\n"},
+		}
+	default:
+		out = []GenFormDefsDeltaOp{GenFormDefsDeltaOp{Insert: f.Display + ": "},
+			GenFormDefsDeltaOp{
+				Insert:     fmt.Sprintf("{{.Field \"%s\"}}", f.Name),
+				Attributes: map[string]interface{}{"bold": true},
+			},
+			GenFormDefsDeltaOp{Insert: "\n"},
+		}
+	}
+	return out
+
 }
 
 type FormRendererVars struct {

@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -2071,7 +2072,7 @@ func FormEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			LBLAdminHowTo:              "Przeciągaj elementy na głowny ekran. Zmień ich tytuły i Zapisz. Pamiętaj by Link był unikatowy (np. dekl2024)!",
 			LBLFormURL:                 "Link (URL):",
 			LBLFormHowTo:               "Instrukcja dla wypełniającego (HTML):",
-			LBLFormBanner:              "Banner formularza:",
+			LBLFormBanner:              "Banner formularza (szuka zdjęcia w katalogu domowym - /media/url/):",
 			LBLFormThankYou:            "Komunikat/podziękowanie po wypełnienieniu formularza:",
 			LBLFormInfoPanel:           "Panel boczny formularza (np. zliczanie aktualnych wartości):",
 			BTNSave:                    "Zapisz",
@@ -3715,14 +3716,16 @@ func generateFormDataForNotif(f FormField) []GenFormDefsDeltaOp {
 }
 
 type FormRendererVars struct {
-	LBLLang       string
-	LBLTitle      string
-	UniqIDTitle   string
-	UniqID        string // used for anonymous
-	LBLHowTo      template.HTML
-	FormDataVal   template.JS
-	FormInfoPanel template.HTML
-	BTNSave       string
+	LBLLang          string
+	ImgBanner        string
+	ImgBannerRootDir string
+	LBLTitle         string
+	UniqIDTitle      string
+	UniqID           string // used for anonymous
+	LBLHowTo         template.HTML
+	FormDataVal      template.JS
+	FormInfoPanel    template.HTML
+	BTNSave          string
 }
 
 type FormFuncs struct {
@@ -3990,17 +3993,21 @@ func FormRenderer(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 
 		log.Println(parsedInfoPanel.String()) // DEBUG
 
+		rootpath := path.Join("/", MEDIAROOT, user.URL)
+
 		// now actuall rendering
 
 		pPL := FormRendererVars{
-			LBLLang:       lang,
-			LBLTitle:      templ.Name,
-			UniqIDTitle:   "Unikatowe ID formularza: ",
-			UniqID:        uniqID,
-			LBLHowTo:      template.HTML(templ.HowTo.String),
-			FormDataVal:   template.JS(templ.Content.String),
-			FormInfoPanel: template.HTML(reallyEmpty(parsedInfoPanel.String())),
-			BTNSave:       "Wyślij!",
+			LBLLang:          lang,
+			LBLTitle:         templ.Name,
+			ImgBannerRootDir: rootpath,
+			ImgBanner:        templ.Banner.String,
+			UniqIDTitle:      "Unikatowe ID formularza: ",
+			UniqID:           uniqID,
+			LBLHowTo:         template.HTML(templ.HowTo.String),
+			FormDataVal:      template.JS(templ.Content.String),
+			FormInfoPanel:    template.HTML(reallyEmpty(parsedInfoPanel.String())),
+			BTNSave:          "Wyślij!",
 		}
 
 		t := template.Must(template.ParseFiles("tmpl/form_renderer.html", "tmpl/base.html"))

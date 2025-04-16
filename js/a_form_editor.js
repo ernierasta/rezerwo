@@ -9,7 +9,7 @@ var options = {
     //    'en-US': {...}
     //}
   },
-  templates: templates,
+  templates: templates, // HERE we are integrating custom fields like multiplier
   fields: customFields,
   typeUserAttrs: userAttrs
 };

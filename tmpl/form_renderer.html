@@ -2,11 +2,13 @@
   <title>{{.LBLTitle}}</title>
   <script src="/js/form-render.min.js"></script>
   <script src="/js/jquery.redirect.js"></script>
+  <link rel="stylesheet" type="text/css" href="/css/form_renderer.css"/>
 {{end}}
 {{define "body"}}
   <div class="d-flex justify-content-center align-items-center">
       <div class="col-md-8">
         <h4>{{.LBLTitle}}</h4>
+        {{if ne .ImgBanner ""}}<img id='topbanner' src="{{.ImgBannerRootDir}}/{{.ImgBanner}}" alt="">{{end}}
         <p>{{.LBLHowTo}}</p>
       </div>
   </div>

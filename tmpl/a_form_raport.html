@@ -12,9 +12,10 @@
     <div class="col-md-12">
       <h3>{{.LBLTitle}}</h3>
       <input id="formtmpl-id" type="hidden" value={{.FormTmplID}}>
+      <p></p>
       <div>{{.HTMLNotificationHowTo}}</div>
       <div class="input-group">
-        <select name="ba-select" id="ba-select" class="custom-select">
+        <select name="notif-select" id="notif-select" class="custom-select col-md-4">
           <option value="0" selected>{{.LBLSelectNotification}}</option>
           {{range .Notifications}}
           <option value="{{.ID}}">{{.Name}}</option>

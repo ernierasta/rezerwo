@@ -100,8 +100,18 @@ $(function() {
         action: function ( e, dt, button, config ) {
           var formID = table.colReorder.transpose(FormID);
           var indexes = dt.rows({selected: true}).indexes();
+          var notificationID = Number($('#notif-select').val());
+          
+          
+          // check if mail template is selected - if 0 abort
+          if (notificationID == 0 ) {
+            bootbox.alert("Nie wybrano szablonu maila, wybierz powyżej i spróbuj ponownie.");
+            return
+          }
+
+          // confirm sending - send mail if confirmed
           bootbox.confirm({
-            message: "Naprawde wysłać <b>" + indexes.length + "</b> e-maili?",
+                        message: "Naprawde wysłać <b>" + indexes.length + "</b> e-maili (szablon: " + $('#notif-select').find('option:selected').text() + ")?",
               buttons: {
                 cancel: {
                     label: '<i class="fa fa-times"></i> Anuluj'
@@ -117,7 +127,7 @@ $(function() {
                   $.ajax({
                     method: "POST",
                     url: "/api/formanssendmail",
-                    data: JSON.stringify({formtmpl_id: Number($('#formtmpl-id').val()),forms_id: Number(row[formID])})
+                    data: JSON.stringify({formtmpl_id: Number($('#formtmpl-id').val()),forms_id: Number(row[formID]), notification_id: notificationID})
                   });
                   row[NotifsSent] = Number(row[NotifsSent]) + 1;
                   row[LastNotif] = "Teraz";

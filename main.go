@@ -2277,8 +2277,8 @@ func FormRaport(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			FormTmplID:            formTmplID,
 			LBLTitle:              "Reservations",
 			LBLTotalPrice:         "Total",
-			HTMLNotificationHowTo: template.HTML("Wybierz przygotowaną wcześniej wiadomość e-mail.<br>Jeżeli nie masz takiej, to możesz to zrobić z głównego ekranu administracji."),
-			LBLSelectNotification: "Domyślna notyfikacja (konfigurowana we właściwościach Formularza)",
+			HTMLNotificationHowTo: template.HTML("Wybierz przygotowaną wcześniej wiadomość e-mail."),
+			LBLSelectNotification: "Wybierz notyfikację ...",
 			FormFields:            cols,
 			AnswersRows:           rows,
 			Notifications:         notifs,
@@ -3393,7 +3393,7 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 				log.Printf("FormAnsSendMail: error retrieving formTemplate with ID: %d from DB, err: %v", m.FormTemplateID, err)
 			}
 
-			mail, err := db.NotificationGetByID(formTempl.NotificationID.Int64, user.ID)
+			mail, err := db.NotificationGetByID(m.NotificationID, user.ID)
 			if err != nil {
 				log.Printf("FormAnsSendMail: error getting mail with ID: %d, err: %v", formTempl.NotificationID.Int64, err)
 			}

@@ -114,6 +114,16 @@ func MailSend(n MailConfig) error {
 
 	subjectb64 := base64.StdEncoding.EncodeToString([]byte(n.Subject))
 
+	// if from contains not only email, but something like "Name Surname <mail@something.com>"
+	// we need to be sure international chars are properly encoded
+	if strings.Contains(n.From, "<") {
+		ss := strings.Split(n.From, "<")
+		if len(ss) == 2 {
+			m := mail.Address{Name: ss[0], Address: strings.TrimSuffix(ss[1], ">")}
+			n.From = m.String()
+		}
+	}
+
 	header := make(map[string]string)
 	header["From"] = n.From
 	header["To"] = recipients

@@ -3662,15 +3662,26 @@ func generateFormData(formTemplID int64, db *DB) (GenFormDefsDelta, GenFormDefsD
 		GenFormDefsDeltaOp{Insert: "\n"},
 	)
 
-	log.Printf("Fields from db: %+v\n", ff) //debug
+	//log.Printf("Fields from db: %+v\n", ff) //debug
 
 	// Add dynamic fields for sidebar and notification
 	for _, f := range ff {
-		// Sidebar: Equivalent to Display: <b>{{.Sum "name"}}/</b><br>
+
+		if strings.Contains(f.Name, "REQUIRED") {
+			continue
+		}
+
+		SumFunc := ".Sum"
+
+		// propose SumAlfa - the can use Sum also
+		if f.Type == "checkbox-group" {
+			SumFunc = ".SumAlfa"
+		}
+
 		sidebar.Ops = append(sidebar.Ops,
 			GenFormDefsDeltaOp{Insert: f.Display + ": "},
 			GenFormDefsDeltaOp{
-				Insert:     fmt.Sprintf("{{.Sum \"%s\"}}/", f.Name),
+				Insert:     fmt.Sprintf("{{%s \"%s\"}}/", SumFunc, f.Name), // {{.Sum FieldName}}
 				Attributes: map[string]interface{}{"bold": true},
 			},
 			GenFormDefsDeltaOp{Insert: "\n"},
@@ -3745,7 +3756,17 @@ type FormFuncs struct {
 // where name is always checked first.
 // This function is forms specific!
 func (i *FormFuncs) Sum(FormFieldName string) template.HTML {
+	return i.sum(FormFieldName, false)
+}
+
+func (i *FormFuncs) SumAlfa(FormFieldName string) template.HTML {
+	return i.sum(FormFieldName, true)
+}
+
+func (i *FormFuncs) sum(FormFieldName string, sortByName bool) template.HTML {
 	var sum int64
+
+	// special value "forms" - counts how many forms are filled
 	if strings.ToLower(FormFieldName) == "forms" {
 		amm, err := i.DB.FormGetAmmount(i.User.ID, i.Template.ID)
 		if err != nil {
@@ -3753,12 +3774,15 @@ func (i *FormFuncs) Sum(FormFieldName string) template.HTML {
 		}
 		return template.HTML(strconv.FormatInt(amm, 10))
 	}
+
+	// retrieve formfield id
 	id, err := i.DB.FormFieldGetIDByName(FormFieldName, i.Template.ID)
 	if err != nil {
 		log.Printf("searching for display: %s", FormFieldName) //debug
 		id, err = i.DB.FormFieldGetIDByDisplay(FormFieldName, i.Template.ID)
 	}
 
+	// try to get ints from db, if can not do that assume strings
 	nrs, err := i.DB.FormAnswerGetAllAnswersForFieldInts(id)
 	//log.Printf("field id: %v, nrs: %v", id, nrs)
 	if err != nil {
@@ -3789,14 +3813,22 @@ func (i *FormFuncs) Sum(FormFieldName string) template.HTML {
 			}
 		}
 	}
-	// let's sort result by ammount
+
+	// sorting
 	kvs := []kv{}
 	for k, v := range m {
 		kvs = append(kvs, kv{k, v})
 	}
-	sort.Slice(kvs, func(i, j int) bool {
-		return kvs[i].V > kvs[j].V
-	})
+	if !sortByName {
+		// let's sort result by ammount
+		sort.Slice(kvs, func(i, j int) bool {
+			return kvs[i].V > kvs[j].V
+		})
+	} else { // sort by key name
+		sort.Slice(kvs, func(i, j int) bool {
+			return kvs[i].K < kvs[j].K
+		})
+	}
 
 	out := "<ul class=\"sum-list\">"
 	for _, kv := range kvs { // format strings for new line - I do not like it hardcoded
@@ -3804,7 +3836,6 @@ func (i *FormFuncs) Sum(FormFieldName string) template.HTML {
 	}
 	out += "</ul>"
 	return template.HTML(out)
-
 }
 
 // Field shows form field value as is in db.

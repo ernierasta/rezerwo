@@ -1916,14 +1916,15 @@ func MailEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 		if err != nil {
 			log.Printf("MailEditor: problem parsing form data, err: %v", err)
 		}
-		mailIDs := r.FormValue("mail-id")
-		log.Println(mailIDs) //debug
+		mailIDs := r.FormValue("mail-id") // it is empty for new notification
+		log.Println(mailIDs)              //debug
 		mailID, err := strconv.ParseInt(mailIDs, 10, 64)
 		if err != nil {
 			// it is probably new main/notification, so name is sent
 			name := r.FormValue("name")
 			curMail = Notification{
-				Name: name,
+				Name:   name,
+				UserID: user.ID,
 			}
 			if name == "" {
 				log.Printf("MailEditor: error retrieving notification, no valid ID %q and name %q", mailIDs, name)
@@ -2876,6 +2877,11 @@ func FormTemplateAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 			// we will try to modify it
 			if err != nil {
 				//log.Printf("FormTemplateAddMod: insert failed, probably already exists in db, %v", err)
+				if len(string(rawContent.Content)) < 5 {
+					log.Println("FormTemplateAddMod: while updating form template, definition is < 5, no changes saved")
+					http.Error(w, `"msg":"Zawartość formularza < 5 znaków, nie zapisuję niczego!"`, http.StatusTeapot)
+					return
+				}
 				err := db.FormTemplateModByURL(ft)
 				if err != nil {
 					log.Printf("FormTemplateAddMod: insert and update faied! %v", err)
@@ -3079,7 +3085,7 @@ func MailAddMod(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r 
 				Sharable:               b.Sharable,
 				CreatedDate:            now,
 				UpdatedDate:            ToNI(now),
-				UserID:                 userid,
+				UserID:                 user.ID,
 			}
 
 			var lastid int64

@@ -1224,7 +1224,7 @@ func (db *DB) FormFieldModByName(f *FormField) error {
 }
 
 func (db *DB) FormFieldDelByName(name string, formtemplateID int64) error {
-	ret, err := db.DB.Exec(`DELETE FROM formfields WHERE name=$1`, name)
+	ret, err := db.DB.Exec(`DELETE FROM formfields WHERE name=$1 and formtemplates_id_fk=$2`, name, formtemplateID)
 	if err != nil {
 		return err
 	}

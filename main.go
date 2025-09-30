@@ -3762,14 +3762,20 @@ type FormFuncs struct {
 // where name is always checked first.
 // This function is forms specific!
 func (i *FormFuncs) Sum(FormFieldName string) template.HTML {
-	return i.sum(FormFieldName, false)
+	return i.sum(FormFieldName, false, false)
 }
 
+// SumAlfa sorts results by name (not by ammount) in case of string values
 func (i *FormFuncs) SumAlfa(FormFieldName string) template.HTML {
-	return i.sum(FormFieldName, true)
+	return i.sum(FormFieldName, true, false)
 }
 
-func (i *FormFuncs) sum(FormFieldName string, sortByName bool) template.HTML {
+// SumStrings forces string values (even when they are numbers) and sorts by string name
+func (i *FormFuncs) SumStrings(FormFieldName string) template.HTML {
+	return i.sum(FormFieldName, true, true)
+}
+
+func (i *FormFuncs) sum(FormFieldName string, sortByName bool, forceStringVals bool) template.HTML {
 	var sum int64
 
 	// special value "forms" - counts how many forms are filled
@@ -3788,16 +3794,18 @@ func (i *FormFuncs) sum(FormFieldName string, sortByName bool) template.HTML {
 		id, err = i.DB.FormFieldGetIDByDisplay(FormFieldName, i.Template.ID)
 	}
 
-	// try to get ints from db, if can not do that assume strings
-	nrs, err := i.DB.FormAnswerGetAllAnswersForFieldInts(id)
-	//log.Printf("field id: %v, nrs: %v", id, nrs)
-	if err != nil {
-		log.Printf("Sum: can not get data for field %s(id:%d), %v", FormFieldName, id, err)
-	} else { // there are numbers, so return ordinary sum
-		for i := range nrs {
-			sum += nrs[i]
+	if !forceStringVals { // if strings are forced, skip int retrieval
+		// try to get ints from db, if can not do that assume strings
+		nrs, err := i.DB.FormAnswerGetAllAnswersForFieldInts(id)
+		//log.Printf("field id: %v, nrs: %v", id, nrs)
+		if err != nil {
+			log.Printf("Sum: can not get data for field %s(id:%d), %v", FormFieldName, id, err)
+		} else { // there are numbers, so return ordinary sum
+			for i := range nrs {
+				sum += nrs[i]
+			}
+			return template.HTML(strconv.FormatInt(sum, 10))
 		}
-		return template.HTML(strconv.FormatInt(sum, 10))
 	}
 
 	// Let's sum string answers, we are counting the same string separated by ', ' across

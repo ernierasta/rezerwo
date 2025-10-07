@@ -1896,7 +1896,7 @@ func AboutHTML(lang string) func(w http.ResponseWriter, r *http.Request) {
 		pPL := AboutVars{
 			LBLLang:       lang,
 			LBLTitle:      "REZERWO",
-			LBLAboutTitle: template.HTML("REZERWO - Zaolziański system do rezerwacji"),
+			LBLAboutTitle: template.HTML("REZERWO - Zaolzie reservation system"),
 			// 	LBLAboutText: template.HTML(`
 			// <b>Sezon 2022/2023</b><br />
 			// Wszyscy wymawiają się na covid, więc i ja skorzystam. System jak widzicie żyje i ma się dobrze. Covid spowodował,
@@ -1910,8 +1910,7 @@ func AboutHTML(lang string) func(w http.ResponseWriter, r *http.Request) {
 			// <b>Głównym celem projektu jest, by wszystkie bale (i podobne), których organizatorem są polskie organizacje w Czechach,
 			// były zarządzane za pomocą REZERWO.</b><br />
 			// Leszek Cimała, admin (at) zori.cz`),
-			LBLAboutText: template.HTML(`<b>Skorzystali Państwo z zaolziańskiego systemu rezerwacji miejsc.<br />
-			Dziękujemy i zapraszamy ponownie!</b><br />
+			LBLAboutText: template.HTML(`<b>You used Rezerwo. Thank you and see you again!</b><br />
 			Leszek Cimała, admin (at) zori.cz`),
 		}
 

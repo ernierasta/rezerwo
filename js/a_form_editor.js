@@ -1,7 +1,7 @@
 
 var options = {
   i18n: {
-    locale: 'pl-PL',
+    locale: 'pl',
     location: '/js/',
      //location: 'http://languagefile.url/directory/'
     //extension: '.ext'

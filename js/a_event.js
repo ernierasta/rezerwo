@@ -140,6 +140,7 @@ function Save() {
          
   finald.id = $('#id').val();
   finald.name = $('#name').val();
+  finald.language = $('#language').val();
   finald.date = $('#date').val();
   finald.from_date = $('#from-date').val();
   finald.to_date = $('#to-date').val();

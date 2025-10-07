@@ -134,6 +134,10 @@ import (
 // SET number = number + 20
 // WHERE rooms_id_fk = 4 AND type = "table"
 
+// update to enable language switch - 10.2025
+//ALTER TABLE events
+//   ADD COLUMN language TEXT;
+
 const (
 	ConnOptions = "?cache=shared&mode=rwc&_busy_timeout=999999"
 )
@@ -211,25 +215,26 @@ type Price struct {
 }
 
 type Event struct {
-	ID                      int64         `db:"id"`
-	Name                    string        `db:"name"`
-	Date                    int64         `db:"date"`
-	FromDate                int64         `db:"from_date"`
-	ToDate                  int64         `db:"to_date"`
-	DefaultPrice            int64         `db:"default_price"`
-	DefaultCurrency         string        `db:"default_currency"`
-	NoSitsSelectedTitle     string        `db:"no_sits_selected_title"`
-	NoSitsSelectedText      string        `db:"no_sits_selected_text"`
-	OrderHowto              string        `db:"order_howto"`
-	OrderNotesDescription   string        `db:"order_notes_desc"`
-	OrderedNoteTitle        string        `db:"ordered_note_title"`
-	OrderedNoteText         string        `db:"ordered_note_text"`
-	HowTo                   string        `db:"how_to"`
-	UserID                  int64         `db:"users_id_fk"`
-	ThankYouNotificationsID sql.NullInt64 `db:"thankyou_notifications_id_fk"`
-	AdminNotificationsID    sql.NullInt64 `db:"admin_notifications_id_fk"`
-	Sharable                sql.NullBool  `db:"sharable"`
-	BankAccountsID          sql.NullInt64 `db:"bankaccounts_id_fk"`
+	ID                      int64          `db:"id"`
+	Name                    string         `db:"name"`
+	Date                    int64          `db:"date"`
+	FromDate                int64          `db:"from_date"`
+	ToDate                  int64          `db:"to_date"`
+	DefaultPrice            int64          `db:"default_price"`
+	DefaultCurrency         string         `db:"default_currency"`
+	NoSitsSelectedTitle     string         `db:"no_sits_selected_title"`
+	NoSitsSelectedText      string         `db:"no_sits_selected_text"`
+	OrderHowto              string         `db:"order_howto"`
+	OrderNotesDescription   string         `db:"order_notes_desc"`
+	OrderedNoteTitle        string         `db:"ordered_note_title"`
+	OrderedNoteText         string         `db:"ordered_note_text"`
+	HowTo                   string         `db:"how_to"`
+	UserID                  int64          `db:"users_id_fk"`
+	ThankYouNotificationsID sql.NullInt64  `db:"thankyou_notifications_id_fk"`
+	AdminNotificationsID    sql.NullInt64  `db:"admin_notifications_id_fk"`
+	Sharable                sql.NullBool   `db:"sharable"`
+	BankAccountsID          sql.NullInt64  `db:"bankaccounts_id_fk"`
+	Language                sql.NullString `db:"language"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -843,8 +848,8 @@ func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) err
 }
 
 func (db *DB) EventAdd(e *Event) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, users_id_fk, thankyou_notifications_id_fk, admin_notifications_id_fk, sharable, bankaccounts_id_fk) 
-	VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :users_id_fk, :thankyou_notifications_id_fk, :admin_notifications_id_fk, :sharable, :bankaccounts_id_fk)`, e)
+	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, users_id_fk, thankyou_notifications_id_fk, admin_notifications_id_fk, sharable, bankaccounts_id_fk, language) 
+		VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :users_id_fk, :thankyou_notifications_id_fk, :admin_notifications_id_fk, :sharable, :bankaccounts_id_fk, :language)`, e)
 	if err != nil {
 		return -1, err
 	}
@@ -884,6 +889,12 @@ func (db *DB) EventGetAll() ([]Event, error) {
 	events := []Event{}
 	err := db.DB.Select(&events, `SELECT * FROM events ORDER BY name`)
 	return events, err
+}
+
+func (db *DB) EventGetLang(id int64) (sql.NullString, error) {
+	lang := sql.NullString{}
+	err := db.DB.Get(&lang, `SELECT language FROM events WHERE id=$1`, id)
+	return lang, err
 }
 
 func (db *DB) RoomAddToEventUnsafe(roomID int64, eventID int64) error {
@@ -927,7 +938,7 @@ func (db *DB) EventModByID(event *Event, UserID int64) error {
 	if event.UserID != UserID {
 		return fmt.Errorf("event.UserID %d do not match UserID %d, can't update event", event.UserID, UserID)
 	}
-	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, thankyou_notifications_id_fk=:thankyou_notifications_id_fk, admin_notifications_id_fk=:admin_notifications_id_fk, sharable=:sharable, bankaccounts_id_fk=:bankaccounts_id_fk WHERE id=:id AND users_id_fk=:users_id_fk`, event)
+	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, thankyou_notifications_id_fk=:thankyou_notifications_id_fk, admin_notifications_id_fk=:admin_notifications_id_fk, sharable=:sharable, bankaccounts_id_fk=:bankaccounts_id_fk, language=:language WHERE id=:id AND users_id_fk=:users_id_fk`, event)
 	return err
 }
 

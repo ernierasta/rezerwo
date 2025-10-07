@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/microcosm-cc/bluemonday"
@@ -50,7 +49,7 @@ func main() {
 		HttpOnly: true,
 	}
 
-	lang := "pl-PL"
+	lang := "pl" // cs
 
 	mailConf := &MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert, Hostname: conf.MailHostname}
 
@@ -470,6 +469,11 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			//http.Error(w, "User have no active events! Come back later, when reservations will be opened!", 500) //TODO: inform about closest user event and when it is
 			return
 		}
+
+		if event.Language.Valid {
+			lang = event.Language.String
+		}
+
 		rr, err := db.EventGetRooms(event.ID)
 		if err != nil {
 			log.Printf("error getting rooms for eventID: %d, err: %v", event.ID, err)
@@ -501,12 +505,20 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			rv.HTMLBannerImg = template.HTML(getImgHTML(imgName, user.URL, MEDIAROOT, imgW, imgH))
 			rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
 			rv.HTMLHowTo = template.HTML(event.HowTo)
-			// EN: rv.BTNOrder = "Order"
-			// EN: rv.LBLSelected = "Selected"
-			// EN: rv.LBLTotalPrice = "Total price"
-			rv.LBLSelected = "Wybrano"
-			rv.LBLTotalPrice = "Łączna suma"
-			rv.BTNOrder = "Zamów"
+			switch lang {
+			case "pl":
+				rv.LBLSelected = "Wybrano"
+				rv.LBLTotalPrice = "Łączna suma"
+				rv.BTNOrder = "Zamów"
+			case "cs":
+				rv.LBLSelected = "Vybrané"
+				rv.LBLTotalPrice = "Cena celkem"
+				rv.BTNOrder = "Objednat"
+			case "en":
+				rv.LBLSelected = "Selected"
+				rv.LBLTotalPrice = "Total price"
+				rv.BTNOrder = "Order"
+			}
 
 			p.Rooms = append(p.Rooms, rv)
 		}
@@ -592,6 +604,14 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			o.Phone = r.FormValue("phone")
 			o.Notes = r.FormValue("notes")
 
+			l, err := db.EventGetLang(o.EventID)
+			if err != nil {
+				log.Printf("error: ReservationOrderStatusHTML: can not get event language for event %q, err: %v", o.EventID, err)
+			}
+			if l.Valid {
+				lang = l.String
+			}
+
 			//fmt.Printf("debug: %+v", o)
 			c := Customer{
 				Email:   o.Email,
@@ -603,11 +623,27 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			cID, err := db.CustomerAdd(&c)
 			if err != nil {
 				log.Printf("error adding customer: %+v, err: %v", c, err)
-				plErr := map[string]string{
-					"title": "Nie można zapisać zamówienia!",
-					"text":  "Wystąpił błąd, nie można zapisać danych zamawiającego, tym samym również zamówienia.",
+				Err := map[string]string{}
+				switch lang {
+				case "pl":
+					Err = map[string]string{
+						"title": "Nie można zapisać zamówienia!",
+						"text":  "Wystąpił błąd, nie można zapisać danych zamawiającego, tym samym również zamówienia. Kontakt: admin (at) zori.cz.",
+					}
+				case "cs":
+					Err = map[string]string{
+						"title": "Nepovedlo se uložit objednávku!",
+						"text":  "Chyba na serveru neumožnůje uložení Vaších údajů. Tím pádem nejde uložit objednávku. Kontaktujte: admin (at) zori.cz.",
+					}
+				case "en":
+					Err = map[string]string{
+
+						"title": "Error saving order",
+						"text":  "Can not save customer data. Contact me: admin (at) zori.cz.",
+					}
+
 				}
-				ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+				ErrorHTML(Err["title"], Err["text"], lang, w, r)
 				//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
 				return
 
@@ -674,11 +710,27 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				reservation, err := db.ReservationGet(chair.ID, o.EventID)
 				if err != nil {
 					log.Printf("error: ReservationOrderStatusHTML: can not get reservation for chair: %d from DB, eventID: %d, err: %v", chair.ID, o.EventID, err)
-					plErr := map[string]string{
-						"title": "Zamówienie wygasło!",
-						"text":  "Zamówienie wygasło (obecnie wygasa po 5 minutach od kliknięcia na \"Zamów\"). Należy na nowo wybrać krzesła i ponowić zamówienie.",
+					Err := map[string]string{}
+					switch lang {
+					case "pl":
+						Err = map[string]string{
+							"title": "Zamówienie wygasło!",
+							"text":  "Zamówienie wygasło (wygasa po 5 minutach od kliknięcia na \"Zamów\"). Należy na nowo wybrać krzesła i ponowić zamówienie.",
+						}
+					case "cs":
+						Err = map[string]string{
+							"title": "Čas na objednání vypršel!",
+							"text":  "Čas na odeslání vypršel (po 5 minutách). Vyberte židle znova a objednejte ještě jednou.",
+						}
+					case "en":
+						Err = map[string]string{
+							"title": "Order time ended.",
+							"text":  "Order timed out. Please select chairs again and make new order.",
+						}
+
 					}
-					ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+
+					ErrorHTML(Err["title"], Err["text"], lang, w, r)
 					return
 				}
 				reservation.Status = "ordered"
@@ -689,11 +741,28 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				err = db.ReservationMod(&reservation)
 				if err != nil {
 					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, o.EventID, err)
-					plErr := map[string]string{
-						"title": "Nie można zmienić stutusu zamówienia!",
-						"text":  "Wystąpił problem ze zmianą stutusu zamówienia, przepraszamy za kłopot i prosimy o informację na\nmail: admin (at) zori.cz.\nProsimy o przesłanie info: email zamawiającego, numery zamawianych siedzień, nazwa sali/imprezy.",
+
+					Err := map[string]string{}
+					switch lang {
+					case "pl":
+						Err = map[string]string{
+							"title": "Nie można zmienić stutusu zamówienia!",
+							"text":  "Wystąpił problem ze zmianą stutusu zamówienia, przepraszamy za kłopot i prosimy o informację na\nmail: admin (at) zori.cz.\nProsimy o przesłanie info: email zamawiającego, numery zamawianych siedzień, nazwa sali/imprezy.",
+						}
+					case "cs":
+						Err = map[string]string{
+							"title": "Nepovedlo se změnit stav objednávky!",
+							"text":  "Nepovedlo se změnit stav objednávky, prosíme o informaci na\nmail: admin (at) zori.cz.\n Pošlete Váš e-mail, čísla objednaných míst, název místnosti/akce.",
+						}
+					case "en":
+						Err = map[string]string{
+							"title": "Error changing order status.",
+							"text":  "Order status can not be changed. Contact: admin (at) zori.cz",
+						}
+
 					}
-					ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+
+					ErrorHTML(Err["title"], Err["text"], lang, w, r)
 					return
 				}
 			}
@@ -772,9 +841,19 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 		}
 		_ = pEN
 
+		title := ""
+		switch lang {
+		case "pl":
+			title = "Zamówiono bilety!"
+		case "cs":
+			title = "Objednáno lístky!"
+		case "en":
+			title = "Order status"
+		}
+
 		p := ReservationOrderStatusVars{
 			LBLLang:       lang,
-			LBLTitle:      "Zamówiono bilety!",
+			LBLTitle:      title,
 			LBLStatus:     event.OrderedNoteTitle,
 			LBLStatusText: template.HTML(stsText),
 			BTNOk:         "OK",
@@ -903,6 +982,14 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 				log.Printf("ReservationOrderHTML: %v", err)
 			}
 
+			l, err := db.EventGetLang(eventID)
+			if err != nil {
+				log.Printf("ReservationOrderHTML: cant get lang, event %q, %v", eventID, err)
+			}
+			if l.Valid {
+				lang = l.String
+			}
+
 			for i := range ss {
 				chair, err := db.FurnitureGetByTypeNumberRoom("chair", ss[i], rr[i])
 				if err != nil {
@@ -919,11 +1006,27 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 				})
 				if err != nil {
 					log.Printf("error adding reservation for chair number: %d, roomID: %d, eventID: %d, err: %v", chair.Number, chair.RoomID, eventID, err)
-					errPL := map[string]string{
-						"title": "Nie udało się zarezerwować miejsca!",
-						"text":  "Nie można zarezerwować wybranych miejsc, zostały one już zablokowane przez innego zamawiającego.\nProsimy o wybranie innych miejsc, lub poczekanie 5 minut. Po 5 minutach niezrealizowane zamówiania są automatycznie anulowane.",
+					Err := map[string]string{}
+					switch lang {
+					case "pl":
+						Err = map[string]string{
+							"title": "Nie udało się zarezerwować miejsca!",
+							"text":  "Nie można zarezerwować wybranych miejsc, zostały one już zablokowane przez innego zamawiającego.\nProsimy o wybranie innych miejsc, lub poczekanie 5 minut. Po 5 minutach niezrealizowane zamówiania są automatycznie anulowane.",
+						}
+					case "cs":
+						Err = map[string]string{
+							"title": "Nepovedlo se rezervovat židli/-e!",
+							"text":  "Nepovedlo se rezervovat židle, jsou už bloknute jiným uživatelem.\nVyberte jiné místa, nebo počkejte 5 minut. Pokud uživatel objednávku nedokončí budou spět dostupné.",
+						}
+					case "en":
+						Err = map[string]string{
+							"title": "Sits can't be ordered.",
+							"text":  "Sits can't be ordered, they are blocked by another user. Wait 5 minutes or choose other sits.",
+						}
+
 					}
-					ErrorHTML(errPL["title"], errPL["text"], lang, w, r)
+
+					ErrorHTML(Err["title"], Err["text"], lang, w, r)
 					//http.Error(w, fmt.Sprintf("<html><body><b>Can not add reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
 					return
 				}
@@ -941,8 +1044,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 			log.Println(err)
 		}
 
-		//p := GetPageVarsFromDB(db, roomName, eventName)
-		pEN := ReservationOrderVars{
+		p := ReservationOrderVars{
 			Event:                 event,
 			LBLOrderHowtoHTML:     template.HTML(event.OrderHowto),
 			LBLLang:               lang,
@@ -970,37 +1072,70 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 			BTNSubmit:             "Confirm order",
 			BTNCancel:             "Cancel",
 		}
-		_ = pEN
 
-		p := ReservationOrderVars{
-			Event:                   event,
-			LBLOrderHowtoHTML:       template.HTML(event.OrderHowto),
-			LBLLang:                 lang,
-			LBLTitle:                "Zamówienie",
-			LBLCountdownDescription: "Sesja wygaśnie, kiedy skończy się odliczanie:",
-			LBLEmail:                "Email",
-			LBLEmailHelp:            "Na podany email zostanie wysłane potwierdzenie. Proszę sprawdzić, że podano poprawny!",
-			LBLEmailPlaceholder:     "email",
-			LBLPassword:             "Hasło",
-			LBLPasswordHelp:         "Należy wymyślić dowolne hasło. Podanie hasła umożliwia wykonanie wielu rezerwacji używając tego samego konta mailowego a docelowo również zarządzianie zamówieniami.",
-			LBLName:                 "Imię",
-			LBLNamePlaceholder:      "imię",
-			LBLSurname:              "Nazwisko",
-			LBLSurnamePlaceholder:   "nazwisko",
-			LBLPhone:                "Nr telefonu",
-			LBLPhonePlaceholder:     "00420 ",
-			LBLNotes:                "Notatki",
-			LBLNotesPlaceholder:     "notatki",
-			LBLNotesHelp:            event.OrderNotesDescription,
-			LBLPricesValue:          prices,
-			LBLRoomsValue:           rooms,
-			LBLSits:                 "Numery krzeseł",
-			LBLSitsValue:            sits,
-			LBLTotalPrice:           "Łączna suma",
-			LBLTotalPriceValue:      totalPrice + " " + defaultCurrency,
-			LBLUserURL:              user.URL,
-			BTNSubmit:               "Zamawiam",
-			BTNCancel:               "Anuluj zamówienie",
+		switch lang {
+		case "pl":
+			p = ReservationOrderVars{
+				Event:                   event,
+				LBLOrderHowtoHTML:       template.HTML(event.OrderHowto),
+				LBLLang:                 lang,
+				LBLTitle:                "Zamówienie",
+				LBLCountdownDescription: "Sesja wygaśnie, kiedy skończy się odliczanie:",
+				LBLEmail:                "Email",
+				LBLEmailHelp:            "Na podany email zostanie wysłane potwierdzenie. Proszę sprawdzić, że podano poprawny!",
+				LBLEmailPlaceholder:     "email",
+				LBLPassword:             "Hasło",
+				LBLPasswordHelp:         "Należy wymyślić dowolne hasło. Podanie hasła umożliwia wykonanie wielu rezerwacji używając tego samego konta mailowego a docelowo również zarządzianie zamówieniami.",
+				LBLName:                 "Imię",
+				LBLNamePlaceholder:      "imię",
+				LBLSurname:              "Nazwisko",
+				LBLSurnamePlaceholder:   "nazwisko",
+				LBLPhone:                "Nr telefonu",
+				LBLPhonePlaceholder:     "00420 ",
+				LBLNotes:                "Notatki",
+				LBLNotesPlaceholder:     "notatki",
+				LBLNotesHelp:            event.OrderNotesDescription,
+				LBLPricesValue:          prices,
+				LBLRoomsValue:           rooms,
+				LBLSits:                 "Numery krzeseł",
+				LBLSitsValue:            sits,
+				LBLTotalPrice:           "Łączna suma",
+				LBLTotalPriceValue:      totalPrice + " " + defaultCurrency,
+				LBLUserURL:              user.URL,
+				BTNSubmit:               "Zamawiam",
+				BTNCancel:               "Anuluj zamówienie",
+			}
+		case "cs":
+			p = ReservationOrderVars{
+				Event:                   event,
+				LBLOrderHowtoHTML:       template.HTML(event.OrderHowto),
+				LBLLang:                 lang,
+				LBLTitle:                "Objednávka",
+				LBLCountdownDescription: "Objednávka bude zrušená za:",
+				LBLEmail:                "Email",
+				LBLEmailHelp:            "Na uvedený e-mail odešleme potvrzení. Ujistěte se, že správný.",
+				LBLEmailPlaceholder:     "e-mail",
+				LBLPassword:             "Heslo",
+				LBLPasswordHelp:         "",
+				LBLName:                 "Jméno",
+				LBLNamePlaceholder:      "jméno",
+				LBLSurname:              "Příjmení",
+				LBLSurnamePlaceholder:   "příjmení",
+				LBLPhone:                "Číslo telefonu",
+				LBLPhonePlaceholder:     "00420 ",
+				LBLNotes:                "Poznámky",
+				LBLNotesPlaceholder:     "poznámky",
+				LBLNotesHelp:            event.OrderNotesDescription,
+				LBLPricesValue:          prices,
+				LBLRoomsValue:           rooms,
+				LBLSits:                 "Čísla židli",
+				LBLSitsValue:            sits,
+				LBLTotalPrice:           "Cena celkem",
+				LBLTotalPriceValue:      totalPrice + " " + defaultCurrency,
+				LBLUserURL:              user.URL,
+				BTNSubmit:               "Objednat",
+				BTNCancel:               "Zrušit objednávku",
+			}
 		}
 
 		t := template.Must(template.ParseFiles("tmpl/order.html", "tmpl/base.html"))
@@ -1334,6 +1469,9 @@ type EventEditorVars struct {
 	IDVal, UserIDVal                                         int64
 	LBLName, LBLNameValue                                    string
 	NameHelpText                                             string
+	LBLLanguage                                              string
+	LanguageValue                                            string
+	LanguageHelpText                                         string
 	LBLDate, LBLDateValue                                    string
 	LBLFromDate, LBLFromDateValue                            string
 	LBLToDate, LBLToDateValue                                string
@@ -1421,6 +1559,10 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				if err != nil {
 					log.Printf("EventEditor: error retrieving event with ID: %q from DB, err: %v", eventID, err)
 				}
+				// set polish as default if empty in database
+				if !event.Language.Valid {
+					event.Language = sql.NullString{String: "pl", Valid: true}
+				}
 				evrooms, err := db.EventGetRooms(event.ID)
 				if err != nil {
 					log.Printf("EventEditor: error getting rooms for event %d, %v", event.ID, err)
@@ -1452,6 +1594,9 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				LBLName:                 "Name",
 				LBLNameValue:            event.Name,
 				NameHelpText:            "Name help text",
+				LBLLanguage:             "Language",
+				LanguageValue:           event.Language.String,
+				LanguageHelpText:        "Decides about some displayed texts language (pl, cs, en)",
 				LBLDate:                 "Date",
 				LBLDateValue:            ToDate(event.Date),
 				LBLFromDate:             "Reservation starts",
@@ -1527,7 +1672,10 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				UserIDVal:               event.UserID,
 				LBLName:                 "Nazwa",
 				LBLNameValue:            event.Name,
-				NameHelpText:            "Nazwa powinna być unikatowa, np. Bal 2026",
+				NameHelpText:            "Nazwa powinna być unikatowa, np. Bal 2033",
+				LBLLanguage:             "Język",
+				LanguageValue:           event.Language.String,
+				LanguageHelpText:        "Decyduje o języku niektórych tekstów (wartości: pl, cs, en, ...)",
 				LBLDate:                 "Data",
 				LBLDateValue:            ToDate(event.Date),
 				LBLFromDate:             "Początek rezerwacji",
@@ -1648,6 +1796,7 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 				log.Printf("error: AdminReservations: problem parsing form, err: %v", err)
 			}
 			eventIDs := r.FormValue("event-id")
+			log.Printf("DEBUG: AR: eventIDs: %v", eventIDs)
 			eventID, err = strconv.ParseInt(eventIDs, 10, 64)
 			if err != nil {
 				log.Printf("error: AdminReservations: can not convert %q to int64, err: %v", eventIDs, err)
@@ -2411,7 +2560,7 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 
 			_, err = db.FurnitureAdd(&f)
 			if err != nil {
-				log.Printf("info: inserting furniture failed, trying to update, err: %v", err)
+				//log.Printf("info: inserting furniture failed, trying to update, err: %v", err) // disable this, it is normal to happen and makes me panic ;-)
 				err := db.FurnitureModByNumberTypeRoom(&f)
 				if err != nil {
 					log.Printf("error: furniture insert failed, now also update failed, f: %+v, err: %v", f, err)
@@ -2438,7 +2587,7 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			}
 			_, err = db.PriceAdd(&p)
 			if err != nil {
-				log.Printf("info: price inserting failed, trying update, err: %v", err)
+				// log.Printf("info: price inserting failed, trying update, err: %v", err) // also disabled - do not panic ;-)
 				err = db.PriceModByEventIDFurnID(&p)
 				if err != nil {
 					log.Printf("error: price insert failed, now also update failed, p: %+v, err: %v", p, err)
@@ -2616,6 +2765,7 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 type EventJson struct {
 	ID                    string `json:"id"`
 	Name                  string `json:"name"`
+	Language              string `json:"language"`
 	Date                  string `json:"date"`
 	FromDate              string `json:"from_date"`
 	ToDate                string `json:"to_date"`
@@ -2668,7 +2818,6 @@ func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore
 			if err != nil {
 				log.Println(err)
 			}
-
 			date, err := ToUnix(eventJson.Date, loc, dF)
 			if err != nil {
 				log.Printf("EventAddMod: error converting date string %q to int64, %v", eventJson.Date, err)
@@ -2722,6 +2871,7 @@ func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore
 			ev := &Event{
 				ID:                      id,
 				Name:                    eventJson.Name,
+				Language:                ToNS(eventJson.Language),
 				Date:                    date,
 				FromDate:                fromDate,
 				ToDate:                  toDate,
@@ -2741,7 +2891,7 @@ func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore
 				BankAccountsID:          ToNI(bankAccountID),
 			}
 
-			spew.Dump(ev) // DEBUG
+			//spew.Dump(ev) // DEBUG
 
 			var lastid int64
 

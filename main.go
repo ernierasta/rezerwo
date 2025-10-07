@@ -485,9 +485,17 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			//http.Error(w, fmt.Sprintf("Rooms for user: %q, event: %q not found!", v["user"], e.Name), 500)
 			return
 		}
+		title := "Reservation"
+		switch lang {
+		case "pl":
+			title = "Rezerwacja"
+		case "cs":
+			title = "Rezervace"
+		}
+
 		p := ReservationPageVars{
 			//EN: LBLTitle: "Reservation",
-			LBLTitle: "Rezerwacja",
+			LBLTitle: title,
 			//EN: LBLNoSitsTitle: "No sits selected",
 			//EN: LBLNoSitsText: "No sits selected, choose some free chairs and try it again",
 			//EN: BTNNoSitsOK: "OK",

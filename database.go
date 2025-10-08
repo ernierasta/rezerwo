@@ -143,6 +143,24 @@ import (
 //ALTER TABLE events
 //   ADD COLUMN hidecosts INTEGER;
 
+// remove all chairs with round number (10,20,30, ...)
+// DELETE FROM prices
+// WHERE furnitures_id_fk IN (
+//     SELECT id FROM furnitures
+//     WHERE rooms_id_fk = 14
+//     AND type = 'chair'
+//     AND CAST(number AS TEXT) LIKE '%0'
+// );
+//
+// then:
+//
+// DELETE FROM furnitures
+// WHERE rooms_id_fk = 14
+// AND type = 'chair'
+// AND CAST(number AS TEXT) LIKE '%0';
+//
+// and then Renumber chair button in administration makes wonders!
+
 const (
 	ConnOptions = "?cache=shared&mode=rwc&_busy_timeout=999999"
 )

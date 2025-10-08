@@ -69,7 +69,7 @@
       <div class="column right">
         <div>
           {{.LBLSelected}}: <b><span id="selected-chairs-{{.Room.ID}}" class="selected-chairs"></span></b><br />
-          {{.LBLTotalPrice}}: <b><span id="total-price-{{.Room.ID}}" class="total-price"></span></b>
+	  <div{{if $.Event.HideCosts}} hidden{{end}}>{{.LBLTotalPrice}}: <b><span id="total-price-{{.Room.ID}}" class="total-price"></span></b></div>
         </div>
         <div id="how-to">{{.HTMLHowTo}}</div>
         <div id="controls"><button id="order" class="btn btn-primary" onclick="Order()">{{.BTNOrder}}</button>

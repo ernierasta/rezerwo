@@ -27,12 +27,15 @@
             <input type="text" class="form-control" id="sits" name="sits" value="{{.LBLSitsValue}}" readonly>
           </div>
         </div>
+
+	{{if not .Event.HideCosts}}
         <div class="col">
           <div class="form-group">
             <label for="total-price">{{.LBLTotalPrice}}</label>
             <input type="text" class="form-control" id="total-price" name="total-price" value="{{.LBLTotalPriceValue}}" readonly>
           </div>
         </div>
+        {{end}}
       </div>
  
       <div class="form-group">

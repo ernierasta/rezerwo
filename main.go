@@ -447,6 +447,7 @@ func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 
 func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		lng := lang
 		v := mux.Vars(r)
 		user, err := db.UserGetByURL(v["user"])
 
@@ -458,20 +459,20 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			log.Printf("error getting user %q, err: %v", v["user"], err)
 
-			ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+			ErrorHTML(plErr["title"], plErr["text"], lng, w, r)
 			//http.Error(w, fmt.Sprintf("User %q not found! Check You have correct URL!", v["user"]), 500)
 			return
 		}
 		event, err := EventGetCurrent(db, user.ID)
 		if err != nil {
 			log.Printf("error getting current event for userID: %d, err: %v", user.ID, err)
-			ErrorHTML("Nie ma obecnie aktywnych imprez!", "Administrator nie ma obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", lang, w, r)
+			ErrorHTML("Nie ma obecnie aktywnych imprez!", "Administrator nie ma obecnie żadnych otwartych imprez.\nProsimy o skontaktowanie się z organizatorem by stwierdzić, kiedy rezerwacje zostaną otwarte.", lng, w, r)
 			//http.Error(w, "User have no active events! Come back later, when reservations will be opened!", 500) //TODO: inform about closest user event and when it is
 			return
 		}
 
 		if event.Language.Valid {
-			lang = event.Language.String
+			lng = event.Language.String
 		}
 
 		rr, err := db.EventGetRooms(event.ID)
@@ -481,12 +482,12 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 				"title": "Brak aktywnych sal dla tej imprezy!",
 				"text":  "Administrator nie powiązał żadnej sali z wydarzeniem.\nJeżeli po stronie administracji wszystko wygląda ok, to prosimy o informację o tym zdarzeniu na mail: admin (at) zori.cz.\nProsimy o wysłanie nazwy organizacji, której dotyczy problem.",
 			}
-			ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+			ErrorHTML(plErr["title"], plErr["text"], lng, w, r)
 			//http.Error(w, fmt.Sprintf("Rooms for user: %q, event: %q not found!", v["user"], e.Name), 500)
 			return
 		}
 		title := "Reservation"
-		switch lang {
+		switch lng {
 		case "pl":
 			title = "Rezerwacja"
 		case "cs":
@@ -499,7 +500,7 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			//EN: LBLNoSitsTitle: "No sits selected",
 			//EN: LBLNoSitsText: "No sits selected, choose some free chairs and try it again",
 			//EN: BTNNoSitsOK: "OK",
-			LBLLang:        lang,
+			LBLLang:        lng,
 			LBLNoSitsTitle: event.NoSitsSelectedTitle,
 			LBLNoSitsText:  template.HTML(event.NoSitsSelectedText),
 			BTNNoSitsOK:    "OK",
@@ -513,7 +514,7 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			rv.HTMLBannerImg = template.HTML(getImgHTML(imgName, user.URL, MEDIAROOT, imgW, imgH))
 			rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
 			rv.HTMLHowTo = template.HTML(event.HowTo)
-			switch lang {
+			switch lng {
 			case "pl":
 				rv.LBLSelected = "Wybrano"
 				rv.LBLTotalPrice = "Łączna suma"
@@ -588,6 +589,7 @@ type ReservationOrderStatusVars struct {
 // TODO: split it, too long!
 func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		lng := lang
 		o := Order{}
 		event := Event{}
 		user := User{}
@@ -617,7 +619,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				log.Printf("error: ReservationOrderStatusHTML: can not get event language for event %q, err: %v", o.EventID, err)
 			}
 			if l.Valid {
-				lang = l.String
+				lng = l.String
 			}
 
 			//fmt.Printf("debug: %+v", o)
@@ -632,7 +634,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			if err != nil {
 				log.Printf("error adding customer: %+v, err: %v", c, err)
 				Err := map[string]string{}
-				switch lang {
+				switch lng {
 				case "pl":
 					Err = map[string]string{
 						"title": "Nie można zapisać zamówienia!",
@@ -651,7 +653,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 					}
 
 				}
-				ErrorHTML(Err["title"], Err["text"], lang, w, r)
+				ErrorHTML(Err["title"], Err["text"], lng, w, r)
 				//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
 				return
 
@@ -663,7 +665,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 							"title": "Nie można zapisać osoby!",
 							"text":  "W bazie już istnieje zamówienie powiązane z tym mailem, lecz nie zgadza się hasło.\nProsimy o podanie poprawnego hasła.",
 						}
-						ErrorHTML(plErr["title"], plErr["text"], lang, w, r)
+						ErrorHTML(plErr["title"], plErr["text"], lng, w, r)
 						//http.Error(w, fmt.Sprintf("<html><body><b>Can not add customer: %+v, err: %v</b></body></html>", c, err), 500)
 						return
 					}
@@ -719,7 +721,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				if err != nil {
 					log.Printf("error: ReservationOrderStatusHTML: can not get reservation for chair: %d from DB, eventID: %d, err: %v", chair.ID, o.EventID, err)
 					Err := map[string]string{}
-					switch lang {
+					switch lng {
 					case "pl":
 						Err = map[string]string{
 							"title": "Zamówienie wygasło!",
@@ -738,7 +740,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 
 					}
 
-					ErrorHTML(Err["title"], Err["text"], lang, w, r)
+					ErrorHTML(Err["title"], Err["text"], lng, w, r)
 					return
 				}
 				reservation.Status = "ordered"
@@ -751,7 +753,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 					log.Printf("error modyfing reservation for chair: %d, eventID: %d, err: %v", chair.ID, o.EventID, err)
 
 					Err := map[string]string{}
-					switch lang {
+					switch lng {
 					case "pl":
 						Err = map[string]string{
 							"title": "Nie można zmienić stutusu zamówienia!",
@@ -770,7 +772,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 
 					}
 
-					ErrorHTML(Err["title"], Err["text"], lang, w, r)
+					ErrorHTML(Err["title"], Err["text"], lng, w, r)
 					return
 				}
 			}
@@ -841,7 +843,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 		stsText, _ := ParseOrderTmpl(event.OrderedNoteText, o, db, user)
 
 		pEN := ReservationOrderStatusVars{
-			LBLLang:       lang,
+			LBLLang:       lng,
 			LBLTitle:      "Order status",
 			LBLStatus:     event.OrderedNoteTitle,
 			LBLStatusText: template.HTML(stsText),
@@ -850,7 +852,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 		_ = pEN
 
 		title := ""
-		switch lang {
+		switch lng {
 		case "pl":
 			title = "Zamówiono bilety!"
 		case "cs":
@@ -860,7 +862,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 		}
 
 		p := ReservationOrderStatusVars{
-			LBLLang:       lang,
+			LBLLang:       lng,
 			LBLTitle:      title,
 			LBLStatus:     event.OrderedNoteTitle,
 			LBLStatusText: template.HTML(stsText),
@@ -962,6 +964,7 @@ type ReservationOrderVars struct {
 // TODO: this function is too long! split it!
 func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		lng := lang
 		eventID := int64(-1)
 		sits := ""
 		prices := ""
@@ -995,7 +998,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 				log.Printf("ReservationOrderHTML: cant get lang, event %q, %v", eventID, err)
 			}
 			if l.Valid {
-				lang = l.String
+				lng = l.String
 			}
 
 			for i := range ss {
@@ -1015,7 +1018,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 				if err != nil {
 					log.Printf("error adding reservation for chair number: %d, roomID: %d, eventID: %d, err: %v", chair.Number, chair.RoomID, eventID, err)
 					Err := map[string]string{}
-					switch lang {
+					switch lng {
 					case "pl":
 						Err = map[string]string{
 							"title": "Nie udało się zarezerwować miejsca!",
@@ -1034,7 +1037,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 
 					}
 
-					ErrorHTML(Err["title"], Err["text"], lang, w, r)
+					ErrorHTML(Err["title"], Err["text"], lng, w, r)
 					//http.Error(w, fmt.Sprintf("<html><body><b>Can not add reservation for chair: %d, eventID: %d, err: %v</b></body></html>", chair.ID, event.ID, err), 500)
 					return
 				}
@@ -1055,7 +1058,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 		p := ReservationOrderVars{
 			Event:                 event,
 			LBLOrderHowtoHTML:     template.HTML(event.OrderHowto),
-			LBLLang:               lang,
+			LBLLang:               lng,
 			LBLTitle:              "Order",
 			LBLEmail:              "Email",
 			LBLEmailHelp:          "Email is also login",
@@ -1081,12 +1084,12 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 			BTNCancel:             "Cancel",
 		}
 
-		switch lang {
+		switch lng {
 		case "pl":
 			p = ReservationOrderVars{
 				Event:                   event,
 				LBLOrderHowtoHTML:       template.HTML(event.OrderHowto),
-				LBLLang:                 lang,
+				LBLLang:                 lng,
 				LBLTitle:                "Zamówienie",
 				LBLCountdownDescription: "Sesja wygaśnie, kiedy skończy się odliczanie:",
 				LBLEmail:                "Email",
@@ -1117,7 +1120,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 			p = ReservationOrderVars{
 				Event:                   event,
 				LBLOrderHowtoHTML:       template.HTML(event.OrderHowto),
-				LBLLang:                 lang,
+				LBLLang:                 lng,
 				LBLTitle:                "Objednávka",
 				LBLCountdownDescription: "Objednávka bude zrušená za:",
 				LBLEmail:                "Email",
@@ -1136,7 +1139,7 @@ func ReservationOrderHTML(db *DB, lang string) func(w http.ResponseWriter, r *ht
 				LBLNotesHelp:            event.OrderNotesDescription,
 				LBLPricesValue:          prices,
 				LBLRoomsValue:           rooms,
-				LBLSits:                 "Čísla židli",
+				LBLSits:                 "Čísla míst",
 				LBLSitsValue:            sits,
 				LBLTotalPrice:           "Cena celkem",
 				LBLTotalPriceValue:      totalPrice + " " + defaultCurrency,

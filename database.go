@@ -138,6 +138,11 @@ import (
 //ALTER TABLE events
 //   ADD COLUMN language TEXT;
 
+// update events to enable total costs hidding
+// it is possible to set it only directly in DB
+//ALTER TABLE events
+//   ADD COLUMN hidecosts INTEGER;
+
 const (
 	ConnOptions = "?cache=shared&mode=rwc&_busy_timeout=999999"
 )
@@ -235,6 +240,7 @@ type Event struct {
 	Sharable                sql.NullBool   `db:"sharable"`
 	BankAccountsID          sql.NullInt64  `db:"bankaccounts_id_fk"`
 	Language                sql.NullString `db:"language"`
+	HideCosts               sql.NullBool   `db:"hidecosts"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -847,6 +853,7 @@ func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) err
 	return err
 }
 
+// we are not adding HideCosts here, as it is not available in interface
 func (db *DB) EventAdd(e *Event) (int64, error) {
 	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, users_id_fk, thankyou_notifications_id_fk, admin_notifications_id_fk, sharable, bankaccounts_id_fk, language) 
 		VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :users_id_fk, :thankyou_notifications_id_fk, :admin_notifications_id_fk, :sharable, :bankaccounts_id_fk, :language)`, e)

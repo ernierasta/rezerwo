@@ -1,175 +1,207 @@
-{{define "head"}}<title>{{.LBLTitle}}</title>
-<script type="text/javascript" src="/js/admin.js"></script>
-<link href="/css/admin.css" rel="stylesheet" type="text/css">
-<link href="/css/quill.snow.css" rel="stylesheet">
-<script src="/js/quill.min.js"></script>
+{{define "head"}}
+  <title>{{.LBLTitle}}</title>
+  <script type="text/javascript" src="/js/admin.js"></script>
+  <link href="/css/admin.css" rel="stylesheet" type="text/css">
+  <link href="/css/quill.snow.css" rel="stylesheet">
+  <script src="/js/quill.min.js"></script>
 {{end}}
+
 {{define "body"}}
+  <!-- Modal -->
+  <div class="modal fade" id="room-event" tabindex="-1" role="dialog" aria-labelledby="ModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLongTitle">{{.LBLRoomEventTitle}}</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div> <!-- /.modal-header -->
+        <div class="modal-body">
+          <div>{{.LBLRoomEventText}}</div>
+          <select name="room-event-select" id="room-event-select" class="custom-select">
+            <option value="0" selected>{{.LBLSelectEvent}}</option>
+            {{range .Events}}
+              <option value="{{.ID}}">{{.Name}}</option>
+            {{end}}
+          </select>
+        </div> <!-- /.modal-body -->
+        <div class="modal-footer">
+          <button id="close-modal" type="button" class="btn btn-secondary" data-dismiss="modal">{{.BTNClose}}</button>
+          <button id="select-room-event-modal" type="button" class="btn btn-primary" onclick="FinalRoomEdit()">{{.BTNSelect}}</button>
+        </div> <!-- /.modal-footer -->
+      </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+  </div> <!-- /.modal -->
+  <!-- Modal END -->
 
-<!-- Modal -->
-<div class="modal fade" id="room-event" tabindex="-1" role="dialog" aria-labelledby="ModalCenterTitle" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="exampleModalLongTitle">{{.LBLRoomEventTitle}}</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div>{{.LBLRoomEventText}}</div>
-        <select name="room-event-select" id="room-event-select" class="custom-select">
-          <option value="0" selected>{{.LBLSelectEvent}}</option>
-          {{range .Events}}
-          <option value="{{.ID}}">{{.Name}}</option>
-          {{end}}
-        </select>
-      </div>
-      <div class="modal-footer">
-        <button id="close-modal" type="button" class="btn btn-secondary" data-dismiss="modal">{{.BTNClose}}</button>
-        <button id="select-room-event-modal" type="button" class="btn btn-primary" onclick="FinalRoomEdit()">{{.BTNSelect}}</button>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- Modal END -->
+  <div class="alert alert-danger alert-dismissible fade show" role="alert" hidden>
+    <strong>{{.LBLMsgTitle}}</strong> You should check in on some of those fields below.
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div> <!-- /.alert -->
 
-<div class="alert alert-danger alert-dismissible fade show" role="alert" hidden>
-  <strong>{{.LBLMsgTitle}}</strong> You should check in on some of those fields below.
-  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-    <span aria-hidden="true">&times;</span>
-  </button>
-</div>
+  <!-- Nav tabs -->
+  <ul class="nav nav-tabs" id="myTab" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" id="tab1-tab" data-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="true">{{.TabEvents}}</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" id="tab2-tab" data-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false">{{.TabForms}}</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" id="tab3-tab" data-toggle="tab" href="#tab3" role="tab" aria-controls="tab3" aria-selected="false">{{.TabSettings}}</a>
+    </li>
+  </ul> <!-- /#myTab.nav-tabs -->
 
-<div class="row d-flex justify-content-center">
-    <div class="col-md-6">
-      <h3>{{.LBLEvents}}</h3>
-      <div class="input-group">
-        <input type="text" id="new-event-name" class="form-control" placeholder="{{.LBLNewEventPlaceholder}}" aria-label="{{.LBLNewEventPlaceholder}}" aria-describedby="basic-addon2">
-        <div class="input-group-append">
-          <button class="btn btn-outline-secondary" type="button" onclick="NewEvent()">{{.BTNAddEvent}}</button>
-        </div>
-      </div>
-    
-      <div class="input-group">
-        <select name="rooms-select" id="rooms-select" class="custom-select">
-          <option value="0" selected>{{.LBLSelectRoom}}</option>
-          {{range .Rooms}}
-          <option value="{{.ID}}">{{.Name}}</option>
-          {{end}}
-        </select>
-        <div class="input-group-append">
-          <button id="edit-room" class="btn btn-outline-secondary" type="button" onclick="RoomEdit()" >{{.BTNRoomEdit}}</button>
-          <button class="btn btn-outline-secondary" type="button">{{.BTNRoomDelete}}</button>
-        </div>
-      </div>
-    
-      <div class="input-group">
-        <select name="events-select" id="events-select" class="custom-select">
-          <option value="0" selected>{{.LBLSelectEvent}}</option>
-          {{range .Events}}
-          <option value="{{.ID}}">{{.Name}}</option>
-          {{end}}
-        </select>
-        <div class="input-group-append">
-          <button id="edit-event" class="btn btn-outline-secondary" type="button" onclick="EventEdit()" >{{.BTNEventEdit}}</button>
-          <button class="btn btn-outline-secondary" type="button">{{.BTNEventDelete}}</button>
-        </div>
-      </div>
-      <h4>{{.LBLRaports}}</h4>
-      <div class="input-group">
-        <select name="events-raports-select" id="events-raports-select" class="custom-select">
-          <option value="0" selected>{{.LBLSelectEvent}}</option>
-          {{range .Events}}
-          <option value="{{.ID}}">{{.Name}}</option>
-          {{end}}
-        </select>
-        <div class="input-group-append">
-          <button id="run-raports" class="btn btn-primary" type="button" onclick="ShowRaports()" >{{.BTNShowRaports}}</button>
-        </div>
-      </div>
-      <h3>{{.LBLForms}}</h3>
-      <div class="input-group">
-        <input type="text" class="form-control" id="new-form-name" placeholder="{{.LBLNewFormPlaceholder}}" aria-label="{{.LBLNewForm}}" aria-describedby="basic-addon2">
-        <input type="text" class="form-control" id="new-form-url" placeholder="{{.LBLNewFormURLPlaceholder}}" aria-label="{{.LBLNewFormURL}}" aria-describedby="basic-addon2">
+  <div class="tab-content" id="myTabContent">
+    <!-- FIRST TAB START -->
+    <div class="tab-pane fade show active" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
+      <div class="row d-flex justify-content-center">
+        <div class="col-md-6">
+          <h3>{{.LBLEvents}}</h3>
+          <div class="input-group">
+            <input type="text" id="new-event-name" class="form-control" placeholder="{{.LBLNewEventPlaceholder}}" aria-label="{{.LBLNewEventPlaceholder}}" aria-describedby="basic-addon2">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" type="button" onclick="NewEvent()">{{.BTNAddEvent}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
 
-        <div class="input-group-append">
-          <button class="btn btn-outline-secondary" type="button" onclick="NewForm()">{{.BTNAddForm}}</button>
-        </div>
-      </div>
+          <div class="input-group">
+            <select name="rooms-select" id="rooms-select" class="custom-select">
+              <option value="0" selected>{{.LBLSelectRoom}}</option>
+              {{range .Rooms}}
+                <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+            <div class="input-group-append">
+              <button id="edit-room" class="btn btn-outline-secondary" type="button" onclick="RoomEdit()">{{.BTNRoomEdit}}</button>
+              <button class="btn btn-outline-secondary" type="button">{{.BTNRoomDelete}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
 
-      <div class="input-group">
-        <select name="forms-select" id="forms-select" class="custom-select">
-          <option value="0" selected>{{.LBLSelectForm}}</option>
-          {{range .FormTempls}}
-          <option value="{{.ID}}">{{.Name}}</option>
-          {{end}}
-        </select>
-        <div class="input-group-append">
-          <button id="edit-form" class="btn btn-primary" type="button" onclick="EditForm()" >{{.BTNEditForm}}</button>
-        </div>
-      </div>
-      <h4>{{.LBLRaports}}</h4>
-      <div class="input-group">
-        <select name="forms-raports-select" id="forms-raports-select" class="custom-select">
-          <option value="0" selected>{{.LBLSelectFormRaport}}</option>
-          {{range .FormTempls}}
-          <option value="{{.ID}}">{{.Name}}</option>
-          {{end}}
-        </select>
-        <div class="input-group-append">
-          <button id="edit-form" class="btn btn-primary" type="button" onclick="ShowFormRaports()" >{{.BTNShowFormRaports}}</button>
-        </div>
-      </div>
+          <div class="input-group">
+            <select name="events-select" id="events-select" class="custom-select">
+              <option value="0" selected>{{.LBLSelectEvent}}</option>
+              {{range .Events}}
+                <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+            <div class="input-group-append">
+              <button id="edit-event" class="btn btn-outline-secondary" type="button" onclick="EventEdit()">{{.BTNEventEdit}}</button>
+              <button class="btn btn-outline-secondary" type="button">{{.BTNEventDelete}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
 
+          <h4>{{.LBLRaports}}</h4>
+          <div class="input-group">
+            <select name="events-raports-select" id="events-raports-select" class="custom-select">
+              <option value="0" selected>{{.LBLSelectEvent}}</option>
+              {{range .Events}}
+                <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+            <div class="input-group-append">
+              <button id="run-raports" class="btn btn-primary" type="button" onclick="ShowRaports()">{{.BTNShowRaports}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
 
-    <h3>{{.LBLBankAccountsTitle}}</h3>
-    <div class="input-group">
-    <input type="text" class="form-control" id="new-ba-name" placeholder="{{.LBLNewBAPlaceholder}}" aria-label="{{.LBLNewBAPlaceholder}}" aria-describedby="basic-addon2">
-    <div class="input-group-append">
-      <button class="btn btn-outline-secondary" type="button" onclick="NewBankAccount()">{{.BTNAddNewBA}}</button>
-    </div>
-  </div>
+          <!-- <button id="add-room" class="btn btn-primary">{{.BTNAddRoom}}</button>
+          <button id="add-event" class="btn btn-primary">{{.BTNAddEvent}}</button> -->
+        </div> <!-- /.col-md-6 -->
+      </div> <!-- /.row -->
+    </div> <!-- /#tab1.tab-pane -->
 
-  <div class="input-group">
-    <select name="ba-select" id="ba-select" class="custom-select">
-      <option value="0" selected>{{.LBLSelectBankAccount}}</option>
-      {{range .BankAccounts}}
-      <option value="{{.ID}}">{{.Name}}</option>
-      {{end}}
-    </select>
-    <div class="input-group-append">
-      <button id="ba-edit" class="btn btn-outline-secondary" type="button" onclick="EditBankAccount()" >{{.BTNBAEdit}}</button>
-      <button class="btn btn-outline-secondary" type="button" onclick="DeleteBankAccount()" >{{.BTNBADelete}}</button>
-    </div>
-  </div>
+    <!-- SECOND TAB START -->
+    <div class="tab-pane fade" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
+      <div class="row d-flex justify-content-center">
+        <div class="col-md-6">
+          <h3>{{.LBLForms}}</h3>
+          <div class="input-group">
+            <input type="text" class="form-control" id="new-form-name" placeholder="{{.LBLNewFormPlaceholder}}" aria-label="{{.LBLNewForm}}" aria-describedby="basic-addon2">
+            <input type="text" class="form-control" id="new-form-url" placeholder="{{.LBLNewFormURLPlaceholder}}" aria-label="{{.LBLNewFormURL}}" aria-describedby="basic-addon2">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" type="button" onclick="NewForm()">{{.BTNAddForm}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
 
-    <h3>{{.LBLNotificationsTitle}}</h3>
-    <div class="input-group">
-    <input type="text" class="form-control" id="new-notification-name" placeholder="{{.LBLNewNotificationPlaceholder}}" aria-label="{{.LBLNewNotificationPlaceholder}}" aria-describedby="basic-addon2">
-    <div class="input-group-append">
-      <button class="btn btn-outline-secondary" type="button" onclick="NewNotification()">{{.BTNAddNewNotification}}</button>
-    </div>
-  </div>
+          <div class="input-group">
+            <select name="forms-select" id="forms-select" class="custom-select">
+              <option value="0" selected>{{.LBLSelectForm}}</option>
+              {{range .FormTempls}}
+                <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+            <div class="input-group-append">
+              <button id="edit-form" class="btn btn-primary" type="button" onclick="EditForm()">{{.BTNEditForm}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
 
-  <label for="notification-select">{{.LBLNotificationIsShared}}</label>
-  <div class="input-group">
-    <select name="notification-select" id="notification-select" class="custom-select">
-      <option value="0" selected>{{.LBLSelectNotification}}</option>
-      {{range .Notifications}}
-      <option value="{{.ID}}">{{.Name}}{{if eq .RelatedTo $.NotifRelatedToEventCode}} ({{$.NotifRelatedToEvent}}){{else}} ({{$.NotifRelatedToForm}}){{end}}{{if eq .UserID $.UserID}} ({{$.MyNotif}}){{end}}{{if .Sharable}} ({{$.SharedNotif}}){{end}}</option>
-      {{end}}
-    </select>
-    <div class="input-group-append">
-      <button id="mail-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()" >{{.BTNNotificationEdit}}</button>
-      <button class="btn btn-outline-secondary" type="button" onclick="DeleteNotification()" >{{.BTNNotificationDelete}}</button>
-    </div>
-  </div>
+          <h4>{{.LBLRaports}}</h4>
+          <div class="input-group">
+            <select name="forms-raports-select" id="forms-raports-select" class="custom-select">
+              <option value="0" selected>{{.LBLSelectFormRaport}}</option>
+              {{range .FormTempls}}
+                <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+            <div class="input-group-append">
+              <button id="show-form-raports" class="btn btn-primary" type="button" onclick="ShowFormRaports()">{{.BTNShowFormRaports}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
+        </div> <!-- /.col-md-6 -->
+      </div> <!-- /.row -->
+    </div> <!-- /#tab2.tab-pane -->
 
+    <!-- THIRD TAB START -->
+    <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
+      <div class="row d-flex justify-content-center">
+        <div class="col-md-6">
+          <h3>{{.LBLBankAccountsTitle}}</h3>
+          <div class="input-group">
+            <input type="text" class="form-control" id="new-ba-name" placeholder="{{.LBLNewBAPlaceholder}}" aria-label="{{.LBLNewBAPlaceholder}}" aria-describedby="basic-addon2">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" type="button" onclick="NewBankAccount()">{{.BTNAddNewBA}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
 
+          <div class="input-group">
+            <select name="ba-select" id="ba-select" class="custom-select">
+              <option value="0" selected>{{.LBLSelectBankAccount}}</option>
+              {{range .BankAccounts}}
+                <option value="{{.ID}}">{{.Name}}</option>
+              {{end}}
+            </select>
+            <div class="input-group-append">
+              <button id="ba-edit" class="btn btn-outline-secondary" type="button" onclick="EditBankAccount()">{{.BTNBAEdit}}</button>
+              <button class="btn btn-outline-secondary" type="button" onclick="DeleteBankAccount()">{{.BTNBADelete}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
 
-        <!-- <button id="add-room" class="btn btn-primary">{{.BTNAddRoom}}</button>
-        <button id="add-event" class="btn btn-primary">{{.BTNAddEvent}}</button> -->
-    </div>
-</div>
+          <h3>{{.LBLNotificationsTitle}}</h3>
+          <div class="input-group">
+            <input type="text" class="form-control" id="new-notification-name" placeholder="{{.LBLNewNotificationPlaceholder}}" aria-label="{{.LBLNewNotificationPlaceholder}}" aria-describedby="basic-addon2">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary" type="button" onclick="NewNotification()">{{.BTNAddNewNotification}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
+
+          <label for="notification-select">{{.LBLNotificationIsShared}}</label>
+          <div class="input-group">
+            <select name="notification-select" id="notification-select" class="custom-select">
+              <option value="0" selected>{{.LBLSelectNotification}}</option>
+              {{range .Notifications}}
+                <option value="{{.ID}}">{{.Name}}{{if eq .RelatedTo $.NotifRelatedToEventCode}} ({{$.NotifRelatedToEvent}}){{else}} ({{$.NotifRelatedToForm}}){{end}}{{if eq .UserID $.UserID}} ({{$.MyNotif}}){{end}}{{if .Sharable}} ({{$.SharedNotif}}){{end}}</option>
+              {{end}}
+            </select>
+            <div class="input-group-append">
+              <button id="mail-edit" class="btn btn-outline-secondary" type="button" onclick="EditNotification()">{{.BTNNotificationEdit}}</button>
+              <button class="btn btn-outline-secondary" type="button" onclick="DeleteNotification()">{{.BTNNotificationDelete}}</button>
+            </div> <!-- /.input-group-append -->
+          </div> <!-- /.input-group -->
+        </div> <!-- /.col-md-6 -->
+      </div> <!-- /.row -->
+    </div> <!-- /#tab3.tab-pane -->
+  </div> <!-- /#myTabContent.tab-content -->
 {{end}}

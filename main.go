@@ -194,12 +194,12 @@ który odbędzie się w piątek <b>7 lutego 2020</b> od godziny 19:00 w Domu Prz
 W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.<br />
 W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub <b>"Balkon - 1. piętro"</b>.<br />
 Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk "Zamów", które przekieruje Państwa do formularza rezerwacji.`
-	roomDescription1P := `Miejskie Koła PZKO w Karwinie zapraszają na <b>„BAL POLSKI”</b>, który odbędzie 
+	roomDescription1P := `Miejskie Koła PZKO w Karwinie zapraszają na <b>„BAL POLSKI”</b>, który odbędzie
 się w piątek <b>24 stycznia 2020</b> od godziny 19:00 w Domu Przyjaźni w Karwinie.<br>
 W celu zakupu biletów potrzebna jest wcześniejsza rezerwacja.
-W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub 
+W górnej części ekranu wybrać można zakładkę <b>"Sala główna - parter"</b> lub
 <b>"Balkon - 1. piętro</b>".<br>
-Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk <b>"Zamów"</b>, 
+Proszę wybrać wolne miejsca (krzesła) i kliknąć na przycisk <b>"Zamów"</b>,
 które przekieruje Państwa do formularza rezerwacji.
 `
 
@@ -1208,6 +1208,9 @@ type AdminPage struct {
 }
 
 type AdminMainPageVars struct {
+	TabEvents                     string
+	TabForms                      string
+	TabSettings                   string
 	LBLEvents                     string
 	LBLRoomEventTitle             string
 	LBLRoomEventText              template.HTML
@@ -1354,6 +1357,9 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 			LBLLang:  lang,
 			LBLTitle: "Admin main page",
 			AdminMainPageVars: AdminMainPageVars{
+				TabEvents:                     "Events",
+				TabForms:                      "Forms",
+				TabSettings:                   "Settings",
 				LBLEvents:                     "Events",
 				LBLRoomEventTitle:             "Select event",
 				LBLRoomEventText:              template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
@@ -1409,6 +1415,9 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 			LBLLang:  lang,
 			LBLTitle: "Administracja",
 			AdminMainPageVars: AdminMainPageVars{
+				TabEvents:                     "Rezerwacje",
+				TabForms:                      "Formularze",
+				TabSettings:                   "Ustawienia/Katalogi",
 				LBLEvents:                     "Imprezy",
 				LBLRoomEventTitle:             "Wybierz imprezę",
 				LBLRoomEventText:              template.HTML("<b>Dlaczego?</b><br />Musisz wybrać imprezę, ponieważ status krzeseł <i>'wyłączony'</i> oraz <i>'cena'</i> miejsca są związanie z <b>imprezą</b>, a nie z pomieszczeniem jako takim."),

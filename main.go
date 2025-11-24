@@ -4562,7 +4562,8 @@ func ToDateTime(unix int64) string {
 }
 
 func ToUnix(s string, loc *time.Location, df string) (int64, error) {
-	t, err := time.ParseInLocation(df, s, loc)
+	t, err := time.Parse(df, s)
+	//t, err := time.ParseInLocation(df, s, loc) // we can not parse in location, other direction is parsed normaly
 	if err == nil {
 		return t.Unix(), nil
 	}

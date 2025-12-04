@@ -72,13 +72,13 @@ $(function() {
     buttons: [ 
       {
         extend: 'collection',
-        text: 'Export',
+        text: 'Exportuj',
         buttons: ['copy', 'excel', 'csv' ,'pdf', 'print']
       },
       'colvis',
       {
         extend: 'selected',
-        text: 'Toggle "ordered/payed"',
+        text: 'Przełącz "zamówiono/zapłacono"',
         action: function ( e, dt, button, config ) {
           var stscol = table.colReorder.transpose(OrderStatus);
           var furnNumberCol = table.colReorder.transpose(ChairNr);
@@ -115,19 +115,19 @@ $(function() {
       },
       {
         extend: "selected",
-        text: "Delete",
+        text: "Kasuj",
         action: function ( e, dt, button, config ) {
           var furnNumberCol = table.colReorder.transpose(ChairNr);
           var roomNameCol = table.colReorder.transpose(Room);
           var indexes = dt.rows({selected: true}).indexes();
           bootbox.confirm({
-            message: "Really delete selected orders? It is UNREVERSABLE!",
+            message: "Na pewno wykasować zaznaczone rezerwacje? Kasowanie jest NIEODWRACALNE!",
               buttons: {
                 cancel: {
-                    label: '<i class="fa fa-times"></i> Cancel'
+                    label: '<i class="fa fa-times"></i> Anuluj'
                 },
                 confirm: {
-                    label: '<i class="fa fa-check"></i> Delete'
+                    label: '<i class="fa fa-check"></i> Kasuj'
                 }
               },
             callback: function(result) {
@@ -147,7 +147,7 @@ $(function() {
         },
       },
       {
-        text: "Cancel filters",
+        text: "Usuń filtry",
         action: function ( e, dt, button, config ) {
           $('#reservations thead tr:eq(1) th input').each( function (i) {
             table.column(i).search("");
@@ -158,7 +158,7 @@ $(function() {
       },
       {
         // select only visible, not all
-        text: "Select All",
+        text: "Wybierz wszystkie",
         action: function ( e, dt, button, config ) {
           dt.rows( { page: 'current' } ).select();
         }
@@ -175,7 +175,7 @@ $(function() {
   // set content of total-price-lbl, it is created in "dom" table param
   $("div.total-price-lbl").css("display", "inline");
   $("div.total-price-lbl").css("margin-left", "5px");
-  $("div.total-price-lbl").html('Total: <span id="total-price"></span><span>, Sits: <span id="total-sits"></span></div>');
+  $("div.total-price-lbl").html('Łącznie: <span id="total-price"></span><span>, Krzesła: <span id="total-sits"></span></div>');
 
   // show total sits and price on select/deselect
   table.on( 'select', function ( e, dt, items ) {

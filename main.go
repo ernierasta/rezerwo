@@ -512,7 +512,21 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			rv.Room = rr[i]
 			imgName, imgW, imgH := parseBanner(rr[i].Banner.String)
 			rv.HTMLBannerImg = template.HTML(getImgHTML(imgName, user.URL, MEDIAROOT, imgW, imgH))
-			rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
+			// rv.HTMLRoomDescription = template.HTML(rr[i].Description.String) // Changed to event.RoomXDescription
+			switch i {
+			case 0:
+				rv.HTMLRoomDescription = template.HTML(event.Room1Desc.String)
+			case 1:
+				rv.HTMLRoomDescription = template.HTML(event.Room2Desc.String)
+			case 2:
+				rv.HTMLRoomDescription = template.HTML(event.Room3Desc.String)
+			case 3:
+				rv.HTMLRoomDescription = template.HTML(event.Room4Desc.String)
+			}
+			if rv.HTMLRoomDescription == "" { // failback to room description if empty in event table
+				rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
+			}
+
 			rv.HTMLHowTo = template.HTML(event.HowTo)
 			switch lng {
 			case "pl":
@@ -1539,6 +1553,23 @@ type EventEditorVars struct {
 	LBLTitleOrdered                                          string
 	LBLTitleRoomLegend                                       string
 	LBLTitleSharable                                         string
+	LBLRoomDescSection                                       string
+	LBLRoom1Desc                                             string
+	Room1DescValue                                           template.HTML
+	LBLRoom1Banner                                           string
+	Room1BannerValue                                         string
+	LBLRoom2Desc                                             string
+	Room2DescValue                                           template.HTML
+	LBLRoom2Banner                                           string
+	Room2BannerValue                                         string
+	LBLRoom3Desc                                             string
+	Room3DescValue                                           template.HTML
+	LBLRoom3Banner                                           string
+	Room3BannerValue                                         string
+	LBLRoom4Desc                                             string
+	Room4DescValue                                           template.HTML
+	LBLRoom4Banner                                           string
+	Room4BannerValue                                         string
 }
 
 func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
@@ -1683,6 +1714,23 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				LBLTitleNoSitsSelected:      "When no sits selected",
 				LBLTitleRoomLegend:          "Room legend, price, ...",
 				LBLTitleSharable:            "Shared",
+				LBLRoomDescSection:          "Event/Room descreption",
+				Room1DescValue:              template.HTML(event.Room1Desc.String),
+				LBLRoom1Desc:                "Room1 Description",
+				Room2DescValue:              template.HTML(event.Room2Desc.String),
+				LBLRoom2Desc:                "Room2 Description",
+				Room3DescValue:              template.HTML(event.Room3Desc.String),
+				LBLRoom3Desc:                "Room3 Description",
+				Room4DescValue:              template.HTML(event.Room4Desc.String),
+				LBLRoom4Desc:                "Room4 Description",
+				Room1BannerValue:            event.Room1Banner.String,
+				LBLRoom1Banner:              "Room1 Banner",
+				Room2BannerValue:            event.Room2Banner.String,
+				LBLRoom2Banner:              "Room2 Banner",
+				Room3BannerValue:            event.Room3Banner.String,
+				LBLRoom3Banner:              "Room3 Banner",
+				Room4BannerValue:            event.Room4Banner.String,
+				LBLRoom4Banner:              "Room4 Banner",
 			}
 
 			rpPL := EventEditorVars{
@@ -1762,6 +1810,23 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				LBLTitleNoSitsSelected:      "Kiedy nie wybrano siedzeń",
 				LBLTitleRoomLegend:          "Legenda pomieszczenia(-eń), ceny, ...",
 				LBLTitleSharable:            "Współdzielone",
+				LBLRoomDescSection:          "Opis imprezy/pomieszczeń",
+				LBLRoom1Desc:                "Opis imprezy/pomieszczenie 1",
+				LBLRoom2Desc:                "Opis imprezy/pomieszczenie 2",
+				LBLRoom3Desc:                "Opis imprezy/pomieszczenie 3",
+				LBLRoom4Desc:                "Opis imprezy/pomieszczenie 4",
+				LBLRoom1Banner:              "Banner pomieszczenie 1",
+				LBLRoom2Banner:              "Banner pomieszczenie 2",
+				LBLRoom3Banner:              "Banner pomieszczenie 3",
+				LBLRoom4Banner:              "Banner pomieszczenie 4",
+				Room1DescValue:              template.HTML(event.Room1Desc.String),
+				Room2DescValue:              template.HTML(event.Room2Desc.String),
+				Room3DescValue:              template.HTML(event.Room3Desc.String),
+				Room4DescValue:              template.HTML(event.Room4Desc.String),
+				Room1BannerValue:            event.Room1Banner.String,
+				Room2BannerValue:            event.Room2Banner.String,
+				Room3BannerValue:            event.Room3Banner.String,
+				Room4BannerValue:            event.Room4Banner.String,
 			}
 
 			_ = rpEN
@@ -2809,6 +2874,14 @@ type EventJson struct {
 	Sharable       bool   `json:"sharable"`
 	BankAccountID  string `json:"bank_account_id"`
 	Rooms          string `json:"rooms"`
+	Room1Desc      string `json:"room1desc"`
+	Room1Banner    string `json:"room1banner"`
+	Room2Desc      string `json:"room2desc"`
+	Room2Banner    string `json:"room2banner"`
+	Room3Desc      string `json:"room3desc"`
+	Room3Banner    string `json:"room3banner"`
+	Room4Desc      string `json:"room4desc"`
+	Room4Banner    string `json:"room4banner"`
 }
 
 // EventAddMod is API func
@@ -2886,6 +2959,22 @@ func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore
 					log.Printf("EventAddMod: error (it may be normal if already exists) adding room %d, to event %d, %v", roomID, id, err)
 				}
 			}
+			// empty descriptions if no text (just <p><br></p> tags)
+			re := regexp.MustCompile(`(?i)</?(p|br)\s*/?>`)
+			for i, v := range []string{eventJson.Room1Desc, eventJson.Room2Desc, eventJson.Room3Desc, eventJson.Room4Desc} {
+				if strings.TrimSpace(re.ReplaceAllString(v, "")) == "" {
+					switch i {
+					case 0:
+						eventJson.Room1Desc = ""
+					case 1:
+						eventJson.Room2Desc = ""
+					case 2:
+						eventJson.Room3Desc = ""
+					case 3:
+						eventJson.Room4Desc = ""
+					}
+				}
+			}
 
 			ev := &Event{
 				ID:                      id,
@@ -2908,6 +2997,14 @@ func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore
 				UserID:                  userid,
 				Sharable:                ToNB(eventJson.Sharable),
 				BankAccountsID:          ToNI(bankAccountID),
+				Room1Desc:               ToNS(eventJson.Room1Desc),
+				Room1Banner:             ToNS(eventJson.Room1Banner),
+				Room2Desc:               ToNS(eventJson.Room2Desc),
+				Room2Banner:             ToNS(eventJson.Room2Banner),
+				Room3Desc:               ToNS(eventJson.Room3Desc),
+				Room3Banner:             ToNS(eventJson.Room3Banner),
+				Room4Desc:               ToNS(eventJson.Room4Desc),
+				Room4Banner:             ToNS(eventJson.Room4Banner),
 			}
 
 			//spew.Dump(ev) // DEBUG

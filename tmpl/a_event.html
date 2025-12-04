@@ -1,7 +1,10 @@
 {{define "head"}}<title>{{.LBLTitle}}</title>
 <link href="/css/admin.css" rel="stylesheet" type="text/css">
 <link href="/css/quill.snow.css" rel="stylesheet">
+<link href="/css/room.css" rel="stylesheet">
 <script src="/js/quill.min.js"></script>
+<script src="/js/a_quill_settings.js"></script>
+
 {{end}}
 {{define "body"}}
 <div class="d-flex justify-content-center align-items-center">
@@ -129,10 +132,10 @@
     <h3>{{.LBLTitleRoomLegend}}</h3>
     <div class="form-group">
       <p id="howto-editor-label">{{.LBLHowto}}</p>
-      <div id="howto-editor">
-          <textarea rows="8" cols="87" class="form-group" id="howto-text" name="howto-text">{{.HTMLHowTo}}</textarea>
-      </div>
+      <div id="howto-editor">{{.HTMLHowTo}}</div>
+        <!-- <textarea rows="8" cols="87" class="form-group" id="howto-text" name="howto-text">{{.HTMLHowTo}}</textarea> -->
     </div>
+
     <textarea name="html-ordered-note-text" hidden></textarea>
     <textarea name="html-howto" hidden></textarea>
 
@@ -157,7 +160,7 @@
       <small id="nameHelp" class="form-text text-muted">{{.RoomsHelpText}}</small>
     </div>
 
-    
+
     <div class="input-group">
         <select name="room-select" id="room-select" class="custom-select">
           <option value="0" selected>{{.LBLRoomsSelect}}</option>
@@ -170,6 +173,48 @@
           <button class="btn btn-outline-secondary" type="button" onclick="ClearRooms()">{{.BTNClearRooms}}</button>
         </div>
       </div>
+
+    <h3>{{.LBLRoomDescSection}}</h3>
+    <div class="form-group">
+      <p id="room1desc-editor-label">{{.LBLRoom1Desc}}</p>
+      <div id="room1desc-editor">
+        {{.Room1DescValue}}
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="room1banner">{{.LBLRoom1Banner}}</label>
+      <input type="text" class="form-control" id="room1banner" name="room1banner" value="{{.Room1BannerValue}}">
+    </div>
+    <div class="form-group">
+      <p id="room2desc-editor-label">{{.LBLRoom2Desc}}</p>
+      <div id="room2desc-editor">
+        {{.Room2DescValue}}
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="room2banner">{{.LBLRoom2Banner}}</label>
+      <input type="text" class="form-control" id="room2banner" name="room2banner" value="{{.Room1BannerValue}}">
+    </div>
+   <div class="form-group">
+      <p id="room3desc-editor-label">{{.LBLRoom3Desc}}</p>
+      <div id="room3desc-editor">
+        {{.Room3DescValue}}
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="room3banner">{{.LBLRoom3Banner}}</label>
+      <input type="text" class="form-control" id="room3banner" name="room3banner" value="{{.Room3BannerValue}}">
+    </div>
+    <div class="form-group">
+      <p id="room4desc-editor-label">{{.LBLRoom4Desc}}</p>
+      <div id="room4desc-editor">
+        {{.Room4DescValue}}
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="room4banner">{{.LBLRoom4Banner}}</label>
+      <input type="text" class="form-control" id="room4banner" name="room4banner" value="{{.Room4BannerValue}}">
+    </div>
 
 
     <button id="save-event" type="button" class="btn btn-primary" onclick="Save()">{{.BTNSave}}</button>

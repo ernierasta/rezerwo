@@ -5,3 +5,7 @@ header {
 body {
   padding-bottom: 50px;
 }
+
+p {
+  margin-bottom: 0px;
+}

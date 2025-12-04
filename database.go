@@ -143,6 +143,16 @@ import (
 //ALTER TABLE events
 //   ADD COLUMN hidecosts INTEGER;
 
+// update events to contain rooms descriptions and banners
+//ALTER TABLE events ADD COLUMN room1desc string;
+//ALTER TABLE events ADD COLUMN room1banner string;
+//ALTER TABLE events ADD COLUMN room2desc string;
+//ALTER TABLE events ADD COLUMN room2banner string;
+//ALTER TABLE events ADD COLUMN room3desc string;
+//ALTER TABLE events ADD COLUMN room3banner string;
+//ALTER TABLE events ADD COLUMN room4desc string;
+//ALTER TABLE events ADD COLUMN room4banner string;
+
 // remove all chairs with round number (10,20,30, ...)
 // DELETE FROM prices
 // WHERE furnitures_id_fk IN (
@@ -201,8 +211,8 @@ type Customer struct {
 type Room struct {
 	ID          int64          `db:"id"`
 	Name        string         `db:"name"`
-	Banner      sql.NullString `db:"banner_img"`
-	Description sql.NullString `db:"description"`
+	Banner      sql.NullString `db:"banner_img"`  // also moving to events
+	Description sql.NullString `db:"description"` // we are moving it to Event
 	Width       int64          `db:"width"`
 	Height      int64          `db:"height"`
 	Sharable    sql.NullInt64  `db:"sharable"`
@@ -259,6 +269,14 @@ type Event struct {
 	BankAccountsID          sql.NullInt64  `db:"bankaccounts_id_fk"`
 	Language                sql.NullString `db:"language"`
 	HideCosts               sql.NullBool   `db:"hidecosts"`
+	Room1Desc               sql.NullString `db:"room1desc"`
+	Room1Banner             sql.NullString `db:"room1banner"`
+	Room2Desc               sql.NullString `db:"room2desc"`
+	Room2Banner             sql.NullString `db:"room2banner"`
+	Room3Desc               sql.NullString `db:"room3desc"`
+	Room3Banner             sql.NullString `db:"room3banner"`
+	Room4Desc               sql.NullString `db:"room4desc"`
+	Room4Banner             sql.NullString `db:"room4banner"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -636,7 +654,7 @@ func (db *DB) RoomUnassignUser(userID, roomID int64) error {
 }
 
 func (db *DB) FurnitureAdd(f *Furniture) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk) 
+	ret, err := db.DB.NamedExec(`INSERT INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk)
 VALUES(:number, :type, :orientation, :x, :y, :width, :height, :color, :label, :capacity, :rooms_id_fk)`, f)
 	if err != nil {
 		return -1, err
@@ -658,7 +676,7 @@ func (db *DB) FurnitureCopyRoom(fromRoomID int64, toRoomID int64) (int64, error)
 
 func (db *DB) FurnitureAddOrUpdateUnsafe(f *Furniture) (int64, error) {
 	log.Println("Do NOT use FurnitureAddOrUpdate - messes with ID's")
-	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk) 
+	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO furnitures (number, type, orientation, x, y, width, height, color, label, capacity, rooms_id_fk)
 VALUES(:number, :type, :orientation, :x, :y, :width, :height, :color, :label, :capacity, :rooms_id_fk)`, f)
 	if err != nil {
 		return -1, err
@@ -770,7 +788,7 @@ func (db *DB) FurnitureDelByNumberTypeRoom(number int64, ftype string, roomID in
 }
 
 func (db *DB) PriceAdd(p *Price) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk) 
+	ret, err := db.DB.NamedExec(`INSERT INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk)
 VALUES(:price, :currency, :disabled, :events_id_fk, :furnitures_id_fk)`, p)
 	if err != nil {
 		return -1, err
@@ -779,7 +797,7 @@ VALUES(:price, :currency, :disabled, :events_id_fk, :furnitures_id_fk)`, p)
 }
 
 func (db *DB) PriceAddOrUpdateUnsafe(p *Price) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk) 
+	ret, err := db.DB.NamedExec(`INSERT OR REPLACE INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk)
 VALUES(:price, :currency, :disabled, :events_id_fk, :furnitures_id_fk)`, p)
 	if err != nil {
 		return -1, err
@@ -789,7 +807,7 @@ VALUES(:price, :currency, :disabled, :events_id_fk, :furnitures_id_fk)`, p)
 
 func (db *DB) PriceGetByEventName(fID int64, event string) (Price, error) {
 	price := Price{}
-	err := db.DB.Get(&price, `SELECT * FROM prices WHERE furnitures_id_fk=$1 
+	err := db.DB.Get(&price, `SELECT * FROM prices WHERE furnitures_id_fk=$1
 								and events_id_fk = (SELECT id FROM events WHERE name=$2)`, fID, event)
 	return price, err
 }
@@ -873,8 +891,8 @@ func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) err
 
 // we are not adding HideCosts here, as it is not available in interface
 func (db *DB) EventAdd(e *Event) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, users_id_fk, thankyou_notifications_id_fk, admin_notifications_id_fk, sharable, bankaccounts_id_fk, language) 
-		VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :users_id_fk, :thankyou_notifications_id_fk, :admin_notifications_id_fk, :sharable, :bankaccounts_id_fk, :language)`, e)
+	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, users_id_fk, thankyou_notifications_id_fk, admin_notifications_id_fk, sharable, bankaccounts_id_fk, language, room1desc, room1banner, room2desc, room2banner, room3desc, room3banner, room4desc, room4banner)
+	VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :users_id_fk, :thankyou_notifications_id_fk, :admin_notifications_id_fk, :sharable, :bankaccounts_id_fk, :language, :room1desc, :room1banner, :room2desc, :room2banner, :room3desc, :room3banner, :room4desc, :room4banner)`, e)
 	if err != nil {
 		return -1, err
 	}
@@ -963,7 +981,7 @@ func (db *DB) EventModByID(event *Event, UserID int64) error {
 	if event.UserID != UserID {
 		return fmt.Errorf("event.UserID %d do not match UserID %d, can't update event", event.UserID, UserID)
 	}
-	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, thankyou_notifications_id_fk=:thankyou_notifications_id_fk, admin_notifications_id_fk=:admin_notifications_id_fk, sharable=:sharable, bankaccounts_id_fk=:bankaccounts_id_fk, language=:language WHERE id=:id AND users_id_fk=:users_id_fk`, event)
+	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, thankyou_notifications_id_fk=:thankyou_notifications_id_fk, admin_notifications_id_fk=:admin_notifications_id_fk, sharable=:sharable, bankaccounts_id_fk=:bankaccounts_id_fk, language=:language, room1desc=:room1desc, room1banner=:room1banner, room2desc=:room2desc, room2banner=:room2banner, room3desc=:room3desc, room3banner=:room3banner, room4desc=:room4desc, room4banner=:room4banner WHERE id=:id AND users_id_fk=:users_id_fk`, event)
 	return err
 }
 
@@ -1046,7 +1064,7 @@ func (db *DB) ReservationFullGetAll(userID, eventID int64) ([]ReservationFull, e
 }
 
 func (db *DB) ReservationAdd(r *Reservation) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO reservations (ordered_date, payed_date, price, currency, status, notes_id_fk, furnitures_id_fk, events_id_fk, customers_id_fk) 
+	ret, err := db.DB.NamedExec(`INSERT INTO reservations (ordered_date, payed_date, price, currency, status, notes_id_fk, furnitures_id_fk, events_id_fk, customers_id_fk)
 VALUES(:ordered_date, :payed_date, :price, :currency, :status, :notes_id_fk, :furnitures_id_fk, :events_id_fk, :customers_id_fk)`, r)
 	if err != nil {
 		return -1, err
@@ -1087,7 +1105,7 @@ func (db *DB) ReservationDel(id int64) error {
 }
 
 func (db *DB) CustomerAdd(c *Customer) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO customers (email, passwd, name, surname, phone, notes) 
+	ret, err := db.DB.NamedExec(`INSERT INTO customers (email, passwd, name, surname, phone, notes)
 VALUES(:email, :passwd, :name, :surname, :phone, :notes)`, c)
 	if err != nil {
 		return -1, err
@@ -1121,7 +1139,7 @@ func (db *DB) CustomerAppendToUser(userID, customerID int64) error {
 	if err != nil {
 		return err
 	}
-	ret, err := db.DB.Exec(`INSERT INTO users_customers (users_id_fk, customers_id_fk) 
+	ret, err := db.DB.Exec(`INSERT INTO users_customers (users_id_fk, customers_id_fk)
 VALUES($1, $2)`, userID, customerID)
 	if err != nil {
 		return err
@@ -1137,7 +1155,7 @@ VALUES($1, $2)`, userID, customerID)
 }
 
 func (db *DB) AdminAdd(a *Admin) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO admins (type, email, passwd, notes, users_id_fk) 
+	ret, err := db.DB.NamedExec(`INSERT INTO admins (type, email, passwd, notes, users_id_fk)
 VALUES(:type, :email, :passwd, :notes, :users_id_fk)`, a)
 	if err != nil {
 		return -1, err
@@ -1159,7 +1177,7 @@ func (db *DB) AdminGetEmails(UserID int64) ([]string, error) {
 }
 
 func (db *DB) NoteAdd(note string) (int64, error) {
-	ret, err := db.DB.Exec(`INSERT INTO notes (text) 
+	ret, err := db.DB.Exec(`INSERT INTO notes (text)
 VALUES($1)`, note)
 	if err != nil {
 		return -1, err
@@ -1400,7 +1418,7 @@ func (db *DB) FormAnswerMod(fa *FormAnswer) error {
 func (db *DB) FormAnswerDel(FormID, TemplateID int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM formanswers
 		WHERE id IN ( SELECT fa.id FROM formanswers fa
- 						JOIN forms ON fa.forms_id_fk=forms.id 
+ 						JOIN forms ON fa.forms_id_fk=forms.id
 						WHERE forms_id_fk=$1 AND forms.formtemplates_id_fk=$2)`, FormID, TemplateID) // join is just for security
 	if err != nil {
 		return err
@@ -1529,7 +1547,7 @@ func (db *DB) NotificationAdd(not *Notification) (int64, error) {
 	if not.ID != 0 {
 		return -1, fmt.Errorf("NotificationAdd: ID is not 0, this is existing notification with ID:%d", not.ID)
 	}
-	ret, err := db.DB.NamedExec(`INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk) 
+	ret, err := db.DB.NamedExec(`INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk)
 	VALUES (:name, :type, :related_to, :title, :text, :embedded_imgs, :attached_imgs, :sharable, :created_date, :users_id_fk)`, not)
 	if err != nil {
 		return -1, err
@@ -1562,7 +1580,7 @@ func (db *DB) EventAddonAdd(e EventAddon) (int64, error) {
 	if e.Name == "" || e.EventID == 0 {
 		return -1, fmt.Errorf("EventAddonAdd: Name (%s) or EventID (%d) is empty", e.Name, e.EventID)
 	}
-	ret, err := db.DB.NamedExec(`INSERT INTO eventsaddons (name, price, currency, events_id_fk, users_id_fk) 
+	ret, err := db.DB.NamedExec(`INSERT INTO eventsaddons (name, price, currency, events_id_fk, users_id_fk)
 	VALUES (:name, :price, :currency, :events_id_fk, :users_id_fk)`, e)
 	if err != nil {
 		return -1, err

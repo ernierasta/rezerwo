@@ -100,11 +100,35 @@ $("#mail-thankyou-select").change(function () {
 // })
 
 //});
+
+// QUILL Toolbar def
+
+const toolbarOptions = [
+  [{ 'header': [1, 2, 3, false] }],
+  ['bold', 'italic', 'underline'],
+  ['link'],
+  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+  [{ 'indent': '-1'}, { 'indent': '+1' }],
+  [{ 'color': ['#28a745','#ffc107', '#fd7e14', '#dc3545', '#403734', '#000000'] }],
+  [{ 'align': [] }],
+  ['clean']
+];
+
+// Now create QUILLS
+
 var QuillNoSitsEditor = new Quill('#no-sits-editor', {
+  modules: {
+    toolbar: toolbarOptions
+  },
+
   theme: 'snow'
 });
 
 var QuillOrderNoteEditor = new Quill('#order-note-editor', {
+  modules: {
+    toolbar: toolbarOptions
+  },
+
   theme: 'snow'
 });
 
@@ -131,9 +155,50 @@ var QuillOrderNoteEditor = new Quill('#order-note-editor', {
 //  theme: 'snow'
 //});
 
-var QuillOrderHowtoEditor = new Quill('#order-howto-editor', {
+
+var QuillHowtoEditor = new Quill('#howto-editor', {
+  modules: {
+    toolbar: toolbarOptions
+  },
   theme: 'snow'
 });
+
+var QuillOrderHowtoEditor = new Quill('#order-howto-editor', {
+  modules: {
+    toolbar: toolbarOptions
+  },
+  theme: 'snow'
+});
+
+var QuillRoom1DescEditor = new Quill('#room1desc-editor', {
+  modules: {
+    toolbar: toolbarOptions
+  },
+  theme: 'snow'
+});
+
+var QuillRoom2DescEditor = new Quill('#room2desc-editor', {
+  modules: {
+    toolbar: toolbarOptions
+  },
+  theme: 'snow'
+});
+
+var QuillRoom3DescEditor = new Quill('#room3desc-editor', {
+  modules: {
+    toolbar: toolbarOptions
+  },
+  theme: 'snow'
+});
+
+var QuillRoom4DescEditor = new Quill('#room4desc-editor', {
+  modules: {
+    toolbar: toolbarOptions
+  },
+  theme: 'snow'
+});
+
+
 
 function Save() {
   var finald = {};
@@ -148,8 +213,8 @@ function Save() {
   finald.currency = $('#default-currency').val();
   finald.no_sits_selected_title = $('#no-sits-selected-title').val();
   finald.no_sits_selected_text = QuillNoSitsEditor.root.innerHTML;
-  //finald.how_to = QuillHowtoEditor.root.innerHTML;
-  finald.how_to = $('#howto-text').val();
+  finald.how_to = QuillHowtoEditor.root.innerHTML;
+  //finald.how_to = $('#howto-text').val();
   finald.order_howto = QuillOrderHowtoEditor.root.innerHTML;
   finald.order_notes_desc = $('#order_notes_desc').val();
   finald.ordered_note_title = $('#ordered-note-title').val();
@@ -166,6 +231,15 @@ function Save() {
   finald.admin_notifications_id_fk = $('#mail-admin-select').val();
   finald.sharable = $('#sharable').is(":checked");
   finald.rooms = $('#rooms').val();
+  finald.room1desc = QuillRoom1DescEditor.root.innerHTML;
+  finald.room1banner = $('#room1banner');
+  finald.room2desc = QuillRoom2DescEditor.root.innerHTML;
+  finald.room2banner = $('#room2banner');
+  finald.room3desc = QuillRoom3DescEditor.root.innerHTML;
+  finald.room3banner = $('#room3banner');
+  finald.room4desc = QuillRoom4DescEditor.root.innerHTML;
+  finald.room4banner = $('#room4banner');
+
   //finald.relatedto = $('#related-to-select').val(); // events or forms
   //console.log(finald.sharable);
 

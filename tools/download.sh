@@ -23,7 +23,7 @@ wget https://jqueryui.com/resources/download/jquery-ui-1.12.1.zip
 wget https://raw.githubusercontent.com/mgalante/jquery.redirect/master/jquery.redirect.js -O ../js/jquery.redirect.js
 
 #quill - text editor
-wget https://github.com/quilljs/quill/releases/download/v1.3.6/quill.tar.gz
+wget https://github.com/quilljs/quill/releases/download/v1.3.7/quill.tar.gz
 
 # datatable.js - download by hand from: https://datatables.net
 # look inside downloaded zip which modules we actually have

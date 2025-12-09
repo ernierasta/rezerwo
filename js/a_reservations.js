@@ -22,7 +22,7 @@ $(function() {
     if (i == OrderStatus || i == ChairNr || i == Name || i == Surname) {
       width = 'style="width: 110px;"';
     }
-    $(this).html( '<input type="text" '+width+' placeholder="Search '+title+'" />' );
+    $(this).html( '<input type="text" '+width+' placeholder="Szukaj '+title+'" />' );
     $( 'input', this ).on( 'keyup change', function () {
       // a bit overhead, but need to have actual value when typing
       var colnr = table.colReorder.transpose(i);
@@ -175,7 +175,7 @@ $(function() {
   // set content of total-price-lbl, it is created in "dom" table param
   $("div.total-price-lbl").css("display", "inline");
   $("div.total-price-lbl").css("margin-left", "5px");
-  $("div.total-price-lbl").html('Łącznie: <span id="total-price"></span><span>, Krzesła: <span id="total-sits"></span></div>');
+  $("div.total-price-lbl").html('Kwota: <span id="total-price"></span><span>, Krzesła: <span id="total-sits"></span></div>');
 
   // show total sits and price on select/deselect
   table.on( 'select', function ( e, dt, items ) {

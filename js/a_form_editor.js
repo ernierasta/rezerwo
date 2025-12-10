@@ -280,8 +280,10 @@ function SendFormDef(data, redirect = false) {
 
   // remove all trailing <br> from end of label json field
   // it some kind of bug in formBuilder
+  // elso remove &nbsp; from the end
   for (var i = 0; i < dataj.length; i++) {
     dataj[i].label = dataj[i].label.replace(/<br>+$/, "");
+    dataj[i].label = dataj[i].label.replace(/&nbsp;+$/, "");
   }
   finald.content = dataj;
   console.log(finald);

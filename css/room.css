@@ -20,6 +20,10 @@
   height: 2.5rem;
 }
 
+#order {
+  font-size: 22px;
+}
+
 .table {
   float: left;
   margin: 10px;

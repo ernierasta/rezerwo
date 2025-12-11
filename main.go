@@ -561,7 +561,7 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			case "pl":
 				rv.LBLSelected = "Wybrano"
 				rv.LBLTotalPrice = "Łączna suma"
-				rv.BTNOrder = "Zamów"
+				rv.BTNOrder = "Zarezerwuj"
 			case "cs":
 				rv.LBLSelected = "Vybrané"
 				rv.LBLTotalPrice = "Cena celkem"

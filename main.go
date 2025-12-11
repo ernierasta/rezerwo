@@ -4220,6 +4220,14 @@ func (i *FormFuncs) Field(FormFieldName string) string {
 	return s
 }
 
+func (i *FormFuncs) FieldOr(FormFieldName, Alternative string) string {
+	res := i.Field(FormFieldName)
+	if res == "" {
+		return Alternative
+	}
+	return res
+}
+
 // this functions allows to get separated data from multiplicateField (3 * 500 = 1500)
 func (i *FormFuncs) MAmmount(FormFieldName string) string {
 	s := i.Field(FormFieldName)

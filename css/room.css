@@ -120,6 +120,10 @@
   font-size: 20px;
 }
 
+#banner_img {
+	width: 100%;
+}
+
 #selected-chairs {
   width: 400px;
   display: flex;

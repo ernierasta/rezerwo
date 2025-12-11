@@ -611,11 +611,12 @@ func getImgHTML(imgName, userName, mediaRootPath string, w, h int) string {
 	if imgName == "" {
 		return ""
 	}
-	return fmt.Sprintf(`<img id="banner_img" src="/%s/%s/%s" width="%d" height="%d">`,
+	//<img id="banner_img" src="/%s/%s/%s" width="%d" height="%d">
+	return fmt.Sprintf(`<img id="banner_img" src="/%s/%s/%s">`,
 		mediaRootPath,
 		userName,
 		imgName,
-		w, h)
+	)
 }
 
 type ReservationOrderStatusVars struct {

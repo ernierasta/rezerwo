@@ -1,4 +1,4 @@
-{{define "head"}}  <link href="/css/room.css" rel="stylesheet" type="text/css">
+{{define "head"}}  <!-- <link href="/css/room.css" rel="stylesheet" type="text/css"> -->
   <script type="text/javascript" src="/js/room.js"></script>
   <link href="/css/room.css" rel="stylesheet" type="text/css">
   <title>{{.LBLTitle}}</title>
@@ -36,7 +36,7 @@
   {{if $.EventMainBanner}}{{$.EventMainBanner}}{{end}}
   {{if $.EventMainDesc}}<div style="margin-top: 10px;margin-bottom: 10px;">{{$.EventMainDesc}}</div>{{end}}
 </div> <!-- end center: "d-flex justify-content-center align-items-center" -->
-<ul class="nav nav-tabs">
+<ul class="nav nav-tabs flex-nowrap text-nowrap">
 {{range .Rooms}}
   <li class="nav-item" id="roomsTabs" role="tablist">
     <a class="nav-link" href="#room-{{.Room.ID}}"id="room-{{.Room.ID}}-tab" name="{{.Room.ID}}" data-toggle="tab" role="tab" aria-controls="room-{{.Room.ID}}">{{.Room.Name}}</a>

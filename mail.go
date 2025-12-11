@@ -116,7 +116,7 @@ func MailSend(n MailConfig) error {
 			log.Printf("error converting HTML to plain text, err: %v", err)
 		}
 		log.Printf("plain body: %q", plainText) // DEBUG
-		log.Printf("html text: %q", n.Text) // DEBUG
+		log.Printf("html text: %q", n.Text)     // DEBUG
 		message.SetBodyString(mail.TypeTextPlain, plainText)
 		message.AddAlternativeString(mail.TypeTextHTML, n.Text)
 	} else {
@@ -138,10 +138,15 @@ func MailSend(n MailConfig) error {
 
 	message.WriteToFile("tmp/test.msg")
 
+	// Create a custom TLS config that skips verification
+	tlsConf := &tls.Config{
+		InsecureSkipVerify: true, // ⚠️ needed for our server, by IP cert is wrong
+	}
+
 	// Deliver the mails via SMTP
 	client, err := mail.NewClient(n.Server,
 		mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover), mail.WithTLSPortPolicy(mail.TLSMandatory),
-		mail.WithUsername(n.User), mail.WithPassword(n.Pass),
+		mail.WithUsername(n.User), mail.WithPassword(n.Pass), mail.WithTLSConfig(tlsConf),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create new mail delivery client: %s", err)

@@ -32,8 +32,9 @@
   </div>
 </div>
 
-<div class="d-flex justify-content-center align-items-center">
+<div class="col-md-12">
   {{if $.EventMainBanner}}{{$.EventMainBanner}}{{end}}
+  {{if $.EventMainDesc}}<div style="margin-top: 10px;margin-bottom: 10px;">{{$.EventMainDesc}}</div>{{end}}
 </div> <!-- end center: "d-flex justify-content-center align-items-center" -->
 <ul class="nav nav-tabs">
 {{range .Rooms}}
@@ -48,8 +49,7 @@
   <div class="tab-pane fade show" id="room-{{.Room.ID}}" role="tabpanel" aria-labelledby="room-{{.Room.ID}}-tab">
     <div id="meta">
       {{if not $.EventMainBanner}}{{.HTMLBannerImg}}{{end}}
-      <h1>{{.Room.Name}}</h1>
-      {{if $.EventMainDesc}}{{$.EventMainDesc}}{{end}}
+      <!-- <h1>{{.Room.Name}}</h1> -->
       <p>{{.HTMLRoomDescription}}</p>
     </div>
     <div class="row">

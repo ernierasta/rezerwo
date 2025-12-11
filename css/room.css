@@ -111,10 +111,12 @@
 .nav-link {
   color: firebrick;
   font-weight: bold;
+  font-size: 18px;
 }
 
 .nav-link.active {
   font-weight: normal;
+  font-size: 18px;
 }
 
 #selected-chairs {

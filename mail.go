@@ -9,14 +9,15 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/mail"
+	gomail "net/mail"
 	"net/smtp"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/jaytaylor/html2text"
+	"github.com/Necoro/html2text"
+	"github.com/wneessen/go-mail"
 )
 
 // NotifConfig type represent all notification attributes
@@ -42,55 +43,12 @@ type EmbImg struct {
 	CID string
 }
 
-/*
-Correct mail stuct html with attachments:
-
-From: x
-To: y
-...
-Content-Type: multipart/mixed; boundary="boundary1"
-
---boundary1
-Content-Type: multipart/alternative; boundary="boundary2"
-
---boundary2
-Content-Type: text/plain; charset="UTF-8"
-
-hi!
-
---boundary2
-Content-Type: text/html; charset="UTF-8"
-
-<html><body><p>hi</p></body></html>
-
---boundary2--
---boundary1
-Content-Type: application/octet-stream; name="PLAN - I semestr(2).docx"
-Content-Disposition: attachment; filename="PLAN - I semestr(2).docx"
-Content-Transfer-Encoding: base64
-
-aU...
-
---boundary1
-Content-Type: application/vnd.oasis.opendocument.text; name="odziez.2.odt"
-Content-Disposition: attachment; filename="odziez.2.odt"
-Content-Transfer-Encoding: base64
-
-aaUU ...
---boundary1--
-
-*/
-
 // MailSend sends mail via smtp.
 // Supports multiple recepients, TLS (port 465)/StartTLS(ports 25,587, any other).
 // Mail should always valid (correctly encoded subject and body).
 // Now there is HTML (with automatic text version generating) support.
 // We can also send attachments.
 func MailSend(n MailConfig) error {
-
-	var b0 = "00000000000035014305975deMmm"
-	var b1 = "00000000000035014305975de62a"
-	var b2 = "00000000000035014305975de6Xx"
 
 	if (n.User != "" && n.Pass == "") ||
 		(n.Pass != "" && n.User == "") ||
@@ -104,31 +62,20 @@ func MailSend(n MailConfig) error {
 		return fmt.Errorf("SendMail: one of auth params is empty(SENDING ABORTED), u: %q p:%q s: %q", n.User, pass, n.Server)
 	}
 
-	if n.Hostname == "" {
-		return fmt.Errorf("SendMail: hostname is not defined, it is needed to generate unique Message-Id (SENDING ABORTED)")
-	}
-
-	auth := smtp.PlainAuth("", n.User, n.Pass, n.Server)
+	//if n.Hostname == "" {
+	//	return fmt.Errorf("SendMail: hostname is not defined, it is needed to generate unique Message-Id (SENDING ABORTED)")
+	//}
 
 	recipients := strings.Join(n.To, ", ")
 
-	subjectb64 := base64.StdEncoding.EncodeToString([]byte(n.Subject))
+	// subjectb64 := base64.StdEncoding.EncodeToString([]byte(n.Subject))
 
 	// if from contains not only email, but something like "Name Surname <mail@something.com>"
 	// we need to be sure international chars are properly encoded
-	if strings.Contains(n.From, "<") {
-		ss := strings.Split(n.From, "<")
-		if len(ss) == 2 {
-			m := mail.Address{Name: ss[0], Address: strings.TrimSuffix(ss[1], ">")}
-			n.From = m.String()
-		}
-	}
 
 	header := make(map[string]string)
-	header["From"] = n.From
-	header["To"] = recipients
 	header["Date"] = time.Now().Format(time.RFC1123Z)
-	header["Subject"] = "=?UTF-8?B?" + subjectb64 + "?="
+	//header["Subject"] = "=?UTF-8?B?" + subjectb64 + "?="
 	header["MIME-Version"] = "1.0"
 	header["Message-Id"] = fmt.Sprintf("<%s>", generateMessageIDWithHostname(n.Hostname))
 
@@ -139,94 +86,72 @@ func MailSend(n MailConfig) error {
 	//if n.ReplyTo != "" {
 	//	header["Reply-To"] = n.ReplyTo
 	//}
-	isHTML := strings.Contains(n.Text, "<html>")
+	isHTML := strings.Contains(n.Text, "<html")
 	hasAttachments := len(n.Files) > 0
 	hasEmbeddedImgs := len(n.EmbededHTMLImgs) > 0
 
-	msg := ""
+	message := mail.NewMsg(mail.WithEncoding(mail.EncodingB64))
+	from, err := gomail.ParseAddress(n.From)
+	if err != nil {
+		log.Printf("error parsing 'from' email %q, err: %v, trying to use backup method", n.From, err)
+		if err := message.From(n.From); err != nil {
+			return fmt.Errorf("failed to set FROM address: %s", err)
+		}
+	} else {
+		message.FromMailAddress(from)
+	}
+
+	if err := message.To(recipients); err != nil {
+		return fmt.Errorf("failed to set TO address: %s", err)
+	}
+
+	message.Subject(n.Subject)
+	message.SetMessageID()
+	message.SetDate()
 
 	if isHTML {
-		if hasAttachments {
-			header["Content-Type"] = fmt.Sprintf("multipart/mixed;boundary=\"%s\"", b0)
-			msg += "\r\n" + "--" + b0 + "\r\n"
-		}
-		if hasEmbeddedImgs {
-			header["Content-Type"] = fmt.Sprintf("multipart/related;boundary=\"%s\"", b1)
-			msg += "\r\n" + "--" + b1 + "\r\n"
-		}
-
-		// prepate "alternative" section plain/html
-		altCont, err := alternativeContent("", n.Text, b2)
+		//message.SetBodyString(mail.TypeTextHTML, n.Text)
+		plainText, err := html2text.FromString(n.Text, html2text.Options{PrettyTables: true})
 		if err != nil {
-			return err
+			log.Printf("error converting HTML to plain text, err: %v", err)
 		}
-		msg += altCont
-
-		// attachments
-		attachCont := ""
-		for i := range n.Files {
-			ct, err := validateFile(n.Files[i])
-			if err != nil {
-				return err
-			}
-			f, err := os.ReadFile(n.Files[i])
-			if err != nil {
-				return err
-			}
-			attachCont += "--" + b1 + "\r\n"
-			attachCont += fmt.Sprintf("Content-Type: %s; name=\"%s\"\r\n", ct, n.Files[i])
-			attachCont += fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\r\n", n.Files[i])
-			attachCont += "Content-Transfer-Encoding: base64\r\n"
-			attachCont += "\r\n" + base64.StdEncoding.EncodeToString(f) + "\r\n"
-		}
-		if attachCont != "" {
-			msg += attachCont
-			msg += "--" + b0 + "--\r\n"
-		}
-
-		embededImgs := ""
-		// add embeded images with CID
-		for i := range n.EmbededHTMLImgs {
-			ct, err := validateFile(n.EmbededHTMLImgs[i].NamePath)
-			if err != nil {
-				return err
-			}
-			f, err := os.ReadFile(n.EmbededHTMLImgs[i].NamePath)
-			if err != nil {
-				return err
-			}
-			embededImgs += "--" + b1 + "\r\n"
-			embededImgs += fmt.Sprintf("Content-Type: %s\r\n", ct)
-			embededImgs += fmt.Sprintf("Content-ID: <%s>\r\n", n.EmbededHTMLImgs[i].CID)
-			embededImgs += fmt.Sprintf("Content-Disposition: inline; filename=\"%s\"\r\n", n.EmbededHTMLImgs[i].NamePath)
-			embededImgs += "Content-Transfer-Encoding: base64\r\n"
-			embededImgs += "\r\n" + base64.StdEncoding.EncodeToString(f) + "\r\n"
-		}
-		if embededImgs != "" {
-			msg += embededImgs
-			msg += "--" + b1 + "--\r\n"
-		}
-		// this no necessary imho
-		//} else if isHTML && !hasAttachments {
-		//		var err error
-		//		msg, err = alternativeContent("", n.Text, b1)
-		//		if err != nil {
-		//			return err
-		//		}
+		log.Printf("plain body: %q", plainText) // DEBUG
+		log.Printf("html text: %q", n.Text) // DEBUG
+		message.SetBodyString(mail.TypeTextPlain, plainText)
+		message.AddAlternativeString(mail.TypeTextHTML, n.Text)
 	} else {
-		header["Content-Transfer-Encoding"] = "base64"
-		header["Content-Type"] = "text/plain; charset=\"utf-8\""
-		msg = base64.StdEncoding.EncodeToString([]byte(n.Text))
+		message.SetBodyString(mail.TypeTextPlain, n.Text)
 	}
 
-	message := ""
-	for k, v := range header {
-		message += fmt.Sprintf("%s: %s\r\n", k, v)
+	if hasAttachments {
+		for i := range n.Files {
+			message.AttachFile(n.Files[i])
+		}
 	}
 
-	message += msg
-	//_ = auth
-	err := sendMail(n.Server, n.Port, auth, n.IgnoreCert, n.From, n.To, []byte(message))
+	if hasEmbeddedImgs {
+		for i := range n.EmbededHTMLImgs {
+			message.EmbedFile(n.EmbededHTMLImgs[i].NamePath)
+			log.Printf("DEBUG: embedding file %q", n.EmbededHTMLImgs[i].NamePath) // DEBUG
+		}
+	}
+
+	message.WriteToFile("tmp/test.msg")
+
+	// Deliver the mails via SMTP
+	client, err := mail.NewClient(n.Server,
+		mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover), mail.WithTLSPortPolicy(mail.TLSMandatory),
+		mail.WithUsername(n.User), mail.WithPassword(n.Pass),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create new mail delivery client: %s", err)
+	}
+	if err := client.DialAndSend(message); err != nil {
+		return fmt.Errorf("failed to deliver mail: %s", err)
+	}
+	log.Printf("Test mail successfully delivered.")
+
+	//err = sendMail(n.Server, n.Port, auth, n.IgnoreCert, n.From, n.To, []byte(message))
 
 	if err != nil {
 		return fmt.Errorf("SendMail: error sending mail, err: %v", err)
@@ -237,7 +162,7 @@ func MailSend(n MailConfig) error {
 
 func encodeRFC2047(s string) string {
 	// use mail's rfc2047 to encode any string
-	addr := mail.Address{Name: s, Address: ""}
+	addr := gomail.Address{Name: s, Address: ""}
 	return strings.Trim(addr.String(), " <@>")
 }
 

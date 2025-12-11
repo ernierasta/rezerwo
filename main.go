@@ -342,11 +342,13 @@ type Page struct {
 }
 
 type ReservationPageVars struct {
-	LBLLang        string
-	LBLTitle       string
-	LBLNoSitsTitle string
-	LBLNoSitsText  template.HTML
-	BTNNoSitsOK    string
+	LBLLang         string
+	LBLTitle        string
+	LBLNoSitsTitle  string
+	LBLNoSitsText   template.HTML
+	BTNNoSitsOK     string
+	EventMainDesc   template.HTML
+	EventMainBanner template.HTML
 	Event
 	Rooms []RoomVars
 }
@@ -494,24 +496,51 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			title = "Rezervace"
 		}
 
+		// get event main banner if defined
+		imbName, imbW, imbH := parseBanner(event.MainBanner.String)
+		mainbanner := template.HTML(getImgHTML(imbName, user.URL, MEDIAROOT, imbW, imbH))
+
 		p := ReservationPageVars{
 			//EN: LBLTitle: "Reservation",
 			LBLTitle: title,
 			//EN: LBLNoSitsTitle: "No sits selected",
 			//EN: LBLNoSitsText: "No sits selected, choose some free chairs and try it again",
 			//EN: BTNNoSitsOK: "OK",
-			LBLLang:        lng,
-			LBLNoSitsTitle: event.NoSitsSelectedTitle,
-			LBLNoSitsText:  template.HTML(event.NoSitsSelectedText),
-			BTNNoSitsOK:    "OK",
-			Event:          event,
-			Rooms:          []RoomVars{},
+			LBLLang:         lng,
+			LBLNoSitsTitle:  event.NoSitsSelectedTitle,
+			LBLNoSitsText:   template.HTML(event.NoSitsSelectedText),
+			BTNNoSitsOK:     "OK",
+			EventMainDesc:   template.HTML(event.MainDesc.String),
+			EventMainBanner: mainbanner,
+			Event:           event,
+			Rooms:           []RoomVars{},
 		}
 		for i := range rr {
 			rv := GetFurnituresFromDB(db, rr[i].Name, event.ID)
 			rv.Room = rr[i]
-			imgName, imgW, imgH := parseBanner(rr[i].Banner.String)
+
+			// Banner is shown from event table if defined (if not, failback is from room table).
+			// There is MainBanner and RoomXBanners, if MainBanner is defined - it is shown on top of tabs.
+			// If MainBanner is empty RoomXBanner is shown below tabs and can be different for every room (decided in template file).
+			// If both event fields are empty, room.HTMLBannerImg is used as failback.
+
+			var imgName string
+			var imgW, imgH int
+			switch i {
+			case 0:
+				imgName, imgW, imgH = parseBanner(event.Room1Banner.String)
+			case 1:
+				imgName, imgW, imgH = parseBanner(event.Room2Banner.String)
+			case 2:
+				imgName, imgW, imgH = parseBanner(event.Room3Banner.String)
+			case 3:
+				imgName, imgW, imgH = parseBanner(event.Room4Banner.String)
+			}
+			if imgName == "" { // failback if event banner is empty
+				imgName, imgW, imgH = parseBanner(rr[i].Banner.String)
+			}
 			rv.HTMLBannerImg = template.HTML(getImgHTML(imgName, user.URL, MEDIAROOT, imgW, imgH))
+
 			// rv.HTMLRoomDescription = template.HTML(rr[i].Description.String) // Changed to event.RoomXDescription
 			switch i {
 			case 0:
@@ -1238,6 +1267,7 @@ type AdminMainPageVars struct {
 	LBLNewEventPlaceholder        string
 	LBLSelectEvent                string
 	BTNEventEdit                  string
+	BTNEventCopy                  string
 	BTNEventDelete                string
 	LBLMsgTitle                   string
 	LBLRaports                    string
@@ -1250,6 +1280,8 @@ type AdminMainPageVars struct {
 	LBLSelectForm                 string
 	LBLNewFormURLPlaceholder      string
 	BTNEditForm                   string
+	BTNFormDel                    string
+	BTNFormCopy                   string
 	LBLSelectFormRaport           string
 	BTNShowFormRaports            string
 	LBLBankAccountsTitle          string
@@ -1382,6 +1414,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				BTNAddRoom:                    "Add room",
 				BTNAddEvent:                   "Add event",
 				BTNEventEdit:                  "Edit",
+				BTNEventCopy:                  "Copy",
 				LBLNewEventPlaceholder:        "New event name",
 				LBLSelectRoom:                 "Select room ...",
 				BTNRoomEdit:                   "Edit",
@@ -1399,6 +1432,8 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				LBLNewFormURL:                 "Form URL",
 				LBLNewFormURLPlaceholder:      "Enter unique name - used as part of form link",
 				BTNEditForm:                   "Edit form",
+				BTNFormCopy:                   "Copy",
+				BTNFormDel:                    "Delete",
 				LBLSelectFormRaport:           "Select form raport ...",
 				BTNShowFormRaports:            "Show",
 				LBLBankAccountsTitle:          "Bank Accounts (QRPay)",
@@ -1439,10 +1474,11 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				BTNClose:                      "Zamknij",
 				BTNAddRoom:                    "Dodaj pomieszczenie",
 				BTNAddEvent:                   "Dodaj imprezę",
-				BTNEventEdit:                  "Zmień",
+				BTNEventEdit:                  "Edytuj",
+				BTNEventCopy:                  "Kopiuj",
 				LBLNewEventPlaceholder:        "Nazwa nowej imprezy",
 				LBLSelectRoom:                 "Wybierz pomieszczenie ...",
-				BTNRoomEdit:                   "Zmień",
+				BTNRoomEdit:                   "Edytuj",
 				BTNRoomDelete:                 "Usuń",
 				LBLSelectEvent:                "Wybierz imprezę ...",
 				BTNEventDelete:                "Usuń",
@@ -1457,6 +1493,8 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				LBLNewFormURL:                 "URL formularza",
 				LBLNewFormURLPlaceholder:      "Odnośnik (bez PL znaków/spacji)",
 				BTNEditForm:                   "Edytuj formularz",
+				BTNFormCopy:                   "Kopiuj",
+				BTNFormDel:                    "Kasuj",
 				LBLSelectFormRaport:           "Wybierz raport do formularza ...",
 				BTNShowFormRaports:            "Wyświetl",
 				LBLBankAccountsTitle:          "Konta bankowe (QRPay)",
@@ -1554,6 +1592,10 @@ type EventEditorVars struct {
 	LBLTitleRoomLegend                                       string
 	LBLTitleSharable                                         string
 	LBLRoomDescSection                                       string
+	LBLMainDesc                                              string
+	MainDescValue                                            template.HTML
+	LBLMainBanner                                            string
+	MainBannerValue                                          string
 	LBLRoom1Desc                                             string
 	Room1DescValue                                           template.HTML
 	LBLRoom1Banner                                           string
@@ -1715,6 +1757,10 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				LBLTitleRoomLegend:          "Room legend, price, ...",
 				LBLTitleSharable:            "Shared",
 				LBLRoomDescSection:          "Event/Room descreption",
+				LBLMainDesc:                 "Main event descreption",
+				MainDescValue:               template.HTML(event.MainDesc.String),
+				LBLMainBanner:               "Main banner (if defined - used for all rooms)",
+				MainBannerValue:             event.MainBanner.String,
 				Room1DescValue:              template.HTML(event.Room1Desc.String),
 				LBLRoom1Desc:                "Room1 Description",
 				Room2DescValue:              template.HTML(event.Room2Desc.String),
@@ -1811,6 +1857,10 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				LBLTitleRoomLegend:          "Legenda pomieszczenia(-eń), ceny, ...",
 				LBLTitleSharable:            "Współdzielone",
 				LBLRoomDescSection:          "Opis imprezy/pomieszczeń",
+				LBLMainDesc:                 "Główny opis imprezy (dla wszystkich pomieszczeń)",
+				MainDescValue:               template.HTML(event.MainDesc.String),
+				LBLMainBanner:               "Główny banner (jeżeli zdefiniowany - dla wszystkich pomieszczeń)",
+				MainBannerValue:             event.MainBanner.String,
 				LBLRoom1Desc:                "Opis imprezy/pomieszczenie 1",
 				LBLRoom2Desc:                "Opis imprezy/pomieszczenie 2",
 				LBLRoom3Desc:                "Opis imprezy/pomieszczenie 3",
@@ -2187,6 +2237,7 @@ func MailEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			LBLRelatedToForms:  "Formularz (deklaracja i inne bez mapy pomieszczenia)",
 			LBLSharable:        "Udostępnij ten szablon dla innych",
 			LBLEmbeddedImgs:    "Obrazki w treści maila (format: obrazek.jpeg;obrazek2.jpeg), w treści maila użyj: CID:obrazekjpeg@nazwaorg(z URL)",
+			EmbeddedImgsVal:    curMail.EmbeddedImgsDelimited.String,
 			LBLAttachedFiles:   "Załączniki (format: plik.txt;plik2.jpeg)",
 			NameVal:            curMail.Name,
 			SubjectVal:         curMail.Title.String,
@@ -2874,6 +2925,8 @@ type EventJson struct {
 	Sharable       bool   `json:"sharable"`
 	BankAccountID  string `json:"bank_account_id"`
 	Rooms          string `json:"rooms"`
+	MainDesc       string `json:"maindesc"`
+	MainBanner     string `json:"mainbanner"`
 	Room1Desc      string `json:"room1desc"`
 	Room1Banner    string `json:"room1banner"`
 	Room2Desc      string `json:"room2desc"`
@@ -2959,22 +3012,38 @@ func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore
 					log.Printf("EventAddMod: error (it may be normal if already exists) adding room %d, to event %d, %v", roomID, id, err)
 				}
 			}
+
+			// fix quill empty paragraph
+			eventJson.OrderedNoteText = removeTrailingEmptyParagraphs(eventJson.OrderedNoteText)
+			eventJson.NoSitsSelectedText = removeTrailingEmptyParagraphs(eventJson.NoSitsSelectedText)
+			eventJson.OrderHowto = removeTrailingEmptyParagraphs(eventJson.OrderHowto)
+			eventJson.HowTo = removeTrailingEmptyParagraphs(eventJson.HowTo)
+
+			eventJson.MainDesc = removeTrailingEmptyParagraphs(eventJson.MainDesc)
+			eventJson.Room1Desc = removeTrailingEmptyParagraphs(eventJson.Room1Desc)
+			eventJson.Room2Desc = removeTrailingEmptyParagraphs(eventJson.Room2Desc)
+			eventJson.Room3Desc = removeTrailingEmptyParagraphs(eventJson.Room3Desc)
+			eventJson.Room4Desc = removeTrailingEmptyParagraphs(eventJson.Room4Desc)
+
+			// NOT NEEDED, above solves this
 			// empty descriptions if no text (just <p><br></p> tags)
-			re := regexp.MustCompile(`(?i)</?(p|br)\s*/?>`)
-			for i, v := range []string{eventJson.Room1Desc, eventJson.Room2Desc, eventJson.Room3Desc, eventJson.Room4Desc} {
-				if strings.TrimSpace(re.ReplaceAllString(v, "")) == "" {
-					switch i {
-					case 0:
-						eventJson.Room1Desc = ""
-					case 1:
-						eventJson.Room2Desc = ""
-					case 2:
-						eventJson.Room3Desc = ""
-					case 3:
-						eventJson.Room4Desc = ""
-					}
-				}
-			}
+			// re := regexp.MustCompile(`(?i)</?(p|br)\s*/?>`)
+			// for i, v := range []string{eventJson.MainDesc, eventJson.Room1Desc, eventJson.Room2Desc, eventJson.Room3Desc, eventJson.Room4Desc} {
+			// 	if strings.TrimSpace(re.ReplaceAllString(v, "")) == "" {
+			// 		switch i {
+			// 		case 0:
+			// 			eventJson.MainDesc = ""
+			// 		case 1:
+			// 			eventJson.Room1Desc = ""
+			// 		case 2:
+			// 			eventJson.Room2Desc = ""
+			// 		case 3:
+			// 			eventJson.Room3Desc = ""
+			// 		case 4:
+			// 			eventJson.Room4Desc = ""
+			// 		}
+			// 	}
+			// }
 
 			ev := &Event{
 				ID:                      id,
@@ -2997,6 +3066,8 @@ func EventAddMod(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore
 				UserID:                  userid,
 				Sharable:                ToNB(eventJson.Sharable),
 				BankAccountsID:          ToNI(bankAccountID),
+				MainDesc:                ToNS(eventJson.MainDesc),
+				MainBanner:              ToNS(eventJson.MainBanner),
 				Room1Desc:               ToNS(eventJson.Room1Desc),
 				Room1Banner:             ToNS(eventJson.Room1Banner),
 				Room2Desc:               ToNS(eventJson.Room2Desc),
@@ -3542,10 +3613,13 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 				}
 			}
 			// Send mail after form submission.
+			// User mail.
 			mail, err := db.NotificationGetByID(templ.NotificationID.Int64, user.ID)
 			if err != nil {
 				log.Printf("FormAnsSendMail: error getting mail with ID: %d, err: %v", templ.NotificationID.Int64, err)
 			}
+
+			mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
 
 			err = prepareAndSendMail(
 				f.Email.String,
@@ -3564,6 +3638,7 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 				log.Printf("FormAnsSendMail: error sending, %v", err)
 			}
 
+			// Admin mail.
 			// Check if admin mail template is defined
 			if !templ.AdminNotificationID.Valid {
 				log.Println("FormAnsSendMail: admin mail template is not defined")
@@ -3574,6 +3649,9 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 			if err != nil {
 				log.Printf("FormAnsSendMail: error getting admin mail with ID: %d, err: %v", templ.AdminNotificationID.Int64, err)
 			}
+
+			//reset EmbededHTMLImgs, admin do not need it?
+			mailConf.EmbededHTMLImgs = []EmbImg{}
 
 			err = prepareAndSendMail(
 				chooseEmail(user.Email, user.AltEmail.String), // send to alt mail if defined
@@ -3670,6 +3748,9 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 				log.Printf("FormAnsSendMail: error getting mail with ID: %d, err: %v", formTempl.NotificationID.Int64, err)
 			}
 
+			// get embedded images (defined in db, qrcode is added later)
+			mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
+
 			err = prepareAndSendMail(
 				form.Email.String,
 				form.Surname.String,
@@ -3723,6 +3804,9 @@ func prepareAndSendMail(email, name, surname, msubject, mtext string, user User,
 		log.Printf("prepareAndSendMail: error executing ThankYou template, %v", err)
 	}
 
+	thp.EmbeddedImgs = append(thp.EmbeddedImgs, mailConf.EmbededHTMLImgs...) // combine qr code with embedded images
+
+	log.Printf("DEBUG: thp.EmbeddedImgs %q", thp.EmbeddedImgs) // DEBUG
 	//log.Println("MAIL TEXT:", parsedMail.String()) // DEBUG
 
 	mail := MailConfig{
@@ -3759,7 +3843,7 @@ func parseFormURI(uri string) (string, string) {
 }
 
 func makeSureIsHTML(s string) string {
-	if strings.Contains(s, "<html>") {
+	if strings.Contains(s, "<html") {
 		return s
 	}
 	return "<html>" + s + "</html>"
@@ -4793,6 +4877,7 @@ func getAttachments(atts, userDirPath, emailsubdir, mediaRootPath string) []stri
 	return fullPathAtts
 }
 
+// getEmbeddedImgs takes delimited embedded images and returns []EmbImg
 func getEmbeddedImgs(imgs, userDirPath, emailsubdir, mediaRootPath string) []EmbImg {
 	//embs := getAttachments(event.MailEmbeddedImgsDelimited.String, user.URL+"/"+emailsubdir, MEDIAROOT)
 
@@ -4815,7 +4900,8 @@ func getEmbeddedImgs(imgs, userDirPath, emailsubdir, mediaRootPath string) []Emb
 }
 
 func getCID(imgname, userURL string) string {
-	return fmt.Sprintf("%s@%s.cz", removeNonAlphanumeric(imgname), userURL)
+	return imgname
+	//return fmt.Sprintf("%s@%s.cz", removeNonAlphanumeric(imgname), userURL)
 }
 
 func getImgPath(mediaroot, userdir, subdir, imgname string) string {
@@ -4833,4 +4919,16 @@ func chooseEmail(main, alt string) string {
 		return alt
 	}
 	return main
+}
+
+// removeTrailingEmptyParagraphs removes empty nonsense added by quill editor.
+// this functions should run on all quills outputs!
+func removeTrailingEmptyParagraphs(html string) string {
+	const trailing = "<p><br></p>"
+	html = strings.TrimSpace(html) // optional: remove leading/trailing whitespace
+	for strings.HasSuffix(html, trailing) {
+		html = strings.TrimSuffix(html, trailing)
+	}
+	// Re-trim space if needed after removal
+	return strings.TrimSpace(html)
 }

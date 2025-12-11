@@ -10,11 +10,11 @@ import (
 // MSERVER= MUSER= MPASS= MTO= go test
 
 var (
-	server            = os.ExpandEnv("$MSERVER")
-	user              = os.ExpandEnv("$MUSER")
-	pass              = os.ExpandEnv("$MPASS")
-	to                = []string{os.ExpandEnv("$MTO")}
-	n, n2, n3, n4, n5 MailConfig
+	server                = os.ExpandEnv("$MSERVER")
+	user                  = os.ExpandEnv("$MUSER")
+	pass                  = os.ExpandEnv("$MPASS")
+	to                    = []string{os.ExpandEnv("$MTO")}
+	n, n2, n3, n4, n5, n6 MailConfig
 )
 
 func Init() {
@@ -47,6 +47,11 @@ func Init() {
 	n5 = n
 	n5.Text = "<html><body><b>Hi!</b><p>This is HTML mail with attachments!<br></p><div>See You!<br>golang testing library</div></body></html>"
 	n5.Files = []string{"mail_test.go"}
+
+	n6 = n
+	n6.Text = `<html><body><img width=100 height=100 id="1" src="cid:logo.png"><b>Hi!</b><p>This is HTML mail with attachment and embed!<br></p><div>See You!<br>golang testing library</div></body></html>`
+	n6.Files = []string{"mail_test.go"}
+	n6.EmbededHTMLImgs = []EmbImg{EmbImg{NamePath: "img/logo.png"}}
 }
 
 func TestSendMail(t *testing.T) {
@@ -59,13 +64,14 @@ func TestSendMail(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"timeouting send", args{MailConfig{Server: "server.com", User: "a", Pass: "b", To: []string{"to"}}}, true},
-		{"not existing srv", args{MailConfig{Server: "rntuylmj320n290n03k093km43209d2.com", User: "a", Pass: "b", To: []string{"to"}}}, true},
+		{"timeouting send", args{MailConfig{Server: "server.com", User: "a", Pass: "b", From: "a@a.a", To: []string{"to@a.a"}}}, true},
+		{"not existing srv", args{MailConfig{Server: "rntuylmj320n290n03k093km43209d2.com", User: "a", From: "a@a.a", Pass: "b", To: []string{"to"}}}, true},
 		{"simple submission send", args{n}, false},
 		{"simple tls send", args{n2}, false},
 		{"html mail", args{n4}, false},
 		{"send as someone else", args{n3}, false},
 		{"html mail with attachments", args{n5}, false},
+		{"html mail with attachment and embedded img", args{n6}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

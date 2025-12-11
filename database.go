@@ -144,6 +144,8 @@ import (
 //   ADD COLUMN hidecosts INTEGER;
 
 // update events to contain rooms descriptions and banners
+//ALTER TABLE events ADD COLUMN mainbanner string;
+//ALTER TABLE events ADD COLUMN maindesc string;
 //ALTER TABLE events ADD COLUMN room1desc string;
 //ALTER TABLE events ADD COLUMN room1banner string;
 //ALTER TABLE events ADD COLUMN room2desc string;
@@ -269,6 +271,8 @@ type Event struct {
 	BankAccountsID          sql.NullInt64  `db:"bankaccounts_id_fk"`
 	Language                sql.NullString `db:"language"`
 	HideCosts               sql.NullBool   `db:"hidecosts"`
+	MainDesc                sql.NullString `db:"maindesc"`
+	MainBanner              sql.NullString `db:"mainbanner"`
 	Room1Desc               sql.NullString `db:"room1desc"`
 	Room1Banner             sql.NullString `db:"room1banner"`
 	Room2Desc               sql.NullString `db:"room2desc"`
@@ -891,8 +895,8 @@ func (db *DB) PriceDelByEventFurn(event string, fnumber int64, ftype string) err
 
 // we are not adding HideCosts here, as it is not available in interface
 func (db *DB) EventAdd(e *Event) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, users_id_fk, thankyou_notifications_id_fk, admin_notifications_id_fk, sharable, bankaccounts_id_fk, language, room1desc, room1banner, room2desc, room2banner, room3desc, room3banner, room4desc, room4banner)
-	VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :users_id_fk, :thankyou_notifications_id_fk, :admin_notifications_id_fk, :sharable, :bankaccounts_id_fk, :language, :room1desc, :room1banner, :room2desc, :room2banner, :room3desc, :room3banner, :room4desc, :room4banner)`, e)
+	ret, err := db.DB.NamedExec(`INSERT INTO events (name, date, from_date, to_date, default_price, default_currency, no_sits_selected_title, no_sits_selected_text, order_howto, order_notes_desc, ordered_note_title, ordered_note_text, how_to, users_id_fk, thankyou_notifications_id_fk, admin_notifications_id_fk, sharable, bankaccounts_id_fk, language, maindesc, mainbanner, room1desc, room1banner, room2desc, room2banner, room3desc, room3banner, room4desc, room4banner)
+	VALUES(:name, :date, :from_date, :to_date, :default_price, :default_currency, :no_sits_selected_title, :no_sits_selected_text, :order_howto, :order_notes_desc, :ordered_note_title, :ordered_note_text, :how_to, :users_id_fk, :thankyou_notifications_id_fk, :admin_notifications_id_fk, :sharable, :bankaccounts_id_fk, :language, :maindesc, :mainbanner, :room1desc, :room1banner, :room2desc, :room2banner, :room3desc, :room3banner, :room4desc, :room4banner)`, e)
 	if err != nil {
 		return -1, err
 	}
@@ -981,7 +985,7 @@ func (db *DB) EventModByID(event *Event, UserID int64) error {
 	if event.UserID != UserID {
 		return fmt.Errorf("event.UserID %d do not match UserID %d, can't update event", event.UserID, UserID)
 	}
-	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, thankyou_notifications_id_fk=:thankyou_notifications_id_fk, admin_notifications_id_fk=:admin_notifications_id_fk, sharable=:sharable, bankaccounts_id_fk=:bankaccounts_id_fk, language=:language, room1desc=:room1desc, room1banner=:room1banner, room2desc=:room2desc, room2banner=:room2banner, room3desc=:room3desc, room3banner=:room3banner, room4desc=:room4desc, room4banner=:room4banner WHERE id=:id AND users_id_fk=:users_id_fk`, event)
+	_, err := db.DB.NamedExec(`UPDATE events SET name=:name, date=:date, from_date=:from_date, to_date=:to_date, default_price=:default_price, default_currency=:default_currency, no_sits_selected_title=:no_sits_selected_title, no_sits_selected_text=:no_sits_selected_text, order_howto=:order_howto, order_notes_desc=:order_notes_desc, ordered_note_title=:ordered_note_title, ordered_note_text=:ordered_note_text, how_to=:how_to, thankyou_notifications_id_fk=:thankyou_notifications_id_fk, admin_notifications_id_fk=:admin_notifications_id_fk, sharable=:sharable, bankaccounts_id_fk=:bankaccounts_id_fk, language=:language, maindesc=:maindesc, mainbanner=:mainbanner, room1desc=:room1desc, room1banner=:room1banner, room2desc=:room2desc, room2banner=:room2banner, room3desc=:room3desc, room3banner=:room3banner, room4desc=:room4desc, room4banner=:room4banner WHERE id=:id AND users_id_fk=:users_id_fk`, event)
 	return err
 }
 

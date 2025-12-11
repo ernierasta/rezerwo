@@ -176,6 +176,17 @@
 
     <h3>{{.LBLRoomDescSection}}</h3>
     <div class="form-group">
+      <p id="maindesc-editor-label">{{.LBLMainDesc}}</p>
+      <div id="maindesc-editor">
+        {{.MainDescValue}}
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="mainbanner">{{.LBLMainBanner}}</label>
+      <input type="text" class="form-control" id="mainbanner" name="mainbanner" value="{{.MainBannerValue}}">
+    </div>
+
+    <div class="form-group">
       <p id="room1desc-editor-label">{{.LBLRoom1Desc}}</p>
       <div id="room1desc-editor">
         {{.Room1DescValue}}

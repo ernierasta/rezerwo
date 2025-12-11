@@ -118,9 +118,11 @@ const toolbarOptions = [
 
 var QuillNoSitsEditor = new Quill('#no-sits-editor', {
   modules: {
-    toolbar: toolbarOptions
+    toolbar: toolbarOptions,
+    clipboard: {
+      matchVisual: false
+    }
   },
-
   theme: 'snow'
 });
 
@@ -169,6 +171,17 @@ var QuillOrderHowtoEditor = new Quill('#order-howto-editor', {
   },
   theme: 'snow'
 });
+
+var QuillMainDescEditor = new Quill('#maindesc-editor', {
+  modules: {
+    toolbar: toolbarOptions,
+    clipboard: {
+      matchVisual: false
+    }
+  },
+  theme: 'snow'
+});
+
 
 var QuillRoom1DescEditor = new Quill('#room1desc-editor', {
   modules: {
@@ -231,14 +244,16 @@ function Save() {
   finald.admin_notifications_id_fk = $('#mail-admin-select').val();
   finald.sharable = $('#sharable').is(":checked");
   finald.rooms = $('#rooms').val();
+  finald.maindesc = QuillMainDescEditor.root.innerHTML;
+  finald.mainbanner = $('#mainbanner').val();
   finald.room1desc = QuillRoom1DescEditor.root.innerHTML;
-  finald.room1banner = $('#room1banner');
+  finald.room1banner = $('#room1banner').val();
   finald.room2desc = QuillRoom2DescEditor.root.innerHTML;
-  finald.room2banner = $('#room2banner');
+  finald.room2banner = $('#room2banner').val();
   finald.room3desc = QuillRoom3DescEditor.root.innerHTML;
-  finald.room3banner = $('#room3banner');
+  finald.room3banner = $('#room3banner').val();
   finald.room4desc = QuillRoom4DescEditor.root.innerHTML;
-  finald.room4banner = $('#room4banner');
+  finald.room4banner = $('#room4banner').val();
 
   //finald.relatedto = $('#related-to-select').val(); // events or forms
   //console.log(finald.sharable);

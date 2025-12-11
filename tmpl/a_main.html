@@ -76,7 +76,7 @@
               {{end}}
             </select>
             <div class="input-group-append">
-              <button id="edit-room" class="btn btn-outline-secondary" type="button" onclick="RoomEdit()">{{.BTNRoomEdit}}</button>
+              <button id="edit-room" class="btn btn-primary" type="button" onclick="RoomEdit()">{{.BTNRoomEdit}}</button>
               <button class="btn btn-outline-secondary" type="button">{{.BTNRoomDelete}}</button>
             </div> <!-- /.input-group-append -->
           </div> <!-- /.input-group -->
@@ -89,7 +89,8 @@
               {{end}}
             </select>
             <div class="input-group-append">
-              <button id="edit-event" class="btn btn-outline-secondary" type="button" onclick="EventEdit()">{{.BTNEventEdit}}</button>
+              <button id="edit-event" class="btn btn-primary" type="button" onclick="EventEdit()">{{.BTNEventEdit}}</button>
+              <button id="edit-event" class="btn btn-outline-secondary" type="button" onclick="EventCopy()">{{.BTNEventCopy}}</button>
               <button class="btn btn-outline-secondary" type="button">{{.BTNEventDelete}}</button>
             </div> <!-- /.input-group-append -->
           </div> <!-- /.input-group -->
@@ -122,7 +123,7 @@
             <input type="text" class="form-control" id="new-form-name" placeholder="{{.LBLNewFormPlaceholder}}" aria-label="{{.LBLNewForm}}" aria-describedby="basic-addon2">
             <input type="text" class="form-control" id="new-form-url" placeholder="{{.LBLNewFormURLPlaceholder}}" aria-label="{{.LBLNewFormURL}}" aria-describedby="basic-addon2">
             <div class="input-group-append">
-              <button class="btn btn-outline-secondary" type="button" onclick="NewForm()">{{.BTNAddForm}}</button>
+              <button class="btn btn-primary" type="button" onclick="NewForm()">{{.BTNAddForm}}</button>
             </div> <!-- /.input-group-append -->
           </div> <!-- /.input-group -->
 
@@ -135,6 +136,7 @@
             </select>
             <div class="input-group-append">
               <button id="edit-form" class="btn btn-primary" type="button" onclick="EditForm()">{{.BTNEditForm}}</button>
+              <button id="edit-form" class="btn btn-outline-secondary" type="button" onclick="CopyForm()">{{.BTNFormCopy}}</button>
             </div> <!-- /.input-group-append -->
           </div> <!-- /.input-group -->
 

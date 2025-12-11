@@ -75,9 +75,8 @@
           {{.LBLSelected}}: <b><span id="selected-chairs-{{.Room.ID}}" class="selected-chairs"></span></b><br />
 	  <div{{if $.Event.HideCosts.Bool}} hidden{{end}}>{{.LBLTotalPrice}}: <b><span id="total-price-{{.Room.ID}}" class="total-price"></span></b></div>
         </div>
+        <div id="controls"><button id="order" class="btn btn-primary" onclick="Order()">{{.BTNOrder}}</button></div>
         <div id="how-to">{{.HTMLHowTo}}</div>
-        <div id="controls"><button id="order" class="btn btn-primary" onclick="Order()">{{.BTNOrder}}</button>
-      </div>
     </div>
   </div>
   </div>

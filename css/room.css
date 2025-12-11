@@ -24,6 +24,11 @@
   font-size: 18px;
 }
 
+#controls {
+  padding-bottom: 20px;
+  padding-top: 10px;
+}
+
 .table {
   float: left;
   margin: 10px;

@@ -365,6 +365,9 @@ type RoomVars struct {
 	Chairs              []FurnitureFull
 	Objects             []Furniture
 	Labels              []Furniture
+	LBLFreeSits         string
+	SitsTotal           int
+	SitsFree            int
 }
 
 func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
@@ -562,15 +565,27 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 				rv.LBLSelected = "Wybrano"
 				rv.LBLTotalPrice = "Łączna suma"
 				rv.BTNOrder = "Zarezerwuj"
+				rv.LBLFreeSits = "Wolne miejsca"
 			case "cs":
 				rv.LBLSelected = "Vybrané"
 				rv.LBLTotalPrice = "Cena celkem"
 				rv.BTNOrder = "Objednat"
+				rv.LBLFreeSits = "Volných míst"
 			case "en":
 				rv.LBLSelected = "Selected"
 				rv.LBLTotalPrice = "Total price"
 				rv.BTNOrder = "Order"
+				rv.LBLFreeSits = "Free sits"
 			}
+
+			sfree := 0
+			for i := range rv.Chairs {
+				if rv.Chairs[i].Status.String == "" && rv.Chairs[i].AdminDisabled.Int64 == 0 {
+					sfree += 1
+				}
+			}
+			rv.SitsTotal = len(rv.Chairs)
+			rv.SitsFree = sfree
 
 			p.Rooms = append(p.Rooms, rv)
 		}

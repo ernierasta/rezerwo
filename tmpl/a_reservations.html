@@ -2,9 +2,9 @@
   <script type="text/javascript" src="/js/a_reservations.js"></script>
   <link rel="stylesheet" type="text/css" href="/css/a_reservations.css"/>
   <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
-  <script type="text/javascript" src="/js/datatables.min.js"></script> 
-  <script type="text/javascript" src="/js/bootbox.min.js"></script> 
-  <script type="text/javascript" src="/js/bootbox.locales.min.js"></script> 
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/bootbox.min.js"></script>
+  <script type="text/javascript" src="/js/bootbox.locales.min.js"></script>
   <title>{{.LBLTitle}}</title>
 {{end}}
 {{define "body"}}
@@ -28,6 +28,7 @@
             <th scope="col">{{.THCurrency}}</th>
             <th scope="col">{{.THOrderedDate}}</th>
             <th scope="col">{{.THPayedDate}}</th>
+            <th scope="col">{{.THRoomID}}</th>
           </tr>
         </thead>
         <tbody>
@@ -45,6 +46,7 @@
             <td>{{.Currency.String}}</td>
             <td>{{.OrderedDateS}}</td>
             <td>{{.PayedDateS}}</td>
+            <td>{{.RoomID}}</td>
           </tr>
           {{end}}
         </tbody>

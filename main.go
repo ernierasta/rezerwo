@@ -85,6 +85,8 @@ func main() {
 	http.HandleFunc("/passreset", PasswdReset(db))
 	http.HandleFunc("/api/login", LoginAPI(db, cookieStore))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
+	http.HandleFunc("/api/roomcopy", CopyRoomAPI(db, cookieStore))
+	http.HandleFunc("/api/roomdel", DelRoomAPI(db, cookieStore))
 	http.HandleFunc("/api/furnit", DesignerMoveObject(db))
 	http.HandleFunc("/api/furdel", DesignerDeleteObject(db))
 	http.HandleFunc("/api/ordercancel", OrderCancel(db))
@@ -106,6 +108,13 @@ func main() {
 }
 
 func initDB() *DB {
+	db := DBInit("db.sql")
+	db.MustConnect()
+	log.Printf("connected to database ...")
+	return db
+}
+
+func initDBUnusedAnymore() *DB {
 	howto := `<h1>Legenda:</h1>
 	<ul>
 		<li><span class="free-text">Zielony</span> = możliwa rezerwacja.</li>
@@ -1260,6 +1269,7 @@ type AdminPage struct {
 	PageMeta
 	Events        []Event
 	Rooms         []Room
+	AllRooms      []Room
 	Furnitures    []Furniture
 	FormTempls    []FormTemplate
 	BankAccounts  []BankAccount
@@ -1270,6 +1280,7 @@ type AdminMainPageVars struct {
 	TabEvents                     string
 	TabForms                      string
 	TabSettings                   string
+	LBLRooms                      string
 	LBLEvents                     string
 	LBLRoomEventTitle             string
 	LBLRoomEventText              template.HTML
@@ -1279,6 +1290,9 @@ type AdminMainPageVars struct {
 	BTNAddEvent                   string
 	LBLSelectRoom                 string
 	BTNRoomEdit                   string
+	BTNRoomCopy                   string
+	LBLRoomCopyTitle              string
+	LBLRoomCopyText               string
 	BTNRoomDelete                 string
 	LBLNewEventPlaceholder        string
 	LBLSelectEvent                string
@@ -1395,7 +1409,11 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 		// Prepare form with rooms and events
 		rooms, err := db.RoomGetAllByUserID(user.ID)
 		if err != nil {
-			log.Printf("AdminMainPage: error getting all rooms, err: %q", err)
+			log.Printf("AdminMainPage: error getting all user rooms, err: %v", err)
+		}
+		allRooms, err := db.RoomGetAll()
+		if err != nil {
+			log.Printf("AdminMainPage: error getting all rooms, %v", err)
 		}
 		events, err := db.EventGetAllByUserID(user.ID)
 		if err != nil {
@@ -1422,6 +1440,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				TabEvents:                     "Events",
 				TabForms:                      "Forms",
 				TabSettings:                   "Settings",
+				LBLRooms:                      "Rooms",
 				LBLEvents:                     "Events",
 				LBLRoomEventTitle:             "Select event",
 				LBLRoomEventText:              template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
@@ -1434,6 +1453,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				LBLNewEventPlaceholder:        "New event name",
 				LBLSelectRoom:                 "Select room ...",
 				BTNRoomEdit:                   "Edit",
+				BTNRoomCopy:                   "Import & Copy room",
 				BTNRoomDelete:                 "Delete",
 				LBLSelectEvent:                "Select event ...",
 				BTNEventDelete:                "Delete",
@@ -1483,6 +1503,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				TabEvents:                     "Rezerwacje",
 				TabForms:                      "Formularze",
 				TabSettings:                   "Ustawienia/Katalogi",
+				LBLRooms:                      "Pomieszczenia",
 				LBLEvents:                     "Imprezy",
 				LBLRoomEventTitle:             "Wybierz imprezę",
 				LBLRoomEventText:              template.HTML("<b>Dlaczego?</b><br />Musisz wybrać imprezę, ponieważ status krzeseł <i>'wyłączony'</i> oraz <i>'cena'</i> miejsca są związanie z <b>imprezą</b>, a nie z pomieszczeniem jako takim."),
@@ -1495,6 +1516,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 				LBLNewEventPlaceholder:        "Nazwa nowej imprezy",
 				LBLSelectRoom:                 "Wybierz pomieszczenie ...",
 				BTNRoomEdit:                   "Edytuj",
+				BTNRoomCopy:                   "Importuj/kopiuj pomieszczenie",
 				BTNRoomDelete:                 "Usuń",
 				LBLSelectEvent:                "Wybierz imprezę ...",
 				BTNEventDelete:                "Usuń",
@@ -1539,6 +1561,7 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 			PageMeta:      plPM,
 			Events:        events,
 			Rooms:         rooms,
+			AllRooms:      allRooms,
 			FormTempls:    formTempls,
 			BankAccounts:  bankAccs,
 			Notifications: notifs,
@@ -1642,7 +1665,7 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 
 			user, err := db.UserGetByEmail(email)
 			if err != nil {
-				log.Printf("error: AdminReservations: can't get user %q by mail, err: %v", email, err)
+				log.Printf("EventEditor: can't get user %q by mail, err: %v", email, err)
 			}
 
 			err = r.ParseForm()
@@ -1925,6 +1948,7 @@ type AdminReservationsVars struct {
 	LBLTotalSits     string
 	THChairNumber    string
 	THRoomName       string
+	THRoomID         string
 	THCustName       string
 	THCustSurname    string
 	THCustEmail      string
@@ -1984,6 +2008,7 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 			LBLTotalSits:     "Sits",
 			THChairNumber:    "Chair nr",
 			THRoomName:       "Room",
+			THRoomID:         "Room ID",
 			THCustName:       "Name",
 			THCustSurname:    "Surname",
 			THCustEmail:      "Email",
@@ -2006,6 +2031,7 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 			LBLTotalSits:     "Bilety łącznie",
 			THChairNumber:    "Nr krzesła",
 			THRoomName:       "Pomieszczenie",
+			THRoomID:         "ID pomieszczenia",
 			THCustName:       "Imię",
 			THCustSurname:    "Nazwisko",
 			THCustEmail:      "Email",
@@ -2663,6 +2689,76 @@ func DesignerSetRoomSize(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println(err)
 			}
+		}
+	}
+}
+
+type RoomIDMsg struct {
+	RoomID int64 `json:"room_id"`
+}
+
+func CopyRoomAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("CopyRoomAPI: session error: %v", err)
+			return
+		}
+
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("CopyRoomAPI: can not get user by mail %q, %v", email, err)
+			return
+		}
+
+		if r.Method == "POST" {
+			var m RoomIDMsg
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&m)
+			if err != nil {
+				log.Println(err)
+			}
+			log.Printf("m: %+v", m)
+			log.Printf("CopyRoomAPI: we have room to copy %v", m.RoomID)
+			roomID, err := db.RoomWithFurnituresCopy(m.RoomID)
+			if err != nil {
+				log.Println(err)
+			}
+			err = db.RoomAssignToUser(user.ID, roomID)
+			if err != nil {
+				log.Printf("CopyRoomAPI: room assignment error, %v", err)
+			}
+		}
+	}
+}
+
+func DelRoomAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+		if err != nil {
+			log.Printf("DelRoomAPI: session error: %v", err)
+			return
+		}
+
+		user, err := db.UserGetByEmail(email)
+		if err != nil {
+			log.Printf("DelRoomAPI: can not get user by mail %q, %v", email, err)
+			return
+		}
+		_ = user
+
+		if r.Method == "POST" {
+			var m RoomIDMsg
+			dec := json.NewDecoder(r.Body)
+			err := dec.Decode(&m)
+			if err != nil {
+				log.Println(err)
+			}
+			log.Printf("m: %+v", m)
+			log.Printf("DelRoomAPI: we have room to delete %v", m.RoomID)
+			w.Write([]byte(fmt.Sprintf(`{"msg":"deleted %d"}`, m.RoomID)))
 		}
 	}
 }
@@ -4558,6 +4654,7 @@ type ReservationChangeStatusMsg struct {
 	EventID    int64  `json:"event_id"`
 	FurnNumber int64  `json:"furn_number"`
 	RoomName   string `json:"room_name"`
+	RoomID     int64  `json:"room_id"`
 	Status     string `json:"status"`
 }
 
@@ -4568,12 +4665,16 @@ func ReservationChangeStatusAPI(db *DB) func(w http.ResponseWriter, r *http.Requ
 			dec := json.NewDecoder(r.Body)
 			err := dec.Decode(&m)
 			if err != nil {
-				log.Printf("error: ReservationChangeStatusAPI: problem decoding json, err: %v", err)
+				log.Printf("ReservationChangeStatusAPI: problem decoding json, err: %v", err)
 			}
-			fmt.Printf("%+v", m)
-			room, err := db.RoomGetByName(m.RoomName)
+			fmt.Printf("DEBUG: %+v", m)
+			room, err := db.RoomGetByID(m.RoomID)
 			if err != nil {
-				log.Printf("error: ReservationChangeStatusAPI: problem retrieving room, name: %s, err: %v", m.RoomName, err)
+				log.Printf("ReservationChangeStatusAPI: error getting room by ID, using failback to name(%+v), %v", m, err)
+				room, err = db.RoomGetByName(m.RoomName) // used only as last resort
+				if err != nil {
+					log.Printf("ReservationChangeStatusAPI: problem retrieving room by name, name: %s, err: %v", m.RoomName, err)
+				}
 			}
 
 			chair, err := db.FurnitureGetByTypeNumberRoom("chair", m.FurnNumber, room.ID)
@@ -4596,6 +4697,7 @@ type ReservationDeleteMsg struct {
 	EventID    int64  `json:"event_id"`
 	FurnNumber int64  `json:"furn_number"`
 	RoomName   string `json:"room_name"`
+	RoomID     int64  `json:"room_id"`
 }
 
 func ReservationDeleteAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
@@ -4607,10 +4709,14 @@ func ReservationDeleteAPI(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("error: ReservationDeleteAPI: problem decoding json, err: %v", err)
 			}
-			fmt.Printf("%+v", m)
-			room, err := db.RoomGetByName(m.RoomName)
+			fmt.Printf("DEBUG: %+v", m)
+			room, err := db.RoomGetByID(m.RoomID)
 			if err != nil {
-				log.Printf("error: ReservationDeleteAPI: problem retrieving room, name: %s, err: %v", m.RoomName, err)
+				log.Printf("ReservationDeleteAPI: problem retrieving room by id, failing back to name, (%v), %v", m, err)
+				room, err = db.RoomGetByName(m.RoomName) //used as last resort
+				if err != nil {
+					log.Printf("error: ReservationDeleteAPI: problem retrieving room, name: %s, err: %v", m.RoomName, err)
+				}
 			}
 
 			chair, err := db.FurnitureGetByTypeNumberRoom("chair", m.FurnNumber, room.ID)

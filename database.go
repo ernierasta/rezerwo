@@ -318,6 +318,7 @@ type ReservationFull struct {
 	CustPhone   sql.NullString `db:"cust_phone"`
 	ChairNumber int64          `db:"chair_number"`
 	RoomName    string         `db:"room_name"`
+	RoomID      int64          `db:"room_id"`
 	Notes       sql.NullString `db:"reservation_notes"`
 }
 
@@ -539,6 +540,7 @@ func (db *DB) RoomAdd(room *Room) (int64, error) {
 	return ret.LastInsertId()
 }
 
+// RoomGetByName is depricated and dangerous! Do not use it, room name is no longer uniq!
 func (db *DB) RoomGetByName(name string) (Room, error) {
 	room := Room{}
 	err := db.DB.Get(&room, `SELECT * FROM rooms WHERE name=$1`, name)
@@ -618,7 +620,35 @@ func (db *DB) RoomDel(id int64) error {
 	return err
 }
 
-// rooms_id_fk is uniqu, so only one owner of room can exist
+// RoomWithFurnituresCopy copies room with all furnitures in it by given room id
+func (db *DB) RoomWithFurnituresCopy(id int64) (int64, error) {
+	r, err := db.RoomGetByID(id)
+	if err != nil {
+		return 0, fmt.Errorf("RoomWithFurnituresCopy: error getting room %v, %v", id, err)
+	}
+	r.ID = 0 // reset id
+	roomid, err := db.RoomAdd(&r)
+	if err != nil {
+		return 0, fmt.Errorf("RoomWithFurnituresCopy: error writing room copy to db (org: %v, new: %v), %v", id, roomid, err)
+	}
+
+	ff, err := db.FurnitureGetAllByRoomID(id)
+	if err != nil {
+		return roomid, fmt.Errorf("RoomWithFurnituresCopy: error getting furnitures for room copy (%v), %v", roomid, err)
+	}
+
+	for i := range ff {
+		ff[i].ID = 0          // reset id
+		ff[i].RoomID = roomid // change to new room
+		_, err := db.FurnitureAdd(&ff[i])
+		if err != nil {
+			return roomid, fmt.Errorf("RoomWithFurnituresCopy: error adding furniture(%v) to copied room(%v), %v", ff[i], roomid, err)
+		}
+	}
+	return roomid, nil
+}
+
+// rooms_id_fk is uniq, so only one owner of room can exist
 func (db *DB) RoomAssignToUser(userID, roomID int64) error {
 	err := NoMinus("userID", userID)
 	if err != nil {
@@ -1062,7 +1092,7 @@ func (db *DB) ReservationFullGetAll(userID, eventID int64) ([]ReservationFull, e
 	if err != nil {
 		return rr, err
 	}
-	err = db.DB.Select(&rr, `SELECT r.*, c.email cust_email, c.name cust_name, c.surname cust_surname, c.phone cust_phone, f.number chair_number, rm.name room_name, n.text reservation_notes FROM reservations r LEFT JOIN furnitures f ON r.furnitures_id_fk = f.id LEFT JOIN rooms rm ON f.rooms_id_fk = rm.id LEFT JOIN customers c ON r.customers_id_fk = c.id LEFT JOIN events e ON r.events_id_fk = e.id LEFT JOIN notes n ON r.notes_id_fk = n.id WHERE e.users_id_fk = $1 AND r.events_id_fk=$2 ORDER BY f.number`, userID, eventID)
+	err = db.DB.Select(&rr, `SELECT r.*, c.email cust_email, c.name cust_name, c.surname cust_surname, c.phone cust_phone, f.number chair_number, rm.name room_name, rm.id room_id, n.text reservation_notes FROM reservations r LEFT JOIN furnitures f ON r.furnitures_id_fk = f.id LEFT JOIN rooms rm ON f.rooms_id_fk = rm.id LEFT JOIN customers c ON r.customers_id_fk = c.id LEFT JOIN events e ON r.events_id_fk = e.id LEFT JOIN notes n ON r.notes_id_fk = n.id WHERE e.users_id_fk = $1 AND r.events_id_fk=$2 ORDER BY f.number`, userID, eventID)
 	return rr, err
 
 }

@@ -27,6 +27,77 @@ function Post(path, params, method='post') {
   form.submit();
 }
 
+function SendToAPI(jsonData) {
+  $.ajax({
+    type: "POST",
+    url: "/api/roomcopy",
+    data: JSON.stringify(jsonData),
+    success: function(resp) {
+      console.log(resp.msg);
+      // we can check msg to determine insert/update
+
+      // make button green
+      $("#select-room-copy-button").addClass("btn-success");
+      // set timer to make button blue again
+      window.setTimeout(function(){
+        $("#select-room-copy-button").removeClass("btn-success");
+      },2000);
+      //window.location.replace("/admin");
+      //window.location.href = "/admin";
+    },
+    statusCode: {
+      418: function(xhr) {
+      $("#select-room-copy-button").addClass("btn-danger");
+      // set timer to make button blue again
+      window.setTimeout(function(){
+        $("#select-room-copy-button").removeClass("btn-danger");
+      },2000);
+
+        alert(xhr.responseJSON.msg);
+        console.log(xhr.responseJSON.msg);
+      },
+    },
+    dataType: "json",
+  });
+
+}
+
+function SendDelRoom(jsonData) {
+  $.ajax({
+    type: "POST",
+    url: "/api/roomdel",
+    data: JSON.stringify(jsonData),
+    success: function(resp) {
+      console.log(resp.msg);
+      // we can check msg to determine insert/update
+
+      // make button green
+      $("#del-room-button").addClass("btn-success");
+      // set timer to make button blue again
+      window.setTimeout(function(){
+        $("#del-room-button").removeClass("btn-success");
+      },2000);
+      //window.location.replace("/admin");
+      //window.location.href = "/admin";
+    },
+    statusCode: {
+      418: function(xhr) {
+      $("#del-room-button").addClass("btn-danger");
+      // set timer to make button blue again
+      window.setTimeout(function(){
+        $("#del-room-button").removeClass("btn-danger");
+      },2000);
+
+        alert(xhr.responseJSON.msg);
+        console.log(xhr.responseJSON.msg);
+      },
+    },
+    dataType: "json",
+  });
+
+}
+
+
 
 function EventEdit() {
   var eventID = $('#events-select :selected').val();
@@ -44,11 +115,27 @@ function RoomEdit() {
   //$("#rooms-select-form").submit();
 }
 
+function RoomDel() {
+  var roomID = $('#rooms-select :selected').val(); // get room id
+  SendDelRoom({"room_id": Number(roomID)})
+}
+
 function FinalRoomEdit() {
   //console.log($("#events-select :selected").val());
   var eventID = $('#room-event-select :selected').val(); // get event selected for room
   var roomID = $('#rooms-select :selected').val(); // get room id
   Post("/admin/designer", {"room-id": roomID, "event-id": eventID})
+}
+
+function RoomCopy() {
+	$('#room-copy').modal();
+}
+
+function FinalRoomCopy() {
+	roomID = $('#room-copy-select :selected').val(); // get room id
+	console.log({"room_id": roomID});
+	SendToAPI({"room_id": Number(roomID)});
+	$('#room-copy').modal('hide');
 }
 
 function ShowRaports() {

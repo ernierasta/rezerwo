@@ -10,6 +10,7 @@ var Price = 8;
 var Currency = 9;
 var Ordered = 10;
 var Payed = 11;
+var RoomID = 12;
 
 $(function() {
 
@@ -83,6 +84,7 @@ $(function() {
           var stscol = table.colReorder.transpose(OrderStatus);
           var furnNumberCol = table.colReorder.transpose(ChairNr);
           var roomNameCol = table.colReorder.transpose(Room);
+	  var roomIDCol = table.colReorder.transpose(RoomID);
           var payedCol = table.colReorder.transpose(Payed);
           var now = new Date();
           indexes = dt.rows({selected: true}).indexes();
@@ -95,7 +97,7 @@ $(function() {
               $.ajax({
                 method: "POST",
                 url: "/api/resstatus",
-                data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol] , status: "payed"})
+		      data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol], room_id: Number(row[roomIDCol]) , status: "payed"})
               });
             } else if (row[stscol] === "payed") {
               row[stscol] = "ordered";
@@ -104,7 +106,7 @@ $(function() {
               $.ajax({
                 method: "POST",
                 url: "/api/resstatus",
-                data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol] , status: "ordered"})
+		      data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol], room_id: Number(row[roomIDCol]) , status: "ordered"})
               });
             } 
           }
@@ -119,6 +121,7 @@ $(function() {
         action: function ( e, dt, button, config ) {
           var furnNumberCol = table.colReorder.transpose(ChairNr);
           var roomNameCol = table.colReorder.transpose(Room);
+	  var roomIDCol = table.colReorder.transpose(RoomID);
           var indexes = dt.rows({selected: true}).indexes();
           bootbox.confirm({
             message: "Na pewno wykasować zaznaczone rezerwacje? Kasowanie jest NIEODWRACALNE!",
@@ -137,7 +140,7 @@ $(function() {
                   $.ajax({
                     method: "DELETE",
                     url: "/api/resdelete",
-                    data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_name: row[roomNameCol]})
+                    data: JSON.stringify({event_id: Number($('#event-id').val()),furn_number: Number(row[furnNumberCol]), room_id: Number(row[roomIDCol]), room_name: row[roomNameCol]})
                   });
                 }
                 dt.rows({selected: true}).remove().draw();

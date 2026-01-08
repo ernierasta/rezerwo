@@ -4224,20 +4224,27 @@ type FormFuncs struct {
 // where name is always checked first.
 // This function is forms specific!
 func (i *FormFuncs) Sum(FormFieldName string) template.HTML {
-	return i.sum(FormFieldName, false, false)
+	return i.sum(FormFieldName, false, false, "")
 }
 
 // SumAlfa sorts results by name (not by ammount) in case of string values
 func (i *FormFuncs) SumAlfa(FormFieldName string) template.HTML {
-	return i.sum(FormFieldName, true, false)
+	return i.sum(FormFieldName, true, false, "")
 }
 
 // SumStrings forces string values (even when they are numbers) and sorts by string name
 func (i *FormFuncs) SumStrings(FormFieldName string) template.HTML {
-	return i.sum(FormFieldName, true, true)
+	return i.sum(FormFieldName, true, true, "")
 }
 
-func (i *FormFuncs) sum(FormFieldName string, sortByName bool, forceStringVals bool) template.HTML {
+// SumOnly returns numerical output, it counts only given string as +1.
+// Usefull for checkbox type with only one answer ("yes" for example)
+// or for radio grups with "yes" and "no" options ("no" is ignored).
+func (i *FormFuncs) SumOnly(FormFieldName, countOnlyThis string) template.HTML {
+	return i.sum(FormFieldName, false, false, countOnlyThis)
+}
+
+func (i *FormFuncs) sum(FormFieldName string, sortByName, forceStringVals bool, countOnlyThis string) template.HTML {
 	var sum int64
 
 	// special value "forms" - counts how many forms are filled
@@ -4295,6 +4302,13 @@ func (i *FormFuncs) sum(FormFieldName string, sortByName bool, forceStringVals b
 	for k, v := range m {
 		kvs = append(kvs, kv{k, v})
 	}
+
+	// if countOnlyThis is defined, then return number for answer named as given
+	// f.e.: we are interested in only "yes" values
+	if len(countOnlyThis) != 0 {
+		return template.HTML(strconv.Itoa(m[countOnlyThis]))
+	}
+
 	if !sortByName {
 		// let's sort result by ammount
 		sort.Slice(kvs, func(i, j int) bool {
@@ -4331,6 +4345,8 @@ func (i *FormFuncs) Field(FormFieldName string) string {
 	return s
 }
 
+// This shows data from db or "alternative" string. Used for checkboxes with only one answer "yes", alternative will be "no".
+// Usefull for mail notifications.
 func (i *FormFuncs) FieldOr(FormFieldName, Alternative string) string {
 	res := i.Field(FormFieldName)
 	if res == "" {

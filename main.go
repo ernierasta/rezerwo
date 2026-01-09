@@ -4375,11 +4375,19 @@ func (i *FormFuncs) MTotal(FormFieldName string) string {
 }
 
 func (i *FormFuncs) generateQRimg(accountName string) (string, string) {
-	return GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID)
+	return GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, "", "")
 }
 
 func (i *FormFuncs) QRPay(accountName string) template.HTML {
 	_, imgpath := i.generateQRimg(accountName)
+	return template.HTML(fmt.Sprintf(`<img width="200" src="/%s" alt="QRError">`, imgpath))
+}
+
+// QRPayPrefixField like QRPay, but requires 3 argumenst and allows to:
+// customize imgPrefix (avoid using the same qrcode file if multiple QRImages for one form),
+// customize field name (again, when multiple QRcodes should be generated).
+func (i *FormFuncs) QRPayFieldPrefix(accountName, field, imgPrefix string) template.HTML {
+	_, imgpath := GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, field, imgPrefix)
 	return template.HTML(fmt.Sprintf(`<img width="200" src="/%s" alt="QRError">`, imgpath))
 }
 
@@ -4390,6 +4398,16 @@ func (i *FormFuncs) QRPayMail(accountName string) template.HTML {
 		CID:      getCID(imgname, i.User.URL),
 	})
 	return template.HTML(fmt.Sprintf(`<img width="150" src="cid:%s" alt="QR Kod" />`, getCID(imgname, i.User.URL)))
+}
+
+// QRPayMailFieldPrefix the same as QRPayPrefixField but for mail notifications
+func (i *FormFuncs) QRPayMailFieldPrefix(accountName, field, imgPrefix string) template.HTML {
+	imgname, imgpath := GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, field, imgPrefix)
+	i.EmbeddedImgs = append(i.EmbeddedImgs, EmbImg{
+		NamePath: imgpath,
+		CID:      getCID(imgname, i.User.URL),
+	})
+	return template.HTML(fmt.Sprintf(`<img width="150" src="cid:%s" alt="QR Kod Error" />`, getCID(imgname, i.User.URL)))
 }
 
 type OrderFuncs struct {
@@ -4409,7 +4427,7 @@ type OrderFuncs struct {
 
 func (o *OrderFuncs) generateQRimg(accountName string) (string, string) {
 	etp := FormTemplate{}
-	return GenerateQRimg(accountName, o.DB, o.User, etp, o.NameSurname, o.TotalPrice, -1)
+	return GenerateQRimg(accountName, o.DB, o.User, etp, o.NameSurname, o.TotalPrice, -1, "", "")
 }
 
 func (o *OrderFuncs) QRPay(accountName string) template.HTML {
@@ -4426,25 +4444,37 @@ func (o *OrderFuncs) QRPayMail(accountName string) template.HTML {
 	return template.HTML(fmt.Sprintf(`<img width="150" src="cid:%s" alt="QR Kod" />`, getCID(imgname, o.User.URL)))
 }
 
-func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurname, TotalPrice string, FormID int64) (string, string) {
+// GenerateQRimg prepare data for QR code generation.
+// Options: when TotalPrice is given it is used, otherwise FormID need to be provided to determine money field name.
+// If FieldName is given, it is used as FieldName or display name failback, but FormID is still needed.
+// Function also handles multiplication field well (extracts sum from it).
+func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurname, TotalPrice string, FormID int64, FieldName string, ImgPrefix string) (string, string) {
 	ba, err := db.BankAccountGetByName(accountName, u.ID)
 	if err != nil {
 		log.Printf("GenerateQRimg: no account with this name found, name given by admin: %q, userID: %d(%s), %v", accountName, u.ID, u.URL, err)
 	}
 
 	templURL := strings.Join(strings.Fields(t.URL), "")
+
 	imgname := fmt.Sprintf("%s.jpeg", templURL+"_"+NameSurname)
+	if len(ImgPrefix) > 0 { //add given prefix to img name, allows for multiple QRs in one form
+		imgname = fmt.Sprintf("%s.jpeg", templURL+"_"+ImgPrefix+"_"+NameSurname)
+	}
 	imgpath := getImgPath(MEDIAROOT, u.URL, MEDIAQRCODESUBDIR, imgname)
 
 	eft := FormTemplate{}
 	am := ""
 	// get money ammount
 	if t != eft { // it is form
-		am, err = db.FormAnswerGetByFieldName(FormID, t.ID, t.MoneyAmountFieldName.String)
+		field := t.MoneyAmountFieldName.String
+		if len(FieldName) > 0 { // if FieldName is given, use it
+			field = FieldName
+		}
+		am, err = db.FormAnswerGetByFieldName(FormID, t.ID, field)
 		if err != nil {
-			am, err = db.FormAnswerGetByFieldDisplay(FormID, t.ID, t.MoneyAmountFieldName.String)
+			am, err = db.FormAnswerGetByFieldDisplay(FormID, t.ID, field)
 			if err != nil {
-				log.Printf("GenerateQRimg: problem getting money ammount field name and display %q, FormID %d, %v", t.MoneyAmountFieldName.String, FormID, err)
+				log.Printf("GenerateQRimg: problem getting money ammount field name and display %q, FormID %d, %v", field, FormID, err)
 			}
 		}
 		// check and convert to sum if is from multiplicateField (it will be "3 * 500 = 1500")

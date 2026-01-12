@@ -4266,7 +4266,7 @@ func (i *FormFuncs) sum(FormFieldName string, sortByName, forceStringVals bool, 
 	if !forceStringVals { // if strings are forced, skip int retrieval
 		// try to get ints from db, if can not do that assume strings
 		nrs, err := i.DB.FormAnswerGetAllAnswersForFieldInts(id)
-		//log.Printf("field id: %v, nrs: %v", id, nrs)
+		//log.Printf("field id: %v, nrs: %v", id, nrs) // DEBUG
 		if err != nil {
 			log.Printf("Sum: can not get data for field %s(id:%d), %v", FormFieldName, id, err)
 		} else { // there are numbers, so return ordinary sum
@@ -4280,10 +4280,32 @@ func (i *FormFuncs) sum(FormFieldName string, sortByName, forceStringVals bool, 
 	// Let's sum string answers, we are counting the same string separated by ', ' across
 	// all answers in given field
 	strs, err := i.DB.FormAnswerGetAllAnswersForFieldStrings(id)
+	// log.Printf("Sum: strings I got: %v", strs) // DEBUG
+
+	// there is special kind of string - miltiplication field, check for it
+	// then it will be: 3 * 600 = 1200 and we are interested only in "3"
+	if len(strs) > 0 {
+		if strings.Contains(strs[0], " = ") && strings.Contains(strs[0], " * ") { // we are sure it is multiplictation
+			//log.Printf("Sum: we have multiplication field") //DEBUQ
+			sum := 0
+			for i := range strs {
+				am, _, _ := ConvertMultiplicationToAmmountMultiplTotal(strs[i])
+				ami, err := strconv.Atoi(am)
+				if err != nil {
+					log.Printf("Sum: error converting multiplication field ammount %s into integer, %v", am, err)
+				}
+				sum += ami
+			}
+			return template.HTML(strconv.Itoa(sum))
+
+		}
+	}
+
 	type kv struct {
 		K string
 		V int
 	}
+
 	m := map[string]int{}
 	for i := range strs {
 		ss := strings.Split(strs[i], ", ")
@@ -4356,18 +4378,21 @@ func (i *FormFuncs) FieldOr(FormFieldName, Alternative string) string {
 }
 
 // this functions allows to get separated data from multiplicateField (3 * 500 = 1500)
+// MAmmount return ammount (of tickets usually)
 func (i *FormFuncs) MAmmount(FormFieldName string) string {
 	s := i.Field(FormFieldName)
 	amm, _, _ := ConvertMultiplicationToAmmountMultiplTotal(s)
 	return amm
 }
 
+// MMultipl returns money it is multiplied by
 func (i *FormFuncs) MMultipl(FormFieldName string) string {
 	s := i.Field(FormFieldName)
 	_, mult, _ := ConvertMultiplicationToAmmountMultiplTotal(s)
 	return mult
 }
 
+// MTotal return total price to be payed
 func (i *FormFuncs) MTotal(FormFieldName string) string {
 	s := i.Field(FormFieldName)
 	_, _, total := ConvertMultiplicationToAmmountMultiplTotal(s)
@@ -4502,6 +4527,8 @@ func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurna
 	return imgname, imgpath
 }
 
+// ConvertMultiplicationToAmmountMultiplTotal returns:
+// ammount, multiplier, sum
 func ConvertMultiplicationToAmmountMultiplTotal(s string) (string, string, string) {
 	sum := ""
 	ammount := ""

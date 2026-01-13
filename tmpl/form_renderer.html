@@ -5,22 +5,22 @@
   <link rel="stylesheet" type="text/css" href="/css/form_renderer.css"/>
 {{end}}
 {{define "body"}}
-  <div class="row d-flex justify-content-center align-items-center">
+  <div class="row px-3 d-flex justify-content-center align-items-center">
       {{if eq .FormInfoPanel ""}}
-      <div class="col-md-8">
+      <div class="col-md-8 px-3 px-md-0">
       {{else}}
-      <div class="col-md-10">
+      <div class="col-md-10 px-3 px-md-0">
       {{end}}
         <h4>{{.LBLTitle}}</h4>
         {{if ne .ImgBanner ""}}<img id='tb' src="{{.ImgBannerRootDir}}/{{.ImgBanner}}" alt="">{{end}}
         <p>{{.LBLHowTo}}</p>
       </div>
   </div>
-  <div class="row d-flex justify-content-center align-items-center">
+  <div class="row px-3 d-flex justify-content-center align-items-center">
     {{if eq .FormInfoPanel ""}}
-    <div class="col-md-8">
+    <div class="col-md-8 px-3 px-md-0">
     {{else}}
-    <div class="col-md-6">
+    <div class="col-md-6 px-3 px-md-0">
     {{end}}
       {{if ne .UniqID ""}}<p>{{.UniqIDTitle}}<b id='uniqid'>{{.UniqID}}</b></p>{{end}}
       <form id="form-rendered">

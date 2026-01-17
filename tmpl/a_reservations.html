@@ -12,12 +12,23 @@
     <div class="col-md-12">
       <h3>{{.LBLTitle}}</h3>
       <input id="event-id" type="hidden" value={{.EventID}}>
+      <div class="input-group">
+        <select name="notif-select" id="notif-select" class="custom-select col-md-4">
+          <option value="0" selected>{{.LBLSelectNotification}}</option>
+          {{range .Notifications}}
+          <option value="{{.ID}}">{{.Name}}</option>
+          {{end}}
+        </select>
+      </div>
       <!-- this is now created by js: <div id="total-price-lbl">{{.LBLTotalPrice}}: <span id="total-price"></span><span>, {{.LBLTotalSits}}: <span id="total-sits"></span></div> -->
         <table id="reservations" class="table table-bordered">
         <thead>
           <tr>
+            <th scope="col">{{.THReservationID}}</th>
             <th scope="col">{{.THChairNumber}}</th>
             <th scope="col">{{.THRoomName}}</th>
+            <th scope="col">{{.THLastNotif}}</th>
+            <th scope="col">{{.THNotifAmmount}}</th>
             <th scope="col">{{.THCustName}}</th>
             <th scope="col">{{.THCustSurname}}</th>
             <th scope="col">{{.THStatus}}</th>
@@ -34,8 +45,11 @@
         <tbody>
           {{range .ReservationsFull}}
           <tr>
+            <td>{{.ID}}</td>
             <td>{{.ChairNumber}}</td>
             <td>{{.RoomName}}</td>
+            <td>{{.LastNotificationS}}</td>
+            <td>{{.NotifAmmount.Int64}}</td>
             <td>{{.CustName.String}}</td>
             <td>{{.CustSurname.String}}</td>
             <td>{{.Status}}</td>

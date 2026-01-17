@@ -1,16 +1,19 @@
-var ChairNr = 0;
-var Room = 1;
-var Name = 2;
-var Surname = 3;
-var OrderStatus = 4;
-var Email = 5;
-var Notes = 6;
-var Phone = 7;
-var Price = 8;
-var Currency = 9;
-var Ordered = 10;
-var Payed = 11;
-var RoomID = 12;
+var ID = 0;
+var ChairNr = 1;
+var Room = 2;
+var LastNotif = 3;
+var NotifAmmount = 4; 
+var Name = 5;
+var Surname = 6;
+var OrderStatus = 7;
+var Email = 8;
+var Notes = 9;
+var Phone = 10;
+var Price = 11;
+var Currency = 12;
+var Ordered = 13;
+var Payed = 14;
+var RoomID = 15;
 
 $(function() {
 
@@ -113,6 +116,71 @@ $(function() {
           dt.rows({selected: true}).deselect();
           //$('#total-price').html(0);
           //$('#total-sits').html(0);
+        }
+      },
+      {
+        extend: 'selected',
+        text: 'Wyślij e-mail',
+        action: function ( e, dt, button, config ) {
+          var reservationID = table.colReorder.transpose(ID);
+	  var cust_email = table.colReorder.transpose(Email);
+	  var notif_ammount = table.colReorder.transpose(NotifAmmount);
+	  var last_notif = table.colReorder.transpose(LastNotif);
+          var indexes = dt.rows({selected: true}).indexes();
+          var notificationID = Number($('#notif-select').val());
+          
+          
+          // check if mail template is selected - if 0 abort
+          if (notificationID == 0 ) {
+            bootbox.alert("Nie wybrano szablonu maila, wybierz powyżej i spróbuj ponownie.");
+            return
+          }
+
+          // confirm sending - send mail if confirmed
+          bootbox.confirm({
+                        message: "Naprawde wysłać e-mail do wybranych <b>" + indexes.length + "</b> pozycji? Dla każdego zamówienia zostanie wysłany tylko jeden e-mail (szablon: " + $('#notif-select').find('option:selected').text() + ").",
+              buttons: {
+                cancel: {
+                    label: '<i class="fa fa-times"></i> Anuluj'
+                },
+                confirm: {
+                    label: '<i class="fa fa-check"></i> Wyślij'
+                }
+              },
+            callback: function(result) {
+              if (result) {
+		// first we need to agregate all orders by mail (the same email = one order)
+		const agregated = {};
+                for (i=0; i < indexes.length;i++){
+                	var row = dt.row(indexes[i]).data();
+			if (!agregated[row[cust_email]]) { // create object: key: mail, values: [reservationID, reservationID2, ...]
+				agregated[row[cust_email]] = []; // initialize empty table for this key (email)
+			}
+			agregated[row[cust_email]].push(row[reservationID]);
+
+			// while we are iterating rows, set values to new values
+			row[notif_ammount] = Number(row[notif_ammount]) + 1;
+                  	row[last_notif] = "Teraz";
+                  	dt.row(indexes[i]).data(row);
+		}
+
+		for (const key in agregated) { // remake object, so it is: key: mail, value: "reservationID, reservationID2, ..."
+			agregated[key] = agregated[key].join(', ');
+		}
+
+
+		for (const key in agregated){ // iterate mails
+                  $.ajax({
+                    method: "POST",
+                    url: "/api/eventanssendmail",
+                    data: JSON.stringify({event_id: Number($('#event-id').val()), reservation_ids: agregated[key], cust_email: key, notification_id: notificationID})
+                  });
+                }
+		// at the end deselect selected
+                dt.rows({selected: true}).deselect();
+              }
+            }
+          });
         }
       },
       {

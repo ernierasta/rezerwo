@@ -100,6 +100,7 @@ func main() {
 	http.HandleFunc("/api/formans", FormAddMod(db, mailConf))
 	http.HandleFunc("/api/formansdelete", FormAnsDelete(db, cookieStore))
 	http.HandleFunc("/api/formanssendmail", FormAnsSendMail(db, mailConf, cookieStore))
+	http.HandleFunc("/api/eventanssendmail", EventAnsSendMail(db, mailConf, cookieStore))
 	http.HandleFunc("/api/maed", MailAddMod(db, cookieStore))
 	http.HandleFunc("/api/formstmpls", FormTemplsGetAPI(db, cookieStore))
 	http.HandleFunc("/api/formdefs", GenerateFormDefsAPI(db, cookieStore))
@@ -1941,27 +1942,33 @@ func getRoomsString(rr []Room) string {
 }
 
 type AdminReservationsVars struct {
-	LBLLang          string
-	EventID          int64
-	LBLTitle         string
-	LBLTotalPrice    string
-	LBLTotalSits     string
-	THChairNumber    string
-	THRoomName       string
-	THRoomID         string
-	THCustName       string
-	THCustSurname    string
-	THCustEmail      string
-	THCustPhone      string
-	THPrice          string
-	THCurrency       string
-	THStatus         string
-	THNotes          string
-	THOrderedDate    string
-	THPayedDate      string
-	ReservationsFull []ReservationFull
+	LBLLang               string
+	EventID               int64
+	LBLTitle              string
+	LBLTotalPrice         string
+	LBLTotalSits          string
+	THReservationID       string
+	THChairNumber         string
+	THRoomName            string
+	THRoomID              string
+	THLastNotif           string
+	THNotifAmmount        string
+	THCustName            string
+	THCustSurname         string
+	THCustEmail           string
+	THCustPhone           string
+	THPrice               string
+	THCurrency            string
+	THStatus              string
+	THNotes               string
+	THOrderedDate         string
+	THPayedDate           string
+	ReservationsFull      []ReservationFull
+	LBLSelectNotification string
+	Notifications         []Notification
 }
 
+// AdminReservations is more static then FormRaport, because column names are static.
 func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		eventID := int64(-1)
@@ -1998,51 +2005,67 @@ func AdminReservations(db *DB, lang string, cs *sessions.CookieStore) func(w htt
 		for i := range rf {
 			rf[i].PayedDateS = ToDateTime(rf[i].PayedDate.Int64)
 			rf[i].OrderedDateS = ToDateTime(rf[i].OrderedDate.Int64)
+			rf[i].LastNotificationS = ToDateTime(rf[i].LastNotification.Int64)
+		}
+
+		notifs, err := db.NotificationGetAllForUser(user.ID)
+		if err != nil {
+			log.Printf("AdminReservations: error getting all notifications for user %d, %v", user.ID, err)
 		}
 
 		enP := AdminReservationsVars{
-			LBLLang:          lang,
-			EventID:          eventID,
-			LBLTitle:         "Reservations",
-			LBLTotalPrice:    "Total",
-			LBLTotalSits:     "Sits",
-			THChairNumber:    "Chair nr",
-			THRoomName:       "Room",
-			THRoomID:         "Room ID",
-			THCustName:       "Name",
-			THCustSurname:    "Surname",
-			THCustEmail:      "Email",
-			THCustPhone:      "Phone",
-			THPrice:          "Price",
-			THCurrency:       "Currency",
-			THStatus:         "Order status",
-			THNotes:          "Notes",
-			THOrderedDate:    "Ordered",
-			THPayedDate:      "Payed",
-			ReservationsFull: rf,
+			LBLLang:               lang,
+			EventID:               eventID,
+			LBLTitle:              "Reservations",
+			LBLTotalPrice:         "Total",
+			LBLTotalSits:          "Sits",
+			THReservationID:       "ID",
+			THChairNumber:         "Chair nr",
+			THRoomName:            "Room",
+			THRoomID:              "Room ID",
+			THLastNotif:           "Last notif.",
+			THNotifAmmount:        "Notif. ammount",
+			THCustName:            "Name",
+			THCustSurname:         "Surname",
+			THCustEmail:           "Email",
+			THCustPhone:           "Phone",
+			THPrice:               "Price",
+			THCurrency:            "Currency",
+			THStatus:              "Order status",
+			THNotes:               "Notes",
+			THOrderedDate:         "Ordered",
+			THPayedDate:           "Payed",
+			ReservationsFull:      rf,
+			LBLSelectNotification: "Select notification e-mail ...",
+			Notifications:         notifs,
 		}
 		_ = enP
 
 		plP := AdminReservationsVars{
-			LBLLang:          lang,
-			EventID:          eventID,
-			LBLTitle:         "Rezerwacje",
-			LBLTotalPrice:    "Łącznie",
-			LBLTotalSits:     "Bilety łącznie",
-			THChairNumber:    "Nr krzesła",
-			THRoomName:       "Pomieszczenie",
-			THRoomID:         "ID pomieszczenia",
-			THCustName:       "Imię",
-			THCustSurname:    "Nazwisko",
-			THCustEmail:      "Email",
-			THCustPhone:      "Telefon",
-			THPrice:          "Cena",
-			THCurrency:       "Waluta",
-			THStatus:         "Status",
-			THNotes:          "Notatki",
-			THOrderedDate:    "Zamówiono",
-			THPayedDate:      "Zapłacono",
-			ReservationsFull: rf,
+			LBLLang:               lang,
+			EventID:               eventID,
+			LBLTitle:              "Rezerwacje",
+			LBLTotalPrice:         "Łącznie",
+			LBLTotalSits:          "Bilety łącznie",
+			THReservationID:       "ID",
+			THChairNumber:         "Nr krzesła",
+			THRoomName:            "Pomieszczenie",
+			THRoomID:              "ID pomieszczenia",
+			THLastNotif:           "Ostatnia notyf.",
+			THNotifAmmount:        "Ilość wysłanych",
+			THCustName:            "Imię",
+			THCustSurname:         "Nazwisko",
+			THCustEmail:           "Email",
+			THCustPhone:           "Telefon",
+			THPrice:               "Cena",
+			THCurrency:            "Waluta",
+			THStatus:              "Status",
+			THNotes:               "Notatki",
+			THOrderedDate:         "Zamówiono",
+			THPayedDate:           "Zapłacono",
+			ReservationsFull:      rf,
+			LBLSelectNotification: "Wybierz notyfikacje (e-mail) ...",
+			Notifications:         notifs,
 		}
 
 		t := template.Must(template.ParseFiles("tmpl/a_reservations.html", "tmpl/base.html"))
@@ -2529,7 +2552,7 @@ func FormRaport(db *DB, lang string, cs *sessions.CookieStore) func(w http.Respo
 			}
 			amount, err := db.FormNotificationLogGetAmount(forms[i].ID)
 			if err != nil {
-				log.Printf("FormRaport: can not get notification date for %d, %v", forms[i].ID, err)
+				log.Printf("FormRaport: can not get notifications ammount for %d, %v", forms[i].ID, err)
 			}
 
 			row := make([]FormRapRow, len(cols))
@@ -3733,16 +3756,14 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 
 			mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
 
-			err = prepareAndSendMail(
+			parsedText, embImgs := parseFormMailTemplate(f.Name.String, f.Surname.String, mail.Text, FormID, user, templ, db)
+
+			err = prepMailConfSendMail(
 				f.Email.String,
-				f.Surname.String,
-				f.Name.String,
 				mail.Title.String,
-				makeSureIsHTML(mail.Text),
+				parsedText,
 				user,
-				FormID,
-				templ,
-				db,
+				embImgs,
 				mailConf,
 			)
 
@@ -3765,18 +3786,8 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 			//reset EmbededHTMLImgs, admin do not need it?
 			mailConf.EmbededHTMLImgs = []EmbImg{}
 
-			err = prepareAndSendMail(
-				chooseEmail(user.Email, user.AltEmail.String), // send to alt mail if defined
-				f.Surname.String,
-				f.Name.String,
-				adminMail.Title.String,
-				makeSureIsHTML(adminMail.Text),
-				user,
-				FormID,
-				templ,
-				db,
-				mailConf,
-			)
+			parsedText, embImgs = parseFormMailTemplate(f.Name.String, f.Surname.String, makeSureIsHTML(adminMail.Text), FormID, user, templ, db)
+			err = prepMailConfSendMail(chooseEmail(user.Email, user.AltEmail.String), adminMail.Title.String, parsedText, user, embImgs, mailConf) // send to alt mail if defined
 
 			if err != nil {
 				log.Printf("FormAnsSendMail: error sending admin mail, %v", err)
@@ -3863,16 +3874,14 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 			// get embedded images (defined in db, qrcode is added later)
 			mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
 
-			err = prepareAndSendMail(
+			parsedText, embImgs := parseFormMailTemplate(form.Name.String, form.Surname.String, makeSureIsHTML(mail.Text), m.FormID, user, formTempl, db)
+
+			err = prepMailConfSendMail(
 				form.Email.String,
-				form.Surname.String,
-				form.Name.String,
 				mail.Title.String,
-				makeSureIsHTML(mail.Text),
+				parsedText,
 				user,
-				m.FormID,
-				formTempl,
-				db,
+				embImgs,
 				mailConf,
 			)
 
@@ -3886,7 +3895,7 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 					FormID:         m.FormID,
 				})
 				if err != nil {
-					log.Printf("prepareAndSendMail: error writting to DB - logging sent mail info, %v", err)
+					log.Printf("FormAnsSendMail: error writting to DB - logging sent mail info, %v", err)
 				}
 			}
 
@@ -3894,32 +3903,118 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 	}
 }
 
-// prepareAndSendMail will prepare mail text and send mail
-func prepareAndSendMail(email, name, surname, msubject, mtext string, user User, formID int64, formTempl FormTemplate, db *DB, mailConf *MailConfig) error {
-	var parsedMail bytes.Buffer
+type EventAnsManipulateJson struct {
+	ReservationIDs string `json:"reservation_ids"`
+	Email          string `json:"cust_email"`
+	EventID        int64  `json:"event_id"`
+	NotificationID int64  `json:"notification_id"`
+}
+
+func EventAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			var m EventAnsManipulateJson
+
+			_, _, userEmail, err := InitSession(w, r, cs, "/admin/login", true)
+			if err != nil {
+				log.Printf("EventAnsSendMail: session error: %v", err)
+				return
+			}
+
+			user, err := db.UserGetByEmail(userEmail)
+			if err != nil {
+				log.Printf("EventAnsSendMail: very strange, can not find admin in users table, but is authenticated, err: %v", err)
+			}
+
+			bodyJson, err := io.ReadAll(r.Body)
+			if err != nil {
+				log.Println("EventAnsSendMail: error reading form template json sent from form editor,", err)
+			}
+			err = json.Unmarshal(bodyJson, &m)
+			if err != nil {
+				log.Println(err)
+			}
+
+			event, err := db.EventGetByID(m.EventID)
+			if err != nil {
+				log.Println("EventAnsSendMail: error reading form template json sent from form editor,", err)
+			}
+			_ = event
+
+			//log.Printf("%+v, email: %s", m, form.Email.String) // debug
+			si := []int64{}
+			ss := strings.Split(m.ReservationIDs, ",")
+			for i := range ss {
+				i, err := strconv.ParseInt(strings.TrimSpace(ss[i]), 10, 64)
+				if err != nil {
+					log.Printf("EventAnsSendMail: error converting %s (whole string: %s) to int64, %v", ss[i], m.ReservationIDs, err)
+				}
+				si = append(si, i)
+			}
+
+			var frs []ReservationFull // list of all reservations for this order
+			var sitsL, pricesL []int
+			var roomsL []string
+			var price int64
+			for i := range si {
+				rf, err := db.ReservationFullGetByID(si[i], m.EventID)
+				if err != nil {
+					log.Printf("EventAnsSendMail: error retrieving reservation with ID: %d (event: %v) from DB, err: %v", si[i], m.EventID, err)
+				}
+				sitsL = append(sitsL, int(rf.ChairNumber))
+				roomsL = append(roomsL, rf.RoomName)
+				pricesL = append(pricesL, int(rf.Price.Int64))
+				price += rf.Price.Int64
+				frs = append(frs, rf)
+			}
+
+			mail, err := db.NotificationGetByID(m.NotificationID, user.ID)
+			if err != nil {
+				log.Printf("EventAnsSendMail: error getting mail with ID: %d, err: %v", m.NotificationID, err)
+			}
+
+			log.Printf("all reservations: %+v", frs)
+			log.Printf("sits: %v, rooms: %v, price: %v", sitsL, roomsL, pricesL)
+
+			// get embedded images (defined in db, qrcode is added later)
+			mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
+
+			parsedText, embImgs, attachedFiles := parseEventMailTemplate(frs[0].CustName.String, frs[0].CustSurname.String, mail.Text, frs[0].CustPhone.String, frs[0].CustPhone.String, frs[0].Notes.String, event.Name, sitsL, pricesL, roomsL, m.EventID, price, user, db)
+
+			//mailConf.Files = append(mailConf.Files, attachedFiles...) this doesn't matter
+			mailConf.Files = attachedFiles
+			log.Printf("!!! af:mailConf: %+v", attachedFiles) // DEBUG
+			err = prepMailConfSendMail(frs[0].CustEmail.String, mail.Title.String, parsedText, user, embImgs, mailConf)
+			//mailConf.Files = []string{} // empty attachments after sending mail
+			if err != nil {
+				log.Printf("EventAnsSendMail: error sending, %v", err)
+			} else {
+				for i := range frs {
+					// write info to db about sent mail (EventNotificationLog table)
+					_, err := db.EventNotificationLogAdd(&EventNotificationLog{
+						Date:           time.Now().Unix(),
+						NotificationID: m.NotificationID,
+						ReservationID:  frs[i].ID,
+					})
+					if err != nil {
+						log.Printf("EventAnsSendMail: error writting to DB - logging sent mail info, %v", err)
+					}
+				}
+			}
+
+		}
+	}
+}
+
+// sendMail will send mail, it takes parsed texts and EmbeddedImgs (from template functions) and adds it to mailConf.EmbeddedImgs
+func prepMailConfSendMail(email, msubject, parsedMailText string, user User, EmbeddedImgs []EmbImg, mailConf *MailConfig) error {
 
 	// if email is empty we assume it anonymous form. We will not send any mail
 	if email == "" {
-		return fmt.Errorf("prepareAndSendMail: no mail sent for %v, empty mail(anonymous form?)", formID)
+		return fmt.Errorf("prepareAndSendMail: no mail sent, empty mail(anonymous form?)")
 	}
 
-	nsn := surname + "_" + name
-
-	thp := &FormFuncs{DB: db, User: user, Template: formTempl, FormID: formID, NameSurname: nsn}
-
-	tmpl, err := template.New("thankyou").Parse(mtext)
-	if err != nil {
-		log.Printf("prepareAndSendMail: error parsing ThankYou mail template, %v", err)
-	}
-	err = tmpl.ExecuteTemplate(&parsedMail, "thankyou", thp)
-	if err != nil {
-		log.Printf("prepareAndSendMail: error executing ThankYou template, %v", err)
-	}
-
-	thp.EmbeddedImgs = append(thp.EmbeddedImgs, mailConf.EmbededHTMLImgs...) // combine qr code with embedded images
-
-	log.Printf("DEBUG: thp.EmbeddedImgs %q", thp.EmbeddedImgs) // DEBUG
-	//log.Println("MAIL TEXT:", parsedMail.String()) // DEBUG
+	EmbeddedImgs = append(EmbeddedImgs, mailConf.EmbededHTMLImgs...) // combine qr code with embedded images
 
 	mail := MailConfig{
 		Server:          mailConf.Server,
@@ -3931,17 +4026,74 @@ func prepareAndSendMail(email, name, surname, msubject, mtext string, user User,
 		Sender:          mailConf.Sender,
 		To:              []string{email},
 		Subject:         msubject,
-		Text:            parsedMail.String(),
+		Text:            parsedMailText,
 		IgnoreCert:      mailConf.IgnoreCert,
 		Hostname:        mailConf.Hostname,
-		EmbededHTMLImgs: thp.EmbeddedImgs,
+		Files:           mailConf.Files,
+		EmbededHTMLImgs: EmbeddedImgs,
 	}
 
-	err = MailSend(mail)
+	err := MailSend(mail)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func parseFormMailTemplate(name, surname, mtext string, formID int64, user User, formTempl FormTemplate, db *DB) (string, []EmbImg) {
+	var parsedMail bytes.Buffer
+
+	nsn := surname + "_" + name
+
+	thp := &FormFuncs{DB: db, User: user, Template: formTempl, FormID: formID, NameSurname: nsn}
+
+	tmpl, err := template.New("thankyou").Parse(mtext)
+	if err != nil {
+		log.Printf("parseFormMailTemplate: error parsing ThankYou mail template, %v", err)
+	}
+	err = tmpl.ExecuteTemplate(&parsedMail, "thankyou", thp)
+	if err != nil {
+		log.Printf("parseFormMailTemplate: error executing ThankYou template, %v", err)
+	}
+
+	return parsedMail.String(), thp.EmbeddedImgs
+}
+
+func parseEventMailTemplate(name, surname, mtext, phone, email, notes, eventName string, sits, prices []int, rooms []string, eventID, totalPrice int64, user User, db *DB) (string, []EmbImg, []string) {
+	var parsedMail bytes.Buffer
+
+	nsn := surname + "_" + name
+
+	of := &OrderFuncs{
+		EventID:     eventID,
+		EventName:   eventName,
+		TotalPrice:  strconv.FormatInt(totalPrice, 10),
+		SitsL:       sits,
+		PricesL:     prices,
+		RoomsL:      rooms,
+		Email:       email,
+		Password:    "",
+		Name:        name,
+		Surname:     surname,
+		Phone:       phone,
+		Notes:       notes,
+		DB:          db,
+		User:        user,
+		NameSurname: nsn,
+	}
+
+	tmpl, err := template.New("eventmail").Parse(mtext)
+	if err != nil {
+		log.Printf("parseEventMailTemplate: error parsing 'eventmail' mail template, %v", err)
+	}
+	err = tmpl.ExecuteTemplate(&parsedMail, "eventmail", of)
+	if err != nil {
+		log.Printf("parseEventMailTemplate: error executing 'eventmail' template, %v", err)
+	}
+
+	log.Printf("parseEventMailTemplate: attached files: %v", of.AttachedFiles) // DEBUG
+
+	return parsedMail.String(), of.EmbeddedImgs, of.AttachedFiles
 }
 
 // parseFormURI parses: /form/org/formname
@@ -4437,17 +4589,21 @@ func (i *FormFuncs) QRPayMailFieldPrefix(accountName, field, imgPrefix string) t
 
 type OrderFuncs struct {
 	EventID             int64
+	EventName           string
 	TotalPrice          string
-	Sits, Prices, Rooms string
+	Sits, Rooms, Prices string
+	SitsL, PricesL      []int
+	RoomsL              []string
 	Email               string
 	Password            string
 	Name, Surname       string
 	Phone, Notes        string
 
-	DB           *DB
-	User         User
-	NameSurname  string
-	EmbeddedImgs []EmbImg
+	DB            *DB
+	User          User
+	NameSurname   string
+	EmbeddedImgs  []EmbImg
+	AttachedFiles []string
 }
 
 func (o *OrderFuncs) generateQRimg(accountName string) (string, string) {
@@ -4467,6 +4623,25 @@ func (o *OrderFuncs) QRPayMail(accountName string) template.HTML {
 		CID:      getCID(imgname, o.User.URL),
 	})
 	return template.HTML(fmt.Sprintf(`<img width="150" src="cid:%s" alt="QR Kod" />`, getCID(imgname, o.User.URL)))
+}
+
+// PDF generates and attaches generated pdf files
+func (o *OrderFuncs) PDF(info string) template.HTML {
+	p := &TicketParams{
+		UserName:         o.User.Organization.String,
+		UserURL:          o.User.URL,
+		EventName:        o.EventName,
+		EventDescription: info,
+		SeatNrs:          o.SitsL,
+	}
+
+	attFiles, err := GenerateTicketsPDF(p)
+	if err != nil {
+		log.Printf("OrderFuncs-PDF: problem generating pdf ticket, %v", err)
+	}
+
+	o.AttachedFiles = append(o.AttachedFiles, attFiles...)
+	return template.HTML("")
 }
 
 // GenerateQRimg prepare data for QR code generation.
@@ -5036,6 +5211,22 @@ func SplitSitsRoomsPrices(sits, rooms, prices string) ([]int64, []int64, []int64
 
 	}
 	return ssi, rri, ppi, nil
+}
+
+// JoinSitsRoomsPrices is reverse function for SplitSitsRoomsPrices.
+// Returns comma separated lists of sits, rooms and prices.
+func JoinSitsRoomsPrices(s, r, p []int64) (string, string, string) {
+	var ss, sr, sp string
+	for i := range s {
+		ss = ss + ", " + strconv.FormatInt(s[i], 10)
+	}
+	for i := range r {
+		sr = sr + ", " + strconv.FormatInt(r[i], 10)
+	}
+	for i := range p {
+		sp = sp + ", " + strconv.FormatInt(p[i], 10)
+	}
+	return ss, sr, sp
 }
 
 func SplitSitsRooms(sits, rooms string) ([]int64, []int64, error) {

@@ -101,6 +101,7 @@ import (
 // copy thankyou subject/text from formtemplates to notifications
 // INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk)
 // SELECT name||' (form)', 'mail', 'forms', thankyoumailsubject, thankyoumailtext, '', '', 0, 1711746719, users_id_fk
+
 // FROM formtemplates
 
 // remove subject/text from formtemplates
@@ -154,6 +155,16 @@ import (
 //ALTER TABLE events ADD COLUMN room3banner string;
 //ALTER TABLE events ADD COLUMN room4desc string;
 //ALTER TABLE events ADD COLUMN room4banner string;
+
+// add new table:
+//CREATE TABLE "eventnotificationslog" (
+//	"id"	INTEGER NOT NULL UNIQUE,
+//	"date"	INTEGER NOT NULL,
+//	"notifications_id_fk" INTEGER NOT NULL,
+//	"reservations_id_fk"	INTEGER NOT NULL,
+//	FOREIGN KEY("reservations_id_fk") REFERENCES "reservations"("id"),
+//	PRIMARY KEY("id" AUTOINCREMENT)
+//)
 
 // remove all chairs with round number (10,20,30, ...)
 // DELETE FROM prices
@@ -294,6 +305,13 @@ type EventFull struct {
 	EventsRooms
 }
 
+type EventNotificationLog struct {
+	ID             int64 `db:"id"`
+	Date           int64 `db:"date"`
+	NotificationID int64 `db:"notifications_id_fk"`
+	ReservationID  int64 `db:"reservations_id_fk"`
+}
+
 type Reservation struct {
 	ID           int64          `db:"id"`
 	OrderedDate  sql.NullInt64  `db:"ordered_date"`
@@ -312,14 +330,17 @@ type Reservation struct {
 
 type ReservationFull struct {
 	Reservation
-	CustEmail   sql.NullString `db:"cust_email"`
-	CustName    sql.NullString `db:"cust_name"`
-	CustSurname sql.NullString `db:"cust_surname"`
-	CustPhone   sql.NullString `db:"cust_phone"`
-	ChairNumber int64          `db:"chair_number"`
-	RoomName    string         `db:"room_name"`
-	RoomID      int64          `db:"room_id"`
-	Notes       sql.NullString `db:"reservation_notes"`
+	LastNotification  sql.NullInt64  `db:"enlog_date"`
+	LastNotificationS string         `db:"-"`
+	NotifAmmount      sql.NullInt64  `db:"enlog_ammount"`
+	CustEmail         sql.NullString `db:"cust_email"`
+	CustName          sql.NullString `db:"cust_name"`
+	CustSurname       sql.NullString `db:"cust_surname"`
+	CustPhone         sql.NullString `db:"cust_phone"`
+	ChairNumber       int64          `db:"chair_number"`
+	RoomName          string         `db:"room_name"`
+	RoomID            int64          `db:"room_id"`
+	Notes             sql.NullString `db:"reservation_notes"`
 }
 
 type FurnitureFull struct {
@@ -1070,6 +1091,13 @@ func (db *DB) ReservationGet(furnitureID, eventID int64) (Reservation, error) {
 	return r, err
 }
 
+// ReservationGetByID, eventID is just to be sure all is ok
+//func (db *DB) ReservationGetByID(reservationID, eventID int64) (Reservation, error) {
+//	r := Reservation{}
+//	err := db.DB.Get(&r, `SELECT * FROM reservations WHERE id=$1 AND events_id_fk=$2`, reservationID, eventID)
+//	return r, err
+//}
+
 func (db *DB) ReservationGetAllInStatus(status string) ([]Reservation, error) {
 	reservations := []Reservation{}
 	err := db.DB.Select(&reservations, `SELECT * FROM reservations WHERE status=$1`, status)
@@ -1092,9 +1120,23 @@ func (db *DB) ReservationFullGetAll(userID, eventID int64) ([]ReservationFull, e
 	if err != nil {
 		return rr, err
 	}
-	err = db.DB.Select(&rr, `SELECT r.*, c.email cust_email, c.name cust_name, c.surname cust_surname, c.phone cust_phone, f.number chair_number, rm.name room_name, rm.id room_id, n.text reservation_notes FROM reservations r LEFT JOIN furnitures f ON r.furnitures_id_fk = f.id LEFT JOIN rooms rm ON f.rooms_id_fk = rm.id LEFT JOIN customers c ON r.customers_id_fk = c.id LEFT JOIN events e ON r.events_id_fk = e.id LEFT JOIN notes n ON r.notes_id_fk = n.id WHERE e.users_id_fk = $1 AND r.events_id_fk=$2 ORDER BY f.number`, userID, eventID)
+	err = db.DB.Select(&rr, `SELECT r.*, c.email cust_email, c.name cust_name, c.surname cust_surname, c.phone cust_phone, f.number chair_number, rm.name room_name, rm.id room_id, n.text reservation_notes, enl.date enlog_date, (SELECT count(*) FROM eventnotificationslog ienl WHERE ienl.reservations_id_fk = r.id) enlog_ammount FROM reservations r LEFT JOIN furnitures f ON r.furnitures_id_fk = f.id LEFT JOIN rooms rm ON f.rooms_id_fk = rm.id LEFT JOIN customers c ON r.customers_id_fk = c.id LEFT JOIN events e ON r.events_id_fk = e.id LEFT JOIN notes n ON r.notes_id_fk = n.id LEFT JOIN eventnotificationslog enl ON r.id = enl.reservations_id_fk LEFT JOIN eventnotificationslog enl2 ON r.id = enl2.reservations_id_fk AND enl.id < enl2.id  WHERE enl2.reservations_id_fk IS NULL AND e.users_id_fk = $1 AND r.events_id_fk=$2 ORDER BY f.number`, userID, eventID)
 	return rr, err
 
+}
+
+func (db *DB) ReservationFullGetByID(reservationID, eventID int64) (ReservationFull, error) {
+	rr := ReservationFull{}
+	err := NoMinus("reservationID", reservationID)
+	if err != nil {
+		return rr, err
+	}
+	err = NoMinus("eventID", eventID)
+	if err != nil {
+		return rr, err
+	}
+	err = db.DB.Get(&rr, `SELECT r.*, c.email cust_email, c.name cust_name, c.surname cust_surname, c.phone cust_phone, f.number chair_number, rm.name room_name, rm.id room_id, n.text reservation_notes, enl.date enlog_date, (SELECT count(*) FROM eventnotificationslog ienl WHERE ienl.reservations_id_fk = r.id) enlog_ammount FROM reservations r LEFT JOIN furnitures f ON r.furnitures_id_fk = f.id LEFT JOIN rooms rm ON f.rooms_id_fk = rm.id LEFT JOIN customers c ON r.customers_id_fk = c.id LEFT JOIN events e ON r.events_id_fk = e.id LEFT JOIN notes n ON r.notes_id_fk = n.id LEFT JOIN eventnotificationslog enl ON r.id = enl.reservations_id_fk LEFT JOIN eventnotificationslog enl2 ON r.id = enl2.reservations_id_fk AND enl.id < enl2.id  WHERE enl2.reservations_id_fk IS NULL AND r.id = $1 AND r.events_id_fk=$2 ORDER BY f.number`, reservationID, eventID)
+	return rr, err
 }
 
 func (db *DB) ReservationAdd(r *Reservation) (int64, error) {
@@ -1465,6 +1507,15 @@ func (db *DB) FormAnswerDel(FormID, TemplateID int64) error {
 		return fmt.Errorf("formanswers for form %d (templ: %d) not found", FormID, TemplateID)
 	}
 	return err
+}
+
+func (db *DB) EventNotificationLogAdd(ea *EventNotificationLog) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO eventnotificationslog (date, notifications_id_fk, reservations_id_fk)
+	VALUES(:date, :notifications_id_fk, :reservations_id_fk)`, ea)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
 }
 
 func (db *DB) FormNotificationLogAdd(fa *FormNotificationLog) (int64, error) {

@@ -115,8 +115,8 @@ func MailSend(n MailConfig) error {
 		if err != nil {
 			log.Printf("error converting HTML to plain text, err: %v", err)
 		}
-		log.Printf("plain body: %q", plainText) // DEBUG
-		log.Printf("html text: %q", n.Text)     // DEBUG
+		// log.Printf("plain body: %q", plainText) // DEBUG
+		// log.Printf("html text: %q", n.Text)     // DEBUG
 		message.SetBodyString(mail.TypeTextPlain, plainText)
 		message.AddAlternativeString(mail.TypeTextHTML, n.Text)
 	} else {
@@ -125,6 +125,7 @@ func MailSend(n MailConfig) error {
 
 	if hasAttachments {
 		for i := range n.Files {
+			log.Printf("mail: attach: %v", n.Files[i]) //DEBUG
 			message.AttachFile(n.Files[i])
 		}
 	}
@@ -145,6 +146,7 @@ func MailSend(n MailConfig) error {
 
 	// Deliver the mails via SMTP
 	client, err := mail.NewClient(n.Server,
+		mail.WithTimeout(2*time.Minute), // increased timeout, attached pdf tickets were problematic
 		mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover), mail.WithTLSPortPolicy(mail.TLSMandatory),
 		mail.WithUsername(n.User), mail.WithPassword(n.Pass), mail.WithTLSConfig(tlsConf),
 	)
@@ -154,7 +156,7 @@ func MailSend(n MailConfig) error {
 	if err := client.DialAndSend(message); err != nil {
 		return fmt.Errorf("failed to deliver mail: %s", err)
 	}
-	log.Printf("Test mail successfully delivered.")
+	log.Printf("Mail successfully delivered.")
 
 	//err = sendMail(n.Server, n.Port, auth, n.IgnoreCert, n.From, n.To, []byte(message))
 

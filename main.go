@@ -4633,6 +4633,7 @@ func (o *OrderFuncs) PDF(info string) template.HTML {
 		EventName:        o.EventName,
 		EventDescription: info,
 		SeatNrs:          o.SitsL,
+		Rooms:            o.RoomsL,
 	}
 
 	attFiles, err := GenerateTicketsPDF(p)

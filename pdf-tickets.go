@@ -33,6 +33,7 @@ type TicketParams struct {
 	EventName        string
 	EventDescription string
 	SeatNrs          []int
+	Rooms            []string
 	Background       *string
 	PathAllInOne     string
 	PathOne          string
@@ -87,8 +88,9 @@ func generateAllTicketsA4(p *TicketParams) (string, error) {
 
 	pdf := newA4PDF()
 	index := 0
+	rl := len(p.Rooms)
 
-	for _, seat := range p.SeatNrs {
+	for i := range p.SeatNrs {
 		if index%(GridCols*GridRows) == 0 {
 			pdf.AddPage()
 		}
@@ -99,7 +101,12 @@ func generateAllTicketsA4(p *TicketParams) (string, error) {
 		x := float64(col) * TicketW
 		y := float64(row) * TicketH
 
-		renderTicket(&pdf, p, seat, x, y)
+		room := ""
+		if i < rl {
+			room = p.Rooms[i]
+		}
+
+		renderTicket(&pdf, p, p.SeatNrs[i], room, x, y)
 		drawCutMarks(&pdf, x, y, TicketW, TicketH)
 
 		index++
@@ -112,21 +119,26 @@ func generateAllTicketsA4(p *TicketParams) (string, error) {
 
 func generateSingleTickets(p *TicketParams) ([]string, error) {
 	var files []string
-	for _, seat := range p.SeatNrs {
+	for i := range p.SeatNrs {
 		pdf := newTicketPDF()
 		pdf.AddPage()
 
-		renderTicket(&pdf, p, seat, 0, 0)
+		room := ""
+		if i < len(p.Rooms) {
+			room = p.Rooms[i]
+		}
+
+		renderTicket(&pdf, p, p.SeatNrs[i], room, 0, 0)
 		drawCutMarks(&pdf, 0, 0, TicketW, TicketH)
 
 		fileName := fmt.Sprintf(
 			"%s_%d.pdf",
 			sanitize(p.EventName),
-			seat,
+			p.SeatNrs[i],
 		)
 
 		if err := pdf.WritePdf(filepath.Join(p.PathOne, fileName)); err != nil {
-			log.Printf("generateSingleTickets: seat: %v, %v", seat, err)
+			log.Printf("generateSingleTickets: seat: %v, %v", p.SeatNrs[i], err)
 		} else {
 			files = append(files, filepath.Join(p.PathOne, fileName))
 		}
@@ -137,7 +149,7 @@ func generateSingleTickets(p *TicketParams) ([]string, error) {
 
 // ====================== RENDER SINGLE TICKET ======================
 
-func renderTicket(pdf *gopdf.GoPdf, p *TicketParams, seat int, x, y float64) error {
+func renderTicket(pdf *gopdf.GoPdf, p *TicketParams, seat int, room string, x, y float64) error {
 
 	// Background
 	if p.Background != nil {
@@ -184,10 +196,18 @@ func renderTicket(pdf *gopdf.GoPdf, p *TicketParams, seat int, x, y float64) err
 	pdf.SetFont("Noto-Bold", "", 26)
 	pdf.SetX(x + 8)
 	//pdf.SetY(y + TicketH - 35)
-	pdf.SetY(y + 24)
+	pdf.SetY(y + 22)
 	pdf.Cell(nil, fmt.Sprintf("MIEJSCE %d", seat))
 
-	// Nazwa użytkownika
+	// Room name
+	pdf.SetFont("Noto", "", 8)
+	//pdf.SetX(pdf.GetX() + 2)
+	//pdf.SetY(pdf.GetY() + 7)
+	pdf.SetX(x + 8)
+	pdf.SetY(y + 34)
+	pdf.Cell(nil, room)
+
+	// Organization (user) name
 	pdf.SetFont("Noto", "", 10)
 	pdf.SetX(x + 8)
 	pdf.SetY(y + TicketH - 10)

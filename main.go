@@ -100,7 +100,7 @@ func main() {
 	http.HandleFunc("/api/formans", FormAddMod(db, mailConf))
 	http.HandleFunc("/api/formansdelete", FormAnsDelete(db, cookieStore))
 	http.HandleFunc("/api/formanssendmail", FormAnsSendMail(db, mailConf, cookieStore))
-	http.HandleFunc("/api/eventanssendmail", EventAnsSendMail(db, mailConf, cookieStore))
+	http.HandleFunc("/api/eventanssendmail", EventAnsSendMail(db, *mailConf, cookieStore))
 	http.HandleFunc("/api/maed", MailAddMod(db, cookieStore))
 	http.HandleFunc("/api/formstmpls", FormTemplsGetAPI(db, cookieStore))
 	http.HandleFunc("/api/formdefs", GenerateFormDefsAPI(db, cookieStore))
@@ -3751,7 +3751,7 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 			// User mail.
 			mail, err := db.NotificationGetByID(templ.NotificationID.Int64, user.ID)
 			if err != nil {
-				log.Printf("FormAnsSendMail: error getting mail with ID: %d, err: %v", templ.NotificationID.Int64, err)
+				log.Printf("FormAddMod: error getting mail with ID: %d, err: %v", templ.NotificationID.Int64, err)
 			}
 
 			mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
@@ -3764,7 +3764,7 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 				parsedText,
 				user,
 				embImgs,
-				mailConf,
+				*mailConf,
 			)
 
 			if err != nil {
@@ -3787,7 +3787,7 @@ func FormAddMod(db *DB, mailConf *MailConfig) func(w http.ResponseWriter, r *htt
 			mailConf.EmbededHTMLImgs = []EmbImg{}
 
 			parsedText, embImgs = parseFormMailTemplate(f.Name.String, f.Surname.String, makeSureIsHTML(adminMail.Text), FormID, user, templ, db)
-			err = prepMailConfSendMail(chooseEmail(user.Email, user.AltEmail.String), adminMail.Title.String, parsedText, user, embImgs, mailConf) // send to alt mail if defined
+			err = prepMailConfSendMail(chooseEmail(user.Email, user.AltEmail.String), adminMail.Title.String, parsedText, user, embImgs, *mailConf) // send to alt mail if defined
 
 			if err != nil {
 				log.Printf("FormAnsSendMail: error sending admin mail, %v", err)
@@ -3882,7 +3882,7 @@ func FormAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fun
 				parsedText,
 				user,
 				embImgs,
-				mailConf,
+				*mailConf,
 			)
 
 			if err != nil {
@@ -3910,7 +3910,7 @@ type EventAnsManipulateJson struct {
 	NotificationID int64  `json:"notification_id"`
 }
 
-func EventAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+func EventAnsSendMail(db *DB, mailConf MailConfig, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			var m EventAnsManipulateJson
@@ -4007,7 +4007,7 @@ func EventAnsSendMail(db *DB, mailConf *MailConfig, cs *sessions.CookieStore) fu
 }
 
 // sendMail will send mail, it takes parsed texts and EmbeddedImgs (from template functions) and adds it to mailConf.EmbeddedImgs
-func prepMailConfSendMail(email, msubject, parsedMailText string, user User, EmbeddedImgs []EmbImg, mailConf *MailConfig) error {
+func prepMailConfSendMail(email, msubject, parsedMailText string, user User, EmbeddedImgs []EmbImg, mailConf MailConfig) error {
 
 	// if email is empty we assume it anonymous form. We will not send any mail
 	if email == "" {

@@ -125,7 +125,6 @@ func MailSend(n MailConfig) error {
 
 	if hasAttachments {
 		for i := range n.Files {
-			log.Printf("mail: attach: %v", n.Files[i]) //DEBUG
 			message.AttachFile(n.Files[i])
 		}
 	}

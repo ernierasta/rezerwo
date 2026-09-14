@@ -319,7 +319,7 @@ function GridDragStart(ev, ui) {
   el.data("drag-origin", {left: parseFloat(el.css("left")) || 0, top: parseFloat(el.css("top")) || 0});
 
   if (el.is(".ui-selected, .ui-selecting")) {
-    DragGroup = $("#room .ui-selected, #room .ui-selecting").not(this).each(function() {
+    DragGroup = $("#room > .ui-selected, #room > .ui-selecting").not(this).each(function() {
       var o = $(this);
       if (o.css("position") === "static") {
         o.css("position", "relative");
@@ -327,7 +327,7 @@ function GridDragStart(ev, ui) {
       o.data("drag-start", {left: parseFloat(o.css("left")) || 0, top: parseFloat(o.css("top")) || 0});
     });
   } else {
-    $("#room .ui-selected, #room .ui-selecting").removeClass("ui-selected ui-selecting");
+    $("#room > .ui-selected, #room > .ui-selecting").removeClass("ui-selected ui-selecting");
     DragGroup = $([]);
   }
 }
@@ -452,7 +452,7 @@ function AddLabel() {
 }
 
 function DeleteFurnitures() {
-  $(".ui-selected, .ui-selecting").each(function(i, obj) {
+  $("#room > .ui-selected, #room > .ui-selecting").each(function(i, obj) {
     $(this).remove();
     $.ajax({
       method: "POST",
@@ -615,7 +615,9 @@ $(function() {
   // newly added ones are initialized in functions adding them
   InitFurniture($( "#room > div" ));
 
-  $( "#room" ).selectable();
+  // only furnitures, not their texts or resize handles (they would be moved
+  // twice when dragging selection)
+  $( "#room" ).selectable({filter: "> div"});
 
   // grid
   if ($("#room").length) {

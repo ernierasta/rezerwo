@@ -1062,7 +1062,7 @@ func (db *DB) EventAddonCopy(fromEventID, toEventID, userID int64) (int64, error
 
 func (db *DB) EventGetRooms(eventID int64) ([]Room, error) {
 	rooms := []Room{}
-	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN events_rooms er ON r.id = er.rooms_id_fk WHERE er.events_id_fk = $1`, eventID)
+	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN events_rooms er ON r.id = er.rooms_id_fk WHERE er.events_id_fk = $1 ORDER BY r.id`, eventID)
 	return rooms, err
 }
 

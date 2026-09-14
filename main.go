@@ -613,10 +613,10 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			rv := GetFurnituresFromDB(db, rr[i].Name, event.ID)
 			rv.Room = rr[i]
 
-			// Banner is shown from event table if defined (if not, failback is from room table).
+			// Banners and descriptions come only from event table (rooms.banner_img/description
+			// are not used anymore, see tools/migration-event-desc.sql).
 			// There is MainBanner and RoomXBanners, if MainBanner is defined - it is shown on top of tabs.
 			// If MainBanner is empty RoomXBanner is shown below tabs and can be different for every room (decided in template file).
-			// If both event fields are empty, room.HTMLBannerImg is used as failback.
 
 			var imgName string
 			var imgW, imgH int
@@ -630,12 +630,8 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 			case 3:
 				imgName, imgW, imgH = parseBanner(event.Room4Banner.String)
 			}
-			if imgName == "" { // failback if event banner is empty
-				imgName, imgW, imgH = parseBanner(rr[i].Banner.String)
-			}
 			rv.HTMLBannerImg = template.HTML(getImgHTML(imgName, user.URL, MEDIAROOT, imgW, imgH))
 
-			// rv.HTMLRoomDescription = template.HTML(rr[i].Description.String) // Changed to event.RoomXDescription
 			switch i {
 			case 0:
 				rv.HTMLRoomDescription = template.HTML(event.Room1Desc.String)
@@ -645,9 +641,6 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 				rv.HTMLRoomDescription = template.HTML(event.Room3Desc.String)
 			case 3:
 				rv.HTMLRoomDescription = template.HTML(event.Room4Desc.String)
-			}
-			if rv.HTMLRoomDescription == "" { // failback to room description if empty in event table
-				rv.HTMLRoomDescription = template.HTML(rr[i].Description.String)
 			}
 
 			rv.HTMLHowTo = template.HTML(event.HowTo)
@@ -1811,6 +1804,7 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 
 			var event Event
 			var srooms = ""
+			var evrooms []Room
 
 			eventID, err := strconv.ParseInt(r.FormValue("event-id"), 10, 64)
 			if err != nil {
@@ -1831,7 +1825,7 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				if !event.Language.Valid {
 					event.Language = sql.NullString{String: "pl", Valid: true}
 				}
-				evrooms, err := db.EventGetRooms(event.ID)
+				evrooms, err = db.EventGetRooms(event.ID)
 				if err != nil {
 					log.Printf("EventEditor: error getting rooms for event %d, %v", event.ID, err)
 				}
@@ -1937,21 +1931,21 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				LBLMainBanner:               "Main banner (if defined - used for all rooms)",
 				MainBannerValue:             event.MainBanner.String,
 				Room1DescValue:              template.HTML(event.Room1Desc.String),
-				LBLRoom1Desc:                "Room1 Description",
+				LBLRoom1Desc:                "Room1 Description" + roomLabelName(evrooms, 0),
 				Room2DescValue:              template.HTML(event.Room2Desc.String),
-				LBLRoom2Desc:                "Room2 Description",
+				LBLRoom2Desc:                "Room2 Description" + roomLabelName(evrooms, 1),
 				Room3DescValue:              template.HTML(event.Room3Desc.String),
-				LBLRoom3Desc:                "Room3 Description",
+				LBLRoom3Desc:                "Room3 Description" + roomLabelName(evrooms, 2),
 				Room4DescValue:              template.HTML(event.Room4Desc.String),
-				LBLRoom4Desc:                "Room4 Description",
+				LBLRoom4Desc:                "Room4 Description" + roomLabelName(evrooms, 3),
 				Room1BannerValue:            event.Room1Banner.String,
-				LBLRoom1Banner:              "Room1 Banner",
+				LBLRoom1Banner:              "Room1 Banner" + roomLabelName(evrooms, 0),
 				Room2BannerValue:            event.Room2Banner.String,
-				LBLRoom2Banner:              "Room2 Banner",
+				LBLRoom2Banner:              "Room2 Banner" + roomLabelName(evrooms, 1),
 				Room3BannerValue:            event.Room3Banner.String,
-				LBLRoom3Banner:              "Room3 Banner",
+				LBLRoom3Banner:              "Room3 Banner" + roomLabelName(evrooms, 2),
 				Room4BannerValue:            event.Room4Banner.String,
-				LBLRoom4Banner:              "Room4 Banner",
+				LBLRoom4Banner:              "Room4 Banner" + roomLabelName(evrooms, 3),
 			}
 
 			rpPL := EventEditorVars{
@@ -2036,14 +2030,14 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 				MainDescValue:               template.HTML(event.MainDesc.String),
 				LBLMainBanner:               "Główny banner (jeżeli zdefiniowany - dla wszystkich pomieszczeń)",
 				MainBannerValue:             event.MainBanner.String,
-				LBLRoom1Desc:                "Opis imprezy/pomieszczenie 1",
-				LBLRoom2Desc:                "Opis imprezy/pomieszczenie 2",
-				LBLRoom3Desc:                "Opis imprezy/pomieszczenie 3",
-				LBLRoom4Desc:                "Opis imprezy/pomieszczenie 4",
-				LBLRoom1Banner:              "Banner pomieszczenie 1",
-				LBLRoom2Banner:              "Banner pomieszczenie 2",
-				LBLRoom3Banner:              "Banner pomieszczenie 3",
-				LBLRoom4Banner:              "Banner pomieszczenie 4",
+				LBLRoom1Desc:                "Opis imprezy/pomieszczenie 1" + roomLabelName(evrooms, 0),
+				LBLRoom2Desc:                "Opis imprezy/pomieszczenie 2" + roomLabelName(evrooms, 1),
+				LBLRoom3Desc:                "Opis imprezy/pomieszczenie 3" + roomLabelName(evrooms, 2),
+				LBLRoom4Desc:                "Opis imprezy/pomieszczenie 4" + roomLabelName(evrooms, 3),
+				LBLRoom1Banner:              "Banner pomieszczenie 1" + roomLabelName(evrooms, 0),
+				LBLRoom2Banner:              "Banner pomieszczenie 2" + roomLabelName(evrooms, 1),
+				LBLRoom3Banner:              "Banner pomieszczenie 3" + roomLabelName(evrooms, 2),
+				LBLRoom4Banner:              "Banner pomieszczenie 4" + roomLabelName(evrooms, 3),
 				Room1DescValue:              template.HTML(event.Room1Desc.String),
 				Room2DescValue:              template.HTML(event.Room2Desc.String),
 				Room3DescValue:              template.HTML(event.Room3Desc.String),
@@ -2063,6 +2057,15 @@ func EventEditor(db *DB, lang string, cs *sessions.CookieStore) func(w http.Resp
 			}
 		}
 	}
+}
+
+// roomLabelName returns " (room name)" of i-th event room for editor labels,
+// empty string if event has no such room.
+func roomLabelName(rr []Room, i int) string {
+	if i >= len(rr) {
+		return ""
+	}
+	return fmt.Sprintf(" (%s)", rr[i].Name)
 }
 
 func getRoomsString(rr []Room) string {

@@ -641,13 +641,17 @@ func (db *DB) RoomDel(id int64) error {
 	return err
 }
 
-// RoomWithFurnituresCopy copies room with all furnitures in it by given room id
-func (db *DB) RoomWithFurnituresCopy(id int64) (int64, error) {
+// RoomWithFurnituresCopy copies room with all furnitures in it by given room id,
+// if name is empty, original room name is used
+func (db *DB) RoomWithFurnituresCopy(id int64, name string) (int64, error) {
 	r, err := db.RoomGetByID(id)
 	if err != nil {
 		return 0, fmt.Errorf("RoomWithFurnituresCopy: error getting room %v, %v", id, err)
 	}
 	r.ID = 0 // reset id
+	if name != "" {
+		r.Name = name
+	}
 	roomid, err := db.RoomAdd(&r)
 	if err != nil {
 		return 0, fmt.Errorf("RoomWithFurnituresCopy: error writing room copy to db (org: %v, new: %v), %v", id, roomid, err)
@@ -1021,6 +1025,39 @@ func (db *DB) EventAddRoom(eventID, roomID int64) error {
 		return fmt.Errorf("error adding room %d to event %d, err: %v", roomID, eventID, err)
 	}
 	return err
+}
+
+// EventNameExists checks if user already has event with given name (name is uniq per user)
+func (db *DB) EventNameExists(name string, userID int64) (bool, error) {
+	var count int64
+	err := db.DB.Get(&count, `SELECT count(*) FROM events WHERE name=$1 AND users_id_fk=$2`, name, userID)
+	return count > 0, err
+}
+
+// PriceCopyForEventRoom copies prices (and admin disabled flag) of furnitures
+// in room fromRoomID for event fromEventID to event toEventID and room toRoomID.
+// Furnitures are matched by type and number, so it works for the same room
+// and also for room copy.
+func (db *DB) PriceCopyForEventRoom(fromEventID, fromRoomID, toEventID, toRoomID int64) (int64, error) {
+	ret, err := db.DB.Exec(`INSERT INTO prices (price, currency, disabled, events_id_fk, furnitures_id_fk)
+	SELECT p.price, p.currency, p.disabled, $1, nf.id FROM prices p
+	JOIN furnitures f ON p.furnitures_id_fk = f.id
+	JOIN furnitures nf ON nf.rooms_id_fk = $2 AND nf.type = f.type AND nf.number = f.number
+	WHERE p.events_id_fk = $3 AND f.rooms_id_fk = $4`, toEventID, toRoomID, fromEventID, fromRoomID)
+	if err != nil {
+		return -1, err
+	}
+	return ret.RowsAffected()
+}
+
+// EventAddonCopy copies all addons from one event to another
+func (db *DB) EventAddonCopy(fromEventID, toEventID, userID int64) (int64, error) {
+	ret, err := db.DB.Exec(`INSERT INTO eventsaddons (name, price, currency, events_id_fk, users_id_fk)
+	SELECT name, price, currency, $1, $2 FROM eventsaddons WHERE events_id_fk = $3`, toEventID, userID, fromEventID)
+	if err != nil {
+		return -1, err
+	}
+	return ret.RowsAffected()
 }
 
 func (db *DB) EventGetRooms(eventID int64) ([]Room, error) {

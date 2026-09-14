@@ -53,6 +53,8 @@
               <option value="{{.ID}}">{{.Name}}</option>
             {{end}}
           </select>
+          <label for="room-copy-name" class="mt-2">{{.LBLRoomCopyName}}</label>
+          <input type="text" id="room-copy-name" class="form-control">
         </div> <!-- /.modal-body -->
         <div class="modal-footer">
           <button id="close-copy-modal" type="button" class="btn btn-secondary" data-dismiss="modal">{{.BTNClose}}</button>
@@ -63,7 +65,73 @@
   </div> <!-- /.modal -->
   <!-- Modal END -->
 
+  <!-- Modal -->
+  <div class="modal fade" id="event-copy" tabindex="-1" role="dialog" aria-labelledby="event-copy-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="event-copy-title">{{.LBLEventCopyTitle}}</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div> <!-- /.modal-header -->
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="event-copy-name">{{.LBLEventCopyName}}</label>
+            <input type="text" id="event-copy-name" class="form-control">
+          </div>
 
+          <div class="d-flex justify-content-between align-items-center">
+            <label class="mb-0">{{.LBLEventCopyRooms}}</label>
+            <div class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input" id="event-copy-only-mine" checked>
+              <label class="custom-control-label" for="event-copy-only-mine">{{.LBLEventCopyOnlyMine}}</label>
+            </div>
+          </div>
+          <div id="event-copy-rooms"></div>
+          <button id="event-copy-add-room" type="button" class="btn btn-outline-secondary btn-sm mb-3">{{.BTNEventCopyAddRoom}}</button>
+
+          <!-- row template -->
+          <div id="event-copy-room-tmpl" class="mb-2 event-copy-room" hidden>
+            <div class="input-group">
+              <select class="custom-select event-copy-room-select"></select>
+              <div class="input-group-append">
+                <div class="input-group-text">
+                  <input type="checkbox" class="event-copy-room-copy mr-1">
+                  <small>{{.LBLEventCopyMakeRoomCopy}}</small>
+                </div>
+                <button type="button" class="btn btn-outline-secondary event-copy-room-del" aria-label="Remove">&times;</button>
+              </div>
+            </div>
+            <input type="text" class="form-control form-control-sm mt-1 event-copy-room-name" placeholder="{{.LBLRoomCopyName}}" aria-label="{{.LBLRoomCopyName}}" hidden>
+          </div>
+
+          <div id="event-copy-notifs">
+            <div class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input" id="event-copy-notifs-check">
+              <label class="custom-control-label" for="event-copy-notifs-check">{{.LBLEventCopyNotifs}}</label>
+            </div>
+            <div id="event-copy-notifs-names" class="mt-2" hidden>
+              <div class="form-group" id="event-copy-thankyou-group">
+                <label for="event-copy-thankyou-name">{{.LBLEventCopyThankYouName}}</label>
+                <input type="text" id="event-copy-thankyou-name" class="form-control">
+              </div>
+              <div class="form-group" id="event-copy-admin-group">
+                <label for="event-copy-admin-name">{{.LBLEventCopyAdminName}}</label>
+                <input type="text" id="event-copy-admin-name" class="form-control">
+              </div>
+            </div>
+          </div>
+          <div id="event-copy-no-notifs" class="text-muted" hidden>{{.LBLEventCopyNoNotifs}}</div>
+        </div> <!-- /.modal-body -->
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">{{.BTNClose}}</button>
+          <button id="event-copy-button" type="button" class="btn btn-primary" onclick="FinalEventCopy()">{{.BTNEventCopy}}</button>
+        </div> <!-- /.modal-footer -->
+      </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-dialog -->
+  </div> <!-- /.modal -->
+  <!-- Modal END -->
 
   <div class="alert alert-danger alert-dismissible fade show" role="alert" hidden>
     <strong>{{.LBLMsgTitle}}</strong> You should check in on some of those fields below.

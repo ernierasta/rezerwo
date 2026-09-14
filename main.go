@@ -74,6 +74,7 @@ func main() {
 	http.HandleFunc("/order", ReservationOrderHTML(db, lang))
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, mailConf))
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
+	http.HandleFunc("/admin/logout", AdminLogout(cookieStore))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))
@@ -1326,6 +1327,23 @@ func AdminLoginHTML(db *DB, lang string, cookieStore *sessions.CookieStore) func
 
 type AdminPage struct {
 	PageMeta
+// AdminLogout removes admin session cookie and redirects to login page
+func AdminLogout(cookieStore *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := cookieStore.Get(r, AUTHCOOKIE)
+		if err != nil {
+			// invalid cookie, new session is returned, we still overwrite the cookie
+			log.Printf("AdminLogout: session error: %v", err)
+		}
+		session.Values = map[interface{}]interface{}{}
+		session.Options.MaxAge = -1
+		if err := session.Save(r, w); err != nil {
+			log.Printf("AdminLogout: can not remove session, err: %v", err)
+		}
+		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+	}
+}
+
 	Events        []Event
 	Rooms         []Room
 	AllRooms      []Room

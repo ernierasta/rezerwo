@@ -1,6 +1,7 @@
 {{define "head"}}  <!-- <link href="/css/room.css" rel="stylesheet" type="text/css"> -->
-  <script type="text/javascript" src="/js/room.js"></script>
-  <link href="/css/room.css" rel="stylesheet" type="text/css">
+  <!-- ?v= forces browsers to load new version after change, bump it when changing room.js/room.css -->
+  <script type="text/javascript" src="/js/room.js?v=2"></script>
+  <link href="/css/room.css?v=2" rel="stylesheet" type="text/css">
   <title>{{.LBLTitle}}</title>
 {{end}}
 {{define "body"}}
@@ -36,6 +37,7 @@
   {{if $.EventMainBanner}}{{$.EventMainBanner}}{{end}}
   {{if $.EventMainDesc}}<div style="margin-top: 10px;margin-bottom: 10px;">{{$.EventMainDesc}}</div>{{end}}
 </div> <!-- end center: "d-flex justify-content-center align-items-center" -->
+{{if gt (len .Rooms) 1}}
 <ul class="nav nav-tabs flex-nowrap text-nowrap">
 {{range .Rooms}}
   <li class="nav-item" id="roomsTabs" role="tablist">
@@ -43,10 +45,11 @@
   </li>
 {{end}}
 </ul>
+{{end}}
 <div id="current-roomID" hidden></div>
 <div class="tab-content" id="roomsTabContent">
 {{range .Rooms}}
-  <div class="tab-pane fade show" id="room-{{.Room.ID}}" role="tabpanel" aria-labelledby="room-{{.Room.ID}}-tab">
+  <div class="tab-pane fade show{{if eq (len $.Rooms) 1}} active{{end}}" id="room-{{.Room.ID}}" role="tabpanel" aria-labelledby="room-{{.Room.ID}}-tab">
     <div id="meta">
       {{if not $.EventMainBanner}}{{.HTMLBannerImg}}{{end}}
       <!-- <h1>{{.Room.Name}}</h1> -->
@@ -54,7 +57,10 @@
     </div>
     <div class="row">
       <div class="column" style="width: {{.Room.Width}}px;">
-        <p id="freesits" class="column">{{.LBLFreeSits}}: <b>{{.SitsFree}}/{{.SitsTotal}}</b></p>
+        <div class="d-flex justify-content-between align-items-center">
+          <p id="freesits" class="column">{{.LBLFreeSits}}: <b>{{.SitsFree}}/{{.SitsTotal}}</b></p>
+          <button type="button" class="btn btn-sm btn-outline-secondary clear-selection" onclick="ClearSelection()">{{.BTNClearSelection}}</button>
+        </div>
         <div id="room-view-{{.Room.ID}}" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;" class="room-view ui-widget-header selectable">
         {{range .Tables}}
           <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity={{.Capacity.Int64}} style="{{if .Width.Valid}}width: {{.Width.Int64}}px; {{end}}{{if .Height.Valid}}height: {{.Height.Int64}}px; {{end}}top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>

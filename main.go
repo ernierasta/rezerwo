@@ -396,6 +396,7 @@ type RoomVars struct {
 	Objects             []Furniture
 	Labels              []Furniture
 	LBLFreeSits         string
+	BTNClearSelection   string
 	SitsTotal           int
 	SitsFree            int
 }
@@ -650,16 +651,19 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 				rv.LBLTotalPrice = "Łączna suma"
 				rv.BTNOrder = "Zarezerwuj"
 				rv.LBLFreeSits = "Wolne miejsca"
+				rv.BTNClearSelection = "Odznacz wszystkie"
 			case "cs":
 				rv.LBLSelected = "Vybrané"
 				rv.LBLTotalPrice = "Cena celkem"
 				rv.BTNOrder = "Objednat"
 				rv.LBLFreeSits = "Volných míst"
+				rv.BTNClearSelection = "Zrušit výběr"
 			case "en":
 				rv.LBLSelected = "Selected"
 				rv.LBLTotalPrice = "Total price"
 				rv.BTNOrder = "Order"
 				rv.LBLFreeSits = "Free sits"
+				rv.BTNClearSelection = "Unselect all"
 			}
 
 			sfree := 0

@@ -78,6 +78,13 @@ function GetOrderedAndCountPrice() {
   return {"event-id": CurrentEvent.id, "sits": selected, "prices": prices, "rooms": rooms, "total-price": price, "default-currency": Price.defaultCurrency}
 }
 
+// ClearSelection unselects all selected chairs in all rooms (reservation page)
+function ClearSelection() {
+  $(".room-view .ui-selected, .room-view .ui-selecting").removeClass("ui-selected ui-selecting");
+  $(".selected-chairs").html("");
+  $(".total-price").html("");
+}
+
 function Order() {
   data = GetOrderedAndCountPrice();
   if (data["sits"] != "") {

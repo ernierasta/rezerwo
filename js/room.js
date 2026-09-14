@@ -88,7 +88,7 @@ function Order() {
 }
 
 function ToggleDisable() {
-  $(".ui-selected.chair, .ui-selecting.chair").each(function(i, obj) {
+  $("#room > .chair.ui-selected").each(function(i, obj) {
     var chair = $(this)
     if (chair.hasClass("disabled")) {
       chair.removeClass("disabled");
@@ -230,7 +230,7 @@ function ChairPositionsEllipse(x, y, w, h, orientation, capacity) {
 function SpawnChairs() {
   var room = $("#room");
   var inner = {left: room.offset().left + room[0].clientLeft, top: room.offset().top + room[0].clientTop};
-  $(".table.ui-selected, .table.ui-selecting").each(function(i, obj) {
+  $("#room > .table.ui-selected").each(function(i, obj) {
     var table = $(this);
     var capacity = Number(table.attr("capacity"));
     var orientation = table.attr("orientation");
@@ -311,15 +311,15 @@ function GridBoxDiff(el, pos) {
 
 // GridDragStart remembers box difference for snapping.
 // Dragging selected element moves whole selection, dragging not selected
-// element clears selection.
+// element selects only it.
 function GridDragStart(ev, ui) {
   var el = $(this);
   el.data("grid-diff", GridBoxDiff(el, ui.position));
   // css position, ui.position can be fractional with page zoom
   el.data("drag-origin", {left: parseFloat(el.css("left")) || 0, top: parseFloat(el.css("top")) || 0});
 
-  if (el.is(".ui-selected, .ui-selecting")) {
-    DragGroup = $("#room > .ui-selected, #room > .ui-selecting").not(this).each(function() {
+  if (el.is(".ui-selected")) {
+    DragGroup = $("#room > .ui-selected").not(this).each(function() {
       var o = $(this);
       if (o.css("position") === "static") {
         o.css("position", "relative");
@@ -327,19 +327,32 @@ function GridDragStart(ev, ui) {
       o.data("drag-start", {left: parseFloat(o.css("left")) || 0, top: parseFloat(o.css("top")) || 0});
     });
   } else {
-    $("#room > .ui-selected, #room > .ui-selecting").removeClass("ui-selected ui-selecting");
+    $("#room > div").removeClass("ui-selected ui-selecting");
+    el.addClass("ui-selected");
     DragGroup = $([]);
   }
+  el.data("guide", GuideStart(el, DragGroup));
 }
 
-// GridDrag snaps element box (without margin) to grid and moves the rest of selection
+// GridDrag snaps element box (without margin) to alignment guides or grid
+// and moves the rest of selection
 function GridDrag(ev, ui) {
   var g = GridSettings();
   var el = $(this);
   var diff = el.data("grid-diff");
-  if (g.snap && diff) {
-    ui.position.left = Math.round((ui.position.left + diff.left) / g.size) * g.size - diff.left;
-    ui.position.top = Math.round((ui.position.top + diff.top) / g.size) * g.size - diff.top;
+  var guide = el.data("guide");
+  if (diff) {
+    var bx = ui.position.left + diff.left, by = ui.position.top + diff.top;
+    var gridSnap = function(v) { return g.snap ? Math.round(v / g.size) * g.size : v; };
+    var sx = guide ? GuideSnap(guide.targets.x, guide.shapes, bx, "left", "width") : null;
+    var sy = guide ? GuideSnap(guide.targets.y, guide.shapes, by, "top", "height") : null;
+    bx = sx ? sx.pos : gridSnap(bx);
+    by = sy ? sy.pos : gridSnap(by);
+    ui.position.left = bx - diff.left;
+    ui.position.top = by - diff.top;
+    if (guide) {
+      DrawGuides(sx, sy, guide.shapes, bx, by);
+    }
   }
   var origin = el.data("drag-origin");
   if (!origin) {
@@ -349,6 +362,116 @@ function GridDrag(ev, ui) {
   DragGroup.each(function() {
     var start = $(this).data("drag-start");
     $(this).css({left: start.left + dl, top: start.top + dt});
+  });
+}
+
+function GridDragStop(ev, ui) {
+  $(this).removeData("guide");
+  $("#room > .guide").remove();
+}
+
+// Alignment guides
+
+var GUIDE_DIST = 6; // snap to alignment with other furniture within this distance in px
+
+// GuideStart returns alignment data for dragging el together with group:
+// edges and centers (targets) of not moved furnitures and room, and moved
+// boxes (shapes) relative to dragged element box - the element itself and
+// bounding box of whole selection.
+function GuideStart(el, group) {
+  var inner = RoomInner();
+  var room = $("#room")[0];
+  var boxes = [{left: 0, top: 0, width: room.clientWidth, height: room.clientHeight}];
+  $("#room > div").not(el).not(group).each(function() {
+    boxes.push(BoxInRoom($(this), inner));
+  });
+  var targets = {x: [], y: []};
+  boxes.forEach(function(b) {
+    [b.left, b.left + b.width/2, b.left + b.width].forEach(function(v) {
+      targets.x.push({v: Math.round(v), box: b});
+    });
+    [b.top, b.top + b.height/2, b.top + b.height].forEach(function(v) {
+      targets.y.push({v: Math.round(v), box: b});
+    });
+  });
+
+  var eb = BoxInRoom(el, inner);
+  var shapes = [{left: 0, top: 0, width: eb.width, height: eb.height}];
+  if (group.length) {
+    var l = eb.left, t = eb.top, r = eb.left + eb.width, b = eb.top + eb.height;
+    group.each(function() {
+      var gb = BoxInRoom($(this), inner);
+      l = Math.min(l, gb.left);
+      t = Math.min(t, gb.top);
+      r = Math.max(r, gb.left + gb.width);
+      b = Math.max(b, gb.top + gb.height);
+    });
+    shapes.push({left: l - eb.left, top: t - eb.top, width: r - l, height: b - t});
+  }
+  return {targets: targets, shapes: shapes};
+}
+
+// GuideSnap finds the nearest alignment of start/center/end of moved shapes
+// with targets on one axis (off: "left"/"top", size: "width"/"height") for
+// dragged box position pos. Returns null when nothing is close enough,
+// otherwise snapped position and matched targets.
+function GuideSnap(targets, shapes, pos, off, size) {
+  var best = null;
+  shapes.forEach(function(s) {
+    var start = pos + s[off];
+    [start, start + s[size]/2, start + s[size]].forEach(function(v) {
+      targets.forEach(function(t) {
+        var d = t.v - v;
+        if (Math.abs(d) <= GUIDE_DIST && (best === null || Math.abs(d) < Math.abs(best))) {
+          best = d;
+        }
+      });
+    });
+  });
+  if (best === null) {
+    return null;
+  }
+  var snapped = Math.round(pos + best);
+  var matches = [];
+  shapes.forEach(function(s) {
+    var start = snapped + s[off];
+    [start, start + s[size]/2, start + s[size]].forEach(function(v) {
+      targets.forEach(function(t) {
+        if (Math.abs(t.v - v) <= 0.5) {
+          matches.push(t);
+        }
+      });
+    });
+  });
+  return {pos: snapped, matches: matches};
+}
+
+// DrawGuides shows guide lines of matched alignments, each line spans over
+// aligned boxes and moved box (dragged box at bx, by)
+function DrawGuides(sx, sy, shapes, bx, by) {
+  var room = $("#room");
+  room.children(".guide").remove();
+  var all = shapes[shapes.length-1]; // bounding box of all moved furnitures
+  var moved = {left: bx + all.left, top: by + all.top, width: all.width, height: all.height};
+  var lines = {};
+  var add = function(vertical, m) {
+    var key = (vertical ? "v" : "h") + m.v;
+    var from = vertical ? Math.min(moved.top, m.box.top) : Math.min(moved.left, m.box.left);
+    var to = vertical ? Math.max(moved.top + moved.height, m.box.top + m.box.height) :
+      Math.max(moved.left + moved.width, m.box.left + m.box.width);
+    var l = lines[key];
+    lines[key] = {vertical: vertical, v: m.v, from: l ? Math.min(l.from, from) : from, to: l ? Math.max(l.to, to) : to};
+  };
+  if (sx) { sx.matches.forEach(function(m) { add(true, m); }); }
+  if (sy) { sy.matches.forEach(function(m) { add(false, m); }); }
+  $.each(lines, function(k, l) {
+    var line = $('<span class="guide"></span>');
+    if (l.vertical) {
+      line.addClass("guide-v").css({left: l.v, top: l.from, height: l.to - l.from});
+    } else {
+      line.addClass("guide-h").css({top: l.v, left: l.from, width: l.to - l.from});
+    }
+    room.append(line);
   });
 }
 
@@ -415,18 +538,43 @@ function GridResize(ev, ui) {
   el.css(css);
 }
 
+// ResizeHandles returns resize handles for element, rectangular tables have
+// fixed width, so only their length can be changed
+function ResizeHandles(el) {
+  var orientation = el.attr("orientation");
+  if (el.hasClass("table") && orientation === "vertical") {
+    return "n, s";
+  }
+  if (el.hasClass("table") && orientation === "horizontal") {
+    return "e, w";
+  }
+  return "n, e, s, w, ne, se, sw, nw";
+}
+
+// InitResizable makes tables and objects resizable, handles depend on table
+// orientation, so it must be called again when orientation changes
+function InitResizable(el) {
+  el.filter(".table, .object").each(function() {
+    var f = $(this);
+    if (f.resizable("instance")) {
+      f.resizable("destroy");
+    }
+    f.resizable({
+      handles: ResizeHandles(f),
+      minWidth: RESIZE_MIN,
+      minHeight: RESIZE_MIN,
+      start: GridResizeStart,
+      resize: GridResize,
+      stop: GridResize
+    });
+  });
+}
+
 // InitFurniture makes element in designer draggable and selectable by click,
 // tables and objects are also resizable by dragging edges/corners
 function InitFurniture(el) {
-  el.draggable({start: GridDragStart, drag: GridDrag});
-  el.filter(".table, .object").resizable({
-    handles: "n, e, s, w, ne, se, sw, nw",
-    minWidth: RESIZE_MIN,
-    minHeight: RESIZE_MIN,
-    start: GridResizeStart,
-    resize: GridResize,
-    stop: GridResize
-  });
+  el.draggable({start: GridDragStart, drag: GridDrag, stop: GridDragStop});
+  InitResizable(el);
   el.click(TriggerSelect());
 }
 
@@ -452,7 +600,7 @@ function AddLabel() {
 }
 
 function DeleteFurnitures() {
-  $("#room > .ui-selected, #room > .ui-selecting").each(function(i, obj) {
+  $("#room > .ui-selected").each(function(i, obj) {
     $(this).remove();
     $.ajax({
       method: "POST",
@@ -474,7 +622,7 @@ var ROTATIONS = {
 };
 
 function Rotate() {
-  $(".table.ui-selected, .table.ui-selecting").each(function(i, obj) {
+  $("#room > .table.ui-selected").each(function(i, obj) {
     var table = $(this);
     var curOrientation = table.attr("orientation");
     var curCapacity = table.attr("capacity");
@@ -487,6 +635,7 @@ function Rotate() {
     if (size.width && size.height) {
       table.css({width: size.height, height: size.width});
     }
+    InitResizable(table);
   });
 }
 
@@ -517,7 +666,7 @@ function DistToBox(x, y, b) {
 // (the same chair elements, so numbers, prices and disabled state are kept).
 function ChangeTableType() {
   var newType = $("#table-change-shape").val();
-  var tables = $("#room .table.ui-selected, #room .table.ui-selecting");
+  var tables = $("#room > .table.ui-selected");
   if (!newType || !tables.length) {
     return;
   }
@@ -552,6 +701,7 @@ function ChangeTableType() {
       .addClass(newType+"-"+capacity)
       .attr("orientation", newType)
       .css({width: "", height: ""});
+    InitResizable(table);
 
     var w = table.outerWidth(), h = table.outerHeight();
     var left = Math.round(old.left + (old.width - w)/2);
@@ -563,16 +713,52 @@ function ChangeTableType() {
     });
 
     var chairs = chairsOf[i].sort(function(a, b) { return Number(a.attr("name")) - Number(b.attr("name")); });
-    if (!chairs.length) {
-      return;
+    var positions = [];
+    if (chairs.length) {
+      positions = IsRoundTable(newType) ?
+        ChairPositionsEllipse(left, top, w, h, newType, chairs.length) :
+        ChairPositionsRect(left, top, newType, chairs.length);
     }
-    var positions = IsRoundTable(newType) ?
-      ChairPositionsEllipse(left, top, w, h, newType, chairs.length) :
-      ChairPositionsRect(left, top, newType, chairs.length);
+
+    // table with chairs outside of room is moved inside, ROOM_WALL_GAP from wall
+    var groupBoxes = [{left: left, top: top, width: w, height: h}].concat(positions.map(function(p) {
+      return {left: p.left, top: p.top, width: CHAIR_SIZE, height: CHAIR_SIZE};
+    }));
+    var shift = ShiftIntoRoom(groupBoxes);
+    if (shift.left || shift.top) {
+      table.css({left: parseFloat(table.css("left")) + shift.left, top: parseFloat(table.css("top")) + shift.top});
+    }
+
     chairs.forEach(function(chair, k) {
-      chair.css({position: "absolute", left: positions[k].left - CHAIR_MARGIN, top: positions[k].top - CHAIR_MARGIN});
+      chair.css({position: "absolute", left: positions[k].left + shift.left - CHAIR_MARGIN, top: positions[k].top + shift.top - CHAIR_MARGIN});
     });
   });
+}
+
+var ROOM_WALL_GAP = 5; // gap between room wall and furniture moved inside room
+
+// ShiftIntoRoom returns shift moving boxes (relative to room inner area) inside
+// room, ROOM_WALL_GAP from crossed wall, arrangement of boxes is kept. Boxes
+// already inside are not moved, too big group is aligned to left/top wall.
+function ShiftIntoRoom(boxes) {
+  var room = $("#room")[0];
+  var l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
+  boxes.forEach(function(x) {
+    l = Math.min(l, x.left);
+    t = Math.min(t, x.top);
+    r = Math.max(r, x.left + x.width);
+    b = Math.max(b, x.top + x.height);
+  });
+  var axis = function(start, end, size) {
+    if (start < 0) {
+      return ROOM_WALL_GAP - start;
+    }
+    if (end > size) {
+      return Math.max(size - ROOM_WALL_GAP - end, ROOM_WALL_GAP - start);
+    }
+    return 0;
+  };
+  return {left: axis(l, r, room.clientWidth), top: axis(t, b, room.clientHeight)};
 }
 
 // Renumber saves room, renumbers furnitures on server and reloads designer,
@@ -587,23 +773,27 @@ function Renumber(type) {
   });
 }
 
+// SelectAll selects all furnitures of type (table, chair), with ctrl they are
+// added to current selection
+function SelectAll(type, e) {
+  if (!(e && (e.ctrlKey || e.metaKey))) {
+    $("#room > div").removeClass("ui-selected ui-selecting");
+  }
+  $("#room > ." + type).addClass("ui-selected");
+}
+
+// TriggerSelect selects clicked furniture, with ctrl it toggles clicked
+// furniture and keeps the rest of selection
 function TriggerSelect() {
   return function(e) {
-    if (e.ctrlKey == false) {
-          // if command key is pressed don't deselect existing elements
-          $( "#room > div" ).removeClass("ui-selected");
-          $(this).addClass("ui-selecting");
-      }
-      else {
-          if ($(this).hasClass("ui-selected")) {
-              // remove selected class from element if already selected
-              $(this).removeClass("ui-selected");
-          }
-          else {
-              // add selecting class if not
-              $(this).addClass("ui-selecting");
-          }
-      }
+    var el = $(this);
+    if (e.ctrlKey || e.metaKey) {
+      el.toggleClass("ui-selected");
+    } else {
+      $("#room > div").not(this).removeClass("ui-selected");
+      el.addClass("ui-selected");
+    }
+    $("#room > div").removeClass("ui-selecting");
   }
 }
 

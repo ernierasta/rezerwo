@@ -71,6 +71,10 @@
           <button id="renumber-chairs" class="btn btn-primary" onclick="Renumber('chair')">{{.BTNRenumberChairs}}</button>
           <button id="renumber-tables" class="btn btn-primary" onclick="Renumber('table')">{{.BTNRenumberTables}}</button>
         </div>
+        <div class="input-group">
+          <button id="select-tables" class="btn btn-primary" onclick="SelectAll('table', event)">{{.BTNSelectTables}}</button>
+          <button id="select-chairs" class="btn btn-primary" onclick="SelectAll('chair', event)">{{.BTNSelectChairs}}</button>
+        </div>
       </div>
   
       <div id="furniture-actions">

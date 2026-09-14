@@ -1103,6 +1103,22 @@
   border: 1px dotted black;
 }
 
+#room .guide {
+  position: absolute;
+  display: block;
+  z-index: 95;
+  pointer-events: none;
+  background: #e6007e;
+}
+
+#room .guide-v {
+  width: 1px;
+}
+
+#room .guide-h {
+  height: 1px;
+}
+
 #room .ui-resizable-handle {
   position: absolute;
   display: block;

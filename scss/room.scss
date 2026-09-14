@@ -377,6 +377,17 @@ $pi: 3.14159;
 
 .ui-selectable-helper {position: absolute; z-index: 100; border:1px dotted black;}
 
+// Alignment guides shown while dragging in designer (js/room.js DrawGuides)
+#room .guide {
+	position: absolute;
+	display: block;
+	z-index: 95;
+	pointer-events: none;
+	background: #e6007e;
+}
+#room .guide-v { width: 1px; }
+#room .guide-h { height: 1px; }
+
 // Resize handles of tables and objects in designer (js/room.js InitFurniture),
 // jquery-ui css is not loaded, so handles are styled here.
 $resize-edge: 8px;

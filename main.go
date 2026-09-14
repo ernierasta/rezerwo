@@ -329,6 +329,7 @@ type DesignerPage struct {
 	BTNSpawnChairs, BTNSave              string
 	BTNDelete, BTNRotate                 string
 	BTNRenumberChairs, BTNRenumberTables string
+	BTNSelectTables, BTNSelectChairs     string
 	LBLTableRect, LBLTableRound          string
 	LBLTableOval                         string
 	LBLTableRectVertical                 string
@@ -509,6 +510,8 @@ func DesignerHTML(db *DB, lang string, cs *sessions.CookieStore) func(w http.Res
 				BTNRotate:              "Rotate",
 				BTNRenumberChairs:      "Renumber chairs",
 				BTNRenumberTables:      "Renumber tables",
+				BTNSelectTables:        "Select all tables",
+				BTNSelectChairs:        "Select all chairs",
 				LBLTableRect:           "Rectangular",
 				LBLTableRound:          "Round",
 				LBLTableOval:           "Oval",

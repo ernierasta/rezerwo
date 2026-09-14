@@ -66,7 +66,7 @@
           <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; background: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
         {{end}}
         {{range .Labels}}
-          <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; color: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
+          <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="{{if .Width.Valid}}width: {{.Width.Int64}}px; {{end}}{{if .Height.Valid}}height: {{.Height.Int64}}px; {{end}}color: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
         {{end}}
         </div>
       </div>

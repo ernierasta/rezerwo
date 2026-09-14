@@ -142,7 +142,7 @@
 	display: inline;
 }
 
-#room-controls {
+#room-controls, .room-controls-box {
 	width: 300px;
 	border: medium dashed lightgrey;
 	margin: 10px;
@@ -319,7 +319,40 @@
 	width: $table-30;
 }
 
-#room, .room-view { 
+// Round and oval tables. Orientation is stored as "round", "oval-vertical"
+// or "oval-horizontal", so classes are f.e. round-8, oval-horizontal-12.
+// Sizes are chosen so SpawnChairs (js/room.js) fits the chairs around
+// the table: chair centers lie $table/2 + $table-gap from the table edge,
+// with roughly $round-chair-pitch between them.
+$round-chair-pitch: 30px; // bigger than $table + $table-gap, chairs on diagonals must not overlap
+$round-chair-dist: $table / 2 + $table-gap;
+$pi: 3.14159;
+@for $n from 1 through 44 {
+	$d: max(40px, round($round-chair-pitch * $n / $pi - 2 * $round-chair-dist));
+	.round-#{$n} {
+		width: $d;
+		height: $d;
+		border-radius: 50%;
+	}
+
+	// oval: short axis $s, long axis $l computed from stadium perimeter approximation
+	$s: max(40px, 3px * $n);
+	$b: $s / 2 + $round-chair-dist;
+	$a: max(1.5 * $b, (1.06 * $round-chair-pitch * $n - 2 * $pi * $b) / 4 + $b);
+	$l: round(2 * ($a - $round-chair-dist));
+	.oval-horizontal-#{$n} {
+		width: $l;
+		height: $s;
+		border-radius: 50%;
+	}
+	.oval-vertical-#{$n} {
+		width: $s;
+		height: $l;
+		border-radius: 50%;
+	}
+}
+
+#room, .room-view {
 	width: $room-width;
 	height: $room-height;
 	//padding: 0.5em;

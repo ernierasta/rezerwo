@@ -75,7 +75,7 @@ func main() {
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, mailConf))
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
-	http.HandleFunc("/admin/designer", DesignerHTML(db, lang))
+	http.HandleFunc("/admin/designer", DesignerHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))
 	http.HandleFunc("/admin/reservations", AdminReservations(db, lang, cookieStore))
 	http.HandleFunc("/admin/formeditor", FormEditor(db, lang, cookieStore))
@@ -84,13 +84,13 @@ func main() {
 	http.HandleFunc("/admin/maileditor", MailEditor(db, lang, cookieStore))
 	http.HandleFunc("/passreset", PasswdReset(db))
 	http.HandleFunc("/api/login", LoginAPI(db, cookieStore))
-	http.HandleFunc("/api/room", DesignerSetRoomSize(db))
+	http.HandleFunc("/api/room", DesignerSetRoomSize(db, cookieStore))
 	http.HandleFunc("/api/roomcopy", CopyRoomAPI(db, cookieStore))
 	http.HandleFunc("/api/roomdel", DelRoomAPI(db, cookieStore))
-	http.HandleFunc("/api/furnit", DesignerMoveObject(db))
-	http.HandleFunc("/api/furdel", DesignerDeleteObject(db))
+	http.HandleFunc("/api/furnit", DesignerMoveObject(db, cookieStore))
+	http.HandleFunc("/api/furdel", DesignerDeleteObject(db, cookieStore))
 	http.HandleFunc("/api/ordercancel", OrderCancel(db))
-	http.HandleFunc("/api/renumber", DesignerRenumberType(db))
+	http.HandleFunc("/api/renumber", DesignerRenumberType(db, cookieStore))
 	http.HandleFunc("/api/resstatus", ReservationChangeStatusAPI(db))
 	http.HandleFunc("/api/resdelete", ReservationDeleteAPI(db))
 	http.HandleFunc("/api/formstatus", FormChangeStatusAPI(db))
@@ -326,6 +326,10 @@ type DesignerPage struct {
 	BTNSpawnChairs, BTNSave              string
 	BTNDelete, BTNRotate                 string
 	BTNRenumberChairs, BTNRenumberTables string
+	LBLTableRect, LBLTableRound          string
+	LBLTableOval                         string
+	LBLGridSize, LBLGridShow             string
+	LBLGridSnap                          string
 }
 
 type ReservationPage struct {
@@ -380,8 +384,49 @@ type RoomVars struct {
 	SitsFree            int
 }
 
-func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
+// userOwnsRoom checks if room belongs to organization of logged in admin
+func userOwnsRoom(db *DB, email string, roomID int64) bool {
+	user, err := db.UserGetByEmail(email)
+	if err != nil {
+		log.Printf("userOwnsRoom: can not get user by mail %q, err: %v", email, err)
+		return false
+	}
+	rooms, err := db.RoomGetAllByUserID(user.ID)
+	if err != nil {
+		log.Printf("userOwnsRoom: can not get rooms for user %d, err: %v", user.ID, err)
+		return false
+	}
+	for _, room := range rooms {
+		if room.ID == roomID {
+			return true
+		}
+	}
+	return false
+}
+
+// designerAPIAuth returns true if request comes from admin owning the room,
+// otherwise it writes error response
+func designerAPIAuth(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore, roomID int64) bool {
+	_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
+	if err != nil {
+		log.Printf("designerAPIAuth: session error: %v", err)
+		return false
+	}
+	if !userOwnsRoom(db, email, roomID) {
+		log.Printf("designerAPIAuth: user %q does not own room %d", email, roomID)
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+func DesignerHTML(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		_, _, email, serr := InitSession(w, r, cs, "/admin/login", true)
+		if serr != nil {
+			log.Printf("DesignerHTML: session error: %v", serr)
+			return
+		}
 		roomID := int64(-1)
 		eventID := int64(-1)
 		if r.Method == "POST" {
@@ -401,16 +446,23 @@ func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 
 		} else {
 			http.Redirect(w, r, "/admin", http.StatusSeeOther)
-			//return
+			return
 		}
 
 		if eventID < 1 {
 			log.Printf("error: DesignerHTML: eventID < 1 redirecting to /admin")
 			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+			return
 		}
 		if roomID < 1 {
 			log.Printf("error: DesignerHTML: roomID < 1 redirecting to /admin")
 			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+			return
+		}
+		if !userOwnsRoom(db, email, roomID) {
+			log.Printf("error: DesignerHTML: user %q does not own room %d, redirecting to /admin", email, roomID)
+			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+			return
 		}
 
 		// user would be needed here, but we will create banner image Path
@@ -449,6 +501,12 @@ func DesignerHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Reque
 				BTNRotate:           "Rotate",
 				BTNRenumberChairs:   "Renumber chairs",
 				BTNRenumberTables:   "Renumber tables",
+				LBLTableRect:        "Rectangular",
+				LBLTableRound:       "Round",
+				LBLTableOval:        "Oval",
+				LBLGridSize:         "Grid",
+				LBLGridShow:         "Show grid",
+				LBLGridSnap:         "Snap to grid",
 			},
 		}
 		p.PageMeta = enPM
@@ -2693,7 +2751,7 @@ type RoomMsg struct {
 	Height int64 `json:"height"`
 }
 
-func DesignerSetRoomSize(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func DesignerSetRoomSize(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m RoomMsg
 		if r.Method == "POST" {
@@ -2701,6 +2759,9 @@ func DesignerSetRoomSize(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			err := dec.Decode(&m)
 			if err != nil {
 				log.Println(err)
+			}
+			if !designerAPIAuth(w, r, db, cs, m.RoomID) {
+				return
 			}
 			room := Room{
 				ID:     m.RoomID,
@@ -2804,7 +2865,7 @@ type MoveMsg struct {
 	Label       string `json:"label"`
 }
 
-func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func DesignerMoveObject(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m MoveMsg
 		if r.Method == "POST" {
@@ -2812,6 +2873,9 @@ func DesignerMoveObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			err := dec.Decode(&m)
 			if err != nil {
 				log.Println(err)
+			}
+			if !designerAPIAuth(w, r, db, cs, m.RoomID) {
+				return
 			}
 			fmt.Printf("%+v", m)
 			f := Furniture{
@@ -2875,7 +2939,7 @@ type DeleteMsg struct {
 	Type    string `json:"type"`
 }
 
-func DesignerDeleteObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func DesignerDeleteObject(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m DeleteMsg
 		if r.Method == "POST" {
@@ -2883,6 +2947,9 @@ func DesignerDeleteObject(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			err := dec.Decode(&m)
 			if err != nil {
 				log.Println(err)
+			}
+			if !designerAPIAuth(w, r, db, cs, m.RoomID) {
+				return
 			}
 			log.Printf("deleting from db: %+v\n", m)
 			err = db.FurnitureDelByNumberTypeRoom(m.Number, m.Type, m.RoomID)
@@ -2899,7 +2966,7 @@ type RenumberMsg struct {
 	Type   string `json:"type"`
 }
 
-func DesignerRenumberType(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func DesignerRenumberType(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m RenumberMsg
@@ -2908,6 +2975,9 @@ func DesignerRenumberType(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			err := dec.Decode(&m)
 			if err != nil {
 				log.Println(err)
+			}
+			if !designerAPIAuth(w, r, db, cs, m.RoomID) {
+				return
 			}
 			log.Printf("renumbering: %+v\n", m)
 			ff, err := db.FurnitureGetAllByRoomIDOfType(m.RoomID, m.Type)

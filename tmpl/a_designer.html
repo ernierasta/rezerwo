@@ -29,6 +29,11 @@
       <div id="objects-actions">
         <div class="input-group">
           <input id="chairs-ammount" type="number" value="6">
+          <select id="table-shape">
+            <option value="vertical">{{.LBLTableRect}}</option>
+            <option value="round">{{.LBLTableRound}}</option>
+            <option value="oval-vertical">{{.LBLTableOval}}</option>
+          </select>
           <button id="add-table" class="btn btn-primary">{{.BTNAddTable}}</button>
         </div>
         <div class="input-group">
@@ -70,16 +75,35 @@
         <div class="input-group-prepend">
           <span class="input-group-text">{{.LBLWidth}}</span>
         </div>
-        <input id="room-width" class="form-control" type="number" value="500" max="1000">
+        <input id="room-width" class="form-control" type="number" value="{{.Room.Width}}" min="1">
       </div>
       <div class="input-group input-group-sm mb-3">
         <div class="input-group-prepend">
           <span class="input-group-text">{{.LBLHeight}}</span>
         </div>
-        <input id="room-height" class="form-control" type="number" value="1000" max="1000">
+        <input id="room-height" class="form-control" type="number" value="{{.Room.Height}}" min="1">
       </div>
       <button id="set-room-size" class="btn btn-primary" onclick="SetRoomSize()">{{.BTNSetSize}}</button>
-    </div>  
+    </div>
+    <div id="grid-controls" class="room-controls-box">
+      <div class="input-group input-group-sm mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">{{.LBLGridSize}}</span>
+        </div>
+        <input id="grid-size" class="form-control" type="number" min="1" max="200">
+        <div class="input-group-append">
+          <span class="input-group-text">px</span>
+        </div>
+      </div>
+      <div class="form-check form-check-inline">
+        <input id="grid-show" class="form-check-input" type="checkbox">
+        <label class="form-check-label" for="grid-show">{{.LBLGridShow}}</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input id="grid-snap" class="form-check-input" type="checkbox">
+        <label class="form-check-label" for="grid-snap">{{.LBLGridSnap}}</label>
+      </div>
+    </div>
   </div>
   <div style="width: 100%;">
     <div id="room" class="ui-widget-header" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;">
@@ -93,7 +117,7 @@
       <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; background: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
       {{end}}
       {{range .Labels}}
-      <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; color: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
+      <div class="{{.Type}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="{{if .Width.Valid}}width: {{.Width.Int64}}px; {{end}}{{if .Height.Valid}}height: {{.Height.Int64}}px; {{end}}color: {{.Color.String}};top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
       {{end}}
     </div>
   </div>

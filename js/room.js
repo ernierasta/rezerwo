@@ -490,6 +490,91 @@ function Rotate() {
   });
 }
 
+// chair belongs to the nearest table, if its center is at most this far from table box
+var CHAIR_ASSIGN_DIST = CHAIR_PITCH + CHAIR_SIZE/2;
+
+// RoomInner returns page position of room inner area (without border)
+function RoomInner() {
+  var room = $("#room");
+  return {left: room.offset().left + room[0].clientLeft, top: room.offset().top + room[0].clientTop};
+}
+
+// BoxInRoom returns element box (without margin) relative to room inner area
+function BoxInRoom(el, inner) {
+  var o = el.offset();
+  return {left: o.left - inner.left, top: o.top - inner.top, width: el.outerWidth(), height: el.outerHeight()};
+}
+
+function DistToBox(x, y, b) {
+  var dx = Math.max(b.left - x, 0, x - (b.left + b.width));
+  var dy = Math.max(b.top - y, 0, y - (b.top + b.height));
+  return Math.hypot(dx, dy);
+}
+
+// ChangeTableType changes type (orientation) of selected tables, other selected
+// furnitures are ignored. Table center is kept, custom size is reset to size
+// of new type and chairs around table are placed again for the new shape
+// (the same chair elements, so numbers, prices and disabled state are kept).
+function ChangeTableType() {
+  var newType = $("#table-change-shape").val();
+  var tables = $("#room .table.ui-selected, #room .table.ui-selecting");
+  if (!newType || !tables.length) {
+    return;
+  }
+  var inner = RoomInner();
+  var all = $("#room .table");
+  var boxes = all.map(function() { return BoxInRoom($(this), inner); }).get();
+
+  // assign chairs to nearest tables, before anything moves
+  var chairsOf = boxes.map(function() { return []; });
+  $("#room .chair").each(function() {
+    var c = BoxInRoom($(this), inner);
+    var cx = c.left + c.width/2, cy = c.top + c.height/2;
+    var best = -1, bestDist = CHAIR_ASSIGN_DIST;
+    boxes.forEach(function(b, i) {
+      var d = DistToBox(cx, cy, b);
+      if (d <= bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    });
+    if (best >= 0) {
+      chairsOf[best].push($(this));
+    }
+  });
+
+  tables.each(function() {
+    var table = $(this);
+    var i = all.index(this);
+    var old = boxes[i];
+    var capacity = table.attr("capacity");
+    table.removeClass(table.attr("orientation")+"-"+capacity)
+      .addClass(newType+"-"+capacity)
+      .attr("orientation", newType)
+      .css({width: "", height: ""});
+
+    var w = table.outerWidth(), h = table.outerHeight();
+    var left = Math.round(old.left + (old.width - w)/2);
+    var top = Math.round(old.top + (old.height - h)/2);
+    table.css({
+      position: "absolute",
+      left: left - (parseFloat(table.css("margin-left")) || 0),
+      top: top - (parseFloat(table.css("margin-top")) || 0)
+    });
+
+    var chairs = chairsOf[i].sort(function(a, b) { return Number(a.attr("name")) - Number(b.attr("name")); });
+    if (!chairs.length) {
+      return;
+    }
+    var positions = IsRoundTable(newType) ?
+      ChairPositionsEllipse(left, top, w, h, newType, chairs.length) :
+      ChairPositionsRect(left, top, newType, chairs.length);
+    chairs.forEach(function(chair, k) {
+      chair.css({position: "absolute", left: positions[k].left - CHAIR_MARGIN, top: positions[k].top - CHAIR_MARGIN});
+    });
+  });
+}
+
 // Renumber saves room, renumbers furnitures on server and reloads designer,
 // so numbers on page (and next free numbers) are not stale
 function Renumber(type) {

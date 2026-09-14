@@ -331,6 +331,11 @@ type DesignerPage struct {
 	BTNRenumberChairs, BTNRenumberTables string
 	LBLTableRect, LBLTableRound          string
 	LBLTableOval                         string
+	LBLTableRectVertical                 string
+	LBLTableRectHorizontal               string
+	LBLTableOvalVertical                 string
+	LBLTableOvalHorizontal               string
+	BTNChangeTableType                   string
 	LBLGridSize, LBLGridShow             string
 	LBLGridSnap                          string
 }
@@ -482,34 +487,39 @@ func DesignerHTML(db *DB, lang string, cs *sessions.CookieStore) func(w http.Res
 			LBLLang:  lang,
 			LBLTitle: "Designer",
 			DesignerPage: DesignerPage{
-				TableNr:             TableNr(p.Tables) + 1,
-				ChairNr:             ChairNrFull(p.Chairs) + 1,
-				ObjectNr:            ObjectNr(p.Objects) + 1,
-				LabelNr:             LabelNr(p.Labels) + 1,
-				HTMLBannerImg:       template.HTML(getImgHTML(imgName, userURL, MEDIAROOT, imgW, imgH)),
-				HTMLRoomDescription: template.HTML(p.Room.Description.String),
-				LBLWidth:            "Width",
-				LBLHeight:           "Height",
-				BTNSetSize:          "Set size",
-				BTNAddTable:         "Add table",
-				BTNAddChair:         "Add chair",
-				BTNChairDisToggle:   "Chair disable/enable",
-				BTNAddLabel:         "Add label",
-				BTNAddObject:        "Add object",
-				LBLLabelPlaceholder: "Object label ...",
-				LBLDropHere:         "Drop here",
-				BTNSpawnChairs:      "Spawn chairs",
-				BTNSave:             "Save",
-				BTNDelete:           "Delete",
-				BTNRotate:           "Rotate",
-				BTNRenumberChairs:   "Renumber chairs",
-				BTNRenumberTables:   "Renumber tables",
-				LBLTableRect:        "Rectangular",
-				LBLTableRound:       "Round",
-				LBLTableOval:        "Oval",
-				LBLGridSize:         "Grid",
-				LBLGridShow:         "Show grid",
-				LBLGridSnap:         "Snap to grid",
+				TableNr:                TableNr(p.Tables) + 1,
+				ChairNr:                ChairNrFull(p.Chairs) + 1,
+				ObjectNr:               ObjectNr(p.Objects) + 1,
+				LabelNr:                LabelNr(p.Labels) + 1,
+				HTMLBannerImg:          template.HTML(getImgHTML(imgName, userURL, MEDIAROOT, imgW, imgH)),
+				HTMLRoomDescription:    template.HTML(p.Room.Description.String),
+				LBLWidth:               "Width",
+				LBLHeight:              "Height",
+				BTNSetSize:             "Set size",
+				BTNAddTable:            "Add table",
+				BTNAddChair:            "Add chair",
+				BTNChairDisToggle:      "Chair disable/enable",
+				BTNAddLabel:            "Add label",
+				BTNAddObject:           "Add object",
+				LBLLabelPlaceholder:    "Object label ...",
+				LBLDropHere:            "Drop here",
+				BTNSpawnChairs:         "Spawn chairs",
+				BTNSave:                "Save",
+				BTNDelete:              "Delete",
+				BTNRotate:              "Rotate",
+				BTNRenumberChairs:      "Renumber chairs",
+				BTNRenumberTables:      "Renumber tables",
+				LBLTableRect:           "Rectangular",
+				LBLTableRound:          "Round",
+				LBLTableOval:           "Oval",
+				LBLTableRectVertical:   "Rectangular vertical",
+				LBLTableRectHorizontal: "Rectangular horizontal",
+				LBLTableOvalVertical:   "Oval vertical",
+				LBLTableOvalHorizontal: "Oval horizontal",
+				BTNChangeTableType:     "Change type",
+				LBLGridSize:            "Grid",
+				LBLGridShow:            "Show grid",
+				LBLGridSnap:            "Snap to grid",
 			},
 		}
 		p.PageMeta = enPM
@@ -2985,7 +2995,7 @@ func EventCopyInfoAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 }
 
 type EventCopyMsg struct {
-	EventID int64 `json:"event_id"`
+	EventID int64  `json:"event_id"`
 	Name    string `json:"name"`
 	Rooms   []struct {
 		RoomID int64  `json:"room_id"`

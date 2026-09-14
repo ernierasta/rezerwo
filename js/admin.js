@@ -187,6 +187,11 @@ function EventCopy() {
     success: function(info) {
       eventCopyInfo = info;
       $('#event-copy-name').val(info.name + " - kopia");
+      // same dates as original, moved to current year (both by the same number of years,
+      // so reservation start stays before event date)
+      var years = new Date().getFullYear() - Number(info.date.slice(0, 4));
+      $('#event-copy-date').val(EventCopyShiftYear(info.date, years));
+      $('#event-copy-from-date').val(EventCopyShiftYear(info.from_date, years));
       $('#event-copy-only-mine').prop("checked", true);
       $('#event-copy-rooms').empty();
       info.room_ids.forEach(function(id) {
@@ -250,6 +255,16 @@ function EventCopyFilterRooms() {
   });
 }
 
+// EventCopyShiftYear moves "YYYY-MM-DD" date by given number of years, 29.02 becomes 28.02 if needed
+function EventCopyShiftYear(d, years) {
+  var y = Number(d.slice(0, 4)) + years;
+  var md = d.slice(4);
+  if (md === "-02-29" && new Date(Date.UTC(y, 1, 29)).getUTCMonth() !== 1) {
+    md = "-02-28";
+  }
+  return String(y).padStart(4, "0") + md;
+}
+
 // EventCopyRoomName shows room copy name input when "make copy" is checked
 // and prefills it from selected room
 function EventCopyRoomName($row) {
@@ -265,8 +280,7 @@ function EventCopyRoomName($row) {
 
 $(function() {
   $('#room-copy-select').on("change", RoomCopyDefaultName);
-  $('#event-copy-only-mine').on("change", EventCopyFilterRooms);
-  $('#event-copy-rooms').on("change", ".event-copy-room-select", function() {
+  $('#event-copy-only-mine').on("change", EventCopyFilterRooms);  $('#event-copy-rooms').on("change", ".event-copy-room-select", function() {
     EventCopyFilterRooms();
     EventCopyRoomName($(this).closest(".event-copy-room"));
   });
@@ -300,6 +314,8 @@ function FinalEventCopy() {
   var data = {
     "event_id": eventCopyInfo.event_id,
     "name": $('#event-copy-name').val(),
+    "date": $('#event-copy-date').val(),
+    "from_date": $('#event-copy-from-date').val(),
     "rooms": rooms,
     "copy_notifications": copyNotifs,
     "thankyou_name": copyNotifs && eventCopyInfo.thankyou ? $('#event-copy-thankyou-name').val() : "",

@@ -91,7 +91,7 @@ func main() {
 	http.HandleFunc("/api/roomcopy", CopyRoomAPI(db, cookieStore))
 	http.HandleFunc("/api/roomdel", DelRoomAPI(db, cookieStore))
 	http.HandleFunc("/api/eventcopyinfo", EventCopyInfoAPI(db, cookieStore))
-	http.HandleFunc("/api/eventcopy", EventCopyAPI(db, cookieStore))
+	http.HandleFunc("/api/eventcopy", EventCopyAPI(db, dateFormat, cookieStore))
 	http.HandleFunc("/api/furnit", DesignerMoveObject(db, cookieStore))
 	http.HandleFunc("/api/furdel", DesignerDeleteObject(db, cookieStore))
 	http.HandleFunc("/api/ordercancel", OrderCancel(db))
@@ -1400,6 +1400,8 @@ type AdminMainPageVars struct {
 	BTNEventDelete                string
 	LBLEventCopyTitle             string
 	LBLEventCopyName              string
+	LBLEventCopyDate              string
+	LBLEventCopyFromDate          string
 	LBLEventCopyRooms             string
 	LBLEventCopyOnlyMine          string
 	LBLEventCopyMakeRoomCopy      string
@@ -1547,29 +1549,30 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 			LBLLang:  lang,
 			LBLTitle: "Admin main page",
 			AdminMainPageVars: AdminMainPageVars{
-				TabEvents:                     "Events",
-				TabForms:                      "Forms",
-				TabSettings:                   "Settings",
-				LBLRooms:                      "Rooms",
-				LBLEvents:                     "Events",
-				LBLRoomEventTitle:             "Select event",
-				LBLRoomEventText:              template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
-				BTNSelect:                     "Select",
-				BTNClose:                      "Close",
-				BTNAddRoom:                    "Add room",
-				BTNAddEvent:                   "Add event",
-				BTNEventEdit:                  "Edit",
-				BTNEventCopy:                  "Copy",
-				LBLNewEventPlaceholder:        "New event name",
-				LBLSelectRoom:                 "Select room ...",
-				BTNRoomEdit:                   "Edit",
-				BTNRoomCopy:                   "Import & Copy room",
-				BTNRoomDelete:                 "Delete",
-				LBLSelectEvent:                "Select event ...",
-				BTNEventDelete:                "Delete",
-				LBLEventCopyTitle:             "Copy event",
-				LBLEventCopyName:              "New event name",
-				LBLEventCopyRooms:             "Rooms",
+				TabEvents:              "Events",
+				TabForms:               "Forms",
+				TabSettings:            "Settings",
+				LBLRooms:               "Rooms",
+				LBLEvents:              "Events",
+				LBLRoomEventTitle:      "Select event",
+				LBLRoomEventText:       template.HTML("<b>Why?</b><br />You need to select event for room, because chair <i>'disabled'</i> status and chair <i>'price'</i> are related to the <b>event</b>, not room itself. If You select different event next time, room will be the same, but 'disabled' and 'price' attributs may be different."),
+				BTNSelect:              "Select",
+				BTNClose:               "Close",
+				BTNAddRoom:             "Add room",
+				BTNAddEvent:            "Add event",
+				BTNEventEdit:           "Edit",
+				BTNEventCopy:           "Copy",
+				LBLNewEventPlaceholder: "New event name",
+				LBLSelectRoom:          "Select room ...",
+				BTNRoomEdit:            "Edit",
+				BTNRoomCopy:            "Import & Copy room",
+				BTNRoomDelete:          "Delete",
+				LBLSelectEvent:         "Select event ...",
+				BTNEventDelete:         "Delete",
+				LBLEventCopyTitle:      "Copy event",
+				LBLEventCopyName:       "New event name",
+				LBLEventCopyDate:       "Event date",
+				LBLEventCopyFromDate:   "Reservation starts", LBLEventCopyRooms: "Rooms",
 				LBLEventCopyOnlyMine:          "Only mine",
 				LBLEventCopyMakeRoomCopy:      "make room copy",
 				LBLRoomCopyName:               "Room copy name",
@@ -1621,29 +1624,30 @@ func AdminMainPage(db *DB, loc *time.Location, lang string, dateFormat string, c
 			LBLLang:  lang,
 			LBLTitle: "Administracja",
 			AdminMainPageVars: AdminMainPageVars{
-				TabEvents:                     "Rezerwacje",
-				TabForms:                      "Formularze",
-				TabSettings:                   "Ustawienia/Katalogi",
-				LBLRooms:                      "Pomieszczenia",
-				LBLEvents:                     "Imprezy",
-				LBLRoomEventTitle:             "Wybierz imprezę",
-				LBLRoomEventText:              template.HTML("<b>Dlaczego?</b><br />Musisz wybrać imprezę, ponieważ status krzeseł <i>'wyłączony'</i> oraz <i>'cena'</i> miejsca są związanie z <b>imprezą</b>, a nie z pomieszczeniem jako takim."),
-				BTNSelect:                     "Wybierz",
-				BTNClose:                      "Zamknij",
-				BTNAddRoom:                    "Dodaj pomieszczenie",
-				BTNAddEvent:                   "Dodaj imprezę",
-				BTNEventEdit:                  "Edytuj",
-				BTNEventCopy:                  "Kopiuj",
-				LBLNewEventPlaceholder:        "Nazwa nowej imprezy",
-				LBLSelectRoom:                 "Wybierz pomieszczenie ...",
-				BTNRoomEdit:                   "Edytuj",
-				BTNRoomCopy:                   "Importuj/kopiuj pomieszczenie",
-				BTNRoomDelete:                 "Usuń",
-				LBLSelectEvent:                "Wybierz imprezę ...",
-				BTNEventDelete:                "Usuń",
-				LBLEventCopyTitle:             "Kopiuj imprezę",
-				LBLEventCopyName:              "Nazwa nowej imprezy",
-				LBLEventCopyRooms:             "Pomieszczenia",
+				TabEvents:              "Rezerwacje",
+				TabForms:               "Formularze",
+				TabSettings:            "Ustawienia/Katalogi",
+				LBLRooms:               "Pomieszczenia",
+				LBLEvents:              "Imprezy",
+				LBLRoomEventTitle:      "Wybierz imprezę",
+				LBLRoomEventText:       template.HTML("<b>Dlaczego?</b><br />Musisz wybrać imprezę, ponieważ status krzeseł <i>'wyłączony'</i> oraz <i>'cena'</i> miejsca są związanie z <b>imprezą</b>, a nie z pomieszczeniem jako takim."),
+				BTNSelect:              "Wybierz",
+				BTNClose:               "Zamknij",
+				BTNAddRoom:             "Dodaj pomieszczenie",
+				BTNAddEvent:            "Dodaj imprezę",
+				BTNEventEdit:           "Edytuj",
+				BTNEventCopy:           "Kopiuj",
+				LBLNewEventPlaceholder: "Nazwa nowej imprezy",
+				LBLSelectRoom:          "Wybierz pomieszczenie ...",
+				BTNRoomEdit:            "Edytuj",
+				BTNRoomCopy:            "Importuj/kopiuj pomieszczenie",
+				BTNRoomDelete:          "Usuń",
+				LBLSelectEvent:         "Wybierz imprezę ...",
+				BTNEventDelete:         "Usuń",
+				LBLEventCopyTitle:      "Kopiuj imprezę",
+				LBLEventCopyName:       "Nazwa nowej imprezy",
+				LBLEventCopyDate:       "Data imprezy",
+				LBLEventCopyFromDate:   "Początek rezerwacji", LBLEventCopyRooms: "Pomieszczenia",
 				LBLEventCopyOnlyMine:          "Tylko moje",
 				LBLEventCopyMakeRoomCopy:      "utwórz kopię",
 				LBLRoomCopyName:               "Nazwa kopii pomieszczenia",
@@ -2919,6 +2923,8 @@ type EventCopyNotif struct {
 type EventCopyInfo struct {
 	EventID  int64           `json:"event_id"`
 	Name     string          `json:"name"`
+	Date     string          `json:"date"`
+	FromDate string          `json:"from_date"`
 	RoomIDs  []int64         `json:"room_ids"`
 	AllRooms []EventCopyRoom `json:"all_rooms"`
 	ThankYou *EventCopyNotif `json:"thankyou"`
@@ -2963,7 +2969,7 @@ func EventCopyInfoAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			return
 		}
 
-		info := EventCopyInfo{EventID: ev.ID, Name: ev.Name, RoomIDs: []int64{}, AllRooms: []EventCopyRoom{}}
+		info := EventCopyInfo{EventID: ev.ID, Name: ev.Name, Date: ToDate(ev.Date), FromDate: ToDate(ev.FromDate), RoomIDs: []int64{}, AllRooms: []EventCopyRoom{}}
 
 		evRooms, err := db.EventGetRooms(ev.ID)
 		if err != nil {
@@ -3005,9 +3011,11 @@ func EventCopyInfoAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 }
 
 type EventCopyMsg struct {
-	EventID int64  `json:"event_id"`
-	Name    string `json:"name"`
-	Rooms   []struct {
+	EventID  int64  `json:"event_id"`
+	Name     string `json:"name"`
+	Date     string `json:"date"`
+	FromDate string `json:"from_date"`
+	Rooms    []struct {
 		RoomID int64  `json:"room_id"`
 		Copy   bool   `json:"copy"`
 		Name   string `json:"name"` // name of room copy, empty = original name
@@ -3018,8 +3026,8 @@ type EventCopyMsg struct {
 }
 
 // EventCopyAPI creates copy of event, with rooms (linked or copied), prices,
-// addons and optionally copies of notifications.
-func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+// addons and optionally copies of notifications. Reservation ends day after event date.
+func EventCopyAPI(db *DB, dF string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
 		if err != nil {
@@ -3059,6 +3067,20 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		}
 		if m.Name == "" {
 			fail("Podaj nazwę nowej imprezy.")
+			return
+		}
+		date, err := ToUnix(m.Date, nil, dF)
+		if err != nil {
+			fail("Podaj poprawną datę imprezy.")
+			return
+		}
+		fromDate, err := ToUnix(m.FromDate, nil, dF)
+		if err != nil {
+			fail("Podaj poprawną datę początku rezerwacji.")
+			return
+		}
+		if fromDate > date {
+			fail("Początek rezerwacji musi być przed datą imprezy.")
 			return
 		}
 		exists, err := db.EventNameExists(m.Name, user.ID)
@@ -3122,6 +3144,9 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		ev := src
 		ev.ID = 0
 		ev.Name = m.Name
+		ev.Date = date
+		ev.FromDate = fromDate
+		ev.ToDate = time.Unix(date, 0).UTC().AddDate(0, 0, 1).Unix()
 		if src.UserID != user.ID {
 			ev.UserID = user.ID
 			ev.Sharable = ToNB(false)

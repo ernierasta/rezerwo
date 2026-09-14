@@ -12,6 +12,12 @@
   padding: 10px;
 }
 
+#banner_img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 #footer {
   background: lightgrey;
   position: absolute;

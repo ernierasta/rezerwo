@@ -13,6 +13,13 @@
 	padding: 10px;
 }
 
+// event/room banner always fills page width, image resolution is ignored
+#banner_img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
 #footer {
 	background: $footer-color;
 	position: absolute;

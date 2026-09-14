@@ -684,12 +684,16 @@ func ReservationHTML(db *DB, lang string) func(w http.ResponseWriter, r *http.Re
 // parseBanner separates info from db into:
 // filename, width, height
 // in db it is like:
-// myfile.png;400;300
+// myfile.png;400;300 or just myfile.png (size is not used for displaying,
+// banner is always scaled to page width)
 func parseBanner(dbstring string) (string, int, int) {
 	if dbstring == "" {
 		return "", -1, -1
 	}
 	ss := strings.Split(dbstring, ";")
+	if len(ss) == 1 {
+		return strings.TrimSpace(ss[0]), -1, -1
+	}
 	if len(ss) != 3 {
 		log.Printf("parseBanner: wrong nr of banner data, len:%d, from db:%v", len(ss), dbstring)
 		return "", -1, -1

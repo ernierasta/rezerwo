@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path"
 	"regexp"
 	"sort"
@@ -75,6 +76,7 @@ func main() {
 	http.HandleFunc("/order/status", ReservationOrderStatusHTML(db, lang, mailConf))
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin/logout", AdminLogout(cookieStore))
+	http.HandleFunc("/admin/devlogin", DevLogin(db, cookieStore))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))
@@ -108,7 +110,12 @@ func main() {
 	http.HandleFunc("/api/formstmpls", FormTemplsGetAPI(db, cookieStore))
 	http.HandleFunc("/api/formdefs", GenerateFormDefsAPI(db, cookieStore))
 
-	log.Fatal(http.ListenAndServe(":3002", nil))
+	// REZERWO_ADDR allows running second (test) instance next to the default one
+	addr := ":3002"
+	if a := os.Getenv("REZERWO_ADDR"); a != "" {
+		addr = a
+	}
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
 func initDB() *DB {

@@ -105,11 +105,13 @@ function SaveRoom() {
   $(".table, .chair, .object, .label").each(function(i, obj) {
     var child = $(this);
     if (child.attr('furniture') == "table") {
-      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 13), y: Math.round(child.offset().top - parent.offset().top - 13)};
+      // width/height only when resized (inline size), otherwise size comes from css class
+      var tsize = InlineSize(child);
+      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 13), y: Math.round(child.offset().top - parent.offset().top - 13), width: tsize.width, height: tsize.height};
     } else if (child.attr('furniture') == "chair") {
       current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), disabled: child.hasClass("disabled"), x: Math.round(child.offset().left - parent.offset().left - 5), y: Math.round(child.offset().top - parent.offset().top - 5)};
     } else if (child.attr('furniture') == "object") {
-      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), width: child.width(), height: child.height(), color: getHexColor(child.css("backgroundColor")), label: child.children().text()};
+      current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), width: InlineSize(child).width || Math.round(child.outerWidth()), height: InlineSize(child).height || Math.round(child.outerHeight()), color: getHexColor(child.css("backgroundColor")), label: child.children("p").text()};
     } else if (child.attr('furniture') == "label") {
       current = {event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number(child.attr('name')), type: child.attr('furniture'), orientation: child.attr('orientation'),capacity: Number(child.attr('capacity')), x: Math.round(child.offset().left - parent.offset().left - 3), y: Math.round(child.offset().top - parent.offset().top - 3), color: getHexColor(child.css("color")), label: child.children().text()};
     } else {
@@ -292,25 +294,27 @@ function ApplyGrid() {
   }
 }
 
-// GridDragStart remembers difference between css position and element box
+// GridBoxDiff returns difference between css position (pos) and element box
 // relative to room, works for absolute and relative (new, floated) elements
 // (rounded, offsets can be fractional with page zoom).
+function GridBoxDiff(el, pos) {
+  var room = $("#room");
+  if (el.css("position") === "absolute") {
+    // box position is css position + margin
+    return {left: parseFloat(el.css("margin-left")) || 0, top: parseFloat(el.css("margin-top")) || 0};
+  }
+  return {
+    left: Math.round(el.offset().left - room.offset().left - room[0].clientLeft - pos.left),
+    top: Math.round(el.offset().top - room.offset().top - room[0].clientTop - pos.top)
+  };
+}
+
+// GridDragStart remembers box difference for snapping.
 // Dragging selected element moves whole selection, dragging not selected
 // element clears selection.
 function GridDragStart(ev, ui) {
-  var room = $("#room");
   var el = $(this);
-  var diff;
-  if (el.css("position") === "absolute") {
-    // box position is css position + margin
-    diff = {left: parseFloat(el.css("margin-left")) || 0, top: parseFloat(el.css("margin-top")) || 0};
-  } else {
-    diff = {
-      left: Math.round(el.offset().left - room.offset().left - room[0].clientLeft - ui.position.left),
-      top: Math.round(el.offset().top - room.offset().top - room[0].clientTop - ui.position.top)
-    };
-  }
-  el.data("grid-diff", diff);
+  el.data("grid-diff", GridBoxDiff(el, ui.position));
   // css position, ui.position can be fractional with page zoom
   el.data("drag-origin", {left: parseFloat(el.css("left")) || 0, top: parseFloat(el.css("top")) || 0});
 
@@ -348,9 +352,81 @@ function GridDrag(ev, ui) {
   });
 }
 
-// InitFurniture makes element in designer draggable and selectable by click
+// Resizing
+
+var RESIZE_MIN = 10; // minimal furniture size in px
+
+// InlineSize returns size set in style attribute (after resize or from db),
+// 0 when not set
+function InlineSize(el) {
+  return {
+    width: Math.round(parseFloat(el[0].style.width)) || 0,
+    height: Math.round(parseFloat(el[0].style.height)) || 0
+  };
+}
+
+function GridResizeStart(ev, ui) {
+  var el = $(this);
+  el.data("grid-diff", GridBoxDiff(el, ui.originalPosition));
+}
+
+// GridResize snaps moved edges of element box to grid, opposite edges stay
+// in place. Round tables stay round.
+function GridResize(ev, ui) {
+  var el = $(this);
+  var axis = el.resizable("instance").axis || "";
+  var g = GridSettings();
+  var diff = el.data("grid-diff") || {left: 0, top: 0};
+  var op = ui.originalPosition, os = ui.originalSize;
+  var snap = function(v) { return g.snap ? Math.round(v / g.size) * g.size : Math.round(v); };
+  var hasN = axis.indexOf("n") >= 0, hasS = axis.indexOf("s") >= 0;
+  var hasE = axis.indexOf("e") >= 0, hasW = axis.indexOf("w") >= 0;
+
+  // box edges relative to room
+  var left = op.left + diff.left, top = op.top + diff.top;
+  var right = left + os.width, bottom = top + os.height;
+  if (hasE) { right = snap(ui.position.left + diff.left + ui.size.width); }
+  if (hasW) { left = snap(ui.position.left + diff.left); }
+  if (hasS) { bottom = snap(ui.position.top + diff.top + ui.size.height); }
+  if (hasN) { top = snap(ui.position.top + diff.top); }
+
+  // do not resize over room borders
+  var room = $("#room")[0];
+  left = Math.max(0, left);
+  top = Math.max(0, top);
+  right = Math.min(room.clientWidth, right);
+  bottom = Math.min(room.clientHeight, bottom);
+
+  var w =Math.max(RESIZE_MIN, right - left);
+  var h = Math.max(RESIZE_MIN, bottom - top);
+  if (el.attr("orientation") === "round") {
+    w = h = (hasE || hasW) ? w : h;
+  }
+  if (hasW) { left = right - w; }
+  if (hasN) { top = bottom - h; }
+
+  ui.size.width = w;
+  ui.size.height = h;
+  ui.position.left = left - diff.left;
+  ui.position.top = top - diff.top;
+  var css = {width: w, height: h};
+  if (hasW) { css.left = ui.position.left; }
+  if (hasN) { css.top = ui.position.top; }
+  el.css(css);
+}
+
+// InitFurniture makes element in designer draggable and selectable by click,
+// tables and objects are also resizable by dragging edges/corners
 function InitFurniture(el) {
   el.draggable({start: GridDragStart, drag: GridDrag});
+  el.filter(".table, .object").resizable({
+    handles: "n, e, s, w, ne, se, sw, nw",
+    minWidth: RESIZE_MIN,
+    minHeight: RESIZE_MIN,
+    start: GridResizeStart,
+    resize: GridResize,
+    stop: GridResize
+  });
   el.click(TriggerSelect());
 }
 
@@ -406,6 +482,11 @@ function Rotate() {
     table.removeClass(curOrientation+'-'+curCapacity);
     table.attr("orientation", newOrientation);
     table.addClass(newOrientation+'-'+curCapacity);
+    // resized table - swap its own size
+    var size = InlineSize(table);
+    if (size.width && size.height) {
+      table.css({width: size.height, height: size.width});
+    }
   });
 }
 

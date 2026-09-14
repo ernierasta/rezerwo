@@ -1103,4 +1103,72 @@
   border: 1px dotted black;
 }
 
-/*# sourceMappingURL=room.css.map */
+#room .ui-resizable-handle {
+  position: absolute;
+  display: block;
+  font-size: 0.1px;
+  z-index: 90;
+  touch-action: none;
+}
+
+#room .ui-resizable-n, #room .ui-resizable-s {
+  height: 8px;
+  left: 0;
+  width: 100%;
+}
+
+#room .ui-resizable-e, #room .ui-resizable-w {
+  width: 8px;
+  top: 0;
+  height: 100%;
+}
+
+#room .ui-resizable-n {
+  top: -4px;
+  cursor: n-resize;
+}
+
+#room .ui-resizable-s {
+  bottom: -4px;
+  cursor: s-resize;
+}
+
+#room .ui-resizable-e {
+  right: -4px;
+  cursor: e-resize;
+}
+
+#room .ui-resizable-w {
+  left: -4px;
+  cursor: w-resize;
+}
+
+#room .ui-resizable-ne, #room .ui-resizable-nw, #room .ui-resizable-se, #room .ui-resizable-sw {
+  width: 10px;
+  height: 10px;
+  z-index: 91;
+}
+
+#room .ui-resizable-ne {
+  top: -4px;
+  right: -4px;
+  cursor: ne-resize;
+}
+
+#room .ui-resizable-nw {
+  top: -4px;
+  left: -4px;
+  cursor: nw-resize;
+}
+
+#room .ui-resizable-se {
+  bottom: -4px;
+  right: -4px;
+  cursor: se-resize;
+}
+
+#room .ui-resizable-sw {
+  bottom: -4px;
+  left: -4px;
+  cursor: sw-resize;
+}

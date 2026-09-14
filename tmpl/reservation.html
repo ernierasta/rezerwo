@@ -57,7 +57,7 @@
         <p id="freesits" class="column">{{.LBLFreeSits}}: <b>{{.SitsFree}}/{{.SitsTotal}}</b></p>
         <div id="room-view-{{.Room.ID}}" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;" class="room-view ui-widget-header selectable">
         {{range .Tables}}
-          <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+          <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity={{.Capacity.Int64}} style="{{if .Width.Valid}}width: {{.Width.Int64}}px; {{end}}{{if .Height.Valid}}height: {{.Height.Int64}}px; {{end}}top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
         {{end}}
         {{range .Chairs}}
         <div class="{{.Type}} {{if and .AdminDisabled.Valid (eq .AdminDisabled.Int64 1)}}disabled{{end}} {{.Status.String}} ui-widget-content" id="{{.Type}}-{{.Number}}" name={{.Number}} orientation="{{.Orientation.String}}" room="{{.RoomID}}" furniture="{{.Type}}" price="{{.AdminPrice.Int64}}" currency="{{.AdminCurrency.String}}" orderstatus="{{.Status.String}}" capacity={{.Capacity.Int64}} style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>

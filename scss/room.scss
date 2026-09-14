@@ -376,3 +376,37 @@ $pi: 3.14159;
 }
 
 .ui-selectable-helper {position: absolute; z-index: 100; border:1px dotted black;}
+
+// Resize handles of tables and objects in designer (js/room.js InitFurniture),
+// jquery-ui css is not loaded, so handles are styled here.
+$resize-edge: 8px;
+#room .ui-resizable-handle {
+	position: absolute;
+	display: block;
+	font-size: 0.1px;
+	z-index: 90;
+	touch-action: none;
+}
+#room .ui-resizable-n, #room .ui-resizable-s {
+	height: $resize-edge;
+	left: 0;
+	width: 100%;
+}
+#room .ui-resizable-e, #room .ui-resizable-w {
+	width: $resize-edge;
+	top: 0;
+	height: 100%;
+}
+#room .ui-resizable-n { top: -$resize-edge / 2; cursor: n-resize; }
+#room .ui-resizable-s { bottom: -$resize-edge / 2; cursor: s-resize; }
+#room .ui-resizable-e { right: -$resize-edge / 2; cursor: e-resize; }
+#room .ui-resizable-w { left: -$resize-edge / 2; cursor: w-resize; }
+#room .ui-resizable-ne, #room .ui-resizable-nw, #room .ui-resizable-se, #room .ui-resizable-sw {
+	width: $resize-edge + 2px;
+	height: $resize-edge + 2px;
+	z-index: 91;
+}
+#room .ui-resizable-ne { top: -$resize-edge / 2; right: -$resize-edge / 2; cursor: ne-resize; }
+#room .ui-resizable-nw { top: -$resize-edge / 2; left: -$resize-edge / 2; cursor: nw-resize; }
+#room .ui-resizable-se { bottom: -$resize-edge / 2; right: -$resize-edge / 2; cursor: se-resize; }
+#room .ui-resizable-sw { bottom: -$resize-edge / 2; left: -$resize-edge / 2; cursor: sw-resize; }

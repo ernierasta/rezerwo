@@ -18,6 +18,15 @@
   height: auto;
 }
 
+.event-desc {
+  font-size: 1.15rem;
+  margin: 10px 0;
+}
+
+#banner_img + .event-desc {
+  margin-top: 20px;
+}
+
 #footer {
   background: lightgrey;
   position: absolute;

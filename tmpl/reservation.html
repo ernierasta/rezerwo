@@ -1,7 +1,7 @@
 {{define "head"}}  <!-- <link href="/css/room.css" rel="stylesheet" type="text/css"> -->
   <!-- ?v= forces browsers to load new version after change, bump it when changing room.js/room.css -->
   <script type="text/javascript" src="/js/room.js?v=2"></script>
-  <link href="/css/room.css?v=2" rel="stylesheet" type="text/css">
+  <link href="/css/room.css?v=3" rel="stylesheet" type="text/css">
   <title>{{.LBLTitle}}</title>
 {{end}}
 {{define "body"}}
@@ -35,7 +35,7 @@
 
 <div class="col-md-12">
   {{if $.EventMainBanner}}{{$.EventMainBanner}}{{end}}
-  {{if $.EventMainDesc}}<div style="margin-top: 10px;margin-bottom: 10px;">{{$.EventMainDesc}}</div>{{end}}
+  {{if $.EventMainDesc}}<div class="event-desc">{{$.EventMainDesc}}</div>{{end}}
 </div> <!-- end center: "d-flex justify-content-center align-items-center" -->
 {{if gt (len .Rooms) 1}}
 <ul class="nav nav-tabs flex-nowrap text-nowrap">
@@ -53,7 +53,7 @@
     <div id="meta">
       {{if not $.EventMainBanner}}{{.HTMLBannerImg}}{{end}}
       <!-- <h1>{{.Room.Name}}</h1> -->
-      <p>{{.HTMLRoomDescription}}</p>
+      {{if .HTMLRoomDescription}}<div class="event-desc">{{.HTMLRoomDescription}}</div>{{end}}
     </div>
     <div class="row">
       <div class="column" style="width: {{.Room.Width}}px;">

@@ -56,6 +56,17 @@ days_left = "za %s"
 paid = "wpłacono %s"
 waiting = "czeka %s"
 
+[copy]
+title = "Kopiuj imprezę"
+pick_event = "Którą imprezę skopiować?"
+rooms = "Sale"
+room_link = "ta sama sala"
+room_copy = "kopia sali"
+mails = "Zrób osobne kopie maili"
+thankyou_name = "Nazwa kopii maila dla gościa"
+admin_name = "Nazwa kopii maila dla zarządu"
+submit = "Kopiuj"
+
 [event]
 draft = "szkic"
 selling = "sprzedaż trwa"

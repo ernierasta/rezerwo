@@ -8,7 +8,7 @@
     <h3>{{.Name}}</h3>
     <div class="r">
       <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "common.guest_page"}}</a>
-      <a class="btn quiet" href="/admin">{{T "common.copy"}}</a>
+      <button class="btn quiet" data-copy-event="{{.ID}}">{{T "common.copy"}}</button>
     </div>
   </div>
   <p class="dsub">{{.SubTitle}}</p>
@@ -189,5 +189,6 @@
 </div>
 {{end}}
 {{define "scripts"}}
+<script src="/js/n_copy.js"></script>
 <script src="/js/n_event.js"></script>
 {{end}}

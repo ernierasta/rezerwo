@@ -1,7 +1,7 @@
 {{define "body"}}
 <div class="doc start">
   <h4>{{T "home.events"}}
-    <button class="btn quiet sm" onclick="location.href='/admin'">{{T "home.copy_event"}}</button>
+    <button class="btn quiet sm" data-copy-pick>{{T "home.copy_event"}}</button>
     <button class="btn sm" id="new-event">{{T "home.new_event"}}</button>
   </h4>
 
@@ -62,6 +62,7 @@
 {{end}}
 
 {{define "scripts"}}
+<script src="/js/n_copy.js"></script>
 <script>
 document.getElementById('new-event').addEventListener('click', async function () {
   const name = prompt("{{T "field.name"}}");

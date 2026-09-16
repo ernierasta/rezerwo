@@ -54,6 +54,17 @@ days_left = "za %s"
 paid = "zaplaceno %s"
 waiting = "čeká %s"
 
+[copy]
+title = "Kopírovat akci"
+pick_event = "Kterou akci zkopírovat?"
+rooms = "Sály"
+room_link = "stejný sál"
+room_copy = "kopie sálu"
+mails = "Vytvořit vlastní kopie mailů"
+thankyou_name = "Název kopie mailu pro hosta"
+admin_name = "Název kopie mailu pro výbor"
+submit = "Kopírovat"
+
 [event]
 draft = "koncept"
 selling = "prodej běží"

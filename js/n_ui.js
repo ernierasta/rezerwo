@@ -106,8 +106,13 @@
     }
   }
 
+  // katalog wczytujemy od razu, żeby teksty w JS działały na każdej stronie
+  // (strony, które same wołają loadLocale, dostaną go z pamięci przeglądarki)
+  var ready = loadLocale(document.documentElement.lang || 'pl');
+
   global.RZ = {
     t: t,
+    ready: ready,
     loadLocale: loadLocale,
     toast: toast,
     postJSON: postJSON,

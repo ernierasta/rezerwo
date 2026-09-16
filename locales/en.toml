@@ -54,6 +54,17 @@ days_left = "in %s"
 paid = "paid %s"
 waiting = "awaiting %s"
 
+[copy]
+title = "Copy event"
+pick_event = "Which event should be copied?"
+rooms = "Rooms"
+room_link = "same room"
+room_copy = "copy of the room"
+mails = "Make separate copies of the mails"
+thankyou_name = "Name of the guest mail copy"
+admin_name = "Name of the board mail copy"
+submit = "Copy"
+
 [event]
 draft = "draft"
 selling = "on sale"

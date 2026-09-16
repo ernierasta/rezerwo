@@ -432,6 +432,43 @@ textarea.inp { min-height: 80px; }
   .ql-container.ql-snow { border-radius: 0 0 8px 8px; min-height: 120px; }
 }
 
+// --- okno dialogowe --------------------------------------------------------
+
+.dlg-back {
+  position: fixed;
+  inset: 0;
+  background: rgba(44, 52, 64, .28);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 40;
+}
+
+.dlg {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  padding: 24px 26px;
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+
+  h3 { font-size: 22px; }
+  > p { margin-bottom: 14px; }
+  .grid2 { margin-top: 14px; }
+}
+
+.copy-room {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+
+  .inp { min-height: 34px; padding: 5px 10px; }
+  .inp[type="text"] { grid-column: 1 / -1; }
+}
+
 // --- powiadomienie ---------------------------------------------------------
 
 .toast {

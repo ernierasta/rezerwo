@@ -13,7 +13,8 @@
     {{if .Crumb}}<span class="crumb">{{.Crumb}}</span>{{end}}
     <div class="r">
       <a href="/admin/start">{{T "nav.events"}}</a>
-      <a href="/admin">{{T "nav.catalogs"}}</a>
+      <a href="/admin/catalogs">{{T "nav.catalogs"}}</a>
+      <a href="/admin">{{T "nav.old_panel"}}</a>
       {{if .OrgName}}<span class="muted">{{.OrgName}}</span>{{end}}
       <a href="/admin/logout">{{T "nav.logout"}}</a>
     </div>

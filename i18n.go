@@ -132,7 +132,19 @@ func pluralForm(lang string, n int64) string {
 		n = -n
 	}
 	switch lang {
-	case "pl", "cs", "sk":
+	case "pl":
+		// CLDR: few dla końcówek 2-4, ale nie dla 12-14 (2 miejsca, 22 miejsca,
+		// 12 miejsc); reszta many.
+		switch {
+		case n == 1:
+			return "one"
+		case n%10 >= 2 && n%10 <= 4 && (n%100 < 12 || n%100 > 14):
+			return "few"
+		default:
+			return "many"
+		}
+	case "cs", "sk":
+		// CLDR: few tylko dla 2, 3, 4.
 		switch {
 		case n == 1:
 			return "one"

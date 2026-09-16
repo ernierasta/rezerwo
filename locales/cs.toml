@@ -7,6 +7,7 @@ name = "Rezerwo"
 events = "Akce"
 forms = "Formuláře"
 catalogs = "Katalogy"
+old_panel = "Starý panel"
 logout = "Odhlásit"
 
 [common]
@@ -84,6 +85,24 @@ forms = "Formuláře"
 reservations = "Rezervace"
 reports = "Přehledy"
 settings = "Nastavení"
+
+[catalog]
+title = "Katalogy"
+rooms = "Sály"
+mails = "Maily"
+accounts = "Bankovní účty"
+new_room = "Nový sál"
+new_mail = "Nový mail"
+new_account = "Nový účet"
+none_rooms = "Zatím není žádný sál."
+none_mails = "Zatím není žádný mail."
+none_accounts = "Zatím není žádný účet."
+shared = "sdílený"
+size = "%d × %d"
+seats = "%d míst"
+for_events = "akce"
+for_forms = "formuláře"
+hint = "Sály, maily a účty používá často několik akcí najednou. Změna tady platí pro všechny."
 
 [form]
 answers = "Odpovědi"

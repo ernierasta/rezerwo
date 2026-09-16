@@ -7,6 +7,7 @@ name = "Rezerwo"
 events = "Events"
 forms = "Forms"
 catalogs = "Catalogues"
+old_panel = "Old panel"
 logout = "Log out"
 
 [common]
@@ -84,6 +85,24 @@ forms = "Forms"
 reservations = "Reservations"
 reports = "Reports"
 settings = "Settings"
+
+[catalog]
+title = "Catalogues"
+rooms = "Rooms"
+mails = "Mails"
+accounts = "Bank accounts"
+new_room = "New room"
+new_mail = "New mail"
+new_account = "New account"
+none_rooms = "No rooms yet."
+none_mails = "No mails yet."
+none_accounts = "No bank accounts yet."
+shared = "shared"
+size = "%d × %d"
+seats = "%d seats"
+for_events = "events"
+for_forms = "forms"
+hint = "Rooms, mails and accounts are often used by several events at once. A change here applies to all of them."
 
 [form]
 answers = "Answers"

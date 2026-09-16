@@ -1,0 +1,87 @@
+{{define "body"}}
+<div class="doc start" id="catalogs">
+  <div class="dh"><h3>{{T "catalog.title"}}</h3></div>
+  <p class="dsub">{{T "catalog.hint"}}</p>
+
+  <h4>{{T "catalog.rooms"}}
+    <button class="btn sm" data-post="/admin/designer" data-ask="name">{{T "catalog.new_room"}}</button>
+  </h4>
+  <div class="rows">
+    {{range .Rooms}}
+    <a class="row" href="#" data-post="/admin/designer" data-params="room-id={{.ID}}&event-id={{$.EventID}}">
+      <span class="num">{{.Size}}</span>
+      <span>{{.Name}}{{if .Shared}} <small class="muted">({{T "catalog.shared"}})</small>{{end}}</span>
+      <small class="num">{{.Seats}}</small>
+    </a>
+    {{else}}
+    <div class="empty">{{T "catalog.none_rooms"}}</div>
+    {{end}}
+  </div>
+
+  <h4>{{T "catalog.mails"}}
+    <button class="btn sm" data-post="/admin/maileditor" data-ask="name">{{T "catalog.new_mail"}}</button>
+  </h4>
+  <div class="rows">
+    {{range .Mails}}
+    <a class="row" href="#" data-post="/admin/maileditor" data-params="mail-id={{.ID}}">
+      <span>{{.RelatedTo}}</span>
+      <span>{{.Name}}{{if .Shared}} <small class="muted">({{T "catalog.shared"}})</small>{{end}}</span>
+      <small class="muted">{{.Title}}</small>
+    </a>
+    {{else}}
+    <div class="empty">{{T "catalog.none_mails"}}</div>
+    {{end}}
+  </div>
+
+  <h4>{{T "catalog.accounts"}}
+    <button class="btn sm" data-post="/admin/bankacceditor" data-ask="name">{{T "catalog.new_account"}}</button>
+  </h4>
+  <div class="rows">
+    {{range .Accounts}}
+    <a class="row" href="#" data-post="/admin/bankacceditor" data-params="ba-id={{.ID}}">
+      <span class="num">{{.IBAN}}</span>
+      <span>{{.Name}}</span>
+      <small class="muted">{{.Currency}}</small>
+    </a>
+    {{else}}
+    <div class="empty">{{T "catalog.none_accounts"}}</div>
+    {{end}}
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script>
+// Stare edytory otwierają się POST-em z parametrami w treści, więc zamiast
+// zwykłych linków wysyłamy ukryty formularz.
+document.getElementById('catalogs').addEventListener('click', function (e) {
+  var el = e.target.closest('[data-post]');
+  if (!el) return;
+  e.preventDefault();
+
+  var params = {};
+  (el.dataset.params || '').split('&').filter(Boolean).forEach(function (p) {
+    var kv = p.split('=');
+    params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+  });
+
+  if (el.dataset.ask === 'name') {
+    var name = prompt("{{T "field.name"}}");
+    if (!name) return;
+    params.name = name;
+  }
+
+  var f = document.createElement('form');
+  f.method = 'POST';
+  f.action = el.dataset.post;
+  Object.keys(params).forEach(function (k) {
+    var i = document.createElement('input');
+    i.type = 'hidden';
+    i.name = k;
+    i.value = params[k];
+    f.appendChild(i);
+  });
+  document.body.appendChild(f);
+  f.submit();
+});
+</script>
+{{end}}

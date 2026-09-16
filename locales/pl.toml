@@ -9,6 +9,7 @@ name = "Rezerwo"
 events = "Imprezy"
 forms = "Formularze"
 catalogs = "Katalogi"
+old_panel = "Stary panel"
 logout = "Wyloguj"
 
 [common]
@@ -86,6 +87,24 @@ forms = "Formularze"
 reservations = "Rezerwacje"
 reports = "Raporty"
 settings = "Ustawienia"
+
+[catalog]
+title = "Katalogi"
+rooms = "Sale"
+mails = "Maile"
+accounts = "Konta bankowe"
+new_room = "Nowa sala"
+new_mail = "Nowy mail"
+new_account = "Nowe konto"
+none_rooms = "Nie ma jeszcze żadnej sali."
+none_mails = "Nie ma jeszcze żadnego maila."
+none_accounts = "Nie ma jeszcze żadnego konta."
+shared = "współdzielona"
+size = "%d × %d"
+seats = "%d miejsc"
+for_events = "imprezy"
+for_forms = "formularze"
+hint = "Sale, maile i konta bywają używane przez kilka imprez naraz. Zmiana tutaj dotyczy wszystkich."
 
 [form]
 answers = "Odpowiedzi"

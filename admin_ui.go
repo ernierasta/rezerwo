@@ -294,6 +294,136 @@ func eventMissing(db *DB, user User, e Event, st nEventStats, lang string) []str
 	return missing
 }
 
+// --- katalogi (sale, maile, konta) ----------------------------------------
+
+type nCatalogRoom struct {
+	ID     int64
+	Name   string
+	Size   string
+	Seats  string
+	Shared bool
+}
+
+type nCatalogMail struct {
+	ID        int64
+	Name      string
+	RelatedTo string
+	Title     string
+	Shared    bool
+}
+
+type nCatalogAccount struct {
+	ID       int64
+	Name     string
+	IBAN     string
+	Currency string
+}
+
+type nCatalogsVars struct {
+	NPage
+	Rooms    []nCatalogRoom
+	Mails    []nCatalogMail
+	Accounts []nCatalogAccount
+	// EventID - designer sali otwiera się zawsze w kontekście imprezy
+	// (ceny i wyłączone miejsca są per impreza), więc podajemy najbliższą.
+	EventID int64
+}
+
+// CatalogsPage - /admin/catalogs: wspólne sale, maile i konta.
+// Edycja otwiera na razie stare edytory; nowy wygląd tych ekranów to etap 6.
+func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := adminUser(w, r, db, cs)
+		if !ok {
+			return
+		}
+		lang := PanelLang(r)
+
+		vars := nCatalogsVars{
+			NPage:   NPage{Title: T(lang, "catalog.title"), OrgName: orgName(user)},
+			EventID: nearestEventID(db, user.ID),
+		}
+
+		rooms, err := db.RoomGetAllByUserID(user.ID)
+		if err != nil {
+			log.Printf("CatalogsPage: rooms: %v", err)
+		}
+		for _, room := range rooms {
+			seats := ""
+			if chairs, err := db.FurnitureGetAllByRoomIDOfType(room.ID, "chair"); err == nil {
+				seats = TN(lang, "count.seat", int64(len(chairs)))
+			}
+			vars.Rooms = append(vars.Rooms, nCatalogRoom{
+				ID:     room.ID,
+				Name:   room.Name,
+				Size:   T(lang, "catalog.size", room.Width, room.Height),
+				Seats:  seats,
+				Shared: room.Sharable.Valid && room.Sharable.Int64 != 0,
+			})
+		}
+
+		mails, err := db.NotificationGetAllForUser(user.ID)
+		if err != nil {
+			log.Printf("CatalogsPage: mails: %v", err)
+		}
+		for _, m := range mails {
+			related := m.RelatedTo
+			switch m.RelatedTo {
+			case "events":
+				related = T(lang, "catalog.for_events")
+			case "forms":
+				related = T(lang, "catalog.for_forms")
+			}
+			vars.Mails = append(vars.Mails, nCatalogMail{
+				ID:        m.ID,
+				Name:      m.Name,
+				RelatedTo: related,
+				Title:     m.Title.String,
+				Shared:    m.Sharable,
+			})
+		}
+
+		accounts, err := db.BankAccountGetAll(user.ID)
+		if err != nil {
+			log.Printf("CatalogsPage: bank accounts: %v", err)
+		}
+		for _, a := range accounts {
+			vars.Accounts = append(vars.Accounts, nCatalogAccount{
+				ID:       a.ID,
+				Name:     a.Name,
+				IBAN:     a.IBAN,
+				Currency: a.Currency,
+			})
+		}
+
+		nRender(w, lang, vars, "tmpl/n_catalogs.html")
+	}
+}
+
+// nearestEventID zwraca imprezę najbliższą dziś (przyszłą, a jak nie ma, to
+// ostatnią). Używane tam, gdzie stary ekran wymaga podania imprezy.
+func nearestEventID(db *DB, userID int64) int64 {
+	events, err := db.EventGetAllByUserID(userID)
+	if err != nil {
+		log.Printf("nearestEventID: %v", err)
+		return 0
+	}
+	now := time.Now().Unix()
+	var future, past Event
+	for _, e := range events {
+		if e.Date >= now && (future.ID == 0 || e.Date < future.Date) {
+			future = e
+		}
+		if e.Date < now && e.Date > past.Date {
+			past = e
+		}
+	}
+	if future.ID != 0 {
+		return future.ID
+	}
+	return past.ID
+}
+
 // --- strona imprezy --------------------------------------------------------
 
 type nRoomText struct {

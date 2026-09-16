@@ -85,7 +85,32 @@ reservations = "Reservations"
 reports = "Reports"
 settings = "Settings"
 
+[form]
+answers = "Answers"
+open_page = "Open the form"
+none_yet = "No answers yet."
+created = "Sent"
+fields_count = "%d fields"
+money_from = "amount from the \"%s\" field"
+
+[form.sec]
+basic = "Basics"
+fields = "Fields"
+page = "Page"
+mail_guest = "Mail after sending"
+mail_admin = "Mail for the board"
+bank = "Bank account"
+event = "Related event"
+answers = "Answers"
+
 [field]
+form_url = "Form address"
+info_panel = "Info panel"
+thankyou_text = "Text after sending"
+howto_form = "How to fill in"
+money_field = "Amount field"
+related_event = "Event"
+edit_fields = "Edit fields"
 name = "Name"
 language = "Guest page language"
 date = "Event date"

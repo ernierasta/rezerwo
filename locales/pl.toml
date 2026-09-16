@@ -87,7 +87,32 @@ reservations = "Rezerwacje"
 reports = "Raporty"
 settings = "Ustawienia"
 
+[form]
+answers = "Odpowiedzi"
+open_page = "Otwórz formularz"
+none_yet = "Nie ma jeszcze odpowiedzi."
+created = "Wysłano"
+fields_count = "%d pól"
+money_from = "kwota z pola „%s”"
+
+[form.sec]
+basic = "Podstawowe"
+fields = "Pola"
+page = "Strona"
+mail_guest = "Mail po wysłaniu"
+mail_admin = "Mail dla zarządu"
+bank = "Konto bankowe"
+event = "Powiązana impreza"
+answers = "Odpowiedzi"
+
 [field]
+form_url = "Adres formularza"
+info_panel = "Panel informacyjny"
+thankyou_text = "Tekst po wysłaniu"
+howto_form = "Jak wypełnić"
+money_field = "Pole z kwotą"
+related_event = "Impreza"
+edit_fields = "Edytuj pola"
 name = "Nazwa"
 language = "Język strony gościa"
 date = "Data imprezy"

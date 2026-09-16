@@ -1,0 +1,43 @@
+{{define "body"}}
+<div class="doc wide-doc" id="ans-page" data-form-id="{{.ID}}">
+  <div class="dh">
+    <h3>{{T "form.answers"}}</h3>
+    <div class="r">
+      <a class="btn quiet" href="/admin/forms/{{.ID}}">{{.Name}}</a>
+      <a class="btn quiet" href="/api/forms/{{.ID}}/answers.csv">CSV</a>
+    </div>
+  </div>
+
+  <div class="tools" style="margin-top:16px">
+    <input class="inp" id="ans-search" placeholder="{{T "common.search"}}" style="width:210px">
+    <div class="seg" id="ans-quick">
+      <button data-quick="all" class="on">{{T "common.all"}}</button>
+      <button data-quick="payed">{{T "status.payed"}}</button>
+      <button data-quick="unpaid">{{T "status.ordered"}}</button>
+      <button data-quick="nomail">{{T "res.filter_nomail"}}</button>
+    </div>
+    <select class="inp" id="ans-notif" style="max-width:260px"><option value="0">{{T "field.select_hint"}}</option></select>
+    <details class="cols"><summary class="link">{{T "field.rooms"}}</summary><div id="ans-cols"></div></details>
+  </div>
+
+  <div class="res-layout">
+    <div class="wide" id="ans-table"></div>
+    <aside class="detail-pane" id="ans-detail" hidden></aside>
+  </div>
+
+  <p class="muted" id="ans-sum" style="margin-top:10px"></p>
+
+  <div class="actionbar" id="ans-bar" hidden>
+    <span id="ans-bar-info"></span>
+    <button class="btn sm" id="ans-payed">{{T "res.mark_payed"}}</button>
+    <button class="btn quiet sm" id="ans-ordered">{{T "res.mark_ordered"}}</button>
+    <button class="btn quiet sm" id="ans-mail">{{T "res.send_mail"}}</button>
+    <button class="btn danger sm" id="ans-delete">{{T "common.delete"}}</button>
+    <button class="link" id="ans-none">{{T "common.cancel"}}</button>
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="/js/n_table.js"></script>
+<script src="/js/n_answers.js"></script>
+{{end}}

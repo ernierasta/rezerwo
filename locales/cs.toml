@@ -85,7 +85,32 @@ reservations = "Rezervace"
 reports = "Přehledy"
 settings = "Nastavení"
 
+[form]
+answers = "Odpovědi"
+open_page = "Otevřít formulář"
+none_yet = "Zatím nejsou žádné odpovědi."
+created = "Odesláno"
+fields_count = "%d polí"
+money_from = "částka z pole „%s“"
+
+[form.sec]
+basic = "Základní"
+fields = "Pole"
+page = "Stránka"
+mail_guest = "Mail po odeslání"
+mail_admin = "Mail pro výbor"
+bank = "Bankovní účet"
+event = "Související akce"
+answers = "Odpovědi"
+
 [field]
+form_url = "Adresa formuláře"
+info_panel = "Informační panel"
+thankyou_text = "Text po odeslání"
+howto_form = "Jak vyplnit"
+money_field = "Pole s částkou"
+related_event = "Akce"
+edit_fields = "Upravit pole"
 name = "Název"
 language = "Jazyk stránky pro hosty"
 date = "Datum akce"

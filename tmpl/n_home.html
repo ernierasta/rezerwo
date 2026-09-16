@@ -35,7 +35,7 @@
   </h4>
   <div class="rows">
     {{range .Forms}}
-    <a class="row" href="/admin/formraport?formtempl-id={{.ID}}">
+    <a class="row" href="/admin/forms/{{.ID}}">
       <span>{{T "home.open_form"}}</span>
       <span>{{.Name}}</span>
       <small class="num">{{.Info}}</small>

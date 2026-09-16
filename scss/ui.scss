@@ -374,6 +374,30 @@ textarea.inp { min-height: 80px; }
   .btn { margin-top: 10px; margin-right: 6px; }
 }
 
+// wybór kolumn (rozwijana lista z polami wyboru)
+.cols {
+  position: relative;
+
+  summary { cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+
+  > div {
+    position: absolute;
+    right: 0;
+    z-index: 30;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 14px;
+    max-height: 320px;
+    overflow-y: auto;
+    min-width: 220px;
+    box-shadow: 0 2px 10px rgba(44, 52, 64, .08);
+  }
+
+  .colopt { display: block; font-size: 14px; padding-block: 3px; white-space: nowrap; }
+}
+
 .tbl tr.sel td { background: var(--blue-soft); }
 .tbl tbody tr:hover td { background: var(--pane); }
 .tbl input[type="checkbox"] { margin: 0; }

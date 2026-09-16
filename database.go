@@ -1408,6 +1408,31 @@ func (db *DB) FormTemplateModByID(t *FormTemplate) error {
 	return err
 }
 
+// FormTemplateModByIDUser jest jak FormTemplateModByID, ale zapis jest ograniczony
+// do szablonów organizacji (WHERE users_id_fk). Używa go nowy panel.
+func (db *DB) FormTemplateModByIDUser(t *FormTemplate) error {
+	if t.UserID < 1 {
+		return fmt.Errorf("FormTemplateModByIDUser: no userID given, update aborted")
+	}
+	_, err := db.DB.NamedExec(`UPDATE formtemplates SET name=:name, url=:url, howto=:howto, banner=:banner, thankyou=:thankyou, infopanel=:infopanel, moneyfield=:moneyfield, bankaccounts_id_fk=:bankaccounts_id_fk, notifications_id_fk=:notifications_id_fk WHERE id=:id AND users_id_fk=:users_id_fk`, t)
+	return err
+}
+
+// FormTemplateSetAdminNotification i FormTemplateSetEvent zapisują pola, których
+// nie ma w FormTemplateModByID (stary edytor formularza ich nie zna, więc nie
+// dopisujemy ich tam - skasowałby ustawienie przy zwykłym zapisie).
+func (db *DB) FormTemplateSetAdminNotification(tmplID, userID int64, notifID sql.NullInt64) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET admin_notifications_id_fk=$1 WHERE id=$2 AND users_id_fk=$3`,
+		notifID, tmplID, userID)
+	return err
+}
+
+func (db *DB) FormTemplateSetEvent(tmplID, userID int64, eventID sql.NullInt64) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET events_id_fk=$1 WHERE id=$2 AND users_id_fk=$3`,
+		eventID, tmplID, userID)
+	return err
+}
+
 func (db *DB) FormTemplateModByURL(t *FormTemplate) error {
 	if t.UserID < 1 {
 		return fmt.Errorf("FormTemplateModByURL: no userID given! Update aborted. %+v", t)
@@ -1515,6 +1540,24 @@ func (db *DB) FormGet(FormID, FormTemplateID int64) (Form, error) {
 	}
 	err := db.DB.Get(&f, `SELECT * FROM forms WHERE id=$1 AND formtemplates_id_fk=$2`, FormID, FormTemplateID)
 	return f, err
+}
+
+// FormSetStatus ustawia status odpowiedzi formularza (np. "payed").
+// Stare FormChangeStatusAPI było zaślepką i nic nie zapisywało.
+func (db *DB) FormSetStatus(formID, templateID int64, status string) error {
+	ret, err := db.DB.Exec(`UPDATE forms SET status=$1 WHERE id=$2 AND formtemplates_id_fk=$3`,
+		status, formID, templateID)
+	if err != nil {
+		return err
+	}
+	n, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("no form %d in template %d", formID, templateID)
+	}
+	return nil
 }
 
 func (db *DB) FormModByEmail(f *Form) error {

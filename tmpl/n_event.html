@@ -147,7 +147,7 @@
     <!-- Formularze -->
     <div class="sec" data-sec="formularze">
       <div class="sec-h"><b>{{T "event.sec.forms"}}</b><span>{{.SumForms}}</span>
-        {{if .Forms}}<a class="act" href="/admin/formraport?formtempl-id={{(index .Forms 0).ID}}">{{T "common.open"}}</a>{{else}}<a class="act" href="/admin">{{T "common.set"}}</a>{{end}}
+        {{if .Forms}}<a class="act" href="/admin/forms/{{(index .Forms 0).ID}}">{{T "common.open"}}</a>{{else}}<a class="act" href="/admin">{{T "common.set"}}</a>{{end}}
       </div>
     </div>
 

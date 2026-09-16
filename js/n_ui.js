@@ -110,9 +110,120 @@
   // (strony, które same wołają loadLocale, dostaną go z pamięci przeglądarki)
   var ready = loadLocale(document.documentElement.lang || 'pl');
 
+  // Sekcje harmonijki z zapisem: edytory Quill tworzone przy rozwinięciu sekcji,
+  // znacznik niezapisanych zmian, zapis jednej sekcji jednym żądaniem.
+  // saveURL dostaje {section: "...", values: {...}} i oddaje {summary, missing}.
+  function sections(root, saveURL, opts) {
+    opts = opts || {};
+    var editors = {};
+    var dirty = {};
+
+    var toolbar = [
+      [{header: [1, 2, 3, false]}],
+      ['bold', 'italic', 'underline'],
+      ['link'],
+      [{list: 'ordered'}, {list: 'bullet'}],
+      [{indent: '-1'}, {indent: '+1'}],
+      [{color: ['#28a745', '#ffc107', '#fd7e14', '#dc3545', '#403734', '#000000']}],
+      [{align: []}],
+      ['clean']
+    ];
+
+    function initEditors(sec) {
+      if (typeof Quill === 'undefined') return;
+      sec.querySelectorAll('.ed[data-editor]').forEach(function (el) {
+        var name = el.dataset.editor;
+        if (editors[name]) return;
+        editors[name] = new Quill(el, {
+          modules: {toolbar: toolbar, clipboard: {matchVisual: false}},
+          theme: 'snow'
+        });
+        editors[name].on('text-change', function () { markDirty(sec); });
+      });
+    }
+
+    function markDirty(sec) {
+      sec.classList.add('dirty');
+      dirty[sec.dataset.sec] = true;
+    }
+
+    function values(sec) {
+      var out = {};
+      sec.querySelectorAll('[data-field]').forEach(function (el) {
+        out[el.dataset.field] = el.type === 'checkbox' ? el.checked : el.value;
+      });
+      sec.querySelectorAll('.ed[data-editor]').forEach(function (el) {
+        var q = editors[el.dataset.editor];
+        out[el.dataset.editor] = q ? q.root.innerHTML : el.innerHTML;
+      });
+      return out;
+    }
+
+    root.addEventListener('sec:open', function (e) { initEditors(e.target); });
+    root.addEventListener('input', function (e) {
+      var sec = e.target.closest('.sec');
+      if (sec) markDirty(sec);
+    });
+    root.addEventListener('change', function (e) {
+      var sec = e.target.closest('.sec');
+      if (sec) markDirty(sec);
+    });
+
+    root.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-save]');
+      if (btn) {
+        e.preventDefault();
+        var sec = btn.closest('.sec');
+        var msg = sec.querySelector('.sec-f .msg');
+        btn.disabled = true;
+        if (msg) { msg.textContent = t('common.loading'); msg.classList.remove('bad'); }
+
+        postJSON(saveURL, {section: btn.dataset.save, values: values(sec)})
+          .then(function (resp) {
+            sec.classList.remove('dirty');
+            delete dirty[sec.dataset.sec];
+            if (msg) msg.textContent = t('common.saved');
+            toast(t('common.saved'));
+            var span = sec.querySelector('.sec-h > span');
+            if (span && resp.summary) {
+              span.textContent = resp.summary;
+              span.classList.toggle('miss', !!resp.missing);
+            }
+            if (resp.title) {
+              var h = document.querySelector('.dh h3');
+              if (h) h.textContent = resp.title;
+            }
+            if (resp.subtitle) {
+              var s = document.querySelector('.dsub');
+              if (s) s.textContent = resp.subtitle;
+            }
+            if (opts.onSaved) opts.onSaved(btn.dataset.save, resp);
+          })
+          .catch(function (err) {
+            if (msg) { msg.textContent = t('common.save_error') + ': ' + err.message; msg.classList.add('bad'); }
+          })
+          .finally(function () { btn.disabled = false; });
+        return;
+      }
+      if (e.target.closest('[data-cancel]')) {
+        e.preventDefault();
+        location.reload();
+      }
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+      if (Object.keys(dirty).length === 0) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
+
+    return {markDirty: markDirty, editors: editors};
+  }
+
   global.RZ = {
     t: t,
     ready: ready,
+    sections: sections,
     loadLocale: loadLocale,
     toast: toast,
     postJSON: postJSON,

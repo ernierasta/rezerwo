@@ -509,6 +509,36 @@ textarea.inp {
   margin-right: 6px;
 }
 
+.cols {
+  position: relative;
+}
+.cols summary {
+  cursor: pointer;
+  list-style: none;
+}
+.cols summary::-webkit-details-marker {
+  display: none;
+}
+.cols > div {
+  position: absolute;
+  right: 0;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  max-height: 320px;
+  overflow-y: auto;
+  min-width: 220px;
+  box-shadow: 0 2px 10px rgba(44, 52, 64, 0.08);
+}
+.cols .colopt {
+  display: block;
+  font-size: 14px;
+  padding-block: 3px;
+  white-space: nowrap;
+}
+
 .tbl tr.sel td {
   background: var(--blue-soft);
 }

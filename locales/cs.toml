@@ -110,6 +110,13 @@ awaiting = "čeká na platbu"
 mark_payed = "Označit jako zaplacené"
 mark_ordered = "Označit jako objednané"
 none_yet = "Zatím nejsou žádné rezervace."
+view_orders = "Objednávky"
+send_mail = "Poslat mail"
+filter_unpaid7 = "Bez platby přes 7 dní"
+filter_nomail = "Bez mailu"
+delete_confirm = "Smazat označené rezervace (%d)? Nelze vrátit zpět."
+mail_confirm = "Poslat mail na %d adres? Každá adresa dostane jeden mail."
+mail_no_template = "Nejdřív vyberte šablonu mailu."
 
 [count.reservation]
 one = "%d rezervace"

@@ -1,0 +1,47 @@
+{{define "body"}}
+<div class="doc wide-doc" id="res-page" data-event-id="{{.ID}}">
+  <div class="dh">
+    <h3>{{T "event.sec.reservations"}}</h3>
+    <div class="r">
+      <a class="btn quiet" href="/admin/events/{{.ID}}">{{.EventName}}</a>
+      <a class="btn quiet" href="/api/events/{{.ID}}/reservations.csv">CSV</a>
+    </div>
+  </div>
+
+  <div class="tools" style="margin-top:16px">
+    <input class="inp" id="res-search" placeholder="{{T "common.search"}}" style="width:210px">
+    <div class="seg" id="res-view">
+      <button data-view="orders" class="on">{{T "res.view_orders"}}</button>
+      <button data-view="seats">{{T "res.seats"}}</button>
+    </div>
+    <div class="seg" id="res-quick">
+      <button data-quick="all" class="on">{{T "common.all"}}</button>
+      <button data-quick="ordered">{{T "status.ordered"}}</button>
+      <button data-quick="payed">{{T "status.payed"}}</button>
+      <button data-quick="unpaid7">{{T "res.filter_unpaid7"}}</button>
+      <button data-quick="nomail">{{T "res.filter_nomail"}}</button>
+    </div>
+    <select class="inp" id="res-notif" style="max-width:260px"><option value="0">{{T "field.select_hint"}}</option></select>
+  </div>
+
+  <div class="res-layout">
+    <div class="wide" id="res-table"></div>
+    <aside class="detail-pane" id="res-detail" hidden></aside>
+  </div>
+
+  <p class="muted" id="res-sum" style="margin-top:10px"></p>
+
+  <div class="actionbar" id="res-bar" hidden>
+    <span id="res-bar-info"></span>
+    <button class="btn sm" id="act-payed">{{T "res.mark_payed"}}</button>
+    <button class="btn quiet sm" id="act-ordered">{{T "res.mark_ordered"}}</button>
+    <button class="btn quiet sm" id="act-mail">{{T "res.send_mail"}}</button>
+    <button class="btn danger sm" id="act-delete">{{T "common.delete"}}</button>
+    <button class="link" id="act-none">{{T "common.cancel"}}</button>
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="/js/n_table.js"></script>
+<script src="/js/n_reservations.js"></script>
+{{end}}

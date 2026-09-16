@@ -1220,6 +1220,61 @@ func (db *DB) ReservationModStatus(status string, payedDate int64, eventID, furn
 }
 
 // TODO: does affected check make any sense? there is error if no row affected IMO
+// ReservationSetStatus ustawia status jednej rezerwacji po jej ID.
+// Data zapłaty ustawiana jest na serwerze; cofnięcie statusu czyści ją (NULL),
+// zamiast wpisywać 1970-01-01 jak stary panel.
+func (db *DB) ReservationSetStatus(id, eventID int64, status string, payedDate sql.NullInt64) error {
+	if err := NoMinus("reservationID", id); err != nil {
+		return err
+	}
+	ret, err := db.DB.Exec(`UPDATE reservations SET status=$1, payed_date=$2 WHERE id=$3 AND events_id_fk=$4`,
+		status, payedDate, id, eventID)
+	if err != nil {
+		return err
+	}
+	n, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("no reservation %d in event %d", id, eventID)
+	}
+	return nil
+}
+
+// ReservationGetByIDForNote zwraca rezerwację po ID (potrzebne m.in. po to,
+// żeby przy kasowaniu wiedzieć, czy zostały jeszcze rezerwacje z tą notatką).
+func (db *DB) ReservationGetByIDForNote(id int64) (Reservation, error) {
+	r := Reservation{}
+	err := db.DB.Get(&r, `SELECT * FROM reservations WHERE id=$1`, id)
+	return r, err
+}
+
+// ReservationEventID zwraca ID imprezy, do której należy rezerwacja (kontrola dostępu).
+func (db *DB) ReservationEventID(id int64) (int64, error) {
+	var eventID int64
+	err := db.DB.Get(&eventID, `SELECT events_id_fk FROM reservations WHERE id=$1`, id)
+	return eventID, err
+}
+
+// ReservationSetNotes zapisuje uwagi do rezerwacji (tworzy wpis w notes, jeśli trzeba).
+func (db *DB) ReservationSetNotes(id int64, text string) error {
+	r := Reservation{}
+	if err := db.DB.Get(&r, `SELECT * FROM reservations WHERE id=$1`, id); err != nil {
+		return err
+	}
+	if r.NoteID.Valid {
+		_, err := db.DB.Exec(`UPDATE notes SET text=$1 WHERE id=$2`, text, r.NoteID.Int64)
+		return err
+	}
+	noteID, err := db.NoteAdd(text)
+	if err != nil {
+		return err
+	}
+	_, err = db.DB.Exec(`UPDATE reservations SET notes_id_fk=$1 WHERE id=$2`, noteID, id)
+	return err
+}
+
 func (db *DB) ReservationDel(id int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM reservations WHERE id=$1`, id)
 	if err != nil {

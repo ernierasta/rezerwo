@@ -110,6 +110,13 @@ awaiting = "awaiting payment"
 mark_payed = "Mark as paid"
 mark_ordered = "Mark as ordered"
 none_yet = "No reservations yet."
+view_orders = "Orders"
+send_mail = "Send mail"
+filter_unpaid7 = "Unpaid over 7 days"
+filter_nomail = "No mail sent"
+delete_confirm = "Delete the selected reservations (%d)? This cannot be undone."
+mail_confirm = "Send mail to %d addresses? Each address gets one mail."
+mail_no_template = "Select a mail template first."
 
 [count.reservation]
 one = "%d reservation"

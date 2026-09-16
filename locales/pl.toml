@@ -112,6 +112,13 @@ awaiting = "czeka na wpłatę"
 mark_payed = "Oznacz jako zapłacone"
 mark_ordered = "Oznacz jako zamówione"
 none_yet = "Nie ma jeszcze rezerwacji."
+view_orders = "Zamówienia"
+send_mail = "Wyślij mail"
+filter_unpaid7 = "Bez wpłaty ponad 7 dni"
+filter_nomail = "Bez maila"
+delete_confirm = "Skasować zaznaczone rezerwacje (%d)? Tego nie da się cofnąć."
+mail_confirm = "Wysłać mail do %d adresów? Każdy adres dostanie jeden mail."
+mail_no_template = "Najpierw wybierz szablon maila."
 
 [count.reservation]
 one = "%d rezerwacja"

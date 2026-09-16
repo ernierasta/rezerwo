@@ -71,6 +71,13 @@ func main() {
 	rtr.HandleFunc("/admin/events/{id:[0-9]+}", EventPage(db, cookieStore))
 	rtr.HandleFunc("/api/events", EventCreateAPI(db, cookieStore))
 	rtr.HandleFunc("/api/events/{id:[0-9]+}/section", EventSectionSave(db, loc, dateFormat, cookieStore))
+	rtr.HandleFunc("/admin/events/{id:[0-9]+}/reservations", ReservationsPage(db, cookieStore))
+	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations", ReservationsListAPI(db, cookieStore)).Methods("GET")
+	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations", ReservationsDeleteAPI(db, cookieStore)).Methods("DELETE")
+	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations.csv", ReservationsCSVAPI(db, cookieStore))
+	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations/status", ReservationsStatusAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations/notes", ReservationNotesAPI(db, cookieStore)).Methods("PATCH")
+	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations/mail", ReservationsMailAPI(db, *mailConf, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/locales/{file}", LocalesJSONHandler())
 
 	rtr.HandleFunc("/res/{user}", ReservationHTML(db, lang))

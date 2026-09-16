@@ -161,7 +161,7 @@
           <span><b class="num">{{.SeatsOrdered}}</b> {{T "status.ordered"}}</span>
           <span><b class="num">{{.SeatsFree}}</b> {{T "status.free"}}</span>
         </div>
-        <div class="tools" style="margin-top:14px"><a class="r" href="/admin/reservations?event-id={{.ID}}">{{T "field.full_report"}}</a></div>
+        <div class="tools" style="margin-top:14px"><a class="r" href="/admin/events/{{.ID}}/reservations">{{T "field.full_report"}}</a></div>
         <div class="wide">
           <table class="tbl">
             <tr><th>{{T "res.person"}}</th><th>{{T "res.seats"}}</th><th>{{T "res.status"}}</th><th class="r">{{T "res.amount"}}</th></tr>

@@ -88,6 +88,22 @@ reservations = "Rezerwacje"
 reports = "Raporty"
 settings = "Ustawienia"
 
+[guest]
+free_seats = "wolne miejsca"
+your_seats = "Twoje miejsca"
+nothing_selected = "Wybierz miejsca na planie sali."
+total = "Razem"
+order = "Zamawiam"
+seat = "stół %d, miejsce %d"
+how_to_order = "Jak zamówić"
+zoom_in = "Powiększ"
+zoom_out = "Pomniejsz"
+zoom_reset = "Dopasuj"
+clear = "Odznacz wszystkie"
+taken = "zajęte"
+unavailable = "niedostępne"
+no_seats_title = "Nie wybrano miejsc"
+
 [catalog]
 title = "Katalogi"
 rooms = "Sale"

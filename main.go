@@ -89,6 +89,9 @@ func main() {
 	rtr.HandleFunc("/api/forms/{id:[0-9]+}/answers/mail", AnswersMailAPI(db, *mailConf, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/locales/{file}", LocalesJSONHandler())
 
+	// nowa strona rezerwacji dla gościa, na razie obok starej (etap 4)
+	rtr.HandleFunc("/n/res/{user}", GuestReservationPage(db, lang))
+
 	rtr.HandleFunc("/res/{user}", ReservationHTML(db, lang))
 	rtr.HandleFunc("/form/{userurl}/{formurl}", FormRenderer(db, lang))
 	rtr.HandleFunc("/form/{userurl}/{formurl}/done", FormThankYou(db, lang))

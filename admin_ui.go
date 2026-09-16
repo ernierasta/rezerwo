@@ -559,8 +559,9 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		ID:       event.ID,
 		Name:     event.Name,
 		Language: language,
-		// strona gościa sama wybiera aktualną imprezę organizacji (EventGetCurrent)
-		GuestURL:       "/res/" + user.URL,
+		// podgląd nowej strony gościa dla TEJ imprezy (bez ?event-id strona
+		// pokazuje imprezę z otwartą sprzedażą)
+		GuestURL:       fmt.Sprintf("/n/res/%s?event-id=%d", user.URL, event.ID),
 		DateVal:        dateInputValue(event.Date),
 		FromVal:        dateInputValue(event.FromDate),
 		ToVal:          dateInputValue(event.ToDate),

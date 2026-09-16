@@ -86,6 +86,22 @@ reservations = "Reservations"
 reports = "Reports"
 settings = "Settings"
 
+[guest]
+free_seats = "free seats"
+your_seats = "Your seats"
+nothing_selected = "Pick seats in the room plan."
+total = "Total"
+order = "Order"
+seat = "table %d, seat %d"
+how_to_order = "How to order"
+zoom_in = "Zoom in"
+zoom_out = "Zoom out"
+zoom_reset = "Fit"
+clear = "Unselect all"
+taken = "taken"
+unavailable = "unavailable"
+no_seats_title = "No seats selected"
+
 [catalog]
 title = "Catalogues"
 rooms = "Rooms"

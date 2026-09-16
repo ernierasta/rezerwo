@@ -1,0 +1,15 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}}</title>
+  <link href="/css/ui.css" rel="stylesheet" type="text/css">
+  {{block "head" .}}{{end}}
+</head>
+<body class="n">
+  {{template "body" .}}
+  <script src="/js/n_ui.js"></script>
+  {{block "scripts" .}}{{end}}
+</body>
+</html>{{end}}

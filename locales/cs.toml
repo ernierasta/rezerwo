@@ -86,6 +86,22 @@ reservations = "Rezervace"
 reports = "Přehledy"
 settings = "Nastavení"
 
+[guest]
+free_seats = "volná místa"
+your_seats = "Vaše místa"
+nothing_selected = "Vyberte místa v plánu sálu."
+total = "Celkem"
+order = "Objednávám"
+seat = "stůl %d, místo %d"
+how_to_order = "Jak objednat"
+zoom_in = "Zvětšit"
+zoom_out = "Zmenšit"
+zoom_reset = "Přizpůsobit"
+clear = "Zrušit výběr"
+taken = "obsazené"
+unavailable = "nedostupné"
+no_seats_title = "Nejsou vybraná místa"
+
 [catalog]
 title = "Katalogy"
 rooms = "Sály"

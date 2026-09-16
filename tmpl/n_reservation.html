@@ -1,0 +1,93 @@
+{{define "body"}}
+<div class="guest" id="guest"
+     data-event-id="{{.EventID}}"
+     data-currency="{{.DefaultCurrency}}"
+     data-price="{{.DefaultPrice}}"
+     data-hidecosts="{{.HideCosts}}">
+
+  {{if .Banner}}<div class="banner">{{.Banner}}</div>{{end}}
+  <h1>{{.EventName}}</h1>
+  {{if .When}}<p class="when">{{.When}}</p>{{end}}
+  {{if .Desc}}<div class="desc">{{.Desc}}</div>{{end}}
+
+  {{if gt (len .Rooms) 1}}
+  <div class="roomtabs" id="roomtabs">
+    {{range $i, $r := .Rooms}}
+    <button data-room="{{$r.RoomID}}" {{if eq $i 0}}class="on"{{end}}>{{$r.Name}} <small class="num">{{$r.SeatsFree}}</small></button>
+    {{end}}
+  </div>
+  {{end}}
+
+  <div class="plan-wrap">
+    <div>
+      {{range $i, $r := .Rooms}}
+      <div class="plan room" data-room="{{$r.RoomID}}" {{if ne $i 0}}hidden{{end}}>
+        {{if $r.Banner}}<div class="banner">{{$r.Banner}}</div>{{end}}
+        {{if $r.Desc}}<div class="desc">{{$r.Desc}}</div>{{end}}
+        <div class="zoom">
+          <button class="btn quiet sm" data-zoom="out" aria-label="{{T "guest.zoom_out"}}">−</button>
+          <button class="btn quiet sm" data-zoom="in" aria-label="{{T "guest.zoom_in"}}">+</button>
+          <button class="btn quiet sm" data-zoom="reset">{{T "guest.zoom_reset"}}</button>
+          <span class="free num">{{$r.SeatsFree}}/{{$r.SeatsTotal}} {{T "guest.free_seats"}}</span>
+        </div>
+        <svg viewBox="0 0 {{$r.Width}} {{$r.Height}}" role="img" aria-label="{{$r.Name}}">
+          {{range $r.Objects}}
+          {{if eq .Shape "ellipse"}}
+          <ellipse class="f-object" cx="{{.CX}}" cy="{{.CY}}" rx="{{.RX}}" ry="{{.RY}}" fill="{{.Color}}"></ellipse>
+          {{else}}
+          <rect class="f-object" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="4" fill="{{.Color}}"></rect>
+          {{end}}
+          {{if .Label}}<text class="f-label" x="{{.CX}}" y="{{.TextY}}" text-anchor="middle">{{.Label}}</text>{{end}}
+          {{end}}
+
+          {{range $r.Labels}}
+          <text class="f-label" x="{{.X}}" y="{{.TextY}}" fill="{{.Color}}">{{.Label}}</text>
+          {{end}}
+
+          {{range $r.Tables}}
+          {{if eq .Shape "ellipse"}}
+          <ellipse class="f-table" cx="{{.CX}}" cy="{{.CY}}" rx="{{.RX}}" ry="{{.RY}}"></ellipse>
+          {{else}}
+          <rect class="f-table" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="6"></rect>
+          {{end}}
+          <text class="f-num" x="{{.CX}}" y="{{.TextY}}" text-anchor="middle">{{.Number}}</text>
+          {{end}}
+
+          {{range $r.Chairs}}
+          <g class="chair" data-number="{{.Number}}" data-room="{{$r.RoomID}}" data-table="{{.Table}}"
+             data-price="{{.Price}}" data-currency="{{.Currency}}" data-status="{{.Status}}">
+            <rect class="chair-{{.Status}}" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="5">
+              <title>{{.Title}}</title>
+            </rect>
+            <text class="f-num" x="{{.CX}}" y="{{.TextY}}" text-anchor="middle">{{.Number}}</text>
+          </g>
+          {{end}}
+        </svg>
+      </div>
+      {{end}}
+
+      {{if .HowTo}}
+      <details class="howto" open>
+        <summary>{{T "guest.how_to_order"}}</summary>
+        <div class="inner">{{.HowTo}}</div>
+      </details>
+      {{end}}
+    </div>
+
+    <aside class="basket" id="basket">
+      <h4>{{T "guest.your_seats"}}</h4>
+      <div id="basket-list"><p class="empty">{{T "guest.nothing_selected"}}</p></div>
+      <button class="btn" id="order">{{T "guest.order"}}</button>
+      <button class="link" id="clear" style="margin-top:10px">{{T "guest.clear"}}</button>
+    </aside>
+  </div>
+
+  <div class="bar-mobile" id="barmobile">
+    <span class="sum" id="bar-sum">{{T "guest.nothing_selected"}}</span>
+    <button class="btn" id="order-mobile">{{T "guest.order"}}</button>
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="/js/n_room.js"></script>
+{{end}}

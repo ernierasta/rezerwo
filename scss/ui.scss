@@ -456,6 +456,131 @@ textarea.inp { min-height: 80px; }
   .ql-container.ql-snow { border-radius: 0 0 8px 8px; min-height: 120px; }
 }
 
+// --- strona gościa: plan sali w SVG ---------------------------------------
+
+.guest {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 20px 16px 120px;
+
+  h1 { font-size: 30px; letter-spacing: -0.01em; }
+  .when { color: var(--muted); margin-top: 4px; }
+  .banner img, > img { width: 100%; height: auto; border-radius: 12px; }
+  .desc { margin-top: 14px; }
+}
+
+.roomtabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 18px 0 10px;
+
+  button {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 14.5px;
+
+    &.on { background: var(--blue); border-color: var(--blue); }
+    small { color: var(--muted); margin-left: 6px; }
+  }
+}
+
+.plan-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+.plan {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  overflow: hidden;
+
+  svg { width: 100%; height: auto; display: block; touch-action: pan-y pinch-zoom; }
+
+  .zoom {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+
+    .free { margin-left: auto; color: var(--muted); font-size: 14px; }
+  }
+}
+
+// kolory planu: nie tylko kolor, także obrys i ikona przy wybranym miejscu
+.f-table { fill: #DCE3EA; }
+.f-object { opacity: .85; }
+.f-label { font-size: 13px; }
+.f-num { font-size: 11px; fill: var(--muted); pointer-events: none; }
+
+.chair-free { fill: var(--surface); stroke: #A9C0D6; stroke-width: 1.5; cursor: pointer; }
+.chair-free:hover { fill: var(--blue-soft); }
+.chair-taken { fill: var(--taken); stroke: var(--taken); }
+.chair-disabled { fill: #CBD2D9; stroke: #B6BEC7; }
+.chair-selected { fill: var(--blue-deep); stroke: var(--blue-deep); cursor: pointer; }
+.chair-selected + .f-num, .chair-selected ~ .f-num { fill: #fff; }
+
+.basket {
+  background: var(--pane);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  position: sticky;
+  top: 16px;
+
+  h4 { font-size: 16px; margin-bottom: 8px; }
+
+  .seat {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-block: 7px;
+    border-bottom: 1px solid var(--line);
+    font-size: 15px;
+  }
+
+  .seat.sum { font-weight: 600; border-bottom: 0; }
+  .btn { width: 100%; margin-top: 14px; padding: 10px; text-align: center; }
+  .empty { color: var(--muted); font-size: 14.5px; }
+}
+
+// na telefonie zamówienie jest paskiem przyklejonym do dołu
+.bar-mobile {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  gap: 12px;
+  align-items: center;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 10px 16px;
+  z-index: 30;
+
+  .sum { font-weight: 500; }
+  .btn { margin-left: auto; }
+}
+
+.howto {
+  margin-top: 20px;
+
+  summary { cursor: pointer; color: var(--blue-deep); }
+  .inner { margin-top: 10px; }
+}
+
+@media (max-width: 860px) {
+  .plan-wrap { grid-template-columns: minmax(0, 1fr); }
+  .basket { display: none; }
+  .bar-mobile { display: flex; }
+}
+
 // --- okno dialogowe --------------------------------------------------------
 
 .dlg-back {

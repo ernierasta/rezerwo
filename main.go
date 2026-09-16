@@ -1052,8 +1052,10 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			BTNOk:         "OK",
 		}
 
-		t := template.Must(template.ParseFiles("tmpl/order-status.html", "tmpl/a_base.html"))
-		err := t.ExecuteTemplate(w, "base", p)
+		// nowy wygląd strony statusu zamówienia (redesign, etap 4);
+		// szablon jest samodzielny, bez starego a_base.html i Bootstrapa
+		t := template.Must(template.ParseFiles("tmpl/n_order_status.html"))
+		err := t.Execute(w, p)
 		if err != nil {
 			log.Print("Reservation template executing error: ", err)
 		}

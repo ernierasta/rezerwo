@@ -796,6 +796,18 @@ textarea.inp {
   margin-left: auto;
 }
 
+.order-status {
+  max-width: 680px;
+}
+.order-status img {
+  max-width: 100%;
+  height: auto;
+}
+.order-status .desc {
+  margin-top: 12px;
+  line-height: 1.7;
+}
+
 .order-step {
   max-width: 640px;
 }

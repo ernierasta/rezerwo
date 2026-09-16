@@ -568,6 +568,14 @@ textarea.inp { min-height: 80px; }
   .btn { margin-left: auto; }
 }
 
+// strona po złożeniu zamówienia (kod QR, bilety, podziękowanie)
+.order-status {
+  max-width: 680px;
+
+  img { max-width: 100%; height: auto; }
+  .desc { margin-top: 12px; line-height: 1.7; }
+}
+
 // krok zamówienia (dane osoby)
 .order-step {
   max-width: 640px;

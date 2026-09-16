@@ -4,17 +4,31 @@
     <button class="btn quiet sm" onclick="location.href='/admin'">{{T "home.copy_event"}}</button>
     <button class="btn sm" id="new-event">{{T "home.new_event"}}</button>
   </h4>
+
+  {{if .Selling}}
+  <h5 class="group">{{T "home.selling"}}</h5>
   <div class="rows">
-    {{range .Events}}
-    <a class="row" href="/admin/events/{{.ID}}">
-      <span class="num">{{.DateS}}</span>
-      <span>{{.Name}}</span>
-      <small class="num">{{.Info}}</small>
-    </a>
-    {{else}}
-    <div class="empty">{{T "home.no_events"}}</div>
-    {{end}}
+    {{range .Selling}}{{template "eventrow" .}}{{end}}
   </div>
+  {{end}}
+
+  {{if .Soon}}
+  <h5 class="group">{{T "home.soon"}}</h5>
+  <div class="rows">
+    {{range .Soon}}{{template "eventrow" .}}{{end}}
+  </div>
+  {{end}}
+
+  {{if .Finished}}
+  <h5 class="group">{{T "home.finished"}}</h5>
+  <div class="rows">
+    {{range .Finished}}{{template "eventrow" .}}{{end}}
+  </div>
+  {{end}}
+
+  {{if and (not .Selling) (not .Soon) (not .Finished)}}
+  <div class="rows"><div class="empty">{{T "home.no_events"}}</div></div>
+  {{end}}
 
   <h4>{{T "home.forms"}}
     <button class="btn sm" onclick="location.href='/admin'">{{T "home.new_form"}}</button>
@@ -32,13 +46,28 @@
   </div>
 </div>
 {{end}}
+
+{{define "eventrow"}}
+<a class="row event" href="/admin/events/{{.ID}}">
+  <span class="num">{{.DateS}}</span>
+  <span class="ename">{{.Name}}
+    {{if .Missing}}<small class="miss">{{.Missing}}</small>{{end}}
+  </span>
+  <small class="num">{{.Info}}</small>
+  {{if .HasSeats}}
+  <div class="prog" aria-hidden="true"><i class="p1" style="width:{{.PctPayed}}%"></i><i class="p2" style="width:{{.PctOrdered}}%"></i></div>
+  <small class="money num">{{.Money}}</small>
+  {{end}}
+</a>
+{{end}}
+
 {{define "scripts"}}
 <script>
 document.getElementById('new-event').addEventListener('click', async function () {
-  const name = prompt({{T "field.name"}});
+  const name = prompt("{{T "field.name"}}");
   if (!name) return;
   const r = await fetch('/api/events', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: name})});
-  if (!r.ok) { alert({{T "common.save_error"}}); return; }
+  if (!r.ok) { alert("{{T "common.save_error"}}"); return; }
   const d = await r.json();
   location.href = '/admin/events/' + d.id;
 });

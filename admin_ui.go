@@ -110,12 +110,21 @@ type nHomeRow struct {
 	// DateS - data imprezy w języku panelu, Info - prawa kolumna wiersza.
 	DateS string
 	Info  string
+	// Missing - czego brakuje, żeby impreza działała ("brak ceny, brak konta").
+	Missing string
+	// HasSeats - czy impreza ma sale z krzesłami (wtedy pokazujemy pasek i kwoty).
+	HasSeats   bool
+	PctPayed   int64
+	PctOrdered int64
+	Money      string
 }
 
 type nHomeVars struct {
 	NPage
-	Events []nHomeRow
-	Forms  []nHomeRow
+	Selling  []nHomeRow
+	Soon     []nHomeRow
+	Finished []nHomeRow
+	Forms    []nHomeRow
 }
 
 // AdminStartPage - lista imprez i formularzy (nowy panel).
@@ -149,20 +158,48 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			NPage: NPage{Title: T(lang, "nav.events"), OrgName: orgName(user)},
 		}
 
+		now := time.Now().Unix()
+		const day = int64(24 * 3600)
+
 		for _, e := range events {
-			seats, payed, ordered := eventSeatStats(db, user.ID, e.ID)
-			info := ""
-			if seats > 0 {
-				info = T(lang, "home.seats_of", payed+ordered, seats)
-			} else if e.FromDate > 0 {
-				info = T(lang, "home.sale_from", FormatDateShort(lang, e.FromDate))
+			st := eventStats(db, user.ID, e.ID)
+
+			row := nHomeRow{
+				ID:       e.ID,
+				Name:     e.Name,
+				DateS:    FormatDate(lang, e.Date),
+				Missing:  strings.Join(eventMissing(db, user, e, st, lang), ", "),
+				HasSeats: st.Seats > 0,
 			}
-			vars.Events = append(vars.Events, nHomeRow{
-				ID:    e.ID,
-				Name:  e.Name,
-				DateS: FormatDate(lang, e.Date),
-				Info:  info,
-			})
+
+			switch {
+			case st.Seats > 0:
+				row.Info = T(lang, "home.seats_of", st.Payed+st.Ordered, st.Seats)
+				row.PctPayed = st.Payed * 100 / st.Seats
+				row.PctOrdered = st.Ordered * 100 / st.Seats
+				money := T(lang, "home.paid", FormatMoney(st.AmountPayed, e.DefaultCurrency))
+				if st.AmountWaiting > 0 {
+					money += " · " + T(lang, "home.waiting", FormatMoney(st.AmountWaiting, e.DefaultCurrency))
+				}
+				row.Money = money
+			case e.FromDate > 0:
+				row.Info = T(lang, "home.sale_from", FormatDateShort(lang, e.FromDate))
+			}
+
+			// przed imprezą pokazujemy, ile dni zostało
+			if e.Date > now {
+				row.Info = T(lang, "home.days_left", TN(lang, "count.day", (e.Date-now)/day)) +
+					strings.TrimPrefix(", "+row.Info, ", ")
+			}
+
+			switch {
+			case e.Date > 0 && e.Date < now:
+				vars.Finished = append(vars.Finished, row)
+			case e.FromDate > now: // sprzedaż jeszcze się nie zaczęła
+				vars.Soon = append(vars.Soon, row)
+			default:
+				vars.Selling = append(vars.Selling, row)
+			}
 		}
 
 		templs, err := db.FormTemplateGetAll(user.ID)
@@ -192,34 +229,69 @@ func orgName(u User) string {
 	return u.Email
 }
 
-// eventSeatStats zwraca liczbę miejsc w salach imprezy oraz miejsca zapłacone i zamówione.
-func eventSeatStats(db *DB, userID, eventID int64) (seats, payed, ordered int64) {
+// nEventStats to liczby imprezy: miejsca w salach, sprzedane miejsca i kwoty.
+type nEventStats struct {
+	Seats         int64
+	Payed         int64
+	Ordered       int64
+	AmountPayed   int64
+	AmountWaiting int64
+	Rooms         int
+}
+
+// eventStats liczy zajętość i kwoty imprezy (jedno miejsce w kodzie na te sumy).
+func eventStats(db *DB, userID, eventID int64) nEventStats {
+	var st nEventStats
+
 	rooms, err := db.EventGetRooms(eventID)
 	if err != nil {
-		log.Printf("eventSeatStats: rooms: %v", err)
+		log.Printf("eventStats: rooms: %v", err)
 	}
+	st.Rooms = len(rooms)
 	for _, room := range rooms {
 		chairs, err := db.FurnitureGetAllByRoomIDOfType(room.ID, "chair")
 		if err != nil {
-			log.Printf("eventSeatStats: chairs: %v", err)
+			log.Printf("eventStats: chairs: %v", err)
 			continue
 		}
-		seats += int64(len(chairs))
+		st.Seats += int64(len(chairs))
 	}
+
 	rr, err := db.ReservationFullGetAll(userID, eventID)
 	if err != nil {
-		log.Printf("eventSeatStats: reservations: %v", err)
-		return
+		log.Printf("eventStats: reservations: %v", err)
+		return st
 	}
 	for _, r := range rr {
 		switch r.Status {
 		case "payed":
-			payed++
+			st.Payed++
+			st.AmountPayed += r.Price.Int64
 		case "ordered":
-			ordered++
+			st.Ordered++
+			st.AmountWaiting += r.Price.Int64
 		}
 	}
-	return
+	return st
+}
+
+// eventMissing to cicha lista braków: bez ostrzegawczych kolorów, po prostu
+// widać w podsumowaniu, czego brakuje (rozdz. 4.1 HARMONIJKA.md).
+func eventMissing(db *DB, user User, e Event, st nEventStats, lang string) []string {
+	var missing []string
+	if st.Rooms == 0 {
+		missing = append(missing, T(lang, "home.no_room"))
+	}
+	if e.DefaultPrice == 0 {
+		missing = append(missing, T(lang, "home.no_price"))
+	}
+	if !e.ThankYouNotificationsID.Valid || e.ThankYouNotificationsID.Int64 == 0 {
+		missing = append(missing, T(lang, "home.no_mail"))
+	}
+	if e.DefaultPrice > 0 && (!e.BankAccountsID.Valid || e.BankAccountsID.Int64 == 0) {
+		missing = append(missing, T(lang, "home.no_bank"))
+	}
+	return missing
 }
 
 // --- strona imprezy --------------------------------------------------------
@@ -590,7 +662,7 @@ func fillReservationSummary(db *DB, user User, event Event, lang string, v *nEve
 		}
 	}
 
-	seats, _, _ := eventSeatStats(db, user.ID, event.ID)
+	seats := eventStats(db, user.ID, event.ID).Seats
 	v.SeatsFree = seats - v.SeatsPayed - v.SeatsOrdered
 	if v.SeatsFree < 0 {
 		v.SeatsFree = 0

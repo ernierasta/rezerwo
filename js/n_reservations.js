@@ -165,7 +165,7 @@
       seats += r.ids ? r.ids.length : 1;
     });
     el.bar.hidden = false;
-    el.barInfo.textContent = rows.length + ' · ' + money(price) + ' · ' + RZ.t('count.seat.many', seats).replace('%d', seats);
+    el.barInfo.textContent = rows.length + ' · ' + money(price) + ' · ' + RZ.t('count.seat.many', seats);
   }
 
   function updateSum(rows) {

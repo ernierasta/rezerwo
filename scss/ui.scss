@@ -283,6 +283,24 @@ textarea.inp { min-height: 80px; }
   }
 
   .empty { color: var(--muted); padding: 13px 4px; border-bottom: 1px solid var(--line); }
+
+  h5.group {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--muted);
+    margin: 22px 0 6px;
+  }
+
+  // wiersz imprezy na pulpicie: data, nazwa, liczby, pasek zajętości, kwoty
+  .row.event {
+    grid-template-columns: 120px minmax(0, 1fr) auto;
+    row-gap: 6px;
+
+    .ename small { display: block; font-size: 13px; }
+    .prog { grid-column: 1 / -1; margin-top: 2px; }
+    .money { grid-column: 1 / -1; }
+  }
 }
 
 // --- tabela ----------------------------------------------------------------

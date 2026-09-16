@@ -400,6 +400,28 @@ textarea.inp {
   padding: 13px 4px;
   border-bottom: 1px solid var(--line);
 }
+.start h5.group {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--muted);
+  margin: 22px 0 6px;
+}
+.start .row.event {
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  row-gap: 6px;
+}
+.start .row.event .ename small {
+  display: block;
+  font-size: 13px;
+}
+.start .row.event .prog {
+  grid-column: 1/-1;
+  margin-top: 2px;
+}
+.start .row.event .money {
+  grid-column: 1/-1;
+}
 
 .tbl {
   width: 100%;

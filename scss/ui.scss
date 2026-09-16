@@ -568,6 +568,32 @@ textarea.inp { min-height: 80px; }
   .btn { margin-left: auto; }
 }
 
+// krok zamówienia (dane osoby)
+.order-step {
+  max-width: 640px;
+
+  .summary {
+    background: var(--pane);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 18px 0;
+
+    .seat {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding-block: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .seat.sum { font-weight: 600; border-bottom: 0; }
+  }
+
+  .order-form .grid2 { gap: 14px 18px; }
+  .sec-f { margin-top: 20px; }
+}
+
 .howto {
   margin-top: 20px;
 

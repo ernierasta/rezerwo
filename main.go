@@ -91,6 +91,7 @@ func main() {
 
 	// nowa strona rezerwacji dla gościa, na razie obok starej (etap 4)
 	rtr.HandleFunc("/n/res/{user}", GuestReservationPage(db, lang))
+	rtr.HandleFunc("/n/order", GuestOrderPage(db, lang))
 
 	rtr.HandleFunc("/res/{user}", ReservationHTML(db, lang))
 	rtr.HandleFunc("/form/{userurl}/{formurl}", FormRenderer(db, lang))

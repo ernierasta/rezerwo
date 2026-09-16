@@ -86,6 +86,21 @@ reservations = "Reservations"
 reports = "Reports"
 settings = "Settings"
 
+[order]
+countdown = "Your seats are held for"
+expired = "Time is up, please pick the seats again."
+email = "E-mail"
+email_help = "We will send the confirmation to this address. Please check that it is correct."
+name = "First name"
+surname = "Surname"
+phone = "Phone"
+phone_placeholder = "00420 "
+notes = "Notes"
+submit = "Order"
+cancel = "Cancel the order"
+seats_taken = "These seats are already taken"
+seats_taken_text = "Someone was faster, or the seats are held by another guest. Please pick other seats or try again in 5 minutes."
+
 [guest]
 free_seats = "free seats"
 your_seats = "Your seats"

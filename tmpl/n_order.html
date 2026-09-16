@@ -1,0 +1,60 @@
+{{define "body"}}
+<div class="guest order-step" id="order-step"
+     data-user-url="{{.UserURL}}"
+     data-event-id="{{.EventID}}"
+     data-minutes="{{.Minutes}}">
+
+  <h1>{{.EventName}}</h1>
+  <p class="when">{{T "order.countdown"}} <b id="countdown" class="num"></b></p>
+
+  {{if .HowTo}}<div class="desc">{{.HowTo}}</div>{{end}}
+
+  <form action="/order/status" method="POST" class="order-form" id="order-form">
+    <input name="prices" value="{{.Prices}}" hidden>
+    <input name="rooms" id="rooms" value="{{.Rooms}}" hidden>
+    <input name="event-id" value="{{.EventID}}" hidden>
+    <input name="user-url" value="{{.UserURL}}" hidden>
+    <input name="sits" id="sits" value="{{.Sits}}" hidden>
+    {{if not .HideCosts}}<input name="total-price" value="{{.TotalPrice}}" hidden>{{end}}
+
+    <div class="summary">
+      <div class="seat"><span>{{T "res.seats"}}</span><span class="num">{{.SitsLabel}}</span></div>
+      {{if not .HideCosts}}<div class="seat sum"><span>{{T "guest.total"}}</span><span class="num">{{.TotalPriceLabel}}</span></div>{{end}}
+    </div>
+
+    <div class="grid2">
+      <div class="f" style="grid-column:1/-1">
+        <label for="email">{{T "order.email"}} *</label>
+        <input class="inp" type="email" id="email" name="email" required>
+        <small>{{T "order.email_help"}}</small>
+      </div>
+      <div class="f">
+        <label for="name">{{T "order.name"}} *</label>
+        <input class="inp" id="name" name="name" required>
+      </div>
+      <div class="f">
+        <label for="surname">{{T "order.surname"}} *</label>
+        <input class="inp" id="surname" name="surname" required>
+      </div>
+      <div class="f">
+        <label for="phone">{{T "order.phone"}}</label>
+        <input class="inp" type="tel" id="phone" name="phone" placeholder="{{T "order.phone_placeholder"}}">
+      </div>
+      <div class="f"></div>
+      <div class="f" style="grid-column:1/-1">
+        <label for="notes">{{T "order.notes"}}</label>
+        <textarea class="inp" id="notes" name="notes" rows="3"></textarea>
+        {{if .NotesHelp}}<small>{{.NotesHelp}}</small>{{end}}
+      </div>
+    </div>
+
+    <div class="sec-f">
+      <button class="btn" type="submit">{{T "order.submit"}}</button>
+      <button class="btn quiet" type="button" id="cancel-order">{{T "order.cancel"}}</button>
+    </div>
+  </form>
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="/js/n_order.js"></script>
+{{end}}

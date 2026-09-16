@@ -88,6 +88,21 @@ reservations = "Rezerwacje"
 reports = "Raporty"
 settings = "Ustawienia"
 
+[order]
+countdown = "Miejsca są zablokowane jeszcze przez"
+expired = "Czas minął, wybierz miejsca jeszcze raz."
+email = "E-mail"
+email_help = "Na ten adres wyślemy potwierdzenie. Proszę sprawdzić, czy jest poprawny."
+name = "Imię"
+surname = "Nazwisko"
+phone = "Telefon"
+phone_placeholder = "00420 "
+notes = "Uwagi"
+submit = "Zamawiam"
+cancel = "Anuluj zamówienie"
+seats_taken = "Te miejsca są już zajęte"
+seats_taken_text = "Ktoś był szybszy albo miejsca są zablokowane przez innego zamawiającego. Prosimy wybrać inne miejsca lub spróbować za 5 minut."
+
 [guest]
 free_seats = "wolne miejsca"
 your_seats = "Twoje miejsca"

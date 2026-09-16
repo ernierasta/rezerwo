@@ -86,6 +86,21 @@ reservations = "Rezervace"
 reports = "Přehledy"
 settings = "Nastavení"
 
+[order]
+countdown = "Místa jsou blokovaná ještě"
+expired = "Čas vypršel, vyberte místa znovu."
+email = "E-mail"
+email_help = "Na tuto adresu pošleme potvrzení. Zkontrolujte, že je správná."
+name = "Jméno"
+surname = "Příjmení"
+phone = "Telefon"
+phone_placeholder = "00420 "
+notes = "Poznámky"
+submit = "Objednávám"
+cancel = "Zrušit objednávku"
+seats_taken = "Tato místa jsou už obsazená"
+seats_taken_text = "Někdo byl rychlejší, nebo jsou místa blokovaná jiným zájemcem. Vyberte prosím jiná místa nebo to zkuste za 5 minut."
+
 [guest]
 free_seats = "volná místa"
 your_seats = "Vaše místa"

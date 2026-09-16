@@ -61,7 +61,18 @@ func main() {
 	Ticker5min(db, stop)
 	defer TickerStop(stop)
 
+	if err := LoadLocales(); err != nil {
+		log.Fatalf("can not load interface translations: %v", err)
+	}
+
 	rtr := mux.NewRouter()
+	// nowy panel (redesign): strony z ID w adresie, do zakładek i nowej karty
+	rtr.HandleFunc("/admin/start", AdminStartPage(db, cookieStore))
+	rtr.HandleFunc("/admin/events/{id:[0-9]+}", EventPage(db, cookieStore))
+	rtr.HandleFunc("/api/events", EventCreateAPI(db, cookieStore))
+	rtr.HandleFunc("/api/events/{id:[0-9]+}/section", EventSectionSave(db, loc, dateFormat, cookieStore))
+	rtr.HandleFunc("/locales/{file}", LocalesJSONHandler())
+
 	rtr.HandleFunc("/res/{user}", ReservationHTML(db, lang))
 	rtr.HandleFunc("/form/{userurl}/{formurl}", FormRenderer(db, lang))
 	rtr.HandleFunc("/form/{userurl}/{formurl}/done", FormThankYou(db, lang))
@@ -77,6 +88,7 @@ func main() {
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin/logout", AdminLogout(cookieStore))
 	http.HandleFunc("/admin/devlogin", DevLogin(db, cookieStore))
+	http.HandleFunc("/admin/lang", SetPanelLangHandler())
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))

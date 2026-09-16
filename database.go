@@ -1066,6 +1066,24 @@ func (db *DB) EventGetRooms(eventID int64) ([]Room, error) {
 	return rooms, err
 }
 
+// EventClearRooms usuwa wszystkie przypisania sal do imprezy.
+// Używa go zapis sekcji "Sala i ceny" w nowym panelu (admin_ui.go).
+func (db *DB) EventClearRooms(eventID int64) error {
+	if err := NoMinus("eventID", eventID); err != nil {
+		return err
+	}
+	_, err := db.DB.Exec(`DELETE FROM events_rooms WHERE events_id_fk = $1`, eventID)
+	return err
+}
+
+// EventSetHideCosts zapisuje samo pole hidecosts.
+// Osobno, bo EventModByID tej kolumny nie aktualizuje (stary edytor imprezy
+// nie zna tego pola i skasowałby ustawienie).
+func (db *DB) EventSetHideCosts(eventID, userID int64, hide bool) error {
+	_, err := db.DB.Exec(`UPDATE events SET hidecosts=$1 WHERE id=$2 AND users_id_fk=$3`, hide, eventID, userID)
+	return err
+}
+
 func (db *DB) EventModByID(event *Event, UserID int64) error {
 	if event.ID == 0 {
 		return fmt.Errorf("can not modify event if ID is 0")

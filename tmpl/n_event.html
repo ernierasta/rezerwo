@@ -1,0 +1,193 @@
+{{define "head"}}
+<link href="/css/quill.snow.css" rel="stylesheet">
+<script src="/js/quill.min.js"></script>
+{{end}}
+{{define "body"}}
+<div class="doc" id="event-page" data-event-id="{{.ID}}">
+  <div class="dh">
+    <h3>{{.Name}}</h3>
+    <div class="r">
+      <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "common.guest_page"}}</a>
+      <a class="btn quiet" href="/admin">{{T "common.copy"}}</a>
+    </div>
+  </div>
+  <p class="dsub">{{.SubTitle}}</p>
+
+  <div class="secs">
+
+    <!-- Podstawowe -->
+    <div class="sec" data-sec="podstawowe">
+      <div class="sec-h"><b>{{T "event.sec.basic"}}</b><span>{{.SumBasic}}</span><a class="act" href="#podstawowe">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="grid2">
+          <div class="f"><label for="f-name">{{T "field.name"}}</label>
+            <input class="inp" id="f-name" data-field="name" value="{{.Name}}"></div>
+          <div class="f"><label for="f-language">{{T "field.language"}}</label>
+            <select class="inp" id="f-language" data-field="language">
+              <option value="pl" {{if eq .Language "pl"}}selected{{end}}>polski</option>
+              <option value="cs" {{if eq .Language "cs"}}selected{{end}}>čeština</option>
+              <option value="en" {{if eq .Language "en"}}selected{{end}}>english</option>
+            </select>
+            <small>{{.GuestURL}}</small></div>
+        </div>
+        <div class="sec-f"><button class="btn" data-save="basic">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Terminy -->
+    <div class="sec" data-sec="terminy">
+      <div class="sec-h"><b>{{T "event.sec.dates"}}</b><span class="num">{{.SumDates}}</span><a class="act" href="#terminy">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="grid2">
+          <div class="f"><label for="f-date">{{T "field.date"}}</label><input type="date" class="inp" id="f-date" data-field="date" value="{{.DateVal}}"></div>
+          <div class="f"></div>
+          <div class="f"><label for="f-from">{{T "field.from_date"}}</label><input type="date" class="inp" id="f-from" data-field="from_date" value="{{.FromVal}}"></div>
+          <div class="f"><label for="f-to">{{T "field.to_date"}}</label><input type="date" class="inp" id="f-to" data-field="to_date" value="{{.ToVal}}"></div>
+        </div>
+        <div class="sec-f"><button class="btn" data-save="dates">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Sala i ceny -->
+    <div class="sec" data-sec="sala">
+      <div class="sec-h"><b>{{T "event.sec.room"}}</b><span>{{.SumRoom}}</span><a class="act" href="#sala">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="grid2">
+          <div class="f"><label for="f-price">{{T "field.price"}}</label><input type="number" class="inp" id="f-price" data-field="price" value="{{.Price}}"></div>
+          <div class="f"><label for="f-currency">{{T "field.currency"}}</label><input class="inp" id="f-currency" data-field="currency" value="{{.Currency}}"></div>
+          <div class="f" style="grid-column:1/-1"><label for="f-rooms">{{T "field.rooms"}}</label>
+            <input class="inp" id="f-rooms" data-field="rooms" value="{{.RoomsVal}}">
+            <small>{{.RoomsNames}}</small></div>
+          <div class="f" style="grid-column:1/-1">
+            <div class="tools">
+              <select class="inp" id="room-add-select">
+                <option value="0">{{T "field.select_hint"}}</option>
+                {{range .UserRooms}}<option value="{{.ID}}">{{.Name}} ({{.ID}})</option>{{end}}
+              </select>
+              <button class="btn quiet sm" id="room-add">{{T "field.add_room"}}</button>
+              <button class="btn quiet sm" id="room-clear">{{T "field.clear_rooms"}}</button>
+              {{range .EventRooms}}<a class="btn quiet sm" href="/admin/events/{{$.ID}}/rooms/{{.ID}}">{{T "field.edit_layout"}}: {{.Name}}</a>{{end}}
+            </div>
+          </div>
+        </div>
+        <div class="sec-f"><button class="btn" data-save="room">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Strona dla gości -->
+    <div class="sec" data-sec="strona">
+      <div class="sec-h"><b>{{T "event.sec.guest_page"}}</b><span>{{.SumGuest}}</span><a class="act" href="#strona">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="f"><label>{{T "field.main_desc"}}</label><div class="ed" data-editor="maindesc">{{.MainDesc}}</div></div>
+        <div class="f" style="margin-top:14px"><label for="f-mainbanner">{{T "field.main_banner"}}</label><input class="inp" id="f-mainbanner" data-field="mainbanner" value="{{.MainBanner}}"></div>
+
+        {{range .RoomTexts}}
+        <div class="f" style="margin-top:18px"><label>{{.DescLabel}}</label><div class="ed" data-editor="{{.DescField}}">{{.Desc}}</div></div>
+        <div class="f" style="margin-top:14px"><label>{{.BannerLabel}}</label><input class="inp" data-field="{{.BannerField}}" value="{{.Banner}}"></div>
+        {{end}}
+
+        <div class="f" style="margin-top:18px"><label>{{T "field.order_howto"}}</label><div class="ed" data-editor="order_howto">{{.OrderHowto}}</div></div>
+        <div class="f" style="margin-top:14px"><label for="f-ondesc">{{T "field.order_notes_desc"}}</label><input class="inp" id="f-ondesc" data-field="order_notes_desc" value="{{.OrderNotesDesc}}"></div>
+
+        <div class="f" style="margin-top:18px"><label for="f-nostitle">{{T "field.no_sits_title"}}</label><input class="inp" id="f-nostitle" data-field="no_sits_selected_title" value="{{.NoSitsTitle}}"></div>
+        <div class="f" style="margin-top:10px"><label>{{T "field.no_sits_text"}}</label><div class="ed" data-editor="no_sits_selected_text">{{.NoSitsText}}</div></div>
+
+        <div class="f" style="margin-top:18px"><label for="f-ordtitle">{{T "field.ordered_title"}}</label><input class="inp" id="f-ordtitle" data-field="ordered_note_title" value="{{.OrderedTitle}}"></div>
+        <div class="f" style="margin-top:10px"><label>{{T "field.ordered_text"}}</label><div class="ed" data-editor="ordered_note_text">{{.OrderedText}}</div></div>
+
+        <div class="f" style="margin-top:18px"><label>{{T "field.howto_legend"}}</label><div class="ed" data-editor="how_to">{{.HowTo}}</div></div>
+
+        <div class="sec-f"><button class="btn" data-save="guest">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Mail dla gościa -->
+    <div class="sec" data-sec="mail-gosc">
+      <div class="sec-h"><b>{{T "event.sec.mail_guest"}}</b><span {{if .MissMailGuest}}class="miss"{{end}}>{{.SumMailGuest}}</span><a class="act" href="#mail-gosc">{{if .MissMailGuest}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="f"><label for="f-mail-guest">{{T "field.thankyou_mail"}}</label>
+          <select class="inp" id="f-mail-guest" data-field="thankyou_notifications_id_fk">
+            <option value="0">{{T "field.select_hint"}}</option>
+            {{range .Notifications}}<option value="{{.ID}}" {{if eq $.ThankYouMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+          </select>
+        </div>
+        <p class="shared"><a href="/admin/maileditor" id="edit-mail-guest">{{T "common.change"}} …</a></p>
+        <div class="sec-f"><button class="btn" data-save="mail_guest">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Mail dla zarządu -->
+    <div class="sec" data-sec="mail-zarzad">
+      <div class="sec-h"><b>{{T "event.sec.mail_admin"}}</b><span {{if .MissMailAdmin}}class="miss"{{end}}>{{.SumMailAdmin}}</span><a class="act" href="#mail-zarzad">{{if .MissMailAdmin}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="f"><label for="f-mail-admin">{{T "field.admin_mail"}}</label>
+          <select class="inp" id="f-mail-admin" data-field="admin_notifications_id_fk">
+            <option value="0">{{T "field.select_hint"}}</option>
+            {{range .Notifications}}<option value="{{.ID}}" {{if eq $.AdminMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+          </select>
+        </div>
+        <div class="sec-f"><button class="btn" data-save="mail_admin">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Konto bankowe -->
+    <div class="sec" data-sec="konto">
+      <div class="sec-h"><b>{{T "event.sec.bank"}}</b><span class="num {{if .MissBank}}miss{{end}}">{{.SumBank}}</span><a class="act" href="#konto">{{if .MissBank}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="f"><label for="f-bank">{{T "field.bank_account"}}</label>
+          <select class="inp" id="f-bank" data-field="bank_account_id">
+            <option value="0">{{T "field.select_hint"}}</option>
+            {{range .BankAccounts}}<option value="{{.ID}}" {{if eq $.BankAccountID .ID}}selected{{end}}>{{.Name}} — {{.IBAN}}</option>{{end}}
+          </select>
+        </div>
+        <div class="sec-f"><button class="btn" data-save="bank">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Formularze -->
+    <div class="sec" data-sec="formularze">
+      <div class="sec-h"><b>{{T "event.sec.forms"}}</b><span>{{.SumForms}}</span>
+        {{if .Forms}}<a class="act" href="/admin/formraport?formtempl-id={{(index .Forms 0).ID}}">{{T "common.open"}}</a>{{else}}<a class="act" href="/admin">{{T "common.set"}}</a>{{end}}
+      </div>
+    </div>
+
+    <!-- Rezerwacje -->
+    <div class="sec" data-sec="rezerwacje">
+      <div class="sec-h"><b>{{T "event.sec.reservations"}}</b><span class="num">{{.SumRes}}</span><a class="act" href="#rezerwacje">{{T "common.show"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="prog" aria-hidden="true"><i class="p1" style="width:{{.PctPayed}}%"></i><i class="p2" style="width:{{.PctOrdered}}%"></i></div>
+        <div class="prog-l">
+          <span><b class="num">{{.SeatsPayed}}</b> {{T "status.payed"}}</span>
+          <span><b class="num">{{.SeatsOrdered}}</b> {{T "status.ordered"}}</span>
+          <span><b class="num">{{.SeatsFree}}</b> {{T "status.free"}}</span>
+        </div>
+        <div class="tools" style="margin-top:14px"><a class="r" href="/admin/reservations?event-id={{.ID}}">{{T "field.full_report"}}</a></div>
+        <div class="wide">
+          <table class="tbl">
+            <tr><th>{{T "res.person"}}</th><th>{{T "res.seats"}}</th><th>{{T "res.status"}}</th><th class="r">{{T "res.amount"}}</th></tr>
+            {{range .ResRows}}
+            <tr><td>{{.Person}}</td><td class="num">{{.Seats}}</td><td><span class="st {{.StatusClass}}">{{.StatusLabel}}</span></td><td class="r num">{{.Amount}}</td></tr>
+            {{else}}
+            <tr><td colspan="4" class="m">{{T "res.none_yet"}}</td></tr>
+            {{end}}
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ustawienia -->
+    <div class="sec" data-sec="ustawienia">
+      <div class="sec-h"><b>{{T "event.sec.settings"}}</b><span>{{.SumSettings}}</span><a class="act" href="#ustawienia">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="check"><input type="checkbox" id="f-sharable" data-field="sharable" {{if .Sharable}}checked{{end}}><label for="f-sharable">{{T "field.sharable"}}</label></div>
+        <div class="check" style="margin-top:8px"><input type="checkbox" id="f-hidecosts" data-field="hidecosts" {{if .HideCosts}}checked{{end}}><label for="f-hidecosts">{{T "field.hidecosts"}}</label></div>
+        <div class="sec-f"><button class="btn" data-save="settings">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="/js/n_event.js"></script>
+{{end}}

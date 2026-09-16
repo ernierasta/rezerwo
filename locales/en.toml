@@ -1,0 +1,132 @@
+# Interface text catalogue - English.
+
+[app]
+name = "Rezerwo"
+
+[nav]
+events = "Events"
+forms = "Forms"
+catalogs = "Catalogues"
+logout = "Log out"
+
+[common]
+save = "Save"
+cancel = "Cancel"
+change = "Change"
+set = "Set"
+show = "Show"
+open = "Open"
+collapse = "Collapse"
+delete = "Delete"
+copy = "Copy"
+not_set = "not set"
+none = "none"
+saved = "Saved"
+save_error = "Could not save"
+loading = "Loading…"
+guest_page = "Guest page"
+search = "Search"
+all = "All"
+yes = "yes"
+no = "no"
+unsaved_warning = "You have unsaved changes. Leave the page?"
+
+[home]
+events = "Events"
+forms = "Forms"
+new_event = "New event"
+copy_event = "Copy existing"
+new_form = "New form"
+no_events = "No events yet."
+no_forms = "No forms yet."
+sale_from = "from %s"
+seats_of = "%d of %d"
+open_form = "open"
+
+[event]
+draft = "draft"
+selling = "on sale"
+finished = "finished"
+reservation_open = "reservations %s – %s"
+
+[event.sec]
+basic = "Basics"
+dates = "Dates"
+room = "Room and prices"
+guest_page = "Guest page"
+mail_guest = "Mail for guest"
+mail_admin = "Mail for the board"
+bank = "Bank account"
+addons = "Order add-ons"
+forms = "Forms"
+reservations = "Reservations"
+reports = "Reports"
+settings = "Settings"
+
+[field]
+name = "Name"
+language = "Guest page language"
+date = "Event date"
+from_date = "Reservations start"
+to_date = "Reservations end"
+price = "Price per seat"
+currency = "Currency"
+rooms = "Rooms"
+add_room = "Add room"
+clear_rooms = "Unassign all rooms"
+main_desc = "Event description"
+main_banner = "Banner"
+room_desc = "Room %d description"
+room_banner = "Room %d banner"
+no_sits_title = "No seats selected – title"
+no_sits_text = "No seats selected – text"
+order_howto = "How to order"
+order_notes_desc = "Hint in the order form"
+ordered_title = "After ordering – title"
+ordered_text = "After ordering – text"
+howto_legend = "Room plan legend"
+sharable = "Shared with other organizations"
+hidecosts = "Hide amounts on the guest page"
+thankyou_mail = "Mail after order (guest)"
+admin_mail = "Mail after order (board)"
+bank_account = "Bank account"
+select_hint = "— select —"
+edit_layout = "Edit room layout"
+full_report = "Full report"
+
+[status]
+free = "free"
+marked = "selected"
+ordered = "ordered"
+payed = "paid"
+disabled = "unavailable"
+
+[res]
+person = "Person"
+seats = "Seats"
+status = "Status"
+amount = "Amount"
+awaiting = "awaiting payment"
+mark_payed = "Mark as paid"
+mark_ordered = "Mark as ordered"
+none_yet = "No reservations yet."
+
+[count.reservation]
+one = "%d reservation"
+other = "%d reservations"
+
+[count.seat]
+one = "%d seat"
+other = "%d seats"
+
+[count.answer]
+one = "%d answer"
+other = "%d answers"
+
+[count.day]
+one = "%d day"
+other = "%d days"
+
+[count.text]
+one = "%d text"
+other = "%d texts"

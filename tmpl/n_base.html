@@ -1,0 +1,25 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}}</title>
+  <link href="/css/ui.css" rel="stylesheet" type="text/css">
+  {{block "head" .}}{{end}}
+</head>
+<body class="n">
+  <div class="topbar">
+    <a class="brand" href="/admin/start">{{T "app.name"}}</a>
+    {{if .Crumb}}<span class="crumb">{{.Crumb}}</span>{{end}}
+    <div class="r">
+      <a href="/admin/start">{{T "nav.events"}}</a>
+      <a href="/admin">{{T "nav.catalogs"}}</a>
+      {{if .OrgName}}<span class="muted">{{.OrgName}}</span>{{end}}
+      <a href="/admin/logout">{{T "nav.logout"}}</a>
+    </div>
+  </div>
+  {{template "body" .}}
+  <script src="/js/n_ui.js"></script>
+  {{block "scripts" .}}{{end}}
+</body>
+</html>{{end}}

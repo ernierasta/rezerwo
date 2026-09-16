@@ -1,0 +1,137 @@
+# Katalog textů rozhraní - čeština.
+
+[app]
+name = "Rezerwo"
+
+[nav]
+events = "Akce"
+forms = "Formuláře"
+catalogs = "Katalogy"
+logout = "Odhlásit"
+
+[common]
+save = "Uložit"
+cancel = "Zrušit"
+change = "Změnit"
+set = "Nastavit"
+show = "Zobrazit"
+open = "Otevřít"
+collapse = "Sbalit"
+delete = "Smazat"
+copy = "Kopírovat"
+not_set = "nenastaveno"
+none = "nic"
+saved = "Uloženo"
+save_error = "Nepodařilo se uložit"
+loading = "Načítám…"
+guest_page = "Stránka pro hosty"
+search = "Hledat"
+all = "Vše"
+yes = "ano"
+no = "ne"
+unsaved_warning = "Máte neuložené změny. Opustit stránku?"
+
+[home]
+events = "Akce"
+forms = "Formuláře"
+new_event = "Nová akce"
+copy_event = "Kopírovat existující"
+new_form = "Nový formulář"
+no_events = "Zatím není žádná akce."
+no_forms = "Zatím není žádný formulář."
+sale_from = "od %s"
+seats_of = "%d z %d"
+open_form = "otevřený"
+
+[event]
+draft = "koncept"
+selling = "prodej běží"
+finished = "ukončená"
+reservation_open = "rezervace %s – %s"
+
+[event.sec]
+basic = "Základní"
+dates = "Termíny"
+room = "Sál a ceny"
+guest_page = "Stránka pro hosty"
+mail_guest = "Mail pro hosta"
+mail_admin = "Mail pro výbor"
+bank = "Bankovní účet"
+addons = "Doplňky k objednávce"
+forms = "Formuláře"
+reservations = "Rezervace"
+reports = "Přehledy"
+settings = "Nastavení"
+
+[field]
+name = "Název"
+language = "Jazyk stránky pro hosty"
+date = "Datum akce"
+from_date = "Začátek rezervací"
+to_date = "Konec rezervací"
+price = "Cena za místo"
+currency = "Měna"
+rooms = "Sály"
+add_room = "Přidat sál"
+clear_rooms = "Zrušit přiřazení sálů"
+main_desc = "Popis akce"
+main_banner = "Banner"
+room_desc = "Popis sálu %d"
+room_banner = "Banner sálu %d"
+no_sits_title = "Když nejsou vybraná místa – nadpis"
+no_sits_text = "Když nejsou vybraná místa – text"
+order_howto = "Jak objednat"
+order_notes_desc = "Nápověda ve formuláři objednávky"
+ordered_title = "Po objednání – nadpis"
+ordered_text = "Po objednání – text"
+howto_legend = "Legenda plánu sálu"
+sharable = "Sdílená s jinými organizacemi"
+hidecosts = "Skrýt částky na stránce pro hosty"
+thankyou_mail = "Mail po objednání (host)"
+admin_mail = "Mail po objednání (výbor)"
+bank_account = "Bankovní účet"
+select_hint = "— vyberte —"
+edit_layout = "Upravit plán sálu"
+full_report = "Celý přehled"
+
+[status]
+free = "volné"
+marked = "vybrané"
+ordered = "objednané"
+payed = "zaplacené"
+disabled = "nedostupné"
+
+[res]
+person = "Osoba"
+seats = "Místa"
+status = "Stav"
+amount = "Částka"
+awaiting = "čeká na platbu"
+mark_payed = "Označit jako zaplacené"
+mark_ordered = "Označit jako objednané"
+none_yet = "Zatím nejsou žádné rezervace."
+
+[count.reservation]
+one = "%d rezervace"
+few = "%d rezervace"
+many = "%d rezervací"
+
+[count.seat]
+one = "%d místo"
+few = "%d místa"
+many = "%d míst"
+
+[count.answer]
+one = "%d odpověď"
+few = "%d odpovědi"
+many = "%d odpovědí"
+
+[count.day]
+one = "%d den"
+few = "%d dny"
+many = "%d dní"
+
+[count.text]
+one = "%d text"
+few = "%d texty"
+many = "%d textů"

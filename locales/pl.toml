@@ -1,0 +1,139 @@
+# Katalog tekstów interfejsu - polski.
+# Klucze płaskie po sklejeniu nazw tabel kropką: [nav] name = ... -> "nav.name".
+# Liczba mnoga: klucze z sufiksami .one/.few/.many (patrz i18n.go).
+
+[app]
+name = "Rezerwo"
+
+[nav]
+events = "Imprezy"
+forms = "Formularze"
+catalogs = "Katalogi"
+logout = "Wyloguj"
+
+[common]
+save = "Zapisz"
+cancel = "Anuluj"
+change = "Zmień"
+set = "Ustaw"
+show = "Pokaż"
+open = "Otwórz"
+collapse = "Zwiń"
+delete = "Usuń"
+copy = "Kopiuj"
+not_set = "nie ustawiono"
+none = "brak"
+saved = "Zapisano"
+save_error = "Nie udało się zapisać"
+loading = "Wczytuję…"
+guest_page = "Strona dla gości"
+search = "Szukaj"
+all = "Wszystkie"
+yes = "tak"
+no = "nie"
+unsaved_warning = "Masz niezapisane zmiany. Opuścić stronę?"
+
+[home]
+events = "Imprezy"
+forms = "Formularze"
+new_event = "Nowa impreza"
+copy_event = "Kopiuj istniejącą"
+new_form = "Nowy formularz"
+no_events = "Nie ma jeszcze żadnej imprezy."
+no_forms = "Nie ma jeszcze żadnego formularza."
+sale_from = "od %s"
+seats_of = "%d z %d"
+open_form = "otwarty"
+
+[event]
+draft = "szkic"
+selling = "sprzedaż trwa"
+finished = "zakończona"
+reservation_open = "rezerwacja %s – %s"
+
+[event.sec]
+basic = "Podstawowe"
+dates = "Terminy"
+room = "Sala i ceny"
+guest_page = "Strona dla gości"
+mail_guest = "Mail dla gościa"
+mail_admin = "Mail dla zarządu"
+bank = "Konto bankowe"
+addons = "Dodatki do zamówienia"
+forms = "Formularze"
+reservations = "Rezerwacje"
+reports = "Raporty"
+settings = "Ustawienia"
+
+[field]
+name = "Nazwa"
+language = "Język strony gościa"
+date = "Data imprezy"
+from_date = "Początek rezerwacji"
+to_date = "Koniec rezerwacji"
+price = "Cena za miejsce"
+currency = "Waluta"
+rooms = "Sale"
+add_room = "Dodaj salę"
+clear_rooms = "Usuń przypisanie sal"
+main_desc = "Opis imprezy"
+main_banner = "Banner"
+room_desc = "Opis sali %d"
+room_banner = "Banner sali %d"
+no_sits_title = "Gdy nie wybrano miejsc – tytuł"
+no_sits_text = "Gdy nie wybrano miejsc – tekst"
+order_howto = "Jak zamówić"
+order_notes_desc = "Podpowiedź w formularzu zamówienia"
+ordered_title = "Po zamówieniu – tytuł"
+ordered_text = "Po zamówieniu – tekst"
+howto_legend = "Legenda planu sali"
+sharable = "Współdzielona z innymi organizacjami"
+hidecosts = "Ukryj kwoty na stronie gościa"
+thankyou_mail = "Mail po zamówieniu (gość)"
+admin_mail = "Mail po zamówieniu (zarząd)"
+bank_account = "Konto bankowe"
+select_hint = "— wybierz —"
+edit_layout = "Edytuj układ sali"
+full_report = "Pełny raport"
+
+[status]
+free = "wolne"
+marked = "wybrane"
+ordered = "zamówione"
+payed = "zapłacone"
+disabled = "niedostępne"
+
+[res]
+person = "Osoba"
+seats = "Miejsca"
+status = "Status"
+amount = "Kwota"
+awaiting = "czeka na wpłatę"
+mark_payed = "Oznacz jako zapłacone"
+mark_ordered = "Oznacz jako zamówione"
+none_yet = "Nie ma jeszcze rezerwacji."
+
+[count.reservation]
+one = "%d rezerwacja"
+few = "%d rezerwacje"
+many = "%d rezerwacji"
+
+[count.seat]
+one = "%d miejsce"
+few = "%d miejsca"
+many = "%d miejsc"
+
+[count.answer]
+one = "%d odpowiedź"
+few = "%d odpowiedzi"
+many = "%d odpowiedzi"
+
+[count.day]
+one = "%d dzień"
+few = "%d dni"
+many = "%d dni"
+
+[count.text]
+one = "%d tekst"
+few = "%d teksty"
+many = "%d tekstów"

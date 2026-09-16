@@ -1,0 +1,390 @@
+// ui.scss - fundament nowego interfejsu (redesign "Harmonijka" + paleta "Dwa panele").
+// Tokeny i komponenty. Nowe strony nie używają Bootstrapa.
+// Kompilacja: tools/sass scss:css --no-source-map
+
+:root {
+  --bg: #F2F5F8;
+  --surface: #FFFFFF;
+  --pane: #F8FAFC;
+  --ink: #2C3440;
+  --muted: #6E7885;
+  --line: #E1E7EE;
+  --blue: #D2E2F1;
+  --blue-soft: #E9F1F8;
+  --blue-deep: #3D6285;
+  --lemon: #F4EBC6;
+  --leaf: #D5EBDB;
+  --taken: #E2E7EC;
+  --danger-ink: #9A4F45;
+  --font: "Red Hat Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Red Hat Display", "Red Hat Text", system-ui, sans-serif;
+}
+
+// Fonty lokalnie (RODO: bez Google Fonts). Pliki wgrywa tools/download-fonts.sh.
+// Jeżeli ich nie ma, przeglądarka użyje system-ui z listy wyżej.
+@font-face {
+  font-family: "Red Hat Text";
+  src: url("/media/fonts/RedHatText-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Red Hat Text";
+  src: url("/media/fonts/RedHatText-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Red Hat Text";
+  src: url("/media/fonts/RedHatText-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Red Hat Display";
+  src: url("/media/fonts/RedHatDisplay-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body.n {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15.5px/1.55 var(--font);
+
+  h1, h2, h3, h4, p { margin: 0; }
+  h1, h2, h3, h4 { font-family: var(--display); font-weight: 500; }
+  a { color: var(--blue-deep); }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--blue-deep); outline-offset: 2px; }
+}
+
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.miss { color: var(--danger-ink); }
+.wide { overflow-x: auto; }
+.hidden { display: none !important; }
+
+// --- pasek górny -----------------------------------------------------------
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  min-height: 54px;
+
+  .brand { font-family: var(--display); font-size: 17px; text-decoration: none; color: var(--ink); }
+  .crumb { color: var(--muted); }
+  .r { margin-left: auto; display: flex; gap: 18px; font-size: 14.5px; align-items: center; }
+  .r a { color: var(--muted); text-decoration: none; }
+  .r a:hover, .r a.on { color: var(--ink); }
+}
+
+// --- dokument (kolumna treści) ---------------------------------------------
+
+.doc {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px 24px 80px;
+}
+
+.dh {
+  display: flex;
+  gap: 10px 16px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  h3 { font-size: 28px; letter-spacing: -0.01em; }
+  .r { margin-left: auto; display: flex; gap: 8px; }
+}
+
+.dsub { color: var(--muted); margin-top: 2px; }
+
+// --- przyciski, pola -------------------------------------------------------
+
+.btn {
+  border: 0;
+  background: var(--blue);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--ink);
+  display: inline-block;
+
+  &.quiet { background: transparent; border: 1px solid var(--line); }
+  &.danger { background: transparent; border: 1px solid var(--line); color: var(--danger-ink); }
+  &.sm { padding: 3px 10px; font-size: 14px; font-weight: 400; }
+  &[disabled] { opacity: .5; cursor: default; }
+}
+
+.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--blue-deep);
+  font-size: 14.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.inp {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 11px;
+  background: var(--surface);
+  min-height: 38px;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+
+  &:focus { outline: 2px solid var(--blue-deep); outline-offset: -1px; }
+  &.ph { color: var(--muted); }
+}
+
+select.inp { appearance: auto; }
+textarea.inp { min-height: 80px; }
+
+.f {
+  label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 5px; }
+  small { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+}
+
+.check {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+
+  input { margin: 0; }
+  label { color: var(--ink); font-size: 15px; }
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.seg {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 2px;
+  font-size: 14px;
+
+  button { border: 0; background: none; padding: 2px 10px; border-radius: 6px; color: var(--muted); }
+  button.on { background: var(--blue-soft); color: var(--ink); }
+}
+
+.st {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 20px;
+  font-size: 13px;
+  white-space: nowrap;
+  background: var(--blue-soft);
+
+  &.paid { background: var(--leaf); }
+  &.ord { background: var(--lemon); }
+  &.off { background: var(--taken); }
+}
+
+// --- harmonijka ------------------------------------------------------------
+
+.secs { margin-top: 22px; border-top: 1px solid var(--line); }
+
+.sec {
+  border-bottom: 1px solid var(--line);
+
+  &-h {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: baseline;
+    padding: 13px 4px;
+    width: 100%;
+    background: none;
+    border: 0;
+    text-align: left;
+
+    b { font-weight: 500; }
+    > span { color: var(--muted); min-width: 0; }
+    .act { font-size: 14.5px; color: var(--blue-deep); text-decoration: none; white-space: nowrap; }
+  }
+
+  &.open {
+    background: var(--pane);
+    box-shadow: inset 3px 0 0 var(--blue-deep);
+
+    .sec-h { padding-inline: 16px; }
+  }
+
+  &-b { padding: 2px 16px 20px; }
+
+  &.dirty .sec-h b::after {
+    content: "•";
+    color: var(--blue-deep);
+    margin-left: 6px;
+  }
+}
+
+.sec-f {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  .msg { color: var(--muted); margin-left: auto; font-size: 13.5px; }
+  .msg.bad { color: var(--danger-ink); }
+}
+
+.shared { font-size: 14px; color: var(--muted); margin-top: 8px; }
+
+// --- listy (strona startowa) ----------------------------------------------
+
+.start {
+  h4 {
+    font-size: 19px;
+    margin: 30px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    &:first-child { margin-top: 0; }
+    .btn { margin-left: auto; }
+    .btn + .btn { margin-left: 0; }
+  }
+
+  .rows { border-top: 1px solid var(--line); }
+
+  .row {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr) auto;
+    gap: 16px;
+    padding: 13px 4px;
+    border-bottom: 1px solid var(--line);
+    align-items: baseline;
+    color: var(--ink);
+    text-decoration: none;
+
+    &:hover { background: var(--pane); }
+    span:first-child, small { color: var(--muted); font-size: 14px; }
+  }
+
+  .empty { color: var(--muted); padding: 13px 4px; border-bottom: 1px solid var(--line); }
+}
+
+// --- tabela ----------------------------------------------------------------
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+  background: var(--surface);
+
+  th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    background: var(--pane);
+  }
+
+  td { padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  .r { text-align: right; }
+  .m { color: var(--muted); }
+}
+
+.tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+
+  .inp { min-height: 34px; padding: 5px 10px; width: auto; }
+  .r { margin-left: auto; font-size: 14.5px; }
+}
+
+// --- pasek postępu ---------------------------------------------------------
+
+.prog {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--taken);
+  margin-top: 14px;
+
+  i { display: block; }
+  .p1 { background: #9CC5A8; }
+  .p2 { background: #E6D38D; }
+}
+
+.prog-l {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 8px;
+  flex-wrap: wrap;
+
+  b { color: var(--ink); font-weight: 500; }
+}
+
+// --- edytor tekstu (Quill w sekcji) ---------------------------------------
+
+.ed {
+  background: var(--surface);
+  border-radius: 8px;
+
+  .ql-toolbar.ql-snow, .ql-container.ql-snow { border-color: var(--line); }
+  .ql-toolbar.ql-snow { border-radius: 8px 8px 0 0; }
+  .ql-container.ql-snow { border-radius: 0 0 8px 8px; min-height: 120px; }
+}
+
+// --- powiadomienie ---------------------------------------------------------
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 14.5px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  z-index: 50;
+
+  button { background: none; border: 0; color: var(--blue); text-decoration: underline; }
+}
+
+@media (max-width: 760px) {
+  .sec-h {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+
+    > span { grid-column: 1 / -1; grid-row: 2; }
+  }
+  .grid2 { grid-template-columns: 1fr; }
+  .start .row { grid-template-columns: 1fr; gap: 2px; }
+  .doc { padding-inline: 16px; }
+}

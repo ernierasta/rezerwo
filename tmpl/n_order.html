@@ -27,9 +27,9 @@
       <h4>{{T "addons.guest_title"}}</h4>
       {{range .Addons}}
       <div class="f">
-        <label for="addon-{{.Name}}">{{.Label}}{{if .Required}} *{{end}}</label>
+        <label for="{{.Input}}">{{.Title}}{{if .Required}} *{{end}}</label>
         {{if .Options}}
-        <select class="inp" id="addon-{{.Name}}" name="addon-{{.Name}}" {{if .Required}}required{{end}}>
+        <select class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>
           <option value="">{{T "field.select_hint"}}</option>
           {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
         </select>
@@ -37,11 +37,11 @@
         <div class="addon-amount">
           {{if .Before}}<span class="muted">{{.Before}}</span>{{end}}
           <input class="inp num" type="number" min="0" step="1" value="0"
-                 id="addon-{{.Name}}" name="addon-{{.Name}}-amount" data-price="{{.Price}}">
+                 id="{{.Input}}" name="{{.Input}}-amount" data-price="{{.Price}}">
           <span class="muted">× {{.Price}}{{if .After}} {{.After}}{{end}}</span>
         </div>
         {{else}}
-        <input class="inp" id="addon-{{.Name}}" name="addon-{{.Name}}" {{if .Required}}required{{end}}>
+        <input class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>
         {{end}}
       </div>
       {{end}}

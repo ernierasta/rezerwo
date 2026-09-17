@@ -40,8 +40,41 @@ type nOrderVars struct {
 	NotesHelp string
 
 	// dodatki do zamówienia (rozdz. 9 HARMONIJKA.md)
-	Addons   []AddonField
+	Addons   []nOrderAddon
 	Currency string
+}
+
+// nOrderAddon to jedno pole dodatków gotowe do wyświetlenia: pola powtarzane
+// wg liczby miejsc pojawiają się tyle razy, ile miejsc ("Kolacja 1", "Kolacja 2").
+type nOrderAddon struct {
+	AddonField
+	Repeat int64
+	Input  string // nazwa pola w formularzu
+	Title  string // etykieta z numerem powtórzenia
+}
+
+// orderAddonFields rozwija definicję dodatków na pola do wyświetlenia.
+func orderAddonFields(fields []AddonField, seats int64) []nOrderAddon {
+	var out []nOrderAddon
+	for _, f := range fields {
+		if f.PerSeat && seats > 0 {
+			for i := int64(1); i <= seats; i++ {
+				out = append(out, nOrderAddon{
+					AddonField: f,
+					Repeat:     i,
+					Input:      AddonInputName(f, i),
+					Title:      fmt.Sprintf("%s %d", f.Label, i),
+				})
+			}
+			continue
+		}
+		out = append(out, nOrderAddon{
+			AddonField: f,
+			Input:      AddonInputName(f, 0),
+			Title:      f.Label,
+		})
+	}
+	return out
 }
 
 // GuestOrderPage - POST /n/order
@@ -126,7 +159,7 @@ func GuestOrderPage(db *DB, lang string) func(w http.ResponseWriter, r *http.Req
 			HideCosts:  event.HideCosts.Bool,
 			HowTo:      template.HTML(event.OrderHowto),
 			NotesHelp:  event.OrderNotesDescription,
-			Addons:     EventAddonFields(db, event),
+			Addons:     orderAddonFields(EventAddonFields(db, event), int64(len(ss))),
 			Currency:   currency,
 		}
 

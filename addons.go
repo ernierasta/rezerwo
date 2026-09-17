@@ -38,7 +38,15 @@ type AddonField struct {
 	Price  int64
 	Before string
 	After  string
+
+	// PerSeat - pole powtarzane tyle razy, ile zarezerwowano miejsc
+	// ("Kolacja 1", "Kolacja 2", ...). Włącza je końcówka nazwy pola
+	// PERSEATSUFFIX, tak jak istniejąca konwencja "-REQUIRED" w formularzach.
+	PerSeat bool
 }
+
+// PERSEATSUFFIX - końcówka nazwy pola dodatków powtarzanego wg liczby miejsc.
+const PERSEATSUFFIX = "-perseat"
 
 // IsPriced mówi, czy pole zwiększa kwotę zamówienia.
 func (f AddonField) IsPriced() bool {
@@ -69,6 +77,7 @@ func ParseAddonFields(content string) []AddonField {
 		if isTypeIgnored(f.Type) || f.Name == "" {
 			continue // nagłówki, akapity, przyciski
 		}
+		f.PerSeat = strings.HasSuffix(strings.ToLower(f.Name), PERSEATSUFFIX)
 
 		if vals, ok := m["values"].([]interface{}); ok {
 			for _, v := range vals {
@@ -125,6 +134,9 @@ type AddonAnswer struct {
 	Field  AddonField
 	Value  string
 	Amount int64 // dla pól z ceną: ile sztuk
+	// Repeat - numer powtórzenia dla pól "tyle razy, ile miejsc" (1, 2, ...);
+	// 0 dla pól wypełnianych raz na zamówienie
+	Repeat int64
 }
 
 // Sum zwraca dopłatę z tej odpowiedzi.
@@ -137,32 +149,60 @@ func (a AddonAnswer) Sum() int64 {
 
 // Description opisuje pozycję na zamówieniu, np. "Dodatkowa porcja: 2 × 85".
 func (a AddonAnswer) Description() string {
-	if a.Field.IsPriced() {
-		return fmt.Sprintf("%s: %d × %d", a.Field.Label, a.Amount, a.Field.Price)
+	label := a.Field.Label
+	if a.Repeat > 0 {
+		label = fmt.Sprintf("%s %d", label, a.Repeat)
 	}
-	return fmt.Sprintf("%s: %s", a.Field.Label, a.Value)
+	if a.Field.IsPriced() {
+		return fmt.Sprintf("%s: %d × %d", label, a.Amount, a.Field.Price)
+	}
+	return fmt.Sprintf("%s: %s", label, a.Value)
+}
+
+// AddonInputName zwraca nazwę pola w formularzu zamówienia.
+// Pola powtarzane mają numer powtórzenia w nazwie: addon-kolacja-perseat-2.
+func AddonInputName(f AddonField, repeat int64) string {
+	if repeat > 0 {
+		return fmt.Sprintf("addon-%s-%d", f.Name, repeat)
+	}
+	return "addon-" + f.Name
 }
 
 // CollectAddonAnswers wyciąga odpowiedzi z formularza zamówienia.
 // Pola mają w formularzu nazwy "addon-<nazwa pola>" (i "addon-<nazwa>-amount"
-// dla liczby sztuk), żeby nie mieszać ich z danymi osoby.
-func CollectAddonAnswers(fields []AddonField, form map[string][]string) []AddonAnswer {
+// dla liczby sztuk), żeby nie mieszać ich z danymi osoby. Pola powtarzane wg
+// liczby miejsc mają numer powtórzenia w nazwie (addon-<nazwa>-1, -2, ...).
+func CollectAddonAnswers(fields []AddonField, form map[string][]string, seats int64) []AddonAnswer {
 	var out []AddonAnswer
-	for _, f := range fields {
-		value := first(form["addon-"+f.Name])
-		amount := intFromString(first(form["addon-"+f.Name+"-amount"]))
+
+	collect := func(f AddonField, repeat int64) {
+		name := AddonInputName(f, repeat)
+		value := first(form[name])
+		amount := intFromString(first(form[name+"-amount"]))
 
 		if f.IsPriced() {
 			if amount <= 0 {
-				continue // nie zamówiono sztuk
+				return // nie zamówiono sztuk
 			}
-			out = append(out, AddonAnswer{Field: f, Value: strconv.FormatInt(amount, 10), Amount: amount})
-			continue
+			out = append(out, AddonAnswer{
+				Field: f, Value: strconv.FormatInt(amount, 10), Amount: amount, Repeat: repeat,
+			})
+			return
 		}
 		if strings.TrimSpace(value) == "" {
+			return
+		}
+		out = append(out, AddonAnswer{Field: f, Value: value, Repeat: repeat})
+	}
+
+	for _, f := range fields {
+		if f.PerSeat && seats > 0 {
+			for i := int64(1); i <= seats; i++ {
+				collect(f, i)
+			}
 			continue
 		}
-		out = append(out, AddonAnswer{Field: f, Value: value})
+		collect(f, 0)
 	}
 	return out
 }
@@ -206,7 +246,7 @@ func SaveOrderWithAddons(db *DB, event Event, user User, customerID int64, reser
 	if len(fields) == 0 {
 		return orderID, 0
 	}
-	answers := CollectAddonAnswers(fields, form)
+	answers := CollectAddonAnswers(fields, form, int64(len(reservationIDs)))
 	if len(answers) == 0 {
 		return orderID, 0
 	}
@@ -234,12 +274,20 @@ func SaveOrderWithAddons(db *DB, event Event, user User, customerID int64, reser
 				log.Printf("SaveOrderWithAddons: field %q: %v", a.Field.Name, err)
 				continue
 			}
-			if _, err := db.FormAnswerAdd(&FormAnswer{
+			answerID, err := db.FormAnswerAdd(&FormAnswer{
 				Value:       ToNS(a.Value),
 				FormFieldID: fieldID,
 				FormID:      formID,
-			}); err != nil {
+			})
+			if err != nil {
 				log.Printf("SaveOrderWithAddons: answer %q: %v", a.Field.Name, err)
+				continue
+			}
+			// numer powtórzenia ("Kolacja 2") - FormAnswerAdd go nie zna
+			if a.Repeat > 0 {
+				if err := db.FormAnswerSetRepeat(answerID, a.Repeat); err != nil {
+					log.Printf("SaveOrderWithAddons: repeat index: %v", err)
+				}
 			}
 		}
 	}

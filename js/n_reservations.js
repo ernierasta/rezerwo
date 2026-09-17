@@ -224,6 +224,38 @@
     close.textContent = RZ.t('common.collapse');
     close.addEventListener('click', function () { el.detail.hidden = true; });
     el.detail.appendChild(close);
+
+    showHistory(ids);
+  }
+
+  // historia zmian statusu: kto i kiedy oznaczył miejsca jako zapłacone
+  function showHistory(ids) {
+    var box = document.createElement('div');
+    box.className = 'history';
+    box.innerHTML = '<h5>' + RZ.t('res.history') + '</h5>';
+    el.detail.appendChild(box);
+
+    fetch(api + '/history?ids=' + ids.join(','))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var rows = d.rows || [];
+        if (!rows.length) {
+          var p = document.createElement('p');
+          p.className = 'muted';
+          p.textContent = RZ.t('res.history_empty');
+          box.appendChild(p);
+          return;
+        }
+        rows.forEach(function (h) {
+          var line = document.createElement('div');
+          line.className = 'kv-row';
+          line.innerHTML = '<span class="muted"></span><span></span>';
+          line.children[0].textContent = dateS(h.date);
+          line.children[1].textContent = RZ.t('status.' + h.status) + (h.admin ? ' · ' + h.admin : '');
+          box.appendChild(line);
+        });
+      })
+      .catch(function () { /* historia jest dodatkiem, brak jej nie psuje panelu */ });
   }
 
   function setRows(rows) {

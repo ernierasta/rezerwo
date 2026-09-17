@@ -290,6 +290,8 @@ filter_nomail = "Bez maila"
 delete_confirm = "Skasować zaznaczone rezerwacje (%d)? Tego nie da się cofnąć."
 mail_confirm = "Wysłać mail do %d adresów? Każdy adres dostanie jeden mail."
 mail_no_template = "Najpierw wybierz szablon maila."
+history = "Historia zmian"
+history_empty = "Brak zapisanych zmian statusu."
 
 [count.reservation]
 one = "%d rezerwacja"

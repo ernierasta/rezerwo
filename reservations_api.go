@@ -182,6 +182,16 @@ func ReservationsStatusAPI(db *DB, cs *sessions.CookieStore) func(w http.Respons
 			if err := db.ReservationSetStatus(id, event.ID, m.Status, payed); err != nil {
 				log.Printf("ReservationsStatusAPI: %d: %v", id, err)
 				failed = append(failed, id)
+				continue
+			}
+			// historia zmian: kto i kiedy zmienił status
+			if _, err := db.ReservationStatusLogAdd(&ReservationStatusLog{
+				Date:          time.Now().Unix(),
+				Status:        m.Status,
+				AdminEmail:    ToNS(user.Email),
+				ReservationID: id,
+			}); err != nil {
+				log.Printf("ReservationsStatusAPI: log %d: %v", id, err)
 			}
 		}
 		if len(failed) > 0 {
@@ -417,6 +427,59 @@ func ReservationsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 				row.Notes,
 			})
 		}
+	}
+}
+
+// nHistoryRow to jedna linia historii zmian statusu.
+type nHistoryRow struct {
+	ReservationID int64  `json:"reservation_id"`
+	Date          int64  `json:"date"`
+	Status        string `json:"status"`
+	Admin         string `json:"admin"`
+}
+
+// ReservationsHistoryAPI: GET /api/events/{id}/reservations/history?ids=1,2,3
+// Historia zmian statusu dla wskazanych rezerwacji (panel szczegółów).
+func ReservationsHistoryAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, event, ok := adminEvent(w, r, db, cs)
+		if !ok {
+			return
+		}
+
+		var ids []int64
+		for _, s := range strings.Split(r.URL.Query().Get("ids"), ",") {
+			s = strings.TrimSpace(s)
+			if s == "" {
+				continue
+			}
+			id, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				continue
+			}
+			// tylko rezerwacje tej imprezy
+			if evID, err := db.ReservationEventID(id); err == nil && evID == event.ID {
+				ids = append(ids, id)
+			}
+		}
+
+		ll, err := db.ReservationStatusLogGet(ids)
+		if err != nil {
+			log.Printf("ReservationsHistoryAPI: %v", err)
+			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+			return
+		}
+
+		rows := make([]nHistoryRow, 0, len(ll))
+		for _, l := range ll {
+			rows = append(rows, nHistoryRow{
+				ReservationID: l.ReservationID,
+				Date:          l.Date,
+				Status:        l.Status,
+				Admin:         l.AdminEmail.String,
+			})
+		}
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"rows": rows})
 	}
 }
 

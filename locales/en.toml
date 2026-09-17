@@ -286,6 +286,8 @@ filter_nomail = "No mail sent"
 delete_confirm = "Delete the selected reservations (%d)? This cannot be undone."
 mail_confirm = "Send mail to %d addresses? Each address gets one mail."
 mail_no_template = "Select a mail template first."
+history = "Change history"
+history_empty = "No recorded status changes."
 
 [count.reservation]
 one = "%d reservation"

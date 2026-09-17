@@ -1341,6 +1341,33 @@ func (db *DB) ReservationCountByFurnitureID(furnID int64) (int64, error) {
 	return n, err
 }
 
+// ReservationStatusLogAdd zapisuje zmianę statusu rezerwacji
+// (tabela z tools/migration-redesign.sql).
+func (db *DB) ReservationStatusLogAdd(l *ReservationStatusLog) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO reservation_status_log (date, status, admin_email, reservations_id_fk)
+	VALUES(:date, :status, :admin_email, :reservations_id_fk)`, l)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+// ReservationStatusLogGet zwraca historię zmian dla podanych rezerwacji,
+// od najnowszej.
+func (db *DB) ReservationStatusLogGet(ids []int64) ([]ReservationStatusLog, error) {
+	ll := []ReservationStatusLog{}
+	if len(ids) == 0 {
+		return ll, nil
+	}
+	q, args, err := sqlx.In(`SELECT * FROM reservation_status_log
+		WHERE reservations_id_fk IN (?) ORDER BY date DESC, id DESC`, ids)
+	if err != nil {
+		return ll, err
+	}
+	err = db.DB.Select(&ll, db.DB.Rebind(q), args...)
+	return ll, err
+}
+
 // ReservationSetOrder przypisuje rezerwację do zamówienia.
 func (db *DB) ReservationSetOrder(reservationID, orderID int64) error {
 	_, err := db.DB.Exec(`UPDATE reservations SET orders_id_fk=$1 WHERE id=$2`, orderID, reservationID)

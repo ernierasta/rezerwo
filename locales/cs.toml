@@ -288,6 +288,8 @@ filter_nomail = "Bez mailu"
 delete_confirm = "Smazat označené rezervace (%d)? Nelze vrátit zpět."
 mail_confirm = "Poslat mail na %d adres? Každá adresa dostane jeden mail."
 mail_no_template = "Nejdřív vyberte šablonu mailu."
+history = "Historie změn"
+history_empty = "Žádné zaznamenané změny stavu."
 
 [count.reservation]
 one = "%d rezervace"

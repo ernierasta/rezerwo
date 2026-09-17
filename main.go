@@ -3400,12 +3400,32 @@ func DesignerDeleteObject(db *DB, cs *sessions.CookieStore) func(w http.Response
 			if !designerAPIAuth(w, r, db, cs, m.RoomID) {
 				return
 			}
+			// Krzesła z rezerwacjami są chronione (rozdz. 5.3 HARMONIJKA.md):
+			// nie da się skasować ani takiego krzesła, ani stołu, przy którym stoi.
+			if n, what, err := reservedUnder(db, m); err != nil {
+				log.Printf("DesignerDeleteObject: reservation check: %v", err)
+			} else if n > 0 {
+				lang := PanelLang(r)
+				key := "designer.chair_reserved"
+				if what == "table" {
+					key = "designer.table_reserved"
+				}
+				jsonMsg(w, http.StatusConflict, map[string]interface{}{
+					"msg":          TN(lang, key, n),
+					"reservations": n,
+				})
+				return
+			}
+
 			log.Printf("deleting from db: %+v\n", m)
 			err = db.FurnitureDelByNumberTypeRoom(m.Number, m.Type, m.RoomID)
 			if err != nil {
 				log.Println(err)
+				jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": err.Error()})
+				return
 			}
 			db.PriceDelByEventIDFurn(m.EventID, m.Number, m.Type)
+			jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "deleted"})
 		}
 	}
 }

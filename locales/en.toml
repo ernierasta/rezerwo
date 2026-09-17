@@ -117,6 +117,17 @@ taken = "taken"
 unavailable = "unavailable"
 no_seats_title = "No seats selected"
 
+[designer]
+delete_failed = "Could not delete"
+
+[designer.chair_reserved]
+one = "This seat cannot be deleted: it has %d reservation. Delete it in the reservations table first."
+other = "This seat cannot be deleted: it has %d reservations. Delete them in the reservations table first."
+
+[designer.table_reserved]
+one = "This table cannot be deleted: its seats have %d reservation. Delete it first."
+other = "This table cannot be deleted: its seats have %d reservations. Delete them first."
+
 [catalog]
 title = "Catalogues"
 rooms = "Rooms"

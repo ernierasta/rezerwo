@@ -1242,6 +1242,24 @@ func (db *DB) ReservationSetStatus(id, eventID int64, status string, payedDate s
 	return nil
 }
 
+// ReservationCountByFurnitureNumber liczy rezerwacje przypisane do mebla
+// wskazanego tak, jak robi to designer: numerem, typem i salą.
+// Służy do ochrony zajętych krzeseł przed skasowaniem (rozdz. 5.3 HARMONIJKA.md).
+func (db *DB) ReservationCountByFurnitureNumber(number int64, ftype string, roomID int64) (int64, error) {
+	var n int64
+	err := db.DB.Get(&n, `SELECT count(*) FROM reservations r
+		JOIN furnitures f ON r.furnitures_id_fk = f.id
+		WHERE f.number=$1 AND f.type=$2 AND f.rooms_id_fk=$3`, number, ftype, roomID)
+	return n, err
+}
+
+// ReservationCountByFurnitureID - to samo, ale po ID mebla.
+func (db *DB) ReservationCountByFurnitureID(furnID int64) (int64, error) {
+	var n int64
+	err := db.DB.Get(&n, `SELECT count(*) FROM reservations WHERE furnitures_id_fk=$1`, furnID)
+	return n, err
+}
+
 // ReservationGetByIDForNote zwraca rezerwację po ID (potrzebne m.in. po to,
 // żeby przy kasowaniu wiedzieć, czy zostały jeszcze rezerwacje z tą notatką).
 func (db *DB) ReservationGetByIDForNote(id int64) (Reservation, error) {

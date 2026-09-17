@@ -95,6 +95,81 @@ func tableSize(orientation string, capacity int64) (w, h float64, shape string) 
 	}
 }
 
+// svgChairAssign - krzesło należy do stołu, jeżeli jego środek jest najwyżej
+// tyle od krawędzi stołu. Ta sama liczba co CHAIR_ASSIGN_DIST w js/room.js.
+const svgChairAssign = svgChairSize + svgTableGap + svgChairSize/2
+
+// chairsOfTable zwraca krzesła stojące przy danym stole. Używa tej samej
+// geometrii co plan sali, żeby designer i strona gościa liczyły tak samo.
+func chairsOfTable(db *DB, table Furniture) ([]Furniture, error) {
+	chairs, err := db.FurnitureGetAllByRoomIDOfType(table.RoomID, "chair")
+	if err != nil {
+		return nil, err
+	}
+	tables, err := db.FurnitureGetAllByRoomIDOfType(table.RoomID, "table")
+	if err != nil {
+		return nil, err
+	}
+
+	box := func(f Furniture) (x, y, w, h float64) {
+		if f.Type == "table" {
+			tw, th, _ := tableSize(f.Orientation.String, f.Capacity.Int64)
+			if f.Width.Valid && f.Width.Int64 > 0 {
+				tw = float64(f.Width.Int64)
+			}
+			if f.Height.Valid && f.Height.Int64 > 0 {
+				th = float64(f.Height.Int64)
+			}
+			return float64(f.X) + svgTableMargin, float64(f.Y) + svgTableMargin, tw, th
+		}
+		return float64(f.X) + svgChairMargin, float64(f.Y) + svgChairMargin, svgChairSize, svgChairSize
+	}
+
+	// odległość środka krzesła od prostokąta stołu (0 = w środku stołu)
+	dist := func(cx, cy float64, t Furniture) float64 {
+		x, y, w, h := box(t)
+		dx := 0.0
+		if cx < x {
+			dx = x - cx
+		} else if cx > x+w {
+			dx = cx - (x + w)
+		}
+		dy := 0.0
+		if cy < y {
+			dy = y - cy
+		} else if cy > y+h {
+			dy = cy - (y + h)
+		}
+		return math.Hypot(dx, dy)
+	}
+
+	var out []Furniture
+	for _, c := range chairs {
+		cx, cy, cw, ch := box(c)
+		centerX, centerY := cx+cw/2, cy+ch/2
+
+		d := dist(centerX, centerY, table)
+		if d > svgChairAssign {
+			continue
+		}
+		// krzesło liczy się tylko do najbliższego stołu
+		nearest := true
+		for _, other := range tables {
+			if other.ID == table.ID {
+				continue
+			}
+			if dist(centerX, centerY, other) < d {
+				nearest = false
+				break
+			}
+		}
+		if nearest {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
 // chairStatus tłumaczy stan rezerwacji na stan widoczny dla gościa.
 // Gość nie musi odróżniać "zamówione" od "zapłacone" - dla niego miejsce jest
 // wolne, zajęte albo niedostępne (rozdz. 8.3 HARMONIJKA.md).
@@ -109,6 +184,38 @@ func chairStatus(f FurnitureFull) string {
 		return "disabled"
 	default:
 		return "free"
+	}
+}
+
+// reservedUnder mówi, ile rezerwacji blokuje skasowanie mebla i czego dotyczą:
+// "chair" - samo krzesło, "table" - krzesła stojące przy stole.
+func reservedUnder(db *DB, m DeleteMsg) (int64, string, error) {
+	switch m.Type {
+	case "chair":
+		n, err := db.ReservationCountByFurnitureNumber(m.Number, "chair", m.RoomID)
+		return n, "chair", err
+
+	case "table":
+		table, err := db.FurnitureGetByTypeNumberRoom("table", m.Number, m.RoomID)
+		if err != nil {
+			return 0, "table", err
+		}
+		chairs, err := chairsOfTable(db, table)
+		if err != nil {
+			return 0, "table", err
+		}
+		var total int64
+		for _, c := range chairs {
+			n, err := db.ReservationCountByFurnitureID(c.ID)
+			if err != nil {
+				return 0, "table", err
+			}
+			total += n
+		}
+		return total, "table", nil
+
+	default: // obiekty i napisy nikogo nie blokują
+		return 0, m.Type, nil
 	}
 }
 

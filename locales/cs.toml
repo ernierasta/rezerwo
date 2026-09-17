@@ -117,6 +117,19 @@ taken = "obsazené"
 unavailable = "nedostupné"
 no_seats_title = "Nejsou vybraná místa"
 
+[designer]
+delete_failed = "Nepodařilo se smazat"
+
+[designer.chair_reserved]
+one = "Toto místo nelze smazat: má %d rezervaci. Nejdřív ji smažte v tabulce rezervací."
+few = "Toto místo nelze smazat: má %d rezervace. Nejdřív je smažte v tabulce rezervací."
+many = "Toto místo nelze smazat: má %d rezervací. Nejdřív je smažte v tabulce rezervací."
+
+[designer.table_reserved]
+one = "Tento stůl nelze smazat: u jeho míst je %d rezervace. Nejdřív ji smažte."
+few = "Tento stůl nelze smazat: u jeho míst jsou %d rezervace. Nejdřív je smažte."
+many = "Tento stůl nelze smazat: u jeho míst je %d rezervací. Nejdřív je smažte."
+
 [catalog]
 title = "Katalogy"
 rooms = "Sály"

@@ -606,18 +606,35 @@ function AddLabel() {
   Designer.labelNr++;
 }
 
+// DeleteFurnitures kasuje zaznaczone meble. Element znika z planu dopiero, gdy
+// serwer potwierdzi kasowanie - krzesła z rezerwacjami są chronione i wtedy
+// serwer odmawia (patrz DesignerDeleteObject w main.go).
 function DeleteFurnitures() {
   $("#room > .ui-selected").each(function(i, obj) {
-    $(this).remove();
+    var el = $(this);
     $.ajax({
       method: "POST",
       url: "/api/furdel",
-      data: JSON.stringify({event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), name: Number($(this).attr('name')), type: $(this).attr('furniture')})
-    })
-    console.log(JSON.stringify({event_id: Number($("#event-id").val()), room_id: Number($("#room-id").val()), id: $(this).attr('name'), type: $(this).attr('furniture')}))
-
+      data: JSON.stringify({
+        event_id: Number($("#event-id").val()),
+        room_id: Number($("#room-id").val()),
+        name: Number(el.attr('name')),
+        type: el.attr('furniture')
+      }),
+      success: function() {
+        el.remove();
+      },
+      error: function(xhr) {
+        var msg = (xhr.responseJSON && xhr.responseJSON.msg) ? xhr.responseJSON.msg : "Nie udało się skasować.";
+        el.removeClass("ui-selected");
+        if (window.bootbox) {
+          bootbox.alert(msg);
+        } else {
+          alert(msg);
+        }
+      }
+    });
   });
-
 }
 
 var ROTATIONS = {

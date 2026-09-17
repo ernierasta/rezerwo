@@ -119,6 +119,19 @@ taken = "zajęte"
 unavailable = "niedostępne"
 no_seats_title = "Nie wybrano miejsc"
 
+[designer]
+delete_failed = "Nie udało się skasować"
+
+[designer.chair_reserved]
+one = "Tego miejsca nie można skasować: ma %d rezerwację. Najpierw skasuj ją w tabeli rezerwacji."
+few = "Tego miejsca nie można skasować: ma %d rezerwacje. Najpierw skasuj je w tabeli rezerwacji."
+many = "Tego miejsca nie można skasować: ma %d rezerwacji. Najpierw skasuj je w tabeli rezerwacji."
+
+[designer.table_reserved]
+one = "Tego stołu nie można skasować: przy jego miejscach jest %d rezerwacja. Najpierw ją skasuj."
+few = "Tego stołu nie można skasować: przy jego miejscach są %d rezerwacje. Najpierw je skasuj."
+many = "Tego stołu nie można skasować: przy jego miejscach jest %d rezerwacji. Najpierw je skasuj."
+
 [catalog]
 title = "Katalogi"
 rooms = "Sale"

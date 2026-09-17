@@ -117,6 +117,30 @@ taken = "taken"
 unavailable = "unavailable"
 no_seats_title = "No seats selected"
 
+[mail]
+subject = "Subject"
+text = "Body"
+related_to = "Used for"
+sharable = "Shared with other organizations"
+used_by = "Used in"
+attachments = "Attachments"
+images = "Images"
+files_hint = "Files are still added in the old mail editor."
+vars_hint = "Variables in the body work as before, e.g. {{.Sits}}, {{.MTotal}}, {{.QRPay \"Account\"}}."
+
+[account]
+hint = "The payment QR code is built from these details."
+iban = "Account number in IBAN format"
+iban_hint = "Without the IBAN no QR code is generated."
+recipient = "Recipient shown to the payer"
+varsymbol = "Variable symbol"
+message = "Start of the message for the recipient"
+message_hint = "The first and last name will be appended to the message."
+amount_field = "Amount field (forms)"
+amount_field_hint = "Name of the form field the amount is taken from."
+no_iban = "Saved, but without an account number no QR code is generated."
+varsymbol_number = "The variable symbol must be a number."
+
 [designer]
 delete_failed = "Could not delete"
 

@@ -119,6 +119,30 @@ taken = "zajęte"
 unavailable = "niedostępne"
 no_seats_title = "Nie wybrano miejsc"
 
+[mail]
+subject = "Temat"
+text = "Treść"
+related_to = "Dotyczy"
+sharable = "Współdzielony z innymi organizacjami"
+used_by = "Używany w"
+attachments = "Załączniki"
+images = "Obrazki"
+files_hint = "Pliki dodaje się na razie w starym edytorze maili."
+vars_hint = "Zmienne w treści działają jak dotąd, np. {{.Sits}}, {{.MTotal}}, {{.QRPay \"Konto\"}}."
+
+[account]
+hint = "Z tych danych powstaje kod QR do zapłaty."
+iban = "Numer konta w formacie IBAN"
+iban_hint = "Bez IBAN-u kod QR nie powstanie."
+recipient = "Odbiorca widoczny dla płacącego"
+varsymbol = "Symbol zmienny"
+message = "Początek wiadomości dla odbiorcy"
+message_hint = "Do wiadomości zostanie dopisane imię i nazwisko."
+amount_field = "Pole z kwotą (formularze)"
+amount_field_hint = "Nazwa pola formularza, z którego brana jest kwota."
+no_iban = "Zapisano, ale bez numeru konta kod QR nie powstanie."
+varsymbol_number = "Symbol zmienny musi być liczbą."
+
 [designer]
 delete_failed = "Nie udało się skasować"
 

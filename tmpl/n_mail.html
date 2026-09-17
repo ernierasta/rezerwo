@@ -1,0 +1,58 @@
+{{define "head"}}
+<link href="/css/quill.snow.css" rel="stylesheet">
+<script src="/js/quill.min.js"></script>
+{{end}}
+{{define "body"}}
+<div class="doc" id="mail-page" data-mail-id="{{.ID}}">
+  <div class="dh">
+    <h3>{{.Name}}</h3>
+    <div class="r">
+      <a class="btn quiet" href="/admin/catalogs">{{T "catalog.mails"}}</a>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:20px">
+    <div class="f"><label for="f-name">{{T "field.name"}}</label>
+      <input class="inp" id="f-name" data-field="name" value="{{.Name}}"></div>
+    <div class="f"><label for="f-related">{{T "mail.related_to"}}</label>
+      <select class="inp" id="f-related" data-field="related_to">
+        <option value="events" {{if eq .RelatedTo "events"}}selected{{end}}>{{T "catalog.for_events"}}</option>
+        <option value="forms" {{if eq .RelatedTo "forms"}}selected{{end}}>{{T "catalog.for_forms"}}</option>
+      </select></div>
+    <div class="f" style="grid-column:1/-1"><label for="f-subject">{{T "mail.subject"}}</label>
+      <input class="inp" id="f-subject" data-field="subject" value="{{.Subject}}"></div>
+  </div>
+
+  <div class="f" style="margin-top:16px">
+    <label>{{T "mail.text"}}</label>
+    <div class="ed" id="mail-editor">{{.Text}}</div>
+    <small>{{T "mail.vars_hint"}}</small>
+  </div>
+
+  <div class="check" style="margin-top:14px">
+    <input type="checkbox" id="f-sharable" data-field="sharable" {{if .Sharable}}checked{{end}}>
+    <label for="f-sharable">{{T "mail.sharable"}}</label>
+  </div>
+
+  {{if or .Attachments .Images}}
+  <p class="shared">
+    {{if .Attachments}}{{T "mail.attachments"}}: {{.Attachments}}{{end}}
+    {{if .Images}}{{if .Attachments}} · {{end}}{{T "mail.images"}}: {{.Images}}{{end}}
+    <br><small>{{T "mail.files_hint"}}</small>
+  </p>
+  {{end}}
+
+  {{if .UsedBy}}
+  <p class="shared">{{T "mail.used_by"}}: {{range $i, $n := .UsedBy}}{{if $i}}, {{end}}{{$n}}{{end}}</p>
+  {{end}}
+
+  <div class="sec-f">
+    <button class="btn" id="save">{{T "common.save"}}</button>
+    <a class="btn quiet" href="/admin/catalogs">{{T "common.cancel"}}</a>
+    <small class="msg"></small>
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="/js/n_mail.js"></script>
+{{end}}

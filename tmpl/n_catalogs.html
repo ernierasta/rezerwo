@@ -19,11 +19,11 @@
   </div>
 
   <h4>{{T "catalog.mails"}}
-    <button class="btn sm" data-post="/admin/maileditor" data-ask="name">{{T "catalog.new_mail"}}</button>
+    <button class="btn sm" data-create="/api/mails" data-go="/admin/mails/">{{T "catalog.new_mail"}}</button>
   </h4>
   <div class="rows">
     {{range .Mails}}
-    <a class="row" href="#" data-post="/admin/maileditor" data-params="mail-id={{.ID}}">
+    <a class="row" href="/admin/mails/{{.ID}}">
       <span>{{.RelatedTo}}</span>
       <span>{{.Name}}{{if .Shared}} <small class="muted">({{T "catalog.shared"}})</small>{{end}}</span>
       <small class="muted">{{.Title}}</small>
@@ -34,11 +34,11 @@
   </div>
 
   <h4>{{T "catalog.accounts"}}
-    <button class="btn sm" data-post="/admin/bankacceditor" data-ask="name">{{T "catalog.new_account"}}</button>
+    <button class="btn sm" data-create="/api/accounts" data-go="/admin/accounts/">{{T "catalog.new_account"}}</button>
   </h4>
   <div class="rows">
     {{range .Accounts}}
-    <a class="row" href="#" data-post="/admin/bankacceditor" data-params="ba-id={{.ID}}">
+    <a class="row" href="/admin/accounts/{{.ID}}">
       <span class="num">{{.IBAN}}</span>
       <span>{{.Name}}</span>
       <small class="muted">{{.Currency}}</small>
@@ -53,7 +53,24 @@
 <script>
 // Stare edytory otwierają się POST-em z parametrami w treści, więc zamiast
 // zwykłych linków wysyłamy ukryty formularz.
-document.getElementById('catalogs').addEventListener('click', function (e) {
+document.getElementById('catalogs').addEventListener('click', async function (e) {
+  // nowe katalogi (mail, konto) tworzy API i od razu otwieramy ich stronę
+  var add = e.target.closest('[data-create]');
+  if (add) {
+    e.preventDefault();
+    var newName = prompt("{{T "field.name"}}");
+    if (!newName) return;
+    var resp = await fetch(add.dataset.create, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: newName})
+    });
+    if (!resp.ok) { alert("{{T "common.save_error"}}"); return; }
+    var created = await resp.json();
+    location.href = add.dataset.go + created.id;
+    return;
+  }
+
   var el = e.target.closest('[data-post]');
   if (!el) return;
   e.preventDefault();

@@ -36,11 +36,11 @@
   <h4>{{T "catalog.accounts"}}
     <button class="btn sm" data-create="/api/accounts" data-go="/admin/accounts/">{{T "catalog.new_account"}}</button>
   </h4>
-  <div class="rows">
+  <div class="rows accounts">
     {{range .Accounts}}
     <a class="row" href="/admin/accounts/{{.ID}}">
-      <span class="num">{{.IBAN}}</span>
       <span>{{.Name}}</span>
+      <span class="num">{{.IBAN}}</span>
       <small class="muted">{{.Currency}}</small>
     </a>
     {{else}}

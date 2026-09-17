@@ -311,6 +311,21 @@ textarea.inp { min-height: 80px; }
 
   .empty { color: var(--muted); padding: 13px 4px; border-bottom: 1px solid var(--line); }
 
+  // pierwsza kolumna bywa długa (numer konta, rozmiar sali) - ma się zawijać,
+  // a nie nachodzić na nazwę
+  .row > span:first-child { overflow-wrap: anywhere; }
+  .row > span, .row > small { min-width: 0; }
+
+  // konta bankowe: nazwa bywa długa ("Matice školská u Základní školy..."),
+  // więc dostaje całą szerokość, a numer konta idzie obok
+  .rows.accounts .row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px 18px;
+
+    span:first-child { color: var(--ink); font-size: 15.5px; }
+    .num { color: var(--muted); font-size: 14px; white-space: nowrap; }
+  }
+
   h5.group {
     font-family: var(--display);
     font-weight: 500;

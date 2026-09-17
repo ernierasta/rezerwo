@@ -124,6 +124,19 @@ body.n :focus-visible {
 .topbar .r a:hover, .topbar .r a.on {
   color: var(--ink);
 }
+.topbar .langs {
+  display: flex;
+  gap: 6px;
+  font-size: 13px;
+}
+.topbar .langs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.topbar .langs a.on {
+  color: var(--ink);
+  font-weight: 500;
+}
 
 .doc {
   max-width: 900px;

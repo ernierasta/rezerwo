@@ -1488,6 +1488,20 @@ func (db *DB) AdminGetAll(UserID int64) ([]Admin, error) {
 }
 
 // AdminGetEmails retrieves all mails, TODO: maybe filter by type?
+// AdminSetLanguage zapisuje język panelu na koncie admina
+// (kolumna z tools/migration-redesign.sql).
+func (db *DB) AdminSetLanguage(email, lang string) error {
+	_, err := db.DB.Exec(`UPDATE admins SET language=$1 WHERE email=$2`, lang, email)
+	return err
+}
+
+// AdminGetLanguage zwraca język panelu zapisany na koncie admina.
+func (db *DB) AdminGetLanguage(email string) (string, error) {
+	var lang sql.NullString
+	err := db.DB.Get(&lang, `SELECT language FROM admins WHERE email=$1`, email)
+	return lang.String, err
+}
+
 func (db *DB) AdminGetEmails(UserID int64) ([]string, error) {
 	aa := []string{}
 	err := db.DB.Select(&aa, `SELECT email FROM admins WHERE users_id_fk=$1`, UserID)

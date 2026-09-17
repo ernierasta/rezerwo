@@ -16,6 +16,11 @@
       <a href="/admin/catalogs">{{T "nav.catalogs"}}</a>
       <a href="/admin">{{T "nav.old_panel"}}</a>
       {{if .OrgName}}<span class="muted">{{.OrgName}}</span>{{end}}
+      <span class="langs">
+        <a href="/admin/lang?l=pl" {{if eq lang "pl"}}class="on"{{end}}>PL</a>
+        <a href="/admin/lang?l=cs" {{if eq lang "cs"}}class="on"{{end}}>CZ</a>
+        <a href="/admin/lang?l=en" {{if eq lang "en"}}class="on"{{end}}>EN</a>
+      </span>
       <a href="/admin/logout">{{T "nav.logout"}}</a>
     </div>
   </div>

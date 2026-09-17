@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/gorilla/sessions"
 )
 
 // LOCALESDIR - katalog z plikami tłumaczeń.
@@ -219,8 +220,21 @@ func LocalesJSONHandler() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// PanelLangFor zwraca język panelu dla zalogowanego admina: najpierw ciasteczko
+// (ustawione przy wyborze języka), potem ustawienie z konta, na końcu przeglądarka.
+func PanelLangFor(db *DB, r *http.Request, email string) string {
+	if c, err := r.Cookie(PANELLANGCOOKIE); err == nil && c.Value != "" {
+		return KnownLang(c.Value)
+	}
+	if db != nil && email != "" {
+		if lang, err := db.AdminGetLanguage(email); err == nil && lang != "" {
+			return KnownLang(lang)
+		}
+	}
+	return PanelLang(r)
+}
+
 // PanelLang zwraca język panelu admina: ciasteczko, potem Accept-Language, potem pl.
-// (Kolumny admins.language jeszcze nie ma - dojdzie razem z ustawieniami organizacji.)
 func PanelLang(r *http.Request) string {
 	if c, err := r.Cookie(PANELLANGCOOKIE); err == nil && c.Value != "" {
 		return KnownLang(c.Value)
@@ -241,17 +255,50 @@ func PanelLang(r *http.Request) string {
 	return DEFAULTLANG
 }
 
-// SetPanelLangHandler zapisuje wybrany język panelu w ciasteczku: /admin/lang?l=cs.
-func SetPanelLangHandler() func(w http.ResponseWriter, r *http.Request) {
+// SetPanelLangCookie zapisuje język panelu w ciasteczku. Wołane przy wyborze
+// języka i po zalogowaniu (wtedy językiem z konta admina).
+func SetPanelLangCookie(w http.ResponseWriter, lang string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     PANELLANGCOOKIE,
+		Value:    KnownLang(lang),
+		Path:     "/",
+		MaxAge:   60 * 60 * 24 * 365,
+		HttpOnly: false,
+	})
+}
+
+// ApplyAdminLanguage ustawia ciasteczko języka panelu wg konta admina.
+// Dzięki temu po zalogowaniu na innym komputerze panel jest w tym języku,
+// który admin sobie wybrał.
+func ApplyAdminLanguage(w http.ResponseWriter, db *DB, email string) {
+	if db == nil || email == "" {
+		return
+	}
+	lang, err := db.AdminGetLanguage(email)
+	if err != nil || lang == "" {
+		return
+	}
+	SetPanelLangCookie(w, lang)
+}
+
+// SetPanelLangHandler zapisuje wybrany język panelu: /admin/lang?l=cs.
+// Język trzymamy w ciasteczku (działa od razu) i na koncie admina
+// (admins.language), żeby przetrwał wyczyszczenie ciasteczek.
+func SetPanelLangHandler(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		lang := KnownLang(r.URL.Query().Get("l"))
-		http.SetCookie(w, &http.Cookie{
-			Name:     PANELLANGCOOKIE,
-			Value:    lang,
-			Path:     "/",
-			MaxAge:   60 * 60 * 24 * 365,
-			HttpOnly: false,
-		})
+
+		if cs != nil && db != nil {
+			if session, err := cs.Get(r, AUTHCOOKIE); err == nil {
+				if email, ok := session.Values["email"].(string); ok && email != "" {
+					if err := db.AdminSetLanguage(email, lang); err != nil {
+						log.Printf("SetPanelLangHandler: saving language for %q: %v", email, err)
+					}
+				}
+			}
+		}
+		SetPanelLangCookie(w, lang)
+
 		back := r.Referer()
 		if back == "" {
 			back = "/admin"

@@ -122,7 +122,7 @@ func main() {
 	http.HandleFunc("/admin/login", AdminLoginHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin/logout", AdminLogout(cookieStore))
 	http.HandleFunc("/admin/devlogin", DevLogin(db, cookieStore))
-	http.HandleFunc("/admin/lang", SetPanelLangHandler())
+	http.HandleFunc("/admin/lang", SetPanelLangHandler(db, cookieStore))
 	http.HandleFunc("/admin", AdminMainPage(db, loc, lang, dateFormat, cookieStore))
 	http.HandleFunc("/admin/designer", DesignerHTML(db, lang, cookieStore))
 	http.HandleFunc("/admin/event", EventEditor(db, lang, cookieStore))
@@ -3595,6 +3595,8 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 			session.Values["role"] = m.Role
 			log.Println(m.Email, ", role: ", m.Role)
 			session.Save(r, w)
+			// panel w języku wybranym przez tego admina (admins.language)
+			ApplyAdminLanguage(w, db, m.Email)
 			w.Write([]byte(`{"resp":"OK"}`)) //TODO: do we really need to send something to trigger js: success func?
 		}
 	}

@@ -39,6 +39,9 @@ func DevLogin(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		// panel w języku wybranym przez tego admina (admins.language)
+		ApplyAdminLanguage(w, db, email)
+
 		log.Printf("DevLogin: %s logged in as admin", email)
 		http.Redirect(w, r, "/admin", http.StatusSeeOther)
 	}

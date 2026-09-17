@@ -85,6 +85,15 @@ body.n {
   .r { margin-left: auto; display: flex; gap: 18px; font-size: 14.5px; align-items: center; }
   .r a { color: var(--muted); text-decoration: none; }
   .r a:hover, .r a.on { color: var(--ink); }
+
+  .langs {
+    display: flex;
+    gap: 6px;
+    font-size: 13px;
+
+    a { color: var(--muted); text-decoration: none; }
+    a.on { color: var(--ink); font-weight: 500; }
+  }
 }
 
 // --- dokument (kolumna treści) ---------------------------------------------

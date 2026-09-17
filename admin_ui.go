@@ -489,6 +489,22 @@ type nEventVars struct {
 	SeatsPayed, SeatsOrdered, SeatsFree int64
 	PctPayed, PctOrdered                int64
 	ResRows                             []nResRow
+
+	SumReport   string
+	Report      []nReportRow
+	ReportTotal nReportRow
+	Occupancy   int64
+}
+
+// nReportRow to jedna linia rozliczenia: ile miejsc sprzedano po danej cenie
+// i ile z tego już wpłynęło.
+type nReportRow struct {
+	Price    string
+	Seats    int64
+	Sum      string
+	Payed    string
+	Waiting  string
+	rawPrice int64
 }
 
 // EventPage - strona jednej imprezy: /admin/events/{id}
@@ -697,6 +713,84 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 	v.SumSettings = strings.Join(settings, ", ")
 
 	fillReservationSummary(db, user, event, lang, v)
+	fillEventReport(db, user, event, lang, v)
+}
+
+// fillEventReport liczy rozliczenie imprezy po cenach miejsc.
+// Bez porównania z poprzednią edycją - to czeka na kolumnę
+// events.previous_event_id z tools/migration-redesign.sql.
+func fillEventReport(db *DB, user User, event Event, lang string, v *nEventVars) {
+	rr, err := db.ReservationFullGetAll(user.ID, event.ID)
+	if err != nil {
+		log.Printf("fillEventReport: %v", err)
+	}
+
+	type bucket struct {
+		seats   int64
+		sum     int64
+		payed   int64
+		waiting int64
+		curr    string
+	}
+	buckets := map[int64]*bucket{}
+	var order []int64
+	var total bucket
+
+	for _, r := range rr {
+		if r.Status != "payed" && r.Status != "ordered" {
+			continue
+		}
+		price := r.Price.Int64
+		b, ok := buckets[price]
+		if !ok {
+			b = &bucket{curr: event.DefaultCurrency}
+			buckets[price] = b
+			order = append(order, price)
+		}
+		if r.Currency.Valid && r.Currency.String != "" {
+			b.curr = r.Currency.String
+		}
+
+		b.seats++
+		b.sum += price
+		total.seats++
+		total.sum += price
+		if r.Status == "payed" {
+			b.payed += price
+			total.payed += price
+		} else {
+			b.waiting += price
+			total.waiting += price
+		}
+	}
+
+	sort.Slice(order, func(i, j int) bool { return order[i] > order[j] })
+
+	for _, price := range order {
+		b := buckets[price]
+		v.Report = append(v.Report, nReportRow{
+			Price:    FormatMoney(price, b.curr),
+			Seats:    b.seats,
+			Sum:      FormatMoney(b.sum, b.curr),
+			Payed:    FormatMoney(b.payed, b.curr),
+			Waiting:  FormatMoney(b.waiting, b.curr),
+			rawPrice: price,
+		})
+	}
+
+	v.ReportTotal = nReportRow{
+		Seats:   total.seats,
+		Sum:     FormatMoney(total.sum, event.DefaultCurrency),
+		Payed:   FormatMoney(total.payed, event.DefaultCurrency),
+		Waiting: FormatMoney(total.waiting, event.DefaultCurrency),
+	}
+
+	seats := eventStats(db, user.ID, event.ID).Seats
+	if seats > 0 {
+		v.Occupancy = (v.SeatsPayed + v.SeatsOrdered) * 100 / seats
+	}
+	v.SumReport = T(lang, "report.summary",
+		fmt.Sprintf("%d%%", v.Occupancy), FormatMoney(total.payed, event.DefaultCurrency))
 }
 
 func eventSubtitle(lang string, event Event) string {

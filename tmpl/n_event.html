@@ -177,6 +177,46 @@
       </div>
     </div>
 
+    <!-- Raporty -->
+    <div class="sec" data-sec="raporty">
+      <div class="sec-h"><b>{{T "event.sec.reports"}}</b><span class="num">{{.SumReport}}</span><a class="act" href="#raporty">{{T "common.show"}}</a></div>
+      <div class="sec-b" hidden>
+        {{if .Report}}
+        <div class="tools"><a class="r" href="/api/events/{{.ID}}/report.csv">{{T "report.export"}}</a></div>
+        <div class="wide">
+          <table class="tbl">
+            <tr>
+              <th>{{T "report.price"}}</th>
+              <th class="r">{{T "report.seats"}}</th>
+              <th class="r">{{T "report.sum"}}</th>
+              <th class="r">{{T "report.payed"}}</th>
+              <th class="r">{{T "report.waiting"}}</th>
+            </tr>
+            {{range .Report}}
+            <tr>
+              <td class="num">{{.Price}}</td>
+              <td class="r num">{{.Seats}}</td>
+              <td class="r num">{{.Sum}}</td>
+              <td class="r num">{{.Payed}}</td>
+              <td class="r num">{{.Waiting}}</td>
+            </tr>
+            {{end}}
+            <tr>
+              <td><b>{{T "report.total"}}</b></td>
+              <td class="r num"><b>{{.ReportTotal.Seats}}</b></td>
+              <td class="r num"><b>{{.ReportTotal.Sum}}</b></td>
+              <td class="r num"><b>{{.ReportTotal.Payed}}</b></td>
+              <td class="r num"><b>{{.ReportTotal.Waiting}}</b></td>
+            </tr>
+          </table>
+        </div>
+        <p class="muted" style="margin-top:10px">{{T "report.occupancy"}}: <b class="num">{{.Occupancy}}%</b></p>
+        {{else}}
+        <p class="muted">{{T "report.empty"}}</p>
+        {{end}}
+      </div>
+    </div>
+
     <!-- Ustawienia -->
     <div class="sec" data-sec="ustawienia">
       <div class="sec-h"><b>{{T "event.sec.settings"}}</b><span>{{.SumSettings}}</span><a class="act" href="#ustawienia">{{T "common.change"}}</a></div>

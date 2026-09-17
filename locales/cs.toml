@@ -235,6 +235,19 @@ ordered = "objednané"
 payed = "zaplacené"
 disabled = "nedostupné"
 
+[report]
+occupancy = "Obsazenost"
+by_price = "Vyúčtování podle cen"
+price = "Cena"
+seats = "Místa"
+sum = "Součet"
+payed = "Zaplaceno"
+waiting = "Čeká na platbu"
+total = "Celkem"
+export = "Stáhnout CSV"
+empty = "Zatím není co vyúčtovat."
+summary = "%s obsazenosti, zaplaceno %s"
+
 [res]
 person = "Osoba"
 seats = "Místa"

@@ -420,6 +420,36 @@ func ReservationsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 	}
 }
 
+// EventReportCSVAPI: GET /api/events/{id}/report.csv - rozliczenie po cenach.
+func EventReportCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, event, ok := adminEvent(w, r, db, cs)
+		if !ok {
+			return
+		}
+		lang := PanelLang(r)
+
+		v := nEventVars{}
+		fillReservationSummary(db, user, event, lang, &v)
+		fillEventReport(db, user, event, lang, &v)
+
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q",
+			strings.ReplaceAll(event.Name, "\"", "")+"-rozliczenie.csv"))
+
+		cw := csv.NewWriter(w)
+		defer cw.Flush()
+
+		cw.Write([]string{T(lang, "report.price"), T(lang, "report.seats"),
+			T(lang, "report.sum"), T(lang, "report.payed"), T(lang, "report.waiting")})
+		for _, row := range v.Report {
+			cw.Write([]string{row.Price, strconv.FormatInt(row.Seats, 10), row.Sum, row.Payed, row.Waiting})
+		}
+		cw.Write([]string{T(lang, "report.total"), strconv.FormatInt(v.ReportTotal.Seats, 10),
+			v.ReportTotal.Sum, v.ReportTotal.Payed, v.ReportTotal.Waiting})
+	}
+}
+
 // --- strona tabeli ---------------------------------------------------------
 
 type nReservationsVars struct {

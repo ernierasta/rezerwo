@@ -233,6 +233,19 @@ ordered = "ordered"
 payed = "paid"
 disabled = "unavailable"
 
+[report]
+occupancy = "Occupancy"
+by_price = "Breakdown by price"
+price = "Price"
+seats = "Seats"
+sum = "Sum"
+payed = "Paid"
+waiting = "Awaiting payment"
+total = "Total"
+export = "Download CSV"
+empty = "Nothing to report yet."
+summary = "%s occupancy, %s paid"
+
 [res]
 person = "Person"
 seats = "Seats"

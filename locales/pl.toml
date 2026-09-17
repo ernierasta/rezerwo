@@ -237,6 +237,19 @@ ordered = "zamówione"
 payed = "zapłacone"
 disabled = "niedostępne"
 
+[report]
+occupancy = "Zajętość"
+by_price = "Rozliczenie po cenach"
+price = "Cena"
+seats = "Miejsca"
+sum = "Suma"
+payed = "Zapłacone"
+waiting = "Czeka na wpłatę"
+total = "Razem"
+export = "Pobierz CSV"
+empty = "Nie ma jeszcze czego rozliczać."
+summary = "%s zajętości, wpłacono %s"
+
 [res]
 person = "Osoba"
 seats = "Miejsca"

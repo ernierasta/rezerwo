@@ -1130,6 +1130,33 @@ func (db *DB) EventClearRooms(eventID int64) error {
 	return err
 }
 
+// EventSetStatus ustawia stan imprezy: "draft" (szkic, niewidoczna dla gości)
+// albo "published". Osobna metoda, bo stare zapytania nie znają tej kolumny.
+func (db *DB) EventSetStatus(eventID, userID int64, status string) error {
+	_, err := db.DB.Exec(`UPDATE events SET status=$1 WHERE id=$2 AND users_id_fk=$3`, status, eventID, userID)
+	return err
+}
+
+// EventSetPreviousEdition wskazuje poprzednią edycję imprezy (do porównań).
+func (db *DB) EventSetPreviousEdition(eventID, userID int64, prevID sql.NullInt64) error {
+	if prevID.Valid && prevID.Int64 == eventID {
+		return fmt.Errorf("event %d can not be its own previous edition", eventID)
+	}
+	_, err := db.DB.Exec(`UPDATE events SET previous_event_id=$1 WHERE id=$2 AND users_id_fk=$3`,
+		prevID, eventID, userID)
+	return err
+}
+
+// ReservationsSoldBefore liczy miejsca sprzedane do danej chwili (po dacie
+// zamówienia). Służy do porównania edycji "tyle samo dni przed imprezą".
+func (db *DB) ReservationsSoldBefore(eventID, until int64) (int64, int64, error) {
+	var seats, sum sql.NullInt64
+	err := db.DB.QueryRow(`SELECT count(*), COALESCE(sum(price), 0) FROM reservations
+		WHERE events_id_fk=$1 AND status IN ('ordered','payed')
+		AND COALESCE(ordered_date, 0) <= $2`, eventID, until).Scan(&seats, &sum)
+	return seats.Int64, sum.Int64, err
+}
+
 // EventSetHideCosts zapisuje samo pole hidecosts.
 // Osobno, bo EventModByID tej kolumny nie aktualizuje (stary edytor imprezy
 // nie zna tego pola i skasowałby ustawienie).

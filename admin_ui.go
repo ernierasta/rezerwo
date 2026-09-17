@@ -483,6 +483,11 @@ type nEventVars struct {
 
 	Sharable  bool
 	HideCosts bool
+	// Draft - impreza jeszcze nieopublikowana (goście jej nie widzą)
+	Draft bool
+	// PreviousEventID i OtherEvents - powiązanie z poprzednią edycją
+	PreviousEventID int64
+	OtherEvents     []Event
 
 	SumBasic, SumDates, SumRoom, SumGuest string
 	SumMailGuest, SumMailAdmin, SumBank   string
@@ -502,6 +507,13 @@ type nEventVars struct {
 	SumAddons        string
 	AddonsTemplateID int64
 	AddonFields      []nAddonField
+
+	// porównanie z poprzednią edycją (rozdz. 4.2 HARMONIJKA.md)
+	CompareName  string
+	CompareLine  string
+	CompareNow   int64
+	CompareThen  int64
+	CompareMoney string
 }
 
 // nReportRow to jedna linia rozliczenia: ile miejsc sprzedano po danej cenie
@@ -588,32 +600,46 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		Language: language,
 		// podgląd nowej strony gościa dla TEJ imprezy (bez ?event-id strona
 		// pokazuje imprezę z otwartą sprzedażą)
-		GuestURL:       fmt.Sprintf("/n/res/%s?event-id=%d", user.URL, event.ID),
-		DateVal:        dateInputValue(event.Date),
-		FromVal:        dateInputValue(event.FromDate),
-		ToVal:          dateInputValue(event.ToDate),
-		Price:          event.DefaultPrice,
-		Currency:       event.DefaultCurrency,
-		RoomsVal:       getRoomsString(evRooms),
-		UserRooms:      userRooms,
-		EventRooms:     evRooms,
-		MainDesc:       template.HTML(event.MainDesc.String),
-		MainBanner:     event.MainBanner.String,
-		OrderHowto:     template.HTML(event.OrderHowto),
-		OrderNotesDesc: event.OrderNotesDescription,
-		NoSitsTitle:    event.NoSitsSelectedTitle,
-		NoSitsText:     template.HTML(event.NoSitsSelectedText),
-		OrderedTitle:   event.OrderedNoteTitle,
-		OrderedText:    template.HTML(event.OrderedNoteText),
-		HowTo:          template.HTML(event.HowTo),
-		Notifications:  notifs,
-		ThankYouMailID: event.ThankYouNotificationsID.Int64,
-		AdminMailID:    event.AdminNotificationsID.Int64,
-		BankAccounts:   bankAccs,
-		BankAccountID:  event.BankAccountsID.Int64,
-		Forms:          eventForms,
-		Sharable:       event.Sharable.Bool,
-		HideCosts:      event.HideCosts.Bool,
+		GuestURL:        fmt.Sprintf("/n/res/%s?event-id=%d", user.URL, event.ID),
+		DateVal:         dateInputValue(event.Date),
+		FromVal:         dateInputValue(event.FromDate),
+		ToVal:           dateInputValue(event.ToDate),
+		Price:           event.DefaultPrice,
+		Currency:        event.DefaultCurrency,
+		RoomsVal:        getRoomsString(evRooms),
+		UserRooms:       userRooms,
+		EventRooms:      evRooms,
+		MainDesc:        template.HTML(event.MainDesc.String),
+		MainBanner:      event.MainBanner.String,
+		OrderHowto:      template.HTML(event.OrderHowto),
+		OrderNotesDesc:  event.OrderNotesDescription,
+		NoSitsTitle:     event.NoSitsSelectedTitle,
+		NoSitsText:      template.HTML(event.NoSitsSelectedText),
+		OrderedTitle:    event.OrderedNoteTitle,
+		OrderedText:     template.HTML(event.OrderedNoteText),
+		HowTo:           template.HTML(event.HowTo),
+		Notifications:   notifs,
+		ThankYouMailID:  event.ThankYouNotificationsID.Int64,
+		AdminMailID:     event.AdminNotificationsID.Int64,
+		BankAccounts:    bankAccs,
+		BankAccountID:   event.BankAccountsID.Int64,
+		Forms:           eventForms,
+		Sharable:        event.Sharable.Bool,
+		HideCosts:       event.HideCosts.Bool,
+		Draft:           event.Status.String == "draft",
+		PreviousEventID: event.PreviousEventID.Int64,
+	}
+
+	// do wyboru poprzedniej edycji: inne imprezy organizacji, od najnowszej
+	allEvents, err := db.EventGetAllByUserID(user.ID)
+	if err != nil {
+		log.Printf("buildEventVars: events: %v", err)
+	}
+	sort.Slice(allEvents, func(i, j int) bool { return allEvents[i].Date > allEvents[j].Date })
+	for _, e := range allEvents {
+		if e.ID != event.ID {
+			v.OtherEvents = append(v.OtherEvents, e)
+		}
 	}
 
 	// opisy i bannery sal - tyle pól, ile sal ma impreza (minimum jedno)
@@ -712,11 +738,19 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 	}
 
 	settings := []string{}
+	if event.Status.String == "draft" {
+		settings = append(settings, T(lang, "event.draft"))
+	}
 	if event.Sharable.Bool {
 		settings = append(settings, T(lang, "field.sharable"))
 	}
 	if event.HideCosts.Bool {
 		settings = append(settings, T(lang, "field.hidecosts"))
+	}
+	if event.PreviousEventID.Valid && event.PreviousEventID.Int64 != 0 {
+		if prev, err := db.EventGetByID(event.PreviousEventID.Int64); err == nil && prev.UserID == user.ID {
+			settings = append(settings, T(lang, "field.previous_edition")+": "+prev.Name)
+		}
 	}
 	if len(settings) == 0 {
 		settings = append(settings, T(lang, "common.none"))
@@ -818,6 +852,49 @@ func fillEventReport(db *DB, user User, event Event, lang string, v *nEventVars)
 	}
 	v.SumReport = T(lang, "report.summary",
 		fmt.Sprintf("%d%%", v.Occupancy), FormatMoney(total.payed, event.DefaultCurrency))
+
+	fillEditionComparison(db, user, event, lang, v)
+}
+
+// fillEditionComparison porównuje sprzedaż z poprzednią edycją w tym samym
+// momencie: "21 dni przed imprezą teraz 58 miejsc, rok temu 49". Porównywanie
+// po dacie kalendarzowej nie ma sensu, bo imprezy wypadają w różne dni.
+func fillEditionComparison(db *DB, user User, event Event, lang string, v *nEventVars) {
+	if !event.PreviousEventID.Valid || event.PreviousEventID.Int64 == 0 || event.Date <= 0 {
+		return
+	}
+	prev, err := db.EventGetByID(event.PreviousEventID.Int64)
+	if err != nil || prev.UserID != user.ID || prev.Date <= 0 {
+		return
+	}
+
+	now := time.Now().Unix()
+	const day = int64(24 * 3600)
+	daysLeft := (event.Date - now) / day
+
+	// ten sam punkt sprzedaży poprzedniej edycji
+	cutoff := prev.Date - daysLeft*day
+	if daysLeft <= 0 {
+		cutoff = prev.Date // impreza już była: porównujemy całość
+	}
+
+	seats, sum, err := db.ReservationsSoldBefore(prev.ID, cutoff)
+	if err != nil {
+		log.Printf("fillEditionComparison: %v", err)
+		return
+	}
+
+	v.CompareName = prev.Name
+	v.CompareNow = v.SeatsPayed + v.SeatsOrdered
+	v.CompareThen = seats
+	v.CompareMoney = FormatMoney(sum, prev.DefaultCurrency)
+
+	if daysLeft > 0 {
+		v.CompareLine = T(lang, "report.compare_before",
+			TN(lang, "count.day", daysLeft), v.CompareNow, prev.Name, seats)
+	} else {
+		v.CompareLine = T(lang, "report.compare_total", v.CompareNow, prev.Name, seats)
+	}
 }
 
 func eventSubtitle(lang string, event Event) string {
@@ -1140,6 +1217,24 @@ func EventSectionSave(db *DB, loc *time.Location, dF string, cs *sessions.Cookie
 			event.HideCosts = ToNB(flag("hidecosts"))
 			if err := db.EventSetHideCosts(event.ID, user.ID, flag("hidecosts")); err != nil {
 				log.Printf("EventSectionSave: hidecosts: %v", err)
+			}
+
+			// szkic: impreza nie pokazuje się gościom
+			status := "published"
+			if flag("draft") {
+				status = "draft"
+			}
+			event.Status = ToNS(status)
+			if err := db.EventSetStatus(event.ID, user.ID, status); err != nil {
+				log.Printf("EventSectionSave: status: %v", err)
+			}
+
+			prev := ToNI(id64("previous_event_id"))
+			event.PreviousEventID = prev
+			if err := db.EventSetPreviousEdition(event.ID, user.ID, prev); err != nil {
+				log.Printf("EventSectionSave: previous edition: %v", err)
+				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
+				return
 			}
 		default:
 			jsonMsg(w, http.StatusBadRequest, nSectionResp{Msg: "unknown section " + msg.Section})

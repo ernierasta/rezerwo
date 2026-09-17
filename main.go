@@ -99,7 +99,7 @@ func main() {
 	rtr.HandleFunc("/locales/{file}", LocalesJSONHandler())
 
 	// nowa strona rezerwacji dla gościa, na razie obok starej (etap 4)
-	rtr.HandleFunc("/n/res/{user}", GuestReservationPage(db, lang))
+	rtr.HandleFunc("/n/res/{user}", GuestReservationPage(db, lang, cookieStore))
 	rtr.HandleFunc("/n/order", GuestOrderPage(db, lang))
 
 	rtr.HandleFunc("/res/{user}", ReservationHTML(db, lang))
@@ -3243,6 +3243,12 @@ func EventCopyAPI(db *DB, dF string, cs *sessions.CookieStore) func(w http.Respo
 		}
 
 		newEventID, err := db.EventAdd(&ev)
+		if err == nil {
+			// kopia wie, z czego powstała - stąd porównanie sprzedaży edycji
+			if perr := db.EventSetPreviousEdition(newEventID, user.ID, ToNI(src.ID)); perr != nil {
+				log.Printf("EventCopyAPI: previous edition: %v", perr)
+			}
+		}
 		if err != nil {
 			fail("Nie udało się zapisać imprezy: %v", err)
 			return
@@ -5444,6 +5450,10 @@ func EventGetCurrent(db *DB, userID int64) (Event, error) {
 	}
 	now := time.Now().Unix()
 	for i := range events {
+		// szkice nie są widoczne dla gości
+		if events[i].Status.String == "draft" {
+			continue
+		}
 		// return first active user event
 		if events[i].FromDate < now && events[i].ToDate > now {
 			return events[i], nil

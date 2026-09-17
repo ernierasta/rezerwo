@@ -15,6 +15,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 // nGuestRoom to sala z policzoną geometrią i tekstami dla szablonu.
@@ -55,8 +56,23 @@ type nGuestVars struct {
 	NoSitsText  template.HTML
 }
 
+// isAdminSession sprawdza, czy żądanie ma ważną sesję admina - bez
+// przekierowań, bo na stronie gościa nie chcemy nikogo nigdzie wysyłać.
+// Służy tylko do podglądu szkiców imprez z panelu.
+func isAdminSession(r *http.Request, cs *sessions.CookieStore) bool {
+	if cs == nil {
+		return false
+	}
+	session, err := cs.Get(r, AUTHCOOKIE)
+	if err != nil {
+		return false
+	}
+	role, _ := session.Values["role"].(string)
+	return role == "admin"
+}
+
 // GuestReservationPage - /n/res/{user}
-func GuestReservationPage(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
+func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userURL := mux.Vars(r)["user"]
 		user, err := db.UserGetByURL(userURL)
@@ -95,6 +111,13 @@ func GuestReservationPage(db *DB, lang string) func(w http.ResponseWriter, r *ht
 
 		// strona gościa jest zawsze w języku imprezy (rozdz. 10.2 HARMONIJKA.md)
 		lng := KnownLang(event.Language.String)
+
+		// szkic widzi tylko zalogowany admin (podgląd z panelu)
+		if event.Status.String == "draft" && !isAdminSession(r, cs) {
+			log.Printf("GuestReservationPage: draft event %d hidden from guests", event.ID)
+			ErrorHTML(T(lng, "guest.draft_title"), T(lng, "guest.draft_text"), lng, w, r)
+			return
+		}
 
 		rooms, err := db.EventGetRooms(event.ID)
 		if err != nil || len(rooms) == 0 {

@@ -243,6 +243,11 @@
           </table>
         </div>
         <p class="muted" style="margin-top:10px">{{T "report.occupancy"}}: <b class="num">{{.Occupancy}}%</b></p>
+        {{if .CompareLine}}
+        <p class="compare">{{T "report.compare_title"}}: {{.CompareLine}}
+          <small class="muted">({{T "report.payed"}} {{.CompareMoney}})</small>
+        </p>
+        {{end}}
         {{else}}
         <p class="muted">{{T "report.empty"}}</p>
         {{end}}
@@ -253,8 +258,16 @@
     <div class="sec" data-sec="ustawienia">
       <div class="sec-h"><b>{{T "event.sec.settings"}}</b><span>{{.SumSettings}}</span><a class="act" href="#ustawienia">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
-        <div class="check"><input type="checkbox" id="f-sharable" data-field="sharable" {{if .Sharable}}checked{{end}}><label for="f-sharable">{{T "field.sharable"}}</label></div>
+        <div class="check"><input type="checkbox" id="f-draft" data-field="draft" {{if .Draft}}checked{{end}}><label for="f-draft">{{T "field.draft"}}</label></div>
+        <div class="check" style="margin-top:8px"><input type="checkbox" id="f-sharable" data-field="sharable" {{if .Sharable}}checked{{end}}><label for="f-sharable">{{T "field.sharable"}}</label></div>
         <div class="check" style="margin-top:8px"><input type="checkbox" id="f-hidecosts" data-field="hidecosts" {{if .HideCosts}}checked{{end}}><label for="f-hidecosts">{{T "field.hidecosts"}}</label></div>
+        <div class="f" style="margin-top:16px"><label for="f-previous">{{T "field.previous_edition"}}</label>
+          <select class="inp" id="f-previous" data-field="previous_event_id">
+            <option value="0">{{T "common.none"}}</option>
+            {{range .OtherEvents}}<option value="{{.ID}}" {{if eq $.PreviousEventID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+          </select>
+          <small>{{T "field.previous_edition_hint"}}</small>
+        </div>
         <div class="sec-f"><button class="btn" data-save="settings">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>

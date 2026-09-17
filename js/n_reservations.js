@@ -70,7 +70,7 @@
       }
       var o = byEmail[key];
       o.ids.push(r.id);
-      o.seats.push(r.room + ': ' + r.chair);
+      o.seats.push({room: r.room, chair: r.chair});
       o.price += r.price;
       o.mail_count = Math.max(o.mail_count, r.mail_count);
       o.last_mail = Math.max(o.last_mail, r.last_mail);
@@ -79,10 +79,39 @@
     });
     return order.map(function (k) {
       var o = byEmail[k];
-      o.seatsText = o.seats.join(', ');
+      o.seatsText = seatsLabel(o.seats);
       o.seatCount = o.seats.length;
       return o;
     });
+  }
+
+  // seatsLabel skraca listę miejsc: nazwa sali raz, numery po przecinku,
+  // ciągi zwijane do zakresu ("Balkon: 301–304, 312").
+  function seatsLabel(seats) {
+    var byRoom = {}, order = [];
+    seats.forEach(function (s) {
+      if (!byRoom[s.room]) { byRoom[s.room] = []; order.push(s.room); }
+      byRoom[s.room].push(Number(s.chair));
+    });
+
+    return order.map(function (room) {
+      var nums = byRoom[room].sort(function (a, b) { return a - b; });
+      var parts = [], start = nums[0], prev = nums[0];
+
+      function flush() {
+        if (start === prev) parts.push(String(start));
+        else if (prev === start + 1) parts.push(start + ', ' + prev);
+        else parts.push(start + '–' + prev);
+      }
+
+      for (var i = 1; i < nums.length; i++) {
+        if (nums[i] === prev + 1) { prev = nums[i]; continue; }
+        flush();
+        start = prev = nums[i];
+      }
+      flush();
+      return room + ': ' + parts.join(', ');
+    }).join(' · ');
   }
 
   function orderColumns() {

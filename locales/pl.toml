@@ -12,6 +12,10 @@ catalogs = "Katalogi"
 old_panel = "Stary panel"
 logout = "Wyloguj"
 
+[draft]
+restored = "Przywrócono niezapisane zmiany. Do bazy trafią dopiero po kliknięciu „Zapisz”."
+discard = "Odrzuć zmiany"
+
 [common]
 save = "Zapisz"
 cancel = "Anuluj"

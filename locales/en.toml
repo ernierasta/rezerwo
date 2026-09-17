@@ -10,6 +10,10 @@ catalogs = "Catalogues"
 old_panel = "Old panel"
 logout = "Log out"
 
+[draft]
+restored = "Unsaved changes restored. They reach the database only when you click Save."
+discard = "Discard changes"
+
 [common]
 save = "Save"
 cancel = "Cancel"

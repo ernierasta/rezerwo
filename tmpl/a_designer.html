@@ -79,6 +79,7 @@
   
       <div id="furniture-actions">
         <button id="select" class="btn btn-info" onclick="SpawnChairs()" >{{.BTNSpawnChairs}}</button>
+        <a id="back-to-event" class="btn btn-outline-secondary" href="/admin/events/{{.Event.ID}}">← {{.Event.Name}}</a>
         <button id="save" class="btn btn-success" onclick="SaveRoom()" >{{.BTNSave}}</button>
         <button id="delete" class="btn btn-danger" onclick="DeleteFurnitures()" >{{.BTNDelete}}</button>
       </div>

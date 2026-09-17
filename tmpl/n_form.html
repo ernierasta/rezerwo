@@ -124,9 +124,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var page = document.getElementById('form-page');
-  RZ.sections(page, '/api/forms/' + page.dataset.formId + '/section');
+  var secs = RZ.sections(page, '/api/forms/' + page.dataset.formId + '/section',
+    {draftKey: 'rezerwo.form.' + page.dataset.formId + '.draft'});
   RZ.loadLocale(document.documentElement.lang || 'pl').then(function () {
-    RZ.accordion(page, 'rezerwo.form.' + page.dataset.formId + '.sections');
+    var acc = RZ.accordion(page, 'rezerwo.form.' + page.dataset.formId + '.sections');
+    secs.restore(acc); // niezapisane zmiany sprzed wyjścia ze strony
   });
   // stary edytor pól otwiera się POST-em z form-id
   document.getElementById('edit-fields').addEventListener('click', function (e) {

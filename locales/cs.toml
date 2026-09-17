@@ -10,6 +10,10 @@ catalogs = "Katalogy"
 old_panel = "Starý panel"
 logout = "Odhlásit"
 
+[draft]
+restored = "Obnovili jsme neuložené změny. Do databáze se zapíšou až po kliknutí na „Uložit”."
+discard = "Zahodit změny"
+
 [common]
 save = "Uložit"
 cancel = "Zrušit"

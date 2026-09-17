@@ -1,5 +1,9 @@
 // n_event.js - strona imprezy jako harmonijka.
 // Każda sekcja ma własne "Zapisz"/"Anuluj" i własne żądanie API.
+//
+// Niezapisane zmiany trzymamy jako szkic w przeglądarce (localStorage), więc
+// można wyjść do innego ekranu (np. do designera sali) i wrócić do tych samych
+// wartości. Do bazy trafiają dopiero po kliknięciu "Zapisz".
 
 (function () {
   'use strict';
@@ -7,6 +11,7 @@
   var page = document.getElementById('event-page');
   if (!page) return;
   var eventID = page.dataset.eventId;
+  var drafts = RZ.draft('rezerwo.event.' + eventID + '.draft');
 
   var quillToolbar = [
     [{header: [1, 2, 3, false]}],
@@ -38,11 +43,13 @@
   function markDirty(sec) {
     sec.classList.add('dirty');
     dirty[sec.dataset.sec] = true;
+    drafts.save(sec.dataset.sec, values(sec));
   }
 
   function clearDirty(sec) {
     sec.classList.remove('dirty');
     delete dirty[sec.dataset.sec];
+    drafts.clear(sec.dataset.sec);
   }
 
   function values(sec) {
@@ -125,6 +132,9 @@
     }
     if (e.target.closest('[data-cancel]')) {
       e.preventDefault();
+      // "Anuluj" wyrzuca szkic tej sekcji i wraca do wartości z bazy
+      var sec = e.target.closest('.sec');
+      if (sec) drafts.clear(sec.dataset.sec);
       location.reload();
       return;
     }
@@ -168,13 +178,31 @@
     }
   });
 
-  window.addEventListener('beforeunload', function (e) {
-    if (Object.keys(dirty).length === 0) return;
-    e.preventDefault();
-    e.returnValue = '';
-  });
-
   RZ.loadLocale(document.documentElement.lang || 'pl').then(function () {
-    RZ.accordion(page, 'rezerwo.event.' + eventID + '.sections');
+    var acc = RZ.accordion(page, 'rezerwo.event.' + eventID + '.sections');
+
+    // przywracamy niezapisane zmiany sprzed wyjścia ze strony
+    var pending = drafts.sections();
+    if (!pending.length) return;
+
+    var restored = false;
+    pending.forEach(function (name) {
+      var sec = acc.open(name);
+      if (!sec) {           // sekcji już nie ma (np. zmienił się szablon)
+        drafts.clear(name);
+        return;
+      }
+      RZ.applyValues(sec, drafts.get(name), editors);
+      sec.classList.add('dirty');
+      dirty[name] = true;
+      restored = true;
+    });
+
+    if (restored) {
+      RZ.draftNotice(function () {
+        drafts.clearAll();
+        location.reload();
+      });
+    }
   });
 })();

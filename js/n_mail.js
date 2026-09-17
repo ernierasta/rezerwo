@@ -44,10 +44,35 @@
     return out;
   }
 
-  var dirty = false;
-  page.addEventListener('input', function () { dirty = true; });
-  page.addEventListener('change', function () { dirty = true; });
-  if (editor) editor.on('text-change', function () { dirty = true; });
+  // niezapisane zmiany trzymamy jako szkic w przeglądarce, żeby dało się
+  // wyjść na inną stronę i wrócić do tych samych wartości
+  var drafts = RZ.draft('rezerwo.draft:' + url);
+
+  function stash() { drafts.save('page', values()); }
+
+  function applyDraft(v) {
+    if (!v) return false;
+    page.querySelectorAll('[data-field]').forEach(function (el) {
+      if (v[el.dataset.field] === undefined) return;
+      if (el.type === 'checkbox') el.checked = !!v[el.dataset.field];
+      else el.value = v[el.dataset.field];
+    });
+    if (editor && v.text !== undefined) editor.clipboard.dangerouslyPasteHTML(v.text);
+    return true;
+  }
+
+  page.addEventListener('input', stash);
+  page.addEventListener('change', stash);
+  if (editor) editor.on('text-change', stash);
+
+  RZ.ready.then(function () {
+    if (applyDraft(drafts.get('page'))) {
+      RZ.draftNotice(function () {
+        drafts.clearAll();
+        location.reload();
+      });
+    }
+  });
 
   document.getElementById('save').addEventListener('click', function () {
     var btn = this;
@@ -57,7 +82,7 @@
 
     RZ.postJSON(url, values())
       .then(function (resp) {
-        dirty = false;
+        drafts.clearAll();
         if (msg) msg.textContent = resp.warning || RZ.t('common.saved');
         if (msg && resp.warning) msg.classList.add('bad');
         RZ.toast(RZ.t('common.saved'));
@@ -70,11 +95,5 @@
         if (msg) { msg.textContent = RZ.t('common.save_error') + ': ' + err.message; msg.classList.add('bad'); }
       })
       .finally(function () { btn.disabled = false; });
-  });
-
-  window.addEventListener('beforeunload', function (e) {
-    if (!dirty) return;
-    e.preventDefault();
-    e.returnValue = '';
   });
 })();

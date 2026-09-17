@@ -63,6 +63,71 @@
     });
   }
 
+  // Szkic formularza: to, co admin wpisał, ale jeszcze nie zapisał.
+  // Trzymamy go w przeglądarce, żeby dało się wyjść do innego ekranu
+  // (np. do designera sali) i wrócić do tych samych wartości. Do bazy
+  // trafia dopiero po kliknięciu "Zapisz".
+  function draft(key) {
+    function all() {
+      try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch (e) { return {}; }
+    }
+    function write(obj) {
+      try {
+        if (Object.keys(obj).length === 0) localStorage.removeItem(key);
+        else localStorage.setItem(key, JSON.stringify(obj));
+      } catch (e) { /* prywatne okno - trudno, szkicu nie będzie */ }
+    }
+    return {
+      all: all,
+      get: function (section) { return all()[section]; },
+      save: function (section, values) { var o = all(); o[section] = values; write(o); },
+      clear: function (section) { var o = all(); delete o[section]; write(o); },
+      clearAll: function () { write({}); },
+      sections: function () { return Object.keys(all()); }
+    };
+  }
+
+  // applyValues wstawia zapamiętane wartości z powrotem w pola sekcji.
+  // Edytory Quill dostają treść przez clipboard, żeby Quill wiedział o zmianie.
+  function applyValues(sec, values, editors) {
+    if (!values) return;
+    sec.querySelectorAll('[data-field]').forEach(function (el) {
+      var v = values[el.dataset.field];
+      if (v === undefined) return;
+      if (el.type === 'checkbox') el.checked = !!v;
+      else el.value = v;
+    });
+    sec.querySelectorAll('.ed[data-editor]').forEach(function (el) {
+      var name = el.dataset.editor;
+      var v = values[name];
+      if (v === undefined) return;
+      var q = editors && editors[name];
+      if (q) q.clipboard.dangerouslyPasteHTML(v);
+      else el.innerHTML = v;
+    });
+  }
+
+  // draftNotice pokazuje na górze strony, że wartości pochodzą ze szkicu.
+  function draftNotice(onDiscard) {
+    var doc = document.querySelector('.doc');
+    if (!doc || doc.querySelector('.draft-notice')) return;
+
+    var bar = document.createElement('div');
+    bar.className = 'draft-notice';
+
+    var text = document.createElement('span');
+    text.textContent = t('draft.restored');
+    bar.appendChild(text);
+
+    var btn = document.createElement('button');
+    btn.className = 'link';
+    btn.textContent = t('draft.discard');
+    btn.addEventListener('click', function () { onDiscard(); });
+    bar.appendChild(btn);
+
+    doc.insertBefore(bar, doc.firstChild);
+  }
+
   // Harmonijka: rozwijanie sekcji, zapamiętany stan, adres z #sekcją.
   function accordion(root, storageKey) {
     var open = {};
@@ -104,6 +169,14 @@
         target.scrollIntoView({block: 'start'});
       }
     }
+
+    return {
+      open: function (name) {
+        var sec = root.querySelector('.sec[data-sec="' + name + '"]');
+        if (sec && sec.querySelector('.sec-b')) setOpen(sec, true);
+        return sec;
+      }
+    };
   }
 
   // katalog wczytujemy od razu, żeby teksty w JS działały na każdej stronie
@@ -117,6 +190,8 @@
     opts = opts || {};
     var editors = {};
     var dirty = {};
+    // szkic niezapisanych zmian tej strony (patrz draft() wyżej)
+    var drafts = draft(opts.draftKey || ('rezerwo.draft:' + saveURL));
 
     var toolbar = [
       [{header: [1, 2, 3, false]}],
@@ -145,6 +220,7 @@
     function markDirty(sec) {
       sec.classList.add('dirty');
       dirty[sec.dataset.sec] = true;
+      drafts.save(sec.dataset.sec, values(sec));
     }
 
     function values(sec) {
@@ -182,6 +258,7 @@
           .then(function (resp) {
             sec.classList.remove('dirty');
             delete dirty[sec.dataset.sec];
+            drafts.clear(sec.dataset.sec);
             if (msg) msg.textContent = t('common.saved');
             toast(t('common.saved'));
             var span = sec.querySelector('.sec-h > span');
@@ -207,17 +284,45 @@
       }
       if (e.target.closest('[data-cancel]')) {
         e.preventDefault();
+        // "Anuluj" wyrzuca szkic tej sekcji i wraca do wartości z bazy
+        var cancelled = e.target.closest('.sec');
+        if (cancelled) drafts.clear(cancelled.dataset.sec);
         location.reload();
       }
     });
 
-    window.addEventListener('beforeunload', function (e) {
-      if (Object.keys(dirty).length === 0) return;
-      e.preventDefault();
-      e.returnValue = '';
-    });
+    return {
+      markDirty: markDirty,
+      editors: editors,
 
-    return {markDirty: markDirty, editors: editors};
+      // restore przywraca niezapisane zmiany po powrocie na stronę.
+      // Wołać po zbudowaniu harmonijki, z jej uchwytem.
+      restore: function (acc) {
+        var pending = drafts.sections();
+        if (!pending.length) return;
+
+        var restored = false;
+        pending.forEach(function (name) {
+          var sec = acc && acc.open ? acc.open(name) : root.querySelector('.sec[data-sec="' + name + '"]');
+          if (!sec) {
+            drafts.clear(name); // sekcji już nie ma
+            return;
+          }
+          initEditors(sec);
+          applyValues(sec, drafts.get(name), editors);
+          sec.classList.add('dirty');
+          dirty[name] = true;
+          restored = true;
+        });
+
+        if (restored) {
+          draftNotice(function () {
+            drafts.clearAll();
+            location.reload();
+          });
+        }
+      }
+    };
   }
 
   global.RZ = {
@@ -227,6 +332,9 @@
     loadLocale: loadLocale,
     toast: toast,
     postJSON: postJSON,
-    accordion: accordion
+    accordion: accordion,
+    draft: draft,
+    applyValues: applyValues,
+    draftNotice: draftNotice
   };
 })(window);

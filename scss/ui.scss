@@ -251,6 +251,20 @@ textarea.inp { min-height: 80px; }
 
 .shared { font-size: 14px; color: var(--muted); margin-top: 8px; }
 
+// pasek nad stroną: wartości pochodzą z niezapisanego szkicu
+.draft-notice {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  background: var(--blue-soft);
+  border: 1px solid var(--blue);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+  font-size: 14.5px;
+}
+
 // --- listy (strona startowa) ----------------------------------------------
 
 .start {

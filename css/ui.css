@@ -871,6 +871,31 @@ textarea.inp {
 .order-step .sec-f {
   margin-top: 20px;
 }
+.order-step .addons {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.order-step .addons h4 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+.order-step .addons .f + .f {
+  margin-top: 12px;
+}
+.order-step .addons .addon-amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.order-step .addons .addon-amount .inp {
+  width: 90px;
+}
+.order-step .addons .addons-total {
+  margin-top: 14px;
+}
 
 .free-text {
   color: #4E7D5E;

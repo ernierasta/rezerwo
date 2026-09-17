@@ -173,6 +173,7 @@ for_forms = "forms"
 hint = "Rooms, mails and accounts are often used by several events at once. A change here applies to all of them."
 
 [addons]
+guest_title = "Order add-ons"
 template_name = "Add-ons: %s"
 create = "Enable add-ons"
 create_hint = "Add-ons are fields the guest fills in with the order: dinner choice, extra portion, parking. They are built with the same designer as forms."

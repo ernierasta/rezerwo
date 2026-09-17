@@ -1314,6 +1314,12 @@ func (db *DB) ReservationCountByFurnitureID(furnID int64) (int64, error) {
 	return n, err
 }
 
+// ReservationSetOrder przypisuje rezerwację do zamówienia.
+func (db *DB) ReservationSetOrder(reservationID, orderID int64) error {
+	_, err := db.DB.Exec(`UPDATE reservations SET orders_id_fk=$1 WHERE id=$2`, orderID, reservationID)
+	return err
+}
+
 // ReservationGetByIDForNote zwraca rezerwację po ID (potrzebne m.in. po to,
 // żeby przy kasowaniu wiedzieć, czy zostały jeszcze rezerwacje z tą notatką).
 func (db *DB) ReservationGetByIDForNote(id int64) (Reservation, error) {
@@ -1503,6 +1509,63 @@ func (db *DB) FormTemplateSetEvent(tmplID, userID int64, eventID sql.NullInt64) 
 	_, err := db.DB.Exec(`UPDATE formtemplates SET events_id_fk=$1 WHERE id=$2 AND users_id_fk=$3`,
 		eventID, tmplID, userID)
 	return err
+}
+
+// FormTemplateSetKind ustawia rodzaj szablonu: "form" albo "order_addons"
+// (definicja dodatków do zamówienia).
+func (db *DB) FormTemplateSetKind(tmplID, userID int64, kind string) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET kind=$1 WHERE id=$2 AND users_id_fk=$3`, kind, tmplID, userID)
+	return err
+}
+
+// EventSetAddonsTemplate przypina do imprezy szablon z definicją dodatków.
+func (db *DB) EventSetAddonsTemplate(eventID, userID int64, tmplID sql.NullInt64) error {
+	_, err := db.DB.Exec(`UPDATE events SET addons_formtemplate_id=$1 WHERE id=$2 AND users_id_fk=$3`,
+		tmplID, eventID, userID)
+	return err
+}
+
+// OrderAdd zapisuje zamówienie (spinacz klienta, imprezy i pozycji).
+func (db *DB) OrderAdd(o *CustomerOrder) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO orders (created_date, notes, events_id_fk, customers_id_fk)
+	VALUES(:created_date, :notes, :events_id_fk, :customers_id_fk)`, o)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+// OrderGetByID zwraca zamówienie, sprawdzając przy okazji imprezę.
+func (db *DB) OrderGetByID(orderID, eventID int64) (CustomerOrder, error) {
+	o := CustomerOrder{}
+	err := db.DB.Get(&o, `SELECT * FROM orders WHERE id=$1 AND events_id_fk=$2`, orderID, eventID)
+	return o, err
+}
+
+// OrderItemAdd dopisuje pozycję zamówienia (dodatek albo dopłata).
+func (db *DB) OrderItemAdd(i *OrderItem) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO order_items (kind, description, amount, price, currency, status, payed_date, created_date, orders_id_fk)
+	VALUES(:kind, :description, :amount, :price, :currency, :status, :payed_date, :created_date, :orders_id_fk)`, i)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+// OrderItemsGetByOrder zwraca pozycje zamówienia.
+func (db *DB) OrderItemsGetByOrder(orderID int64) ([]OrderItem, error) {
+	ii := []OrderItem{}
+	err := db.DB.Select(&ii, `SELECT * FROM order_items WHERE orders_id_fk=$1 ORDER BY id`, orderID)
+	return ii, err
+}
+
+// OrderItemsGetByEvent zwraca wszystkie pozycje zamówień imprezy (raporty).
+func (db *DB) OrderItemsGetByEvent(eventID int64) ([]OrderItem, error) {
+	ii := []OrderItem{}
+	err := db.DB.Select(&ii, `SELECT oi.* FROM order_items oi
+		JOIN orders o ON oi.orders_id_fk = o.id
+		WHERE o.events_id_fk=$1 ORDER BY oi.id`, eventID)
+	return ii, err
 }
 
 func (db *DB) FormTemplateModByURL(t *FormTemplate) error {

@@ -175,6 +175,7 @@ for_forms = "formuláře"
 hint = "Sály, maily a účty používá často několik akcí najednou. Změna tady platí pro všechny."
 
 [addons]
+guest_title = "Doplňky k objednávce"
 template_name = "Doplňky: %s"
 create = "Zapnout doplňky"
 create_hint = "Doplňky jsou pole, která host vyplní u objednávky: výběr oběda, porce navíc, parkování. Vytvářejí se stejným designerem jako formuláře."

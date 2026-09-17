@@ -38,6 +38,10 @@ type nOrderVars struct {
 
 	HowTo     template.HTML
 	NotesHelp string
+
+	// dodatki do zamówienia (rozdz. 9 HARMONIJKA.md)
+	Addons   []AddonField
+	Currency string
 }
 
 // GuestOrderPage - POST /n/order
@@ -122,6 +126,8 @@ func GuestOrderPage(db *DB, lang string) func(w http.ResponseWriter, r *http.Req
 			HideCosts:  event.HideCosts.Bool,
 			HowTo:      template.HTML(event.OrderHowto),
 			NotesHelp:  event.OrderNotesDescription,
+			Addons:     EventAddonFields(db, event),
+			Currency:   currency,
 		}
 
 		if n, err := strconv.ParseInt(totalPrice, 10, 64); err == nil {

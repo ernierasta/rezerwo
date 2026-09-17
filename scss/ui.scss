@@ -628,6 +628,28 @@ textarea.inp { min-height: 80px; }
 
   .order-form .grid2 { gap: 14px 18px; }
   .sec-f { margin-top: 20px; }
+
+  // dodatki do zamówienia
+  .addons {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+
+    h4 { font-size: 16px; margin-bottom: 10px; }
+    .f + .f { margin-top: 12px; }
+
+    .addon-amount {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+
+      .inp { width: 90px; }
+    }
+
+    .addons-total { margin-top: 14px; }
+  }
 }
 
 // Kolory legendy z tekstów admina. Te klasy wstawia edytor Quill (patrz

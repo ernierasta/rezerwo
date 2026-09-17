@@ -30,6 +30,28 @@
     timer = setInterval(tick, 1000);
   });
 
+  // dodatki: przeliczanie sumy na bieżąco i dopisanie dopłat do kwoty
+  // wysyłanej razem z zamówieniem (miejsca + dodatki)
+  var addons = document.getElementById('addons');
+  if (addons) {
+    var seatsTotal = Number(addons.dataset.seatsTotal || 0);
+    var totalOut = document.getElementById('addons-total');
+    var totalField = document.querySelector('input[name="total-price"]');
+
+    function recount() {
+      var extra = 0;
+      addons.querySelectorAll('input[data-price]').forEach(function (el) {
+        extra += (Number(el.value) || 0) * (Number(el.dataset.price) || 0);
+      });
+      var sum = seatsTotal + extra;
+      if (totalOut) totalOut.textContent = String(sum).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      if (totalField) totalField.value = sum;
+    }
+
+    addons.addEventListener('input', recount);
+    recount();
+  }
+
   document.getElementById('cancel-order').addEventListener('click', function () {
     var data = {
       rooms: document.getElementById('rooms').value,

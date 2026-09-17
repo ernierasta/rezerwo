@@ -22,6 +22,35 @@
       {{if not .HideCosts}}<div class="seat sum"><span>{{T "guest.total"}}</span><span class="num">{{.TotalPriceLabel}}</span></div>{{end}}
     </div>
 
+    {{if .Addons}}
+    <div class="addons" id="addons" data-seats-total="{{.TotalPrice}}">
+      <h4>{{T "addons.guest_title"}}</h4>
+      {{range .Addons}}
+      <div class="f">
+        <label for="addon-{{.Name}}">{{.Label}}{{if .Required}} *{{end}}</label>
+        {{if .Options}}
+        <select class="inp" id="addon-{{.Name}}" name="addon-{{.Name}}" {{if .Required}}required{{end}}>
+          <option value="">{{T "field.select_hint"}}</option>
+          {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+        {{else if .IsPriced}}
+        <div class="addon-amount">
+          {{if .Before}}<span class="muted">{{.Before}}</span>{{end}}
+          <input class="inp num" type="number" min="0" step="1" value="0"
+                 id="addon-{{.Name}}" name="addon-{{.Name}}-amount" data-price="{{.Price}}">
+          <span class="muted">× {{.Price}}{{if .After}} {{.After}}{{end}}</span>
+        </div>
+        {{else}}
+        <input class="inp" id="addon-{{.Name}}" name="addon-{{.Name}}" {{if .Required}}required{{end}}>
+        {{end}}
+      </div>
+      {{end}}
+      {{if not .HideCosts}}
+      <p class="addons-total muted">{{T "guest.total"}}: <b class="num" id="addons-total"></b></p>
+      {{end}}
+    </div>
+    {{end}}
+
     <div class="grid2">
       <div class="f" style="grid-column:1/-1">
         <label for="email">{{T "order.email"}} *</label>

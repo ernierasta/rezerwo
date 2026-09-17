@@ -895,6 +895,9 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				log.Printf("error: ReservationOrderStatusHTML: %v", err)
 			}
 
+			// zebrane po drodze, żeby po pętli spiąć je w jedno zamówienie
+			reservationIDs := []int64{}
+
 			noteID := int64(0)
 			if o.Notes != "" {
 				noteID, err = db.NoteAdd(o.Notes)
@@ -937,6 +940,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				}
 				reservation.Status = "ordered"
 				reservation.CustomerID = cID
+				reservationIDs = append(reservationIDs, reservation.ID)
 				if noteID != 0 {
 					reservation.NoteID = ToNI(noteID)
 				}
@@ -968,6 +972,11 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 					return
 				}
 			}
+
+			// Zamówienie jako byt: spina rezerwacje z klientem, a przy okazji
+			// zapisuje dodatki (odpowiedzi i dopłaty). Kwota w o.TotalPrice
+			// przychodzi z formularza już z dopłatami, więc jej nie zmieniamy.
+			SaveOrderWithAddons(db, event, user, cID, reservationIDs, o.Notes, r.Form)
 
 			adminMails, err := db.AdminGetEmails(user.ID) // this is empty table, no mails currently there
 			if err != nil {

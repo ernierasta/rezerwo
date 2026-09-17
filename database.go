@@ -1677,6 +1677,20 @@ func (db *DB) FormGet(FormID, FormTemplateID int64) (Form, error) {
 	return f, err
 }
 
+// FormSetOrder spina odpowiedź formularza z zamówieniem (dodatki gościa).
+// Osobna metoda, bo FormAdd wypisuje kolumny wprost i nie zna orders_id_fk.
+func (db *DB) FormSetOrder(formID, orderID int64) error {
+	_, err := db.DB.Exec(`UPDATE forms SET orders_id_fk=$1 WHERE id=$2`, orderID, formID)
+	return err
+}
+
+// FormAnswerSetRepeat zapisuje numer powtórzenia odpowiedzi (pola dodatków
+// powtarzane wg liczby miejsc). 0 = pole niepowtarzane.
+func (db *DB) FormAnswerSetRepeat(answerID, repeatIndex int64) error {
+	_, err := db.DB.Exec(`UPDATE formanswers SET repeat_index=$1 WHERE id=$2`, repeatIndex, answerID)
+	return err
+}
+
 // FormSetStatus ustawia status odpowiedzi formularza (np. "payed").
 // Stare FormChangeStatusAPI było zaślepką i nic nie zapisywało.
 func (db *DB) FormSetStatus(formID, templateID int64, status string) error {

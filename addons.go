@@ -210,6 +210,11 @@ func SaveOrderWithAddons(db *DB, event Event, user User, customerID int64, reser
 	if err != nil {
 		log.Printf("SaveOrderWithAddons: form: %v", err)
 	} else {
+		// FormAdd nie zna kolumny orders_id_fk (stare zapytanie), więc
+		// powiązanie z zamówieniem dopisujemy osobno
+		if err := db.FormSetOrder(formID, orderID); err != nil {
+			log.Printf("SaveOrderWithAddons: form %d -> order %d: %v", formID, orderID, err)
+		}
 		for _, a := range answers {
 			fieldID, err := db.FormFieldGetIDByName(a.Field.Name, templID)
 			if err != nil {

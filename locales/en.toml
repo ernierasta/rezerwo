@@ -115,6 +115,8 @@ zoom_reset = "Fit"
 clear = "Unselect all"
 taken = "taken"
 unavailable = "unavailable"
+selected = "selected by you"
+legend = "Seat colours"
 no_seats_title = "No seats selected"
 
 [mail]

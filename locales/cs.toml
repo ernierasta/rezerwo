@@ -115,6 +115,8 @@ zoom_reset = "Přizpůsobit"
 clear = "Zrušit výběr"
 taken = "obsazené"
 unavailable = "nedostupné"
+selected = "vybrané vámi"
+legend = "Označení míst"
 no_seats_title = "Nejsou vybraná místa"
 
 [mail]

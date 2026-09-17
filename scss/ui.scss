@@ -526,6 +526,34 @@ textarea.inp { min-height: 80px; }
 .chair-selected { fill: var(--blue-deep); stroke: var(--blue-deep); cursor: pointer; }
 .chair-selected + .f-num, .chair-selected ~ .f-num { fill: #fff; }
 
+// legenda planu: próbki kolorów miejsc (teksty organizatora opisują stare
+// kolory, więc gość ma tu wprost, co znaczy które miejsce)
+.legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 12px 0 0;
+  padding: 0;
+  font-size: 14px;
+  color: var(--muted);
+
+  li { display: flex; align-items: center; gap: 7px; }
+
+  .sw {
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    display: inline-block;
+    border: 1.5px solid #A9C0D6;
+    background: var(--surface);
+  }
+
+  .sw.sel { background: var(--blue-deep); border-color: var(--blue-deep); }
+  .sw.taken { background: var(--taken); border-color: var(--taken); }
+  .sw.off { background: #CBD2D9; border-color: #B6BEC7; }
+}
+
 .basket {
   background: var(--pane);
   border: 1px solid var(--line);

@@ -117,6 +117,8 @@ zoom_reset = "Dopasuj"
 clear = "Odznacz wszystkie"
 taken = "zajęte"
 unavailable = "niedostępne"
+selected = "wybrane przez Ciebie"
+legend = "Oznaczenia miejsc"
 no_seats_title = "Nie wybrano miejsc"
 
 [mail]

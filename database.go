@@ -207,6 +207,8 @@ type Admin struct {
 	Passwd sql.NullString `db:"passwd"`
 	Notes  sql.NullString `db:"notes"`
 	UserID int64          `db:"users_id_fk"`
+	// Language - język panelu administracyjnego (tools/migration-redesign.sql)
+	Language sql.NullString `db:"language"`
 }
 
 type Customer struct {
@@ -292,6 +294,12 @@ type Event struct {
 	Room3Banner             sql.NullString `db:"room3banner"`
 	Room4Desc               sql.NullString `db:"room4desc"`
 	Room4Banner             sql.NullString `db:"room4banner"`
+	// Kolumny dołożone przez redesign (tools/migration-redesign.sql,
+	// tools/migration-addons.sql). Stare zapytania ich nie zapisują, więc
+	// ustawia się je osobnymi metodami.
+	PreviousEventID      sql.NullInt64  `db:"previous_event_id"`
+	Status               sql.NullString `db:"status"`
+	AddonsFormTemplateID sql.NullInt64  `db:"addons_formtemplate_id"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -326,6 +334,44 @@ type Reservation struct {
 	FurnitureID int64         `db:"furnitures_id_fk"`
 	EventID     int64         `db:"events_id_fk"`
 	CustomerID  int64         `db:"customers_id_fk"`
+	// OrderID - zamówienie, do którego należy miejsce (tools/migration-addons.sql)
+	OrderID sql.NullInt64 `db:"orders_id_fk"`
+}
+
+// CustomerOrder to zamówienie gościa: spina klienta, imprezę, rezerwacje
+// miejsc i pozycje dodatków. Nazwa nie może być "Order", bo tak nazywa się
+// struktura szablonów maili w main.go.
+type CustomerOrder struct {
+	ID          int64          `db:"id"`
+	CreatedDate int64          `db:"created_date"`
+	Notes       sql.NullString `db:"notes"`
+	EventID     int64          `db:"events_id_fk"`
+	CustomerID  int64          `db:"customers_id_fk"`
+}
+
+// OrderItem to pozycja zamówienia: dodatek albo dopłata. Miejsca NIE są
+// pozycjami - ich stan zostaje w reservations.status (rozdz. 9.4).
+type OrderItem struct {
+	ID          int64          `db:"id"`
+	Kind        string         `db:"kind"` // addon albo surcharge
+	Description string         `db:"description"`
+	Amount      int64          `db:"amount"`
+	Price       int64          `db:"price"`
+	Currency    sql.NullString `db:"currency"`
+	Status      string         `db:"status"` // ordered albo payed
+	PayedDate   sql.NullInt64  `db:"payed_date"`
+	CreatedDate int64          `db:"created_date"`
+	OrderID     int64          `db:"orders_id_fk"`
+}
+
+// ReservationStatusLog - historia zmian statusu rezerwacji
+// (tools/migration-redesign.sql).
+type ReservationStatusLog struct {
+	ID            int64          `db:"id"`
+	Date          int64          `db:"date"`
+	Status        string         `db:"status"`
+	AdminEmail    sql.NullString `db:"admin_email"`
+	ReservationID int64          `db:"reservations_id_fk"`
 }
 
 type ReservationFull struct {
@@ -373,6 +419,9 @@ type FormTemplate struct {
 	//ThankYouMailText     sql.NullString `db:"thankyoumailtext"`    // not used anymore
 	NotificationID      sql.NullInt64 `db:"notifications_id_fk"`
 	AdminNotificationID sql.NullInt64 `db:"admin_notifications_id_fk"`
+	// Kind - "form" (zwykły formularz) albo "order_addons" (definicja dodatków
+	// do zamówienia, przypięta do imprezy przez events.addons_formtemplate_id)
+	Kind sql.NullString `db:"kind"`
 }
 
 type FormField struct {
@@ -393,6 +442,8 @@ type Form struct {
 	CreatedDate    int64          `db:"created_date"`
 	UserID         int64          `db:"users_id_fk"`
 	FormTemplateID int64          `db:"formtemplates_id_fk"`
+	// OrderID - gdy odpowiedź to dodatki jednego zamówienia
+	OrderID sql.NullInt64 `db:"orders_id_fk"`
 }
 
 type FormAnswer struct {
@@ -400,6 +451,9 @@ type FormAnswer struct {
 	Value       sql.NullString `db:"value"`
 	FormFieldID int64          `db:"formfields_id_fk"`
 	FormID      int64          `db:"forms_id_fk"`
+	// RepeatIndex - numer powtórzenia pola ("Kolacja 2" przy polu powtarzanym
+	// wg liczby miejsc); 0 dla zwykłych pól
+	RepeatIndex sql.NullInt64 `db:"repeat_index"`
 }
 
 type BankAccount struct {

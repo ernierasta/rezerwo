@@ -172,6 +172,15 @@ for_events = "events"
 for_forms = "forms"
 hint = "Rooms, mails and accounts are often used by several events at once. A change here applies to all of them."
 
+[addons]
+template_name = "Add-ons: %s"
+create = "Enable add-ons"
+create_hint = "Add-ons are fields the guest fills in with the order: dinner choice, extra portion, parking. They are built with the same designer as forms."
+hint = "Add-on fields are filled in during the personal details step. A \"Multiplier\" field works as a surcharge: amount times price."
+no_fields = "no fields"
+field = "Field"
+type = "Kind"
+
 [form]
 answers = "Answers"
 open_page = "Open the form"

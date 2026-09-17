@@ -90,6 +90,21 @@
       .finally(function () { btn.disabled = false; });
   }
 
+  // pola dodatków edytuje na razie stary designer formularzy (formBuilder),
+  // który otwiera się POST-em z form-id
+  function openFieldDesigner(templateID) {
+    var f = document.createElement('form');
+    f.method = 'POST';
+    f.action = '/admin/formeditor';
+    var i = document.createElement('input');
+    i.type = 'hidden';
+    i.name = 'form-id';
+    i.value = templateID;
+    f.appendChild(i);
+    document.body.appendChild(f);
+    f.submit();
+  }
+
   page.addEventListener('sec:open', function (e) { initEditors(e.target); });
 
   page.addEventListener('input', function (e) {
@@ -111,6 +126,24 @@
     if (e.target.closest('[data-cancel]')) {
       e.preventDefault();
       location.reload();
+      return;
+    }
+    // dodatki: utworzenie definicji i przejście do designera pól
+    if (e.target.id === 'addons-create') {
+      e.preventDefault();
+      var createBtn = e.target;
+      createBtn.disabled = true;
+      RZ.postJSON('/api/events/' + eventID + '/addons', {})
+        .then(function (resp) { openFieldDesigner(resp.id); })
+        .catch(function (err) {
+          createBtn.disabled = false;
+          RZ.toast(RZ.t('common.save_error') + ': ' + err.message);
+        });
+      return;
+    }
+    if (e.target.id === 'addons-edit') {
+      e.preventDefault();
+      openFieldDesigner(e.target.dataset.template);
       return;
     }
     // sala: dopisywanie i czyszczenie listy sal

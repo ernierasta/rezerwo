@@ -177,6 +177,38 @@
       </div>
     </div>
 
+    <!-- Dodatki do zamówienia -->
+    <div class="sec" data-sec="dodatki">
+      <div class="sec-h"><b>{{T "event.sec.addons"}}</b><span>{{.SumAddons}}</span><a class="act" href="#dodatki">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        {{if .AddonsTemplateID}}
+        <p class="muted">{{T "addons.hint"}}</p>
+        {{if .AddonFields}}
+        <div class="wide" style="margin-top:12px">
+          <table class="tbl">
+            <tr><th>{{T "addons.field"}}</th><th>{{T "addons.type"}}</th></tr>
+            {{range .AddonFields}}
+            <tr><td>{{.Label}}</td><td class="m">{{.Kind}}</td></tr>
+            {{end}}
+          </table>
+        </div>
+        {{else}}
+        <p class="muted" style="margin-top:12px">{{T "addons.no_fields"}}</p>
+        {{end}}
+        <div class="sec-f">
+          <button class="btn" id="addons-edit" data-template="{{.AddonsTemplateID}}">{{T "field.edit_fields"}}</button>
+          <small class="msg"></small>
+        </div>
+        {{else}}
+        <p class="muted">{{T "addons.create_hint"}}</p>
+        <div class="sec-f">
+          <button class="btn" id="addons-create">{{T "addons.create"}}</button>
+          <small class="msg"></small>
+        </div>
+        {{end}}
+      </div>
+    </div>
+
     <!-- Raporty -->
     <div class="sec" data-sec="raporty">
       <div class="sec-h"><b>{{T "event.sec.reports"}}</b><span class="num">{{.SumReport}}</span><a class="act" href="#raporty">{{T "common.show"}}</a></div>

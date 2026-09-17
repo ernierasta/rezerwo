@@ -208,6 +208,9 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			log.Printf("AdminStartPage: forms: %v", err)
 		}
 		for _, ft := range templs {
+			if isAddonsTemplate(ft) {
+				continue // dodatki edytuje się w sekcji imprezy
+			}
 			n, err := db.FormGetAmmount(user.ID, ft.ID)
 			if err != nil {
 				log.Printf("AdminStartPage: form answers count: %v", err)
@@ -495,6 +498,10 @@ type nEventVars struct {
 	Report      []nReportRow
 	ReportTotal nReportRow
 	Occupancy   int64
+
+	SumAddons        string
+	AddonsTemplateID int64
+	AddonFields      []nAddonField
 }
 
 // nReportRow to jedna linia rozliczenia: ile miejsc sprzedano po danej cenie
@@ -557,6 +564,9 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 	}
 	var eventForms []FormTemplate
 	for _, ft := range templs {
+		if isAddonsTemplate(ft) {
+			continue // dodatki mają własną sekcję
+		}
 		if ft.EventID.Valid && ft.EventID.Int64 == event.ID {
 			eventForms = append(eventForms, ft)
 		}
@@ -715,6 +725,22 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 
 	fillReservationSummary(db, user, event, lang, v)
 	fillEventReport(db, user, event, lang, v)
+
+	// dodatki do zamówienia (rozdz. 9 HARMONIJKA.md)
+	v.AddonsTemplateID = event.AddonsFormTemplateID.Int64
+	v.AddonFields = addonFields(db, event)
+	switch {
+	case v.AddonsTemplateID == 0:
+		v.SumAddons = T(lang, "common.none")
+	case len(v.AddonFields) == 0:
+		v.SumAddons = T(lang, "addons.no_fields")
+	default:
+		names := make([]string, 0, len(v.AddonFields))
+		for _, f := range v.AddonFields {
+			names = append(names, f.Label)
+		}
+		v.SumAddons = T(lang, "form.fields_count", len(v.AddonFields)) + ": " + strings.Join(names, ", ")
+	}
 }
 
 // fillEventReport liczy rozliczenie imprezy po cenach miejsc.

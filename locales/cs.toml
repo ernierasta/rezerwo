@@ -174,6 +174,15 @@ for_events = "akce"
 for_forms = "formuláře"
 hint = "Sály, maily a účty používá často několik akcí najednou. Změna tady platí pro všechny."
 
+[addons]
+template_name = "Doplňky: %s"
+create = "Zapnout doplňky"
+create_hint = "Doplňky jsou pole, která host vyplní u objednávky: výběr oběda, porce navíc, parkování. Vytvářejí se stejným designerem jako formuláře."
+hint = "Pole doplňků host vyplní v kroku s údaji osoby. Pole typu „Násobnost” funguje jako doplatek: počet krát cena."
+no_fields = "žádná pole"
+field = "Pole"
+type = "Druh"
+
 [form]
 answers = "Odpovědi"
 open_page = "Otevřít formulář"

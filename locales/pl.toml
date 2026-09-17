@@ -176,6 +176,15 @@ for_events = "imprezy"
 for_forms = "formularze"
 hint = "Sale, maile i konta bywają używane przez kilka imprez naraz. Zmiana tutaj dotyczy wszystkich."
 
+[addons]
+template_name = "Dodatki: %s"
+create = "Włącz dodatki"
+create_hint = "Dodatki to pola, które gość wypełnia przy zamówieniu: wybór obiadu, dodatkowa porcja, parking. Tworzy się je tym samym designerem co formularze."
+hint = "Pola dodatków gość wypełnia w kroku z danymi osoby. Pole typu „Wielokrotność” działa jak dopłata: ilość razy cena."
+no_fields = "brak pól"
+field = "Pole"
+type = "Rodzaj"
+
 [form]
 answers = "Odpowiedzi"
 open_page = "Otwórz formularz"

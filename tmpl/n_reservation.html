@@ -86,6 +86,15 @@
     <span class="sum" id="bar-sum">{{T "guest.nothing_selected"}}</span>
     <button class="btn" id="order-mobile">{{T "guest.order"}}</button>
   </div>
+
+  <!-- tekst organizatora pokazywany przy próbie zamówienia bez miejsc -->
+  <div class="dlg-back" id="nosits" hidden>
+    <div class="dlg">
+      <h3>{{.NoSitsTitle}}</h3>
+      {{if .NoSitsText}}<div class="desc">{{.NoSitsText}}</div>{{end}}
+      <div class="sec-f"><button class="btn" id="nosits-ok">OK</button></div>
+    </div>
+  </div>
 </div>
 {{end}}
 {{define "scripts"}}

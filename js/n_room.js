@@ -113,9 +113,17 @@
     }
   });
 
+  var noSits = document.getElementById('nosits');
+  if (noSits) {
+    document.getElementById('nosits-ok').addEventListener('click', function () { noSits.hidden = true; });
+    noSits.addEventListener('click', function (e) { if (e.target === noSits) noSits.hidden = true; });
+  }
+
   function order() {
     if (!selected.length) {
-      RZ.toast(RZ.t('guest.nothing_selected'));
+      // pokazujemy tekst organizatora ("Nie wybrano miejsc"), jak stara strona
+      if (noSits) noSits.hidden = false;
+      else RZ.toast(RZ.t('guest.nothing_selected'));
       return;
     }
     var f = document.createElement('form');

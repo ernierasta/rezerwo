@@ -49,6 +49,10 @@ type nGuestVars struct {
 	DefaultCurrency string
 	HideCosts       bool
 	UserURL         string
+
+	// tekst pokazywany, gdy gość klika "Zamawiam" bez wybranych miejsc
+	NoSitsTitle string
+	NoSitsText  template.HTML
 }
 
 // GuestReservationPage - /n/res/{user}
@@ -114,6 +118,11 @@ func GuestReservationPage(db *DB, lang string) func(w http.ResponseWriter, r *ht
 			DefaultCurrency: event.DefaultCurrency,
 			HideCosts:       event.HideCosts.Bool,
 			UserURL:         user.URL,
+			NoSitsTitle:     event.NoSitsSelectedTitle,
+			NoSitsText:      template.HTML(event.NoSitsSelectedText),
+		}
+		if vars.NoSitsTitle == "" {
+			vars.NoSitsTitle = T(lng, "guest.no_seats_title")
 		}
 
 		roomDescs := []string{event.Room1Desc.String, event.Room2Desc.String, event.Room3Desc.String, event.Room4Desc.String}

@@ -602,6 +602,15 @@ textarea.inp { min-height: 80px; }
   .sec-f { margin-top: 20px; }
 }
 
+// Kolory legendy z tekstów admina. Te klasy wstawia edytor Quill (patrz
+// js/a_quill_settings.js), treści w bazie już ich używają, więc muszą działać
+// także na nowej stronie - tylko w nowej palecie.
+.free-text { color: #4E7D5E; }
+.marked-text { color: #9A7B1F; }
+.ordered-text { color: #9A7B1F; }
+.payed-text { color: #4E7D5E; }
+.disabled-text { color: var(--muted); }
+
 .howto {
   margin-top: 20px;
 

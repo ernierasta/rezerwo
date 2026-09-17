@@ -24,7 +24,7 @@
     detail: document.getElementById('res-detail')
   };
 
-  var data = {rows: [], currency: '', notifications: []};
+  var data = {rows: [], currency: '', notifications: [], addons: {}};
   var view = 'orders';   // orders | seats
   var quick = 'all';     // all | ordered | payed | unpaid7 | nomail
   var table;
@@ -44,14 +44,15 @@
     return '<span class="st ' + cls + '">' + RZ.t('status.' + status) + '</span>';
   }
 
-  // Zamówienie: wszystkie rezerwacje jednego adresu e-mail.
+  // Zamówienie: rezerwacje jednego zamówienia (a gdy go nie ma - jednego adresu).
   function toOrders(rows) {
     var byEmail = {}, order = [];
     rows.forEach(function (r) {
-      var key = r.email || ('res-' + r.id);
+      var key = r.order_id ? ('order-' + r.order_id) : (r.email || ('res-' + r.id));
       if (!byEmail[key]) {
         byEmail[key] = {
           id: key,
+          orderID: r.order_id || 0,
           ids: [],
           person: (r.name + ' ' + r.surname).trim() || r.email,
           email: r.email,
@@ -204,6 +205,32 @@
       el.detail.appendChild(d);
     });
 
+    // dodatki i dopłaty tego zamówienia
+    var orderID = row.orderID || row.order_id || 0;
+    var items = (data.addons && data.addons[orderID]) || [];
+    if (orderID) {
+      var box = document.createElement('div');
+      box.className = 'addon-list';
+      box.innerHTML = '<h5>' + RZ.t('addons.in_order') + '</h5>';
+      if (!items.length) {
+        var none = document.createElement('p');
+        none.className = 'muted';
+        none.textContent = RZ.t('addons.none_in_order');
+        box.appendChild(none);
+      } else {
+        items.forEach(function (it) {
+          var line = document.createElement('div');
+          line.className = 'kv-row';
+          line.innerHTML = '<span></span><span class="num"></span>';
+          line.children[0].textContent = it.description;
+          line.children[1].textContent = money(it.amount * it.price) +
+            (it.status === 'payed' ? ' · ' + RZ.t('status.payed') : '');
+          box.appendChild(line);
+        });
+      }
+      el.detail.appendChild(box);
+    }
+
     var notes = document.createElement('textarea');
     notes.className = 'inp';
     notes.value = row.notes || '';
@@ -339,6 +366,7 @@
     .then(function (d) {
       data.rows = d.rows || [];
       data.currency = d.currency || '';
+      data.addons = d.addons || {};
       (d.notifications || []).forEach(function (n) {
         var o = document.createElement('option');
         o.value = n.id;

@@ -514,6 +514,25 @@ type nEventVars struct {
 	CompareNow   int64
 	CompareThen  int64
 	CompareMoney string
+
+	// podsumowanie dodatków w zamówieniach (lista dla kuchni, rozdz. 9.2)
+	AddonSummary   []nAddonSummaryRow
+	SurchargeRows  []nSurchargeRow
+	SurchargeTotal string
+}
+
+// nAddonSummaryRow - ile razy wybrano daną odpowiedź w polu dodatków.
+type nAddonSummaryRow struct {
+	Field string
+	Value string
+	Count int64
+}
+
+// nSurchargeRow - ile sztuk dopłaty zamówiono i za ile.
+type nSurchargeRow struct {
+	Description string
+	Amount      int64
+	Sum         string
 }
 
 // nReportRow to jedna linia rozliczenia: ile miejsc sprzedano po danej cenie
@@ -854,6 +873,72 @@ func fillEventReport(db *DB, user User, event Event, lang string, v *nEventVars)
 		fmt.Sprintf("%d%%", v.Occupancy), FormatMoney(total.payed, event.DefaultCurrency))
 
 	fillEditionComparison(db, user, event, lang, v)
+	fillAddonSummary(db, event, lang, v)
+}
+
+// fillAddonSummary zbiera dodatki ze wszystkich zamówień imprezy: co wybierano
+// (lista dla kuchni) i ile dopłat zamówiono.
+func fillAddonSummary(db *DB, event Event, lang string, v *nEventVars) {
+	counts, err := db.AddonAnswerSummary(event.ID)
+	if err != nil {
+		log.Printf("fillAddonSummary: answers: %v", err)
+	}
+	priced := pricedAddonLabels(db, event)
+	for _, c := range counts {
+		if strings.TrimSpace(c.Value) == "" {
+			continue
+		}
+		if priced[plainLabel(c.Field)] {
+			continue // pola z ceną są niżej, w dopłatach
+		}
+		v.AddonSummary = append(v.AddonSummary, nAddonSummaryRow{
+			Field: plainLabel(c.Field),
+			Value: c.Value,
+			Count: c.Count,
+		})
+	}
+
+	items, err := db.OrderItemsGetByEvent(event.ID)
+	if err != nil {
+		log.Printf("fillAddonSummary: items: %v", err)
+		return
+	}
+
+	type agg struct {
+		amount int64
+		sum    int64
+		curr   string
+	}
+	byDesc := map[string]*agg{}
+	var order []string
+	var total int64
+
+	for _, it := range items {
+		a, ok := byDesc[it.Description]
+		if !ok {
+			a = &agg{curr: event.DefaultCurrency}
+			byDesc[it.Description] = a
+			order = append(order, it.Description)
+		}
+		if it.Currency.Valid && it.Currency.String != "" {
+			a.curr = it.Currency.String
+		}
+		a.amount += it.Amount
+		a.sum += it.Amount * it.Price
+		total += it.Amount * it.Price
+	}
+
+	for _, d := range order {
+		a := byDesc[d]
+		v.SurchargeRows = append(v.SurchargeRows, nSurchargeRow{
+			Description: d,
+			Amount:      a.amount,
+			Sum:         FormatMoney(a.sum, a.curr),
+		})
+	}
+	if total > 0 {
+		v.SurchargeTotal = FormatMoney(total, event.DefaultCurrency)
+	}
 }
 
 // fillEditionComparison porównuje sprzedaż z poprzednią edycją w tym samym

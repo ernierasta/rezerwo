@@ -1613,6 +1613,28 @@ func (db *DB) OrderItemsGetByOrder(orderID int64) ([]OrderItem, error) {
 	return ii, err
 }
 
+// AddonAnswerCount to jedna linia podsumowania dodatków: ile razy wybrano
+// daną odpowiedź w danym polu (lista dla kuchni).
+type AddonAnswerCount struct {
+	Field string `db:"field"`
+	Value string `db:"value"`
+	Count int64  `db:"cnt"`
+}
+
+// AddonAnswerSummary liczy odpowiedzi dodatków wszystkich zamówień imprezy.
+func (db *DB) AddonAnswerSummary(eventID int64) ([]AddonAnswerCount, error) {
+	rr := []AddonAnswerCount{}
+	err := db.DB.Select(&rr, `SELECT ff.display field, COALESCE(fa.value, '') value, count(*) cnt
+		FROM formanswers fa
+		JOIN forms f ON fa.forms_id_fk = f.id
+		JOIN orders o ON f.orders_id_fk = o.id
+		JOIN formfields ff ON fa.formfields_id_fk = ff.id
+		WHERE o.events_id_fk = $1
+		GROUP BY ff.display, fa.value
+		ORDER BY ff.display, cnt DESC`, eventID)
+	return rr, err
+}
+
 // OrderItemsGetByEvent zwraca wszystkie pozycje zamówień imprezy (raporty).
 func (db *DB) OrderItemsGetByEvent(eventID int64) ([]OrderItem, error) {
 	ii := []OrderItem{}

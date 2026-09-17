@@ -187,6 +187,13 @@ hint = "Add-on fields are filled in during the personal details step. A \"Multip
 no_fields = "no fields"
 field = "Field"
 type = "Kind"
+answer = "Answer"
+count = "Count"
+surcharges = "Surcharges"
+summary_title = "Add-ons in orders"
+export = "Kitchen list (CSV)"
+in_order = "Add-ons"
+none_in_order = "no add-ons"
 
 [form]
 answers = "Answers"

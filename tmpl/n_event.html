@@ -248,6 +248,31 @@
           <small class="muted">({{T "report.payed"}} {{.CompareMoney}})</small>
         </p>
         {{end}}
+
+        {{if or .AddonSummary .SurchargeRows}}
+        <h5 class="subhead">{{T "addons.summary_title"}}
+          <a href="/api/events/{{.ID}}/addons.csv">{{T "addons.export"}}</a>
+        </h5>
+        <div class="wide">
+          <table class="tbl">
+            {{if .AddonSummary}}
+            <tr><th>{{T "addons.field"}}</th><th>{{T "addons.answer"}}</th><th class="r">{{T "addons.count"}}</th></tr>
+            {{range .AddonSummary}}
+            <tr><td>{{.Field}}</td><td>{{.Value}}</td><td class="r num">{{.Count}}</td></tr>
+            {{end}}
+            {{end}}
+            {{if .SurchargeRows}}
+            <tr><th>{{T "addons.surcharges"}}</th><th class="r">{{T "addons.count"}}</th><th class="r">{{T "report.sum"}}</th></tr>
+            {{range .SurchargeRows}}
+            <tr><td>{{.Description}}</td><td class="r num">{{.Amount}}</td><td class="r num">{{.Sum}}</td></tr>
+            {{end}}
+            {{if .SurchargeTotal}}
+            <tr><td><b>{{T "report.total"}}</b></td><td></td><td class="r num"><b>{{.SurchargeTotal}}</b></td></tr>
+            {{end}}
+            {{end}}
+          </table>
+        </div>
+        {{end}}
         {{else}}
         <p class="muted">{{T "report.empty"}}</p>
         {{end}}

@@ -107,6 +107,19 @@ func EventAddonFields(db *DB, event Event) []AddonField {
 	return ParseAddonFields(templ.Content.String)
 }
 
+// pricedAddonLabels zwraca etykiety pól dodatków, które mają cenę. Takie pola
+// pokazujemy w podsumowaniu jako dopłaty (ile sztuk, za ile), a nie jako
+// listę odpowiedzi - inaczej byłyby liczone dwa razy.
+func pricedAddonLabels(db *DB, event Event) map[string]bool {
+	out := map[string]bool{}
+	for _, f := range EventAddonFields(db, event) {
+		if f.IsPriced() {
+			out[f.Label] = true
+		}
+	}
+	return out
+}
+
 // AddonAnswer to jedna odpowiedź gościa na pole dodatków.
 type AddonAnswer struct {
 	Field  AddonField

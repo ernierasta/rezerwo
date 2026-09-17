@@ -521,6 +521,21 @@ textarea.inp {
   margin-top: 10px;
   margin-right: 6px;
 }
+.detail-pane .addon-list {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.detail-pane .addon-list h5 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.detail-pane .addon-list .kv-row {
+  font-size: 14px;
+}
 .detail-pane .history {
   margin-top: 16px;
   border-top: 1px solid var(--line);
@@ -596,6 +611,19 @@ textarea.inp {
 .actionbar #res-bar-info {
   font-weight: 500;
   margin-right: auto;
+}
+
+h5.subhead {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 15px;
+  margin: 22px 0 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+h5.subhead a {
+  font-size: 14px;
 }
 
 .compare {

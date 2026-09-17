@@ -41,14 +41,50 @@ type nResJSON struct {
 	LastMail    int64  `json:"last_mail"`
 	MailCount   int64  `json:"mail_count"`
 	Notes       string `json:"notes"`
+	OrderID     int64  `json:"order_id"`
+}
+
+// nAddonItemJSON to dodatek albo dopłata jednego zamówienia.
+type nAddonItemJSON struct {
+	ID          int64  `json:"id"`
+	Kind        string `json:"kind"`
+	Description string `json:"description"`
+	Amount      int64  `json:"amount"`
+	Price       int64  `json:"price"`
+	Currency    string `json:"currency"`
+	Status      string `json:"status"`
 }
 
 type nResListResp struct {
-	EventID       int64          `json:"event_id"`
-	EventName     string         `json:"event_name"`
-	Currency      string         `json:"currency"`
-	Rows          []nResJSON     `json:"rows"`
-	Notifications []nResNotifOpt `json:"notifications"`
+	EventID   int64      `json:"event_id"`
+	EventName string     `json:"event_name"`
+	Currency  string     `json:"currency"`
+	Rows      []nResJSON `json:"rows"`
+	// Addons - pozycje zamówień (dodatki i dopłaty) po id zamówienia
+	Addons        map[int64][]nAddonItemJSON `json:"addons"`
+	Notifications []nResNotifOpt             `json:"notifications"`
+}
+
+// eventAddonsByOrder zwraca pozycje zamówień imprezy pogrupowane po zamówieniu.
+func eventAddonsByOrder(db *DB, eventID int64) map[int64][]nAddonItemJSON {
+	items, err := db.OrderItemsGetByEvent(eventID)
+	if err != nil {
+		log.Printf("eventAddonsByOrder: %v", err)
+		return nil
+	}
+	out := map[int64][]nAddonItemJSON{}
+	for _, it := range items {
+		out[it.OrderID] = append(out[it.OrderID], nAddonItemJSON{
+			ID:          it.ID,
+			Kind:        it.Kind,
+			Description: it.Description,
+			Amount:      it.Amount,
+			Price:       it.Price,
+			Currency:    it.Currency.String,
+			Status:      it.Status,
+		})
+	}
+	return out
 }
 
 type nResNotifOpt struct {
@@ -99,6 +135,7 @@ func reservationRows(db *DB, user User, event Event) []nResJSON {
 			LastMail:    r.LastNotification.Int64,
 			MailCount:   r.NotifAmmount.Int64,
 			Notes:       r.Notes.String,
+			OrderID:     r.OrderID.Int64,
 		})
 	}
 	return rows
@@ -120,6 +157,7 @@ func ReservationsListAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseW
 			EventName: event.Name,
 			Currency:  event.DefaultCurrency,
 			Rows:      reservationRows(db, user, event),
+			Addons:    eventAddonsByOrder(db, event.ID),
 		}
 		for _, n := range notifs {
 			resp.Notifications = append(resp.Notifications, nResNotifOpt{ID: n.ID, Name: n.Name})
@@ -480,6 +518,63 @@ func ReservationsHistoryAPI(db *DB, cs *sessions.CookieStore) func(w http.Respon
 			})
 		}
 		jsonMsg(w, http.StatusOK, map[string]interface{}{"rows": rows})
+	}
+}
+
+// EventAddonsCSVAPI: GET /api/events/{id}/addons.csv
+// Lista dla kuchni: ile razy wybrano którą odpowiedź, plus dopłaty.
+func EventAddonsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, event, ok := adminEvent(w, r, db, cs)
+		if !ok {
+			return
+		}
+		lang := PanelLang(r)
+
+		counts, err := db.AddonAnswerSummary(event.ID)
+		if err != nil {
+			log.Printf("EventAddonsCSVAPI: %v", err)
+		}
+		items, err := db.OrderItemsGetByEvent(event.ID)
+		if err != nil {
+			log.Printf("EventAddonsCSVAPI: items: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q",
+			strings.ReplaceAll(event.Name, "\"", "")+"-dodatki.csv"))
+
+		cw := csv.NewWriter(w)
+		defer cw.Flush()
+
+		priced := pricedAddonLabels(db, event)
+		cw.Write([]string{T(lang, "addons.field"), T(lang, "addons.answer"), T(lang, "addons.count")})
+		for _, c := range counts {
+			label := plainLabel(c.Field)
+			if priced[label] || strings.TrimSpace(c.Value) == "" {
+				continue // pola z ceną są niżej, w dopłatach
+			}
+			cw.Write([]string{label, c.Value, strconv.FormatInt(c.Count, 10)})
+		}
+
+		// dopłaty osobno: ile sztuk i za ile
+		byDesc := map[string][2]int64{}
+		var order []string
+		for _, it := range items {
+			v, seen := byDesc[it.Description]
+			if !seen {
+				order = append(order, it.Description)
+			}
+			byDesc[it.Description] = [2]int64{v[0] + it.Amount, v[1] + it.Amount*it.Price}
+		}
+		if len(order) > 0 {
+			cw.Write([]string{})
+			cw.Write([]string{T(lang, "addons.surcharges"), T(lang, "addons.count"), T(lang, "report.sum")})
+			for _, d := range order {
+				v := byDesc[d]
+				cw.Write([]string{d, strconv.FormatInt(v[0], 10), strconv.FormatInt(v[1], 10)})
+			}
+		}
 	}
 }
 

@@ -191,6 +191,13 @@ hint = "Pola dodatków gość wypełnia w kroku z danymi osoby. Pole typu „Wie
 no_fields = "brak pól"
 field = "Pole"
 type = "Rodzaj"
+answer = "Odpowiedź"
+count = "Ile"
+surcharges = "Dopłaty"
+summary_title = "Dodatki w zamówieniach"
+export = "Lista dla kuchni (CSV)"
+in_order = "Dodatki"
+none_in_order = "brak dodatków"
 
 [form]
 answers = "Odpowiedzi"

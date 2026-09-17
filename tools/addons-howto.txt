@@ -1,0 +1,63 @@
+DODATKI DO ZAMÓWIENIA - jak to działa (redesign, rozdz. 9 HARMONIJKA.md)
+=======================================================================
+
+Definicja dodatków to szablon formularza rodzaju "order_addons"
+(formtemplates.kind), przypięty do imprezy przez events.addons_formtemplate_id.
+Pola dodaje się tym samym designerem co w formularzach (formBuilder).
+
+Włączenie dodatków:
+  strona imprezy -> sekcja "Dodatki do zamówienia" -> "Włącz dodatki"
+  (POST /api/events/{id}/addons tworzy szablon i przypina go do imprezy)
+
+Szablon dodatków nie pokazuje się na liście formularzy - należy do imprezy.
+
+
+RODZAJE PÓL
+-----------
+
+1. Zwykłe pole (lista wyboru, tekst, liczba)
+   Gość wypełnia je raz na zamówienie. Odpowiedź trafia do formanswers
+   i do listy dla kuchni w raporcie imprezy.
+   Przykład: "Godzina przyjazdu", "Alergie".
+
+2. Pole z ceną = typ "Wielokrotność" (multiplierField)
+   Gość podaje liczbę sztuk, cena jednej sztuki jest w ustawieniu pola
+   ("Razy" / multipl). Zwiększa kwotę zamówienia i zapisuje się jako pozycja
+   zamówienia (order_items, kind = addon).
+   Przykład: "Dodatkowa porcja" 85 Kč.
+
+3. Pole powtarzane wg liczby miejsc
+   Nazwa pola musi kończyć się na "-perseat" (tak jak istniejąca konwencja
+   "-REQUIRED" w formularzach). Gość dostaje je tyle razy, ile zarezerwował
+   miejsc: "Kolacja 1", "Kolacja 2", ...
+   Odpowiedzi zapisują się z numerem powtórzenia (formanswers.repeat_index).
+   Przykład nazwy pola: kolacja-perseat
+
+
+CO SIĘ DZIEJE PO ZAMÓWIENIU
+---------------------------
+
+- powstaje zamówienie (orders), rezerwacje miejsc dostają orders_id_fk
+- odpowiedzi dodatków zapisują się jak zwykły formularz (forms + formanswers),
+  forms.orders_id_fk wskazuje zamówienie
+- pola z ceną zapisują się dodatkowo jako pozycje order_items
+- kwota wysłana z zamówieniem (mail, kod QR) obejmuje dopłaty
+- stan miejsc zostaje wyłącznie w reservations.status - order_items dotyczą
+  tylko dodatków i dopłat
+
+
+DOPŁATY DOPISYWANE PRZEZ ADMINA
+-------------------------------
+
+W tabeli rezerwacji: kliknij wiersz -> panel szczegółów -> "Dopisz dopłatę"
+(za co, ile sztuk, cena). Dopłata to pozycja order_items rodzaju "surcharge"
+z własnym stanem zapłaty; nie zmienia statusu miejsc.
+Dodatków zamówionych przez gościa nie da się skasować z panelu.
+
+
+RAPORTY
+-------
+
+Strona imprezy -> sekcja "Raporty" -> "Dodatki w zamówieniach":
+co wybierano (lista dla kuchni) i ile zamówiono dopłat.
+Eksport: GET /api/events/{id}/addons.csv

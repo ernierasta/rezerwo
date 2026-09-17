@@ -165,11 +165,18 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		for _, e := range events {
 			st := eventStats(db, user.ID, e.ID)
 
+			// braki ("brak konta", "brak ceny") mają sens tylko przed imprezą -
+			// przy zakończonych zaśmiecałyby listę
+			missing := ""
+			if !(e.Date > 0 && e.Date < now) {
+				missing = strings.Join(eventMissing(db, user, e, st, lang), ", ")
+			}
+
 			row := nHomeRow{
 				ID:       e.ID,
 				Name:     e.Name,
 				DateS:    FormatDate(lang, e.Date),
-				Missing:  strings.Join(eventMissing(db, user, e, st, lang), ", "),
+				Missing:  missing,
 				HasSeats: st.Seats > 0,
 			}
 

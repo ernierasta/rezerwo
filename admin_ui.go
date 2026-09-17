@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -929,6 +930,59 @@ func statusLabel(lang string, payed bool) (string, string) {
 		return T(lang, "status.payed"), "paid"
 	}
 	return T(lang, "status.ordered"), "ord"
+}
+
+// EventRoomDesigner - /admin/events/{id}/rooms/{roomid}
+//
+// Designer sali otwiera się w kontekście imprezy (ceny i wyłączone miejsca są
+// per impreza) i do tej pory dało się do niego wejść tylko POST-em z panelu.
+// Ta przejściówka daje mu adres z ID, a samą stronę renderuje dalej stary
+// DesignerHTML - nowy wygląd designera to osobny krok.
+func EventRoomDesigner(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	designer := DesignerHTML(db, lang, cs)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := adminUser(w, r, db, cs)
+		if !ok {
+			return
+		}
+
+		vars := mux.Vars(r)
+		eventID, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		roomID, err := strconv.ParseInt(vars["roomid"], 10, 64)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		event, err := db.EventGetByID(eventID)
+		if err != nil || event.UserID != user.ID {
+			log.Printf("EventRoomDesigner: event %d not for user %d: %v", eventID, user.ID, err)
+			http.NotFound(w, r)
+			return
+		}
+		if !userOwnsRoom(db, user.Email, roomID) {
+			log.Printf("EventRoomDesigner: user %q does not own room %d", user.Email, roomID)
+			http.NotFound(w, r)
+			return
+		}
+
+		// DesignerHTML czyta dane z formularza POST - podajemy je wprost,
+		// żeby nie kopiować całego handlera.
+		form := url.Values{
+			"room-id":  {strconv.FormatInt(roomID, 10)},
+			"event-id": {strconv.FormatInt(eventID, 10)},
+		}
+		r.Method = http.MethodPost
+		r.Form = form
+		r.PostForm = form
+
+		designer(w, r)
+	}
 }
 
 // --- API: zapis sekcji -----------------------------------------------------

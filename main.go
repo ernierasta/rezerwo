@@ -72,6 +72,7 @@ func main() {
 	rtr.HandleFunc("/api/events", EventCreateAPI(db, cookieStore))
 	rtr.HandleFunc("/api/events/{id:[0-9]+}/section", EventSectionSave(db, loc, dateFormat, cookieStore))
 	rtr.HandleFunc("/admin/events/{id:[0-9]+}/reservations", ReservationsPage(db, cookieStore))
+	rtr.HandleFunc("/admin/events/{id:[0-9]+}/rooms/{roomid:[0-9]+}", EventRoomDesigner(db, lang, cookieStore))
 	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations", ReservationsListAPI(db, cookieStore)).Methods("GET")
 	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations", ReservationsDeleteAPI(db, cookieStore)).Methods("DELETE")
 	rtr.HandleFunc("/api/events/{id:[0-9]+}/reservations.csv", ReservationsCSVAPI(db, cookieStore))

@@ -376,6 +376,12 @@ textarea.inp { min-height: 80px; }
   align-items: start;
 
   &:has(.detail-pane:not([hidden])) { grid-template-columns: minmax(0, 1fr) 320px; }
+
+  // przy otwartym panelu szczegółów tabela ma mniej miejsca - wolimy poziomy
+  // pasek przewijania niż łamanie każdej komórki na kilka linii
+  .tbl { min-width: 860px; }
+  .tbl td, .tbl th { white-space: nowrap; }
+  .tbl td:nth-child(3) { white-space: normal; min-width: 170px; } // kolumna "Miejsca"
 }
 
 .detail-pane {

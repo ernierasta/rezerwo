@@ -510,6 +510,16 @@ textarea.inp {
 .res-layout:has(.detail-pane:not([hidden])) {
   grid-template-columns: minmax(0, 1fr) 320px;
 }
+.res-layout .tbl {
+  min-width: 860px;
+}
+.res-layout .tbl td, .res-layout .tbl th {
+  white-space: nowrap;
+}
+.res-layout .tbl td:nth-child(3) {
+  white-space: normal;
+  min-width: 170px;
+}
 
 .detail-pane {
   background: var(--pane);

@@ -536,6 +536,32 @@ textarea.inp {
 .detail-pane .addon-list .kv-row {
   font-size: 14px;
 }
+.detail-pane .addon-list .kv-row.item {
+  flex-wrap: wrap;
+}
+.detail-pane .addon-list .item-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  justify-content: flex-end;
+}
+.detail-pane .addon-list .item-actions .link {
+  font-size: 13px;
+}
+.detail-pane .addon-list .surcharge-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px 70px;
+  gap: 6px;
+  margin-top: 10px;
+}
+.detail-pane .addon-list .surcharge-form .inp {
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+.detail-pane .addon-list .surcharge-form .btn {
+  grid-column: 1/-1;
+}
 .detail-pane .history {
   margin-top: 16px;
   border-top: 1px solid var(--line);

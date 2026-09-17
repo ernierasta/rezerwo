@@ -521,6 +521,152 @@ func ReservationsHistoryAPI(db *DB, cs *sessions.CookieStore) func(w http.Respon
 	}
 }
 
+// SURCHARGEKIND - pozycja dopisana przez admina (dopłata), w odróżnieniu od
+// dodatku zamówionego przez gościa.
+const SURCHARGEKIND = "surcharge"
+
+// adminOrder sprawdza sesję, imprezę i to, że zamówienie należy do tej imprezy.
+func adminOrder(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore) (Event, CustomerOrder, bool) {
+	_, event, ok := adminEvent(w, r, db, cs)
+	if !ok {
+		return Event{}, CustomerOrder{}, false
+	}
+	orderID, err := strconv.ParseInt(mux.Vars(r)["oid"], 10, 64)
+	if err != nil {
+		jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": "bad order id"})
+		return Event{}, CustomerOrder{}, false
+	}
+	order, err := db.OrderGetByID(orderID, event.ID)
+	if err != nil {
+		jsonMsg(w, http.StatusNotFound, map[string]string{"msg": "order not found"})
+		return Event{}, CustomerOrder{}, false
+	}
+	return event, order, true
+}
+
+type nSurchargeMsg struct {
+	Description string `json:"description"`
+	Amount      int64  `json:"amount"`
+	Price       int64  `json:"price"`
+	Status      string `json:"status"`
+}
+
+// OrderItemAddAPI: POST /api/events/{id}/orders/{oid}/items
+// Dopłata dopisywana przez admina (rozdz. 9.4: osobna pozycja, a nie zmiana
+// statusu całego zamówienia).
+func OrderItemAddAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		event, order, ok := adminOrder(w, r, db, cs)
+		if !ok {
+			return
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var m nSurchargeMsg
+		if err := json.Unmarshal(body, &m); err != nil {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": err.Error()})
+			return
+		}
+		m.Description = strings.TrimSpace(m.Description)
+		if m.Description == "" {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(PanelLang(r), "addons.need_description")})
+			return
+		}
+		if m.Amount <= 0 {
+			m.Amount = 1
+		}
+
+		id, err := db.OrderItemAdd(&OrderItem{
+			Kind:        SURCHARGEKIND,
+			Description: m.Description,
+			Amount:      m.Amount,
+			Price:       m.Price,
+			Currency:    ToNS(event.DefaultCurrency),
+			Status:      "ordered",
+			CreatedDate: time.Now().Unix(),
+			OrderID:     order.ID,
+		})
+		if err != nil {
+			log.Printf("OrderItemAddAPI: %v", err)
+			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+			return
+		}
+		jsonMsg(w, http.StatusOK, map[string]interface{}{
+			"msg": "created", "id": id, "addons": eventAddonsByOrder(db, event.ID),
+		})
+	}
+}
+
+// OrderItemStatusAPI: POST /api/events/{id}/orders/{oid}/items/{iid}/status
+func OrderItemStatusAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		event, order, ok := adminOrder(w, r, db, cs)
+		if !ok {
+			return
+		}
+		itemID, err := strconv.ParseInt(mux.Vars(r)["iid"], 10, 64)
+		if err != nil {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": "bad item id"})
+			return
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var m nSurchargeMsg
+		if err := json.Unmarshal(body, &m); err != nil {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": err.Error()})
+			return
+		}
+		if m.Status != "payed" && m.Status != "ordered" {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": "unknown status " + m.Status})
+			return
+		}
+
+		payed := sql.NullInt64{}
+		if m.Status == "payed" {
+			payed = sql.NullInt64{Int64: time.Now().Unix(), Valid: true}
+		}
+		if err := db.OrderItemSetStatus(itemID, order.ID, m.Status, payed); err != nil {
+			log.Printf("OrderItemStatusAPI: %v", err)
+			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+			return
+		}
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "ok", "addons": eventAddonsByOrder(db, event.ID)})
+	}
+}
+
+// OrderItemDeleteAPI: DELETE /api/events/{id}/orders/{oid}/items/{iid}
+// Kasować można tylko dopłaty dopisane przez admina - dodatki zamówione przez
+// gościa są częścią zamówienia.
+func OrderItemDeleteAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		event, order, ok := adminOrder(w, r, db, cs)
+		if !ok {
+			return
+		}
+		itemID, err := strconv.ParseInt(mux.Vars(r)["iid"], 10, 64)
+		if err != nil {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": "bad item id"})
+			return
+		}
+
+		item, err := db.OrderItemGetByID(itemID, order.ID)
+		if err != nil {
+			jsonMsg(w, http.StatusNotFound, map[string]string{"msg": "item not found"})
+			return
+		}
+		if item.Kind != SURCHARGEKIND {
+			jsonMsg(w, http.StatusConflict, map[string]string{"msg": T(PanelLang(r), "addons.guest_item")})
+			return
+		}
+		if err := db.OrderItemDel(itemID, order.ID); err != nil {
+			log.Printf("OrderItemDeleteAPI: %v", err)
+			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+			return
+		}
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "deleted", "addons": eventAddonsByOrder(db, event.ID)})
+	}
+}
+
 // EventAddonsCSVAPI: GET /api/events/{id}/addons.csv
 // Lista dla kuchni: ile razy wybrano którą odpowiedź, plus dopłaty.
 func EventAddonsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {

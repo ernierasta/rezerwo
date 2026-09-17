@@ -394,6 +394,20 @@ textarea.inp { min-height: 80px; }
 
     h5 { font-family: var(--display); font-weight: 500; font-size: 14px; color: var(--muted); margin: 0 0 6px; }
     .kv-row { font-size: 14px; }
+
+    .kv-row.item { flex-wrap: wrap; }
+    .item-actions { display: flex; gap: 10px; width: 100%; justify-content: flex-end; }
+    .item-actions .link { font-size: 13px; }
+
+    .surcharge-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 60px 70px;
+      gap: 6px;
+      margin-top: 10px;
+
+      .inp { min-height: 32px; padding: 4px 8px; font-size: 14px; }
+      .btn { grid-column: 1 / -1; }
+    }
   }
 
   .history {

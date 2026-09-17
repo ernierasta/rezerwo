@@ -198,6 +198,12 @@ summary_title = "Dodatki w zamówieniach"
 export = "Lista dla kuchni (CSV)"
 in_order = "Dodatki"
 none_in_order = "brak dodatków"
+surcharge_add = "Dopisz dopłatę"
+description = "Za co"
+amount = "Ile"
+price = "Cena"
+need_description = "Podaj, za co jest dopłata."
+guest_item = "To dodatek zamówiony przez gościa — nie kasujemy go tutaj."
 
 [form]
 answers = "Odpowiedzi"

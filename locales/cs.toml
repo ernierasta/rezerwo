@@ -196,6 +196,12 @@ summary_title = "Doplňky v objednávkách"
 export = "Seznam pro kuchyni (CSV)"
 in_order = "Doplňky"
 none_in_order = "bez doplňků"
+surcharge_add = "Přidat doplatek"
+description = "Za co"
+amount = "Kolik"
+price = "Cena"
+need_description = "Uveďte, za co je doplatek."
+guest_item = "Toto je doplněk objednaný hostem — tady ho nemažeme."
 
 [form]
 answers = "Odpovědi"

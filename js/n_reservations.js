@@ -205,31 +205,8 @@
       el.detail.appendChild(d);
     });
 
-    // dodatki i dopłaty tego zamówienia
     var orderID = row.orderID || row.order_id || 0;
-    var items = (data.addons && data.addons[orderID]) || [];
-    if (orderID) {
-      var box = document.createElement('div');
-      box.className = 'addon-list';
-      box.innerHTML = '<h5>' + RZ.t('addons.in_order') + '</h5>';
-      if (!items.length) {
-        var none = document.createElement('p');
-        none.className = 'muted';
-        none.textContent = RZ.t('addons.none_in_order');
-        box.appendChild(none);
-      } else {
-        items.forEach(function (it) {
-          var line = document.createElement('div');
-          line.className = 'kv-row';
-          line.innerHTML = '<span></span><span class="num"></span>';
-          line.children[0].textContent = it.description;
-          line.children[1].textContent = money(it.amount * it.price) +
-            (it.status === 'payed' ? ' · ' + RZ.t('status.payed') : '');
-          box.appendChild(line);
-        });
-      }
-      el.detail.appendChild(box);
-    }
+    if (orderID) showAddons(orderID, row);
 
     var notes = document.createElement('textarea');
     notes.className = 'inp';
@@ -253,6 +230,111 @@
     el.detail.appendChild(close);
 
     showHistory(ids);
+  }
+
+  // dodatki zamówione przez gościa i dopłaty dopisane przez admina
+  function showAddons(orderID, row) {
+    var box = document.createElement('div');
+    box.className = 'addon-list';
+    box.innerHTML = '<h5>' + RZ.t('addons.in_order') + '</h5>';
+
+    var items = (data.addons && data.addons[orderID]) || [];
+    if (!items.length) {
+      var none = document.createElement('p');
+      none.className = 'muted';
+      none.textContent = RZ.t('addons.none_in_order');
+      box.appendChild(none);
+    }
+
+    items.forEach(function (it) {
+      var line = document.createElement('div');
+      line.className = 'kv-row item';
+
+      var name = document.createElement('span');
+      name.textContent = it.description;
+      line.appendChild(name);
+
+      var right = document.createElement('span');
+      right.className = 'num';
+      right.textContent = money(it.amount * it.price);
+      line.appendChild(right);
+
+      var actions = document.createElement('span');
+      actions.className = 'item-actions';
+
+      var pay = document.createElement('button');
+      pay.className = 'link';
+      pay.textContent = it.status === 'payed' ? RZ.t('status.payed') : RZ.t('res.mark_payed');
+      pay.addEventListener('click', function () {
+        itemAction('/orders/' + orderID + '/items/' + it.id + '/status',
+          {status: it.status === 'payed' ? 'ordered' : 'payed'}, 'POST', row);
+      });
+      actions.appendChild(pay);
+
+      if (it.kind === 'surcharge') {
+        var del = document.createElement('button');
+        del.className = 'link';
+        del.textContent = RZ.t('common.delete');
+        del.addEventListener('click', function () {
+          itemAction('/orders/' + orderID + '/items/' + it.id, null, 'DELETE', row);
+        });
+        actions.appendChild(del);
+      }
+
+      line.appendChild(actions);
+      box.appendChild(line);
+    });
+
+    // dopisanie dopłaty (osobna pozycja, nie zmienia statusu miejsc)
+    var form = document.createElement('div');
+    form.className = 'surcharge-form';
+
+    var desc = document.createElement('input');
+    desc.className = 'inp';
+    desc.placeholder = RZ.t('addons.description');
+
+    var amount = document.createElement('input');
+    amount.className = 'inp num';
+    amount.type = 'number';
+    amount.min = '1';
+    amount.value = '1';
+    amount.title = RZ.t('addons.amount');
+
+    var price = document.createElement('input');
+    price.className = 'inp num';
+    price.type = 'number';
+    price.min = '0';
+    price.value = '0';
+    price.title = RZ.t('addons.price');
+
+    var add = document.createElement('button');
+    add.className = 'btn sm';
+    add.textContent = RZ.t('addons.surcharge_add');
+    add.addEventListener('click', function () {
+      if (!desc.value.trim()) { RZ.toast(RZ.t('addons.need_description')); return; }
+      itemAction('/orders/' + orderID + '/items',
+        {description: desc.value, amount: Number(amount.value) || 1, price: Number(price.value) || 0},
+        'POST', row);
+    });
+
+    form.appendChild(desc);
+    form.appendChild(amount);
+    form.appendChild(price);
+    form.appendChild(add);
+    box.appendChild(form);
+
+    el.detail.appendChild(box);
+  }
+
+  // itemAction wywołuje API pozycji i odświeża panel szczegółów
+  function itemAction(path, body, method, row) {
+    RZ.postJSON(api.replace('/reservations', '') + path, body, method)
+      .then(function (resp) {
+        if (resp.addons) data.addons = resp.addons;
+        RZ.toast(RZ.t('common.saved'));
+        showDetail(row);
+      })
+      .catch(function (e) { RZ.toast(RZ.t('common.save_error') + ': ' + e.message); });
   }
 
   // historia zmian statusu: kto i kiedy oznaczył miejsca jako zapłacone

@@ -194,6 +194,12 @@ summary_title = "Add-ons in orders"
 export = "Kitchen list (CSV)"
 in_order = "Add-ons"
 none_in_order = "no add-ons"
+surcharge_add = "Add surcharge"
+description = "What for"
+amount = "Count"
+price = "Price"
+need_description = "Say what the surcharge is for."
+guest_item = "This add-on was ordered by the guest — it is not deleted here."
 
 [form]
 answers = "Answers"

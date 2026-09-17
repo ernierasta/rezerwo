@@ -1606,6 +1606,47 @@ func (db *DB) OrderItemAdd(i *OrderItem) (int64, error) {
 	return ret.LastInsertId()
 }
 
+// OrderItemGetByID zwraca pozycję zamówienia (z kontrolą, do którego należy).
+func (db *DB) OrderItemGetByID(itemID, orderID int64) (OrderItem, error) {
+	i := OrderItem{}
+	err := db.DB.Get(&i, `SELECT * FROM order_items WHERE id=$1 AND orders_id_fk=$2`, itemID, orderID)
+	return i, err
+}
+
+// OrderItemSetStatus ustawia stan pozycji zamówienia: "ordered" albo "payed".
+// Data zapłaty liczona jest na serwerze, cofnięcie ją czyści.
+func (db *DB) OrderItemSetStatus(itemID, orderID int64, status string, payedDate sql.NullInt64) error {
+	ret, err := db.DB.Exec(`UPDATE order_items SET status=$1, payed_date=$2 WHERE id=$3 AND orders_id_fk=$4`,
+		status, payedDate, itemID, orderID)
+	if err != nil {
+		return err
+	}
+	n, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("no order item %d in order %d", itemID, orderID)
+	}
+	return nil
+}
+
+// OrderItemDel kasuje pozycję zamówienia.
+func (db *DB) OrderItemDel(itemID, orderID int64) error {
+	ret, err := db.DB.Exec(`DELETE FROM order_items WHERE id=$1 AND orders_id_fk=$2`, itemID, orderID)
+	if err != nil {
+		return err
+	}
+	n, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("no order item %d in order %d", itemID, orderID)
+	}
+	return nil
+}
+
 // OrderItemsGetByOrder zwraca pozycje zamówienia.
 func (db *DB) OrderItemsGetByOrder(orderID int64) ([]OrderItem, error) {
 	ii := []OrderItem{}

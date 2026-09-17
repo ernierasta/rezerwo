@@ -49,6 +49,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+// Atrybut hidden musi wygrywać z naszymi regułami display (okna dialogowe,
+// pasek akcji i panel szczegółów chowamy właśnie nim).
+[hidden] { display: none !important; }
+
 body.n {
   margin: 0;
   background: var(--bg);

@@ -91,6 +91,10 @@ func main() {
 	rtr.HandleFunc("/admin/accounts/{id:[0-9]+}", AccountPage(db, cookieStore))
 	rtr.HandleFunc("/api/mails", MailCreateAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/mails/{id:[0-9]+}", MailSaveAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/mails/sources", MailSourcesAPI(db, cookieStore)).Methods("GET")
+	rtr.HandleFunc("/api/mails/preview", MailSourcePreviewAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/mails/{id:[0-9]+}/preview", MailPreviewAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/mails/{id:[0-9]+}/test", MailTestAPI(db, *mailConf, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/accounts", AccountCreateAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/accounts/{id:[0-9]+}", AccountSaveAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/admin/forms/{id:[0-9]+}", FormPage(db, cookieStore))
@@ -1002,7 +1006,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				ReplyTo:         user.Email,                                    // we wont they reply to organizators mail
 				Sender:          mailConf.Sender,
 				To:              []string{o.Email},
-				Subject:         cstMail.Title.String,
+				Subject:         OrderSubject(cstMail.Title.String, orderFuncsFromOrder(o, db, user)),
 				Text:            "<html><head><style>p {margin:0;}</style></head>" + parsed + "</html>",
 				IgnoreCert:      mailConf.IgnoreCert,
 				Hostname:        mailConf.Hostname,
@@ -1019,7 +1023,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 				log.Println(err)
 			}
 
-			subj, _ := ParseOrderTmpl(adminMail.Title.String, o, db, user) // ignoring EmbImg, no qr code here
+			subj := OrderSubject(adminMail.Title.String, orderFuncsFromOrder(o, db, user))
 			text, _ := ParseOrderTmpl(adminMail.Text, o, db, user)
 			userMail := MailConfig{
 				Server:     mailConf.Server,
@@ -4549,12 +4553,13 @@ func EventAnsSendMail(db *DB, mailConf MailConfig, cs *sessions.CookieStore) fun
 			// get embedded images (defined in db, qrcode is added later)
 			mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
 
-			parsedText, embImgs, attachedFiles := parseEventMailTemplate(frs[0].CustName.String, frs[0].CustSurname.String, mail.Text, frs[0].CustPhone.String, frs[0].CustPhone.String, frs[0].Notes.String, event.Name, sitsL, pricesL, roomsL, m.EventID, price, user, db)
+			parsedText, embImgs, attachedFiles := parseEventMailTemplate(frs[0].CustName.String, frs[0].CustSurname.String, mail.Text, frs[0].CustPhone.String, frs[0].CustEmail.String, frs[0].Notes.String, event.Name, sitsL, pricesL, roomsL, m.EventID, price, user, db)
+			subject := OrderSubject(mail.Title.String, newEventOrderFuncs(frs[0].CustName.String, frs[0].CustSurname.String, frs[0].CustPhone.String, frs[0].CustEmail.String, frs[0].Notes.String, event.Name, sitsL, pricesL, roomsL, m.EventID, price, user, db))
 
 			//mailConf.Files = append(mailConf.Files, attachedFiles...) this doesn't matter
 			mailConf.Files = attachedFiles
 			log.Printf("!!! af:mailConf: %+v", attachedFiles) // DEBUG
-			err = prepMailConfSendMail(frs[0].CustEmail.String, mail.Title.String, parsedText, user, embImgs, mailConf)
+			err = prepMailConfSendMail(frs[0].CustEmail.String, subject, parsedText, user, embImgs, mailConf)
 			//mailConf.Files = []string{} // empty attachments after sending mail
 			if err != nil {
 				log.Printf("EventAnsSendMail: error sending, %v", err)
@@ -4632,25 +4637,7 @@ func parseFormMailTemplate(name, surname, mtext string, formID int64, user User,
 func parseEventMailTemplate(name, surname, mtext, phone, email, notes, eventName string, sits, prices []int, rooms []string, eventID, totalPrice int64, user User, db *DB) (string, []EmbImg, []string) {
 	var parsedMail bytes.Buffer
 
-	nsn := surname + "_" + name
-
-	of := &OrderFuncs{
-		EventID:     eventID,
-		EventName:   eventName,
-		TotalPrice:  strconv.FormatInt(totalPrice, 10),
-		SitsL:       sits,
-		PricesL:     prices,
-		RoomsL:      rooms,
-		Email:       email,
-		Password:    "",
-		Name:        name,
-		Surname:     surname,
-		Phone:       phone,
-		Notes:       notes,
-		DB:          db,
-		User:        user,
-		NameSurname: nsn,
-	}
+	of := newEventOrderFuncs(name, surname, phone, email, notes, eventName, sits, prices, rooms, eventID, totalPrice, user, db)
 
 	tmpl, err := template.New("eventmail").Parse(mtext)
 	if err != nil {
@@ -5160,6 +5147,7 @@ func (i *FormFuncs) QRPayMailFieldPrefix(accountName, field, imgPrefix string) t
 type OrderFuncs struct {
 	EventID             int64
 	EventName           string
+	EventDate           string
 	TotalPrice          string
 	Sits, Rooms, Prices string
 	SitsL, PricesL      []int
@@ -5174,6 +5162,11 @@ type OrderFuncs struct {
 	NameSurname   string
 	EmbeddedImgs  []EmbImg
 	AttachedFiles []string
+
+	// Preview - podgląd w edytorze maila: kod QR jako zwykły obrazek,
+	// bez generowania biletów PDF (zaznaczamy tylko, że byłyby w załączniku)
+	Preview     bool
+	PDFAttached bool
 }
 
 func (o *OrderFuncs) generateQRimg(accountName string) (string, string) {
@@ -5187,6 +5180,13 @@ func (o *OrderFuncs) QRPay(accountName string) template.HTML {
 }
 
 func (o *OrderFuncs) QRPayMail(accountName string) template.HTML {
+	if o.Preview {
+		// w podglądzie szablonu konto może być jeszcze niewybrane
+		if _, err := o.DB.BankAccountGetByName(accountName, o.User.ID); err != nil {
+			return template.HTML(`<span style="display:inline-block;width:150px;height:150px;border:2px dashed #b9c3cf;color:#6e7885;text-align:center;line-height:150px">QR</span>`)
+		}
+		return o.QRPay(accountName)
+	}
 	imgname, imgpath := o.generateQRimg(accountName)
 	o.EmbeddedImgs = append(o.EmbeddedImgs, EmbImg{
 		NamePath: imgpath,
@@ -5197,6 +5197,10 @@ func (o *OrderFuncs) QRPayMail(accountName string) template.HTML {
 
 // PDF generates and attaches generated pdf files
 func (o *OrderFuncs) PDF(info string) template.HTML {
+	o.PDFAttached = true
+	if o.Preview {
+		return template.HTML("")
+	}
 	p := &TicketParams{
 		UserName:         o.User.Organization.String,
 		UserURL:          o.User.URL,
@@ -5622,24 +5626,7 @@ type Order struct {
 func ParseOrderTmpl(t string, o Order, db *DB, user User) (string, []EmbImg) {
 	var buf bytes.Buffer
 
-	nsn := o.Surname + "_" + o.Name
-
-	of := &OrderFuncs{
-		EventID:     o.EventID,
-		TotalPrice:  o.TotalPrice,
-		Sits:        o.Sits,
-		Prices:      o.Prices,
-		Rooms:       o.Rooms,
-		Email:       o.Email,
-		Password:    o.Password,
-		Name:        o.Name,
-		Surname:     o.Surname,
-		Phone:       o.Phone,
-		Notes:       o.Notes,
-		DB:          db,
-		User:        user,
-		NameSurname: nsn,
-	}
+	of := orderFuncsFromOrder(o, db, user)
 
 	tmpl, err := template.New("ordermail").Parse(t)
 	if err != nil {

@@ -1,7 +1,8 @@
 #!/bin/sh
 # Runs second rezerwo instance for browser testing (e.g. by Claude in Chrome)
 # next to the dev one on :3002. Open http://localhost:3003/admin/devlogin to be
-# logged in as admin REZERWO_DEV_LOGIN without password.
+# logged in as admin REZERWO_DEV_LOGIN without password
+# (?next=/admin/... goes straight to that page).
 #
 # usage (from repo root): REZERWO_DEV_LOGIN=admin@email tools/test-server.sh [addr]
 

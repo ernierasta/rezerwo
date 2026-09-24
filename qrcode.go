@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode"
@@ -21,6 +23,11 @@ func QRCode(s, imgpath string) error {
 	if err != nil {
 		return fmt.Errorf("could not generate QRCode: %v", err)
 
+	}
+
+	// katalog qrcode/ nowej organizacji jeszcze nie istnieje
+	if err := os.MkdirAll(filepath.Dir(imgpath), 0o755); err != nil {
+		return fmt.Errorf("could not create QR dir: %v", err)
 	}
 
 	w, err := standard.New(imgpath)

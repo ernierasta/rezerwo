@@ -111,7 +111,7 @@
             {{range .Notifications}}<option value="{{.ID}}" {{if eq $.ThankYouMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
           </select>
         </div>
-        {{if .ThankYouMailID}}<p class="shared"><a href="/admin/mails/{{.ThankYouMailID}}">{{T "mail.text"}} …</a></p>{{end}}
+        {{if .ThankYouMailID}}<p class="shared"><a href="/admin/mails/{{.ThankYouMailID}}?back={{printf "/admin/events/%d#mail-gosc" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_guest">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>
@@ -126,7 +126,7 @@
             {{range .Notifications}}<option value="{{.ID}}" {{if eq $.AdminMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
           </select>
         </div>
-        {{if .AdminMailID}}<p class="shared"><a href="/admin/mails/{{.AdminMailID}}">{{T "mail.text"}} …</a></p>{{end}}
+        {{if .AdminMailID}}<p class="shared"><a href="/admin/mails/{{.AdminMailID}}?back={{printf "/admin/events/%d#mail-zarzad" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_admin">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>
@@ -141,7 +141,7 @@
             {{range .BankAccounts}}<option value="{{.ID}}" {{if eq $.BankAccountID .ID}}selected{{end}}>{{.Name}} — {{.IBAN}}</option>{{end}}
           </select>
         </div>
-        {{if .BankAccountID}}<p class="shared"><a href="/admin/accounts/{{.BankAccountID}}">{{T "account.iban"}} …</a></p>{{end}}
+        {{if .BankAccountID}}<p class="shared"><a href="/admin/accounts/{{.BankAccountID}}?back={{printf "/admin/events/%d#konto" .ID}}">{{T "account.iban"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="bank">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>

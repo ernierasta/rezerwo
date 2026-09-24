@@ -1,0 +1,18 @@
+<!--
+name: Payment reminder
+description: For a guest who has not paid yet. Sent by hand from the reservations table.
+related_to: events
+subject: Payment reminder: {{.EventName}}
+-->
+<p>Dear {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>this is a reminder about the payment for your booking for <strong>{{.EventName}}</strong> ({{.EventDate}}).</p>
+<p>Seats: <strong>{{.Sits}}</strong>, amount due: <strong>{{.TotalPrice}} Kč</strong>.</p>
+<p><br></p>
+<p>Payment QR code:</p>
+<p>{{.QRPayMail ""}}</p>
+<p><br></p>
+<p>If you have already paid, please disregard this message.</p>
+<p><br></p>
+<p>Kind regards</p>
+<p>The organisers</p>

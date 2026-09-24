@@ -1,0 +1,14 @@
+<!--
+name: Potwierdzenie płatności z biletami PDF
+description: Dla gościa, po zaksięgowaniu wpłaty. Bilety z numerami miejsc w załączniku.
+related_to: events
+subject: Bilety: {{.EventName}}
+-->
+<p>Dzień dobry {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>dziękujemy za wpłatę, rezerwacja na <strong>{{.EventName}}</strong> ({{.EventDate}}) jest opłacona.</p>
+<p>W załączniku są bilety na miejsca <strong>{{.Sits}}</strong>. Prosimy okazać je przy wejściu – wydrukowane albo w telefonie.</p>
+<p><br></p>
+<p>Do zobaczenia!</p>
+<p>Organizatorzy</p>
+{{.PDF ""}}

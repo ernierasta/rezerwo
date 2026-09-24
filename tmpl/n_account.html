@@ -1,9 +1,9 @@
 {{define "body"}}
-<div class="doc" id="account-page" data-account-id="{{.ID}}">
+<div class="doc" id="account-page" data-account-id="{{.ID}}" data-back="{{.Back}}">
   <div class="dh">
     <h3>{{.Name}}</h3>
     <div class="r">
-      <a class="btn quiet" href="/admin/catalogs">{{T "catalog.accounts"}}</a>
+      <a class="btn quiet" href="{{.Back}}">{{.BackLabel}}</a>
     </div>
   </div>
   <p class="dsub">{{T "account.hint"}}</p>
@@ -37,7 +37,7 @@
 
   <div class="sec-f">
     <button class="btn" id="save">{{T "common.save"}}</button>
-    <a class="btn quiet" href="/admin/catalogs">{{T "common.cancel"}}</a>
+    <a class="btn quiet" href="{{.Back}}">{{T "common.cancel"}}</a>
     <small class="msg"></small>
   </div>
 </div>

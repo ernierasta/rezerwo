@@ -1,0 +1,14 @@
+<!--
+name: Payment confirmation with PDF tickets
+description: For the guest, after the payment arrives. Numbered tickets attached.
+related_to: events
+subject: Tickets: {{.EventName}}
+-->
+<p>Dear {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>thank you for your payment, your booking for <strong>{{.EventName}}</strong> ({{.EventDate}}) is paid.</p>
+<p>Your tickets for seats <strong>{{.Sits}}</strong> are attached. Please show them at the entrance, printed or on your phone.</p>
+<p><br></p>
+<p>See you there!</p>
+<p>The organisers</p>
+{{.PDF ""}}

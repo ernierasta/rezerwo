@@ -56,7 +56,7 @@
             {{range .Notifications}}<option value="{{.ID}}" {{if eq $.NotificationID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
           </select>
         </div>
-        {{if .NotificationID}}<p class="shared"><a href="/admin/mails/{{.NotificationID}}">{{T "mail.text"}} …</a></p>{{end}}
+        {{if .NotificationID}}<p class="shared"><a href="/admin/mails/{{.NotificationID}}?back={{printf "/admin/forms/%d#mail-gosc" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_guest">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>
@@ -71,7 +71,7 @@
             {{range .Notifications}}<option value="{{.ID}}" {{if eq $.AdminNotificationID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
           </select>
         </div>
-        {{if .AdminNotificationID}}<p class="shared"><a href="/admin/mails/{{.AdminNotificationID}}">{{T "mail.text"}} …</a></p>{{end}}
+        {{if .AdminNotificationID}}<p class="shared"><a href="/admin/mails/{{.AdminNotificationID}}?back={{printf "/admin/forms/%d#mail-zarzad" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_admin">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>

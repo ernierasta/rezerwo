@@ -1,0 +1,19 @@
+<!--
+name: Poděkování za rezervaci s QR kódem
+description: Pro hosta hned po objednávce. Shrnutí míst a QR kód pro platbu.
+related_to: events
+subject: Rezervace: {{.EventName}}
+-->
+<p>Dobrý den, {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>děkujeme za rezervaci na <strong>{{.EventName}}</strong> ({{.EventDate}}).</p>
+<p>Místa: <strong>{{.Sits}}</strong> ({{.Rooms}})</p>
+<p>K úhradě: <strong>{{.TotalPrice}} Kč</strong></p>
+<p><br></p>
+<p>Nejjednodušeji zaplatíte naskenováním QR kódu v aplikaci banky:</p>
+<p>{{.QRPayMail ""}}</p>
+<p><br></p>
+<p>Rezervace bude potvrzena po připsání platby.</p>
+<p><br></p>
+<p>S pozdravem</p>
+<p>Pořadatelé</p>

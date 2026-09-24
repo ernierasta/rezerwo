@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gorilla/sessions"
 )
@@ -43,7 +44,12 @@ func DevLogin(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 		ApplyAdminLanguage(w, db, email)
 
 		log.Printf("DevLogin: %s logged in as admin", email)
-		http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		// ?next=/admin/events/26/reservations - od razu na wybraną stronę panelu
+		next := r.URL.Query().Get("next")
+		if !strings.HasPrefix(next, "/admin") || strings.HasPrefix(next, "//") || strings.ContainsAny(next, "\\\r\n") {
+			next = "/admin"
+		}
+		http.Redirect(w, r, next, http.StatusSeeOther)
 	}
 }
 

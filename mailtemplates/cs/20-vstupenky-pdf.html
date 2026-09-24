@@ -1,0 +1,14 @@
+<!--
+name: Potvrzení platby s PDF vstupenkami
+description: Pro hosta po připsání platby. Vstupenky s čísly míst v příloze.
+related_to: events
+subject: Vstupenky: {{.EventName}}
+-->
+<p>Dobrý den, {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>děkujeme za platbu, rezervace na <strong>{{.EventName}}</strong> ({{.EventDate}}) je zaplacená.</p>
+<p>V příloze najdete vstupenky na místa <strong>{{.Sits}}</strong>. Prosíme, předložte je u vchodu – vytištěné nebo v telefonu.</p>
+<p><br></p>
+<p>Těšíme se na vás!</p>
+<p>Pořadatelé</p>
+{{.PDF ""}}

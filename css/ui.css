@@ -684,6 +684,18 @@ textarea.inp {
   font-weight: 500;
   margin-right: auto;
 }
+.actionbar .mailpick {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.actionbar .mailpick .inp {
+  width: auto;
+  max-width: 240px;
+  min-height: 31px;
+  padding: 3px 8px;
+  font-size: 14px;
+}
 
 h5.subhead {
   font-family: var(--display);
@@ -750,6 +762,133 @@ h5.subhead a {
 .ed .ql-container.ql-snow {
   border-radius: 0 0 8px 8px;
   min-height: 120px;
+}
+.ed .ql-container {
+  font: inherit;
+}
+.ed .ql-editor {
+  line-height: 1.55;
+}
+.ed .ql-editor h1, .ed .ql-editor h2, .ed .ql-editor h3 {
+  font-family: var(--display);
+  font-weight: 500;
+}
+.ed .ql-snow.ql-toolbar button.ql-mailvar {
+  width: auto;
+  float: right;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--blue-soft);
+  color: var(--blue-deep);
+  font-weight: 500;
+}
+.ed .ql-snow.ql-toolbar button.ql-mailvar:hover {
+  background: var(--blue);
+}
+
+.mvar {
+  background: var(--blue-soft);
+  border: 1px solid var(--blue);
+  color: var(--blue-deep);
+  border-radius: 10px;
+  padding: 0 7px;
+  font-size: 0.92em;
+  white-space: nowrap;
+}
+.mvar.qr {
+  cursor: pointer;
+}
+.mvar.bad {
+  background: var(--lemon);
+  border-color: #E3D38F;
+  color: var(--ink);
+}
+
+.mv-menu {
+  position: absolute;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(44, 52, 64, 0.12);
+  padding: 6px;
+  min-width: 210px;
+  max-height: min(480px, 70vh);
+  overflow-y: auto;
+}
+.mv-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.mv-menu button:hover, .mv-menu button:focus-visible {
+  background: var(--blue-soft);
+}
+.mv-menu hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 5px 0;
+}
+.mv-menu p {
+  padding: 6px 10px;
+  font-size: 14px;
+  max-width: 260px;
+}
+
+.inp-row {
+  display: flex;
+  gap: 8px;
+}
+.inp-row .inp {
+  flex: 1;
+  min-width: 0;
+}
+
+#mail-page .forms-only {
+  display: none;
+}
+#mail-page.mail-forms .ev-only {
+  display: none;
+}
+#mail-page.mail-forms .forms-only {
+  display: block;
+}
+
+.mail-pdf {
+  margin-top: 14px;
+}
+.mail-pdf .f {
+  margin-top: 8px;
+  max-width: 560px;
+}
+
+.dlg.dlg-wide {
+  width: min(760px, 100%);
+}
+
+.mail-preview .mp-head {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 0 0 12px;
+}
+.mail-preview .mp-head dt {
+  color: var(--muted);
+}
+.mail-preview .mp-head dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.mail-preview iframe {
+  width: 100%;
+  height: 52vh;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
 }
 
 .guest {
@@ -1164,5 +1303,91 @@ h5.subhead a {
 
   .doc {
     padding-inline: 16px;
+  }
+}
+.nm .seg {
+  margin-top: 12px;
+}
+.nm .nm-body {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 16px;
+  margin: 14px 0;
+  height: min(440px, 55vh);
+}
+.nm .nm-list {
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  padding-right: 10px;
+}
+.nm .nm-list h5 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 14px 0 4px;
+}
+.nm .nm-list > p {
+  font-size: 14px;
+}
+.nm .nm-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.nm .nm-item b {
+  display: block;
+  font-weight: 500;
+  font-size: 14.5px;
+}
+.nm .nm-item small {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.nm .nm-item:hover {
+  background: var(--pane);
+}
+.nm .nm-item.on {
+  background: var(--blue-soft);
+  box-shadow: inset 3px 0 0 var(--blue-deep);
+}
+.nm .nm-prev {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.nm .nm-prev .nm-subj {
+  font-weight: 500;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+.nm .nm-prev iframe {
+  flex: 1;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+@media (max-width: 640px) {
+  .nm .nm-body {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .nm .nm-list {
+    border-right: 0;
+    padding-right: 0;
+    max-height: 40vh;
+  }
+
+  .nm .nm-prev iframe {
+    height: 40vh;
   }
 }

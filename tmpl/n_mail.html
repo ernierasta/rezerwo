@@ -3,11 +3,11 @@
 <script src="/js/quill.min.js"></script>
 {{end}}
 {{define "body"}}
-<div class="doc" id="mail-page" data-mail-id="{{.ID}}">
+<div class="doc" id="mail-page" data-mail-id="{{.ID}}" data-back="{{.Back}}" data-vars="{{.Vars}}">
   <div class="dh">
     <h3>{{.Name}}</h3>
     <div class="r">
-      <a class="btn quiet" href="/admin/catalogs">{{T "catalog.mails"}}</a>
+      <a class="btn quiet" href="{{.Back}}">{{.BackLabel}}</a>
     </div>
   </div>
 
@@ -20,18 +20,30 @@
         <option value="forms" {{if eq .RelatedTo "forms"}}selected{{end}}>{{T "catalog.for_forms"}}</option>
       </select></div>
     <div class="f" style="grid-column:1/-1"><label for="f-subject">{{T "mail.subject"}}</label>
-      <input class="inp" id="f-subject" data-field="subject" value="{{.Subject}}"></div>
+      <div class="inp-row">
+        <input class="inp" id="f-subject" data-field="subject" value="{{.Subject}}">
+        <button type="button" class="btn quiet ev-only" id="subject-var">{{T "mail.insert_subject"}}</button>
+      </div></div>
   </div>
 
   <div class="f" style="margin-top:16px">
     <label>{{T "mail.text"}}</label>
-    <div class="ed" id="mail-editor">{{.Text}}</div>
-    <small>{{T "mail.vars_hint"}}</small>
+    <template id="mail-text">{{.Text}}</template>
+    <div class="ed"><div id="mail-editor"></div></div>
+    <small class="ev-only">{{T "mail.vars_hint"}}</small>
+    <small class="forms-only">{{T "mail.forms_hint"}}</small>
   </div>
 
-  <div class="check" style="margin-top:14px">
-    <input type="checkbox" id="f-sharable" data-field="sharable" {{if .Sharable}}checked{{end}}>
-    <label for="f-sharable">{{T "mail.sharable"}}</label>
+  <div class="mail-pdf ev-only">
+    <div class="check">
+      <input type="checkbox" id="f-pdf">
+      <label for="f-pdf">{{T "mail.pdf"}}</label>
+    </div>
+    <div class="f" id="pdf-info-f" hidden>
+      <label for="f-pdf-info">{{T "mail.pdf_info"}}</label>
+      <input class="inp" id="f-pdf-info">
+      <small>{{T "mail.pdf_hint"}}</small>
+    </div>
   </div>
 
   {{if or .Attachments .Images}}
@@ -48,7 +60,8 @@
 
   <div class="sec-f">
     <button class="btn" id="save">{{T "common.save"}}</button>
-    <a class="btn quiet" href="/admin/catalogs">{{T "common.cancel"}}</a>
+    <button class="btn quiet ev-only" id="preview">{{T "mail.preview"}}</button>
+    <a class="btn quiet" href="{{.Back}}">{{T "common.cancel"}}</a>
     <small class="msg"></small>
   </div>
 </div>

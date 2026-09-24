@@ -1,0 +1,19 @@
+<!--
+name: Booking thank-you with QR code
+description: For the guest, right after ordering. Seat summary and payment QR code.
+related_to: events
+subject: Booking: {{.EventName}}
+-->
+<p>Dear {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>thank you for booking <strong>{{.EventName}}</strong> ({{.EventDate}}).</p>
+<p>Seats: <strong>{{.Sits}}</strong> ({{.Rooms}})</p>
+<p>Amount due: <strong>{{.TotalPrice}} Kč</strong></p>
+<p><br></p>
+<p>The easiest way to pay is to scan the QR code in your banking app:</p>
+<p>{{.QRPayMail ""}}</p>
+<p><br></p>
+<p>Your booking will be confirmed once the payment arrives.</p>
+<p><br></p>
+<p>Kind regards</p>
+<p>The organisers</p>

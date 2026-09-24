@@ -1,0 +1,14 @@
+<!--
+name: New order notice for organisers
+description: To the organisation's address, for every new order.
+related_to: events
+subject: New booking: {{.Name}} {{.Surname}}, {{.TotalPrice}} Kč
+-->
+<p>New order for <strong>{{.EventName}}</strong>:</p>
+<p><br></p>
+<p>Customer: {{.Name}} {{.Surname}}</p>
+<p>E-mail: {{.Email}}</p>
+<p>Phone: {{.Phone}}</p>
+<p>Seats: {{.Sits}} ({{.Rooms}})</p>
+<p>Amount: {{.TotalPrice}} Kč</p>
+<p>Notes: {{.Notes}}</p>

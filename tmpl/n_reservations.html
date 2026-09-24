@@ -21,7 +21,6 @@
       <button data-quick="unpaid7">{{T "res.filter_unpaid7"}}</button>
       <button data-quick="nomail">{{T "res.filter_nomail"}}</button>
     </div>
-    <select class="inp" id="res-notif" style="max-width:260px"><option value="0">{{T "field.select_hint"}}</option></select>
   </div>
 
   <div class="res-layout">
@@ -35,7 +34,10 @@
     <span id="res-bar-info"></span>
     <button class="btn sm" id="act-payed">{{T "res.mark_payed"}}</button>
     <button class="btn quiet sm" id="act-ordered">{{T "res.mark_ordered"}}</button>
-    <button class="btn quiet sm" id="act-mail">{{T "res.send_mail"}}</button>
+    <span class="mailpick">
+      <select class="inp" id="res-notif" aria-label="{{T "catalog.mails"}}"><option value="0">{{T "field.select_hint"}}</option></select>
+      <button class="btn quiet sm" id="act-mail">{{T "res.send_mail"}}</button>
+    </span>
     <button class="btn danger sm" id="act-delete">{{T "common.delete"}}</button>
     <button class="link" id="act-none">{{T "common.cancel"}}</button>
   </div>

@@ -1,0 +1,18 @@
+<!--
+name: Przypomnienie o płatności
+description: Dla gościa, który jeszcze nie zapłacił. Wysyłany ręcznie z tabeli rezerwacji.
+related_to: events
+subject: Przypomnienie o płatności: {{.EventName}}
+-->
+<p>Dzień dobry {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>przypominamy o płatności za rezerwację na <strong>{{.EventName}}</strong> ({{.EventDate}}).</p>
+<p>Miejsca: <strong>{{.Sits}}</strong>, do zapłaty: <strong>{{.TotalPrice}} Kč</strong>.</p>
+<p><br></p>
+<p>Kod QR do przelewu:</p>
+<p>{{.QRPayMail ""}}</p>
+<p><br></p>
+<p>Jeśli wpłata została już wysłana, prosimy potraktować tę wiadomość jako nieaktualną.</p>
+<p><br></p>
+<p>Pozdrawiamy</p>
+<p>Organizatorzy</p>

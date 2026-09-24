@@ -30,12 +30,16 @@ type nMailVars struct {
 	Subject   string
 	Text      template.HTML
 	RelatedTo string
-	Sharable  bool
 	UsedBy    []string
 	// Attachments i Images pokazujemy tylko jako informację - pliki wgrywa
 	// się na razie w starym edytorze.
 	Attachments string
 	Images      string
+	// Vars - JSON dla edytora: zmienne zamówienia i nazwy kont do kodu QR
+	Vars string
+	// Back - dokąd wrócić po zapisie/anulowaniu (impreza, formularz, katalogi)
+	Back      string
+	BackLabel string
 }
 
 // MailPage - /admin/mails/{id}
@@ -58,13 +62,38 @@ func MailPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *h
 			Subject:     mail.Title.String,
 			Text:        template.HTML(mail.Text),
 			RelatedTo:   mail.RelatedTo,
-			Sharable:    mail.Sharable,
 			UsedBy:      mailUsedBy(db, user, mail.ID),
 			Attachments: mail.AttachedFilesDelimited.String,
 			Images:      mail.EmbeddedImgsDelimited.String,
+			Vars:        mailEditorVars(db, user),
 		}
+		vars.Back, vars.BackLabel = backLink(r, lang, "catalog.mails")
 		nRender(w, lang, vars, "tmpl/n_mail.html")
 	}
+}
+
+func mailEditorVars(db *DB, user User) string {
+	accounts := []string{}
+	accs, err := db.BankAccountGetAll(user.ID)
+	if err != nil {
+		log.Printf("mailEditorVars: accounts: %v", err)
+	}
+	for _, a := range accs {
+		accounts = append(accounts, a.Name)
+	}
+	b, _ := json.Marshal(map[string]interface{}{"vars": eventMailVars, "accounts": accounts})
+	return string(b)
+}
+
+// backLink - adres powrotu z edytora maila albo konta. Imprezy i formularze
+// podają ?back=/admin/events/26#mail-gosc; przyjmujemy tylko adresy panelu,
+// żeby parametr nie przekierował na obcą stronę.
+func backLink(r *http.Request, lang, catalogLabel string) (string, string) {
+	back := r.URL.Query().Get("back")
+	if strings.HasPrefix(back, "/admin/") && !strings.ContainsAny(back, "\\\r\n") && !strings.HasPrefix(back, "//") {
+		return back, T(lang, "common.back")
+	}
+	return "/admin/catalogs", T(lang, catalogLabel)
 }
 
 func adminMail(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore, htmlErrors bool) (User, Notification, bool) {
@@ -126,7 +155,6 @@ type nMailMsg struct {
 	Subject   string `json:"subject"`
 	Text      string `json:"text"`
 	RelatedTo string `json:"related_to"`
-	Sharable  bool   `json:"sharable"`
 }
 
 // MailSaveAPI - POST /api/mails/{id}
@@ -154,7 +182,10 @@ func MailSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 		}
 		mail.Title = ToNS(strings.TrimSpace(m.Subject))
 		mail.Text = removeTrailingEmptyParagraphs(m.Text)
-		mail.Sharable = m.Sharable
+		if err := checkMailTemplate(mail.Title.String, mail.Text); err != nil {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "mail.template_error") + ": " + err.Error()})
+			return
+		}
 		if m.RelatedTo == "events" || m.RelatedTo == "forms" {
 			mail.RelatedTo = m.RelatedTo
 		}
@@ -171,36 +202,6 @@ func MailSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 
 type nNewNamedMsg struct {
 	Name string `json:"name"`
-}
-
-// MailCreateAPI - POST /api/mails
-func MailCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		user, ok := adminUser(w, r, db, cs)
-		if !ok {
-			return
-		}
-		name, ok := namedBody(w, r)
-		if !ok {
-			return
-		}
-
-		id, err := db.NotificationAdd(&Notification{
-			Name:        name,
-			Type:        "email",
-			RelatedTo:   "events",
-			Title:       ToNS(name),
-			Text:        "",
-			CreatedDate: time.Now().Unix(),
-			UserID:      user.ID,
-		})
-		if err != nil {
-			log.Printf("MailCreateAPI: %v", err)
-			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
-			return
-		}
-		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "created", "id": id})
-	}
 }
 
 func namedBody(w http.ResponseWriter, r *http.Request) (string, bool) {
@@ -236,6 +237,8 @@ type nAccountVars struct {
 	VarSymbol   string
 	AmountField string
 	UsedBy      []string
+	Back        string
+	BackLabel   string
 }
 
 // AccountPage - /admin/accounts/{id}
@@ -269,6 +272,7 @@ func AccountPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 			AmountField: acc.AmountField.String,
 			UsedBy:      accountUsedBy(db, user, acc.ID),
 		}
+		vars.Back, vars.BackLabel = backLink(r, lang, "catalog.accounts")
 		nRender(w, lang, vars, "tmpl/n_account.html")
 	}
 }

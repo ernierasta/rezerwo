@@ -1,0 +1,14 @@
+<!--
+name: Upozornění pro pořadatele na objednávku
+description: Na adresu organizace při každé nové objednávce.
+related_to: events
+subject: Nová rezervace: {{.Name}} {{.Surname}}, {{.TotalPrice}} Kč
+-->
+<p>Nová objednávka na <strong>{{.EventName}}</strong>:</p>
+<p><br></p>
+<p>Objednatel: {{.Name}} {{.Surname}}</p>
+<p>E-mail: {{.Email}}</p>
+<p>Telefon: {{.Phone}}</p>
+<p>Místa: {{.Sits}} ({{.Rooms}})</p>
+<p>Částka: {{.TotalPrice}} Kč</p>
+<p>Poznámky: {{.Notes}}</p>

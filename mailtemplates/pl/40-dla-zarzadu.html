@@ -1,0 +1,14 @@
+<!--
+name: Powiadomienie dla organizatorów o zamówieniu
+description: Na adres organizacji, przy każdym nowym zamówieniu.
+related_to: events
+subject: Nowa rezerwacja: {{.Name}} {{.Surname}}, {{.TotalPrice}} Kč
+-->
+<p>Nowe zamówienie na <strong>{{.EventName}}</strong>:</p>
+<p><br></p>
+<p>Zamawiający: {{.Name}} {{.Surname}}</p>
+<p>E-mail: {{.Email}}</p>
+<p>Telefon: {{.Phone}}</p>
+<p>Miejsca: {{.Sits}} ({{.Rooms}})</p>
+<p>Kwota: {{.TotalPrice}} Kč</p>
+<p>Uwagi: {{.Notes}}</p>

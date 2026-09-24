@@ -1,0 +1,19 @@
+<!--
+name: Podziękowanie za rezerwację z kodem QR
+description: Dla gościa, zaraz po zamówieniu. Podsumowanie miejsc i kod QR do przelewu.
+related_to: events
+subject: Rezerwacja: {{.EventName}}
+-->
+<p>Dzień dobry {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>dziękujemy za rezerwację na <strong>{{.EventName}}</strong> ({{.EventDate}}).</p>
+<p>Miejsca: <strong>{{.Sits}}</strong> ({{.Rooms}})</p>
+<p>Do zapłaty: <strong>{{.TotalPrice}} Kč</strong></p>
+<p><br></p>
+<p>Najprościej zapłacić, skanując kod QR w aplikacji banku:</p>
+<p>{{.QRPayMail ""}}</p>
+<p><br></p>
+<p>Rezerwacja będzie potwierdzona po zaksięgowaniu wpłaty.</p>
+<p><br></p>
+<p>Pozdrawiamy</p>
+<p>Organizatorzy</p>

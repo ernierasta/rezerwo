@@ -1,0 +1,18 @@
+<!--
+name: Připomínka platby
+description: Pro hosta, který ještě nezaplatil. Posílá se ručně z tabulky rezervací.
+related_to: events
+subject: Připomínka platby: {{.EventName}}
+-->
+<p>Dobrý den, {{.Name}} {{.Surname}},</p>
+<p><br></p>
+<p>připomínáme platbu za rezervaci na <strong>{{.EventName}}</strong> ({{.EventDate}}).</p>
+<p>Místa: <strong>{{.Sits}}</strong>, k úhradě: <strong>{{.TotalPrice}} Kč</strong>.</p>
+<p><br></p>
+<p>QR kód pro platbu:</p>
+<p>{{.QRPayMail ""}}</p>
+<p><br></p>
+<p>Pokud jste již zaplatili, považujte prosím tuto zprávu za bezpředmětnou.</p>
+<p><br></p>
+<p>S pozdravem</p>
+<p>Pořadatelé</p>

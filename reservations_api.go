@@ -410,8 +410,12 @@ func sendEventMailToOrder(db *DB, mailConf MailConfig, user User, event Event, m
 		event.Name, sits, prices, rooms, event.ID, total, user, db)
 
 	mailConf.Files = attachedFiles
+	subject := OrderSubject(mail.Title.String, newEventOrderFuncs(
+		first.CustName.String, first.CustSurname.String, first.CustPhone.String,
+		first.CustEmail.String, first.Notes.String, event.Name, sits, prices, rooms,
+		event.ID, total, user, db))
 
-	if err := prepMailConfSendMail(first.CustEmail.String, mail.Title.String, parsedText, user, embImgs, mailConf); err != nil {
+	if err := prepMailConfSendMail(first.CustEmail.String, subject, parsedText, user, embImgs, mailConf); err != nil {
 		return err
 	}
 

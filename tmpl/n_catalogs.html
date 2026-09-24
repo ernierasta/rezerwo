@@ -19,13 +19,13 @@
   </div>
 
   <h4>{{T "catalog.mails"}}
-    <button class="btn sm" data-create="/api/mails" data-go="/admin/mails/">{{T "catalog.new_mail"}}</button>
+    <button class="btn sm" id="new-mail">{{T "catalog.new_mail"}}</button>
   </h4>
   <div class="rows">
     {{range .Mails}}
     <a class="row" href="/admin/mails/{{.ID}}">
       <span>{{.RelatedTo}}</span>
-      <span>{{.Name}}{{if .Shared}} <small class="muted">({{T "catalog.shared"}})</small>{{end}}</span>
+      <span>{{.Name}}</span>
       <small class="muted">{{.Title}}</small>
     </a>
     {{else}}
@@ -50,7 +50,10 @@
 </div>
 {{end}}
 {{define "scripts"}}
+<script src="/js/n_newmail.js"></script>
 <script>
+document.getElementById('new-mail').addEventListener('click', function () { RZNewMail.open(); });
+
 // Stare edytory otwierają się POST-em z parametrami w treści, więc zamiast
 // zwykłych linków wysyłamy ukryty formularz.
 document.getElementById('catalogs').addEventListener('click', async function (e) {

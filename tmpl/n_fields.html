@@ -1,0 +1,88 @@
+{{define "body"}}
+<div class="fd" id="fd"
+     data-form-id="{{.ID}}"
+     data-addons="{{if .IsAddons}}1{{end}}"
+     data-form-lang="{{.FormLang}}"
+     data-currency="{{.Currency}}"
+     data-back="{{.BackURL}}">
+
+  <div class="fd-top">
+    <a class="fd-back" href="{{.BackURL}}">← {{.Crumb}}</a>
+    <h3>{{if .IsAddons}}{{T "fields.title_addons"}}{{else}}{{T "fields.title"}}{{end}}</h3>
+    <div class="r">
+      <button class="btn quiet sm" id="fd-undo" title="{{T "fields.undo"}} (Ctrl+Z)" disabled>↶</button>
+      <button class="btn quiet sm" id="fd-redo" title="{{T "fields.redo"}} (Ctrl+Shift+Z)" disabled>↷</button>
+      <div class="seg" role="group" aria-label="{{T "fields.view"}}">
+        <button type="button" class="on" data-view="desktop">{{T "fields.view_desktop"}}</button>
+        <button type="button" data-view="phone">{{T "fields.view_phone"}}</button>
+      </div>
+      {{if not .IsAddons}}<a class="btn quiet sm" href="{{.PublicURL}}" target="_blank" rel="noopener" id="fd-open">{{T "fields.open_guest"}}</a>{{end}}
+      <span class="fd-state muted" id="fd-state"></span>
+      <button class="btn" id="fd-save" title="Ctrl+S">{{T "common.save"}}</button>
+    </div>
+  </div>
+
+  <div class="fd-draft draft-notice" id="fd-draft" hidden>
+    <span>{{T "fields.draft_restored"}}</span>
+    <button class="link" id="fd-draft-discard">{{T "draft.discard"}}</button>
+  </div>
+
+  <div class="fd-main">
+    <aside class="fd-pal" id="fd-pal" aria-label="{{T "fields.palette"}}">
+      {{if not .IsAddons}}
+      <h5>{{T "fields.pal.person"}}</h5>
+      <button class="pal" draggable="true" data-add="role:name"><i>Aa</i>{{T "fields.role.name"}}</button>
+      <button class="pal" draggable="true" data-add="role:surname"><i>Aa</i>{{T "fields.role.surname"}}</button>
+      <button class="pal" draggable="true" data-add="role:email"><i>@</i>{{T "fields.role.email"}}</button>
+      <button class="pal" draggable="true" data-add="tel"><i>☎</i>{{T "fields.type.tel"}}</button>
+      {{end}}
+      <h5>{{T "fields.pal.fields"}}</h5>
+      <button class="pal" draggable="true" data-add="text"><i>T</i>{{T "fields.type.text"}}</button>
+      {{if not .IsAddons}}
+      <button class="pal" draggable="true" data-add="textarea"><i>¶</i>{{T "fields.type.textarea"}}</button>
+      <button class="pal" draggable="true" data-add="number"><i>12</i>{{T "fields.type.number"}}</button>
+      <button class="pal" draggable="true" data-add="date"><i>▦</i>{{T "fields.type.date"}}</button>
+      {{end}}
+      <button class="pal" draggable="true" data-add="select"><i>▾</i>{{T "fields.type.select"}}</button>
+      {{if not .IsAddons}}
+      <button class="pal" draggable="true" data-add="radio-group"><i>◉</i>{{T "fields.type.radio-group"}}</button>
+      <button class="pal" draggable="true" data-add="checkbox-group"><i>☑</i>{{T "fields.type.checkbox-group"}}</button>
+      {{end}}
+      <button class="pal" draggable="true" data-add="multiplierField"><i>×</i>{{T "fields.type.multiplierField"}}</button>
+      {{if not .IsAddons}}
+      <h5>{{T "fields.pal.layout"}}</h5>
+      <button class="pal" draggable="true" data-add="header"><i>H</i>{{T "fields.type.header"}}</button>
+      <button class="pal" draggable="true" data-add="paragraph"><i>≡</i>{{T "fields.type.paragraph"}}</button>
+      {{end}}
+      <p class="pal-hint muted">{{T "fields.pal.hint"}}</p>
+    </aside>
+
+    <section class="fd-canvas-wrap">
+      <div class="fd-canvas gform" id="fd-canvas" lang="{{.FormLang}}"></div>
+    </section>
+
+    <aside class="fd-props" id="fd-props" aria-label="{{T "fields.settings"}}"></aside>
+  </div>
+</div>
+
+<div class="dlg-back" id="fd-dlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="fd-dlg-title">
+    <h3 id="fd-dlg-title"></h3>
+    <div class="fd-dlg-body"></div>
+    <div class="sec-f">
+      <button class="btn" id="fd-dlg-ok"></button>
+      <button class="btn quiet" id="fd-dlg-cancel">{{T "common.cancel"}}</button>
+    </div>
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script>
+  window.FD_DATA = {
+    content: {{.Content}},
+    moneyfield: {{.MoneyField}},
+    counts: {{.Counts}}
+  };
+</script>
+<script src="/js/n_fields.js"></script>
+{{end}}

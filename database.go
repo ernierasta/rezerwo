@@ -422,6 +422,22 @@ type FormTemplate struct {
 	// Kind - "form" (zwykły formularz) albo "order_addons" (definicja dodatków
 	// do zamówienia, przypięta do imprezy przez events.addons_formtemplate_id)
 	Kind sql.NullString `db:"kind"`
+	// Language - język strony dla gościa (pl/cs/en), Status - open/closed,
+	// CloseDate - opcjonalny termin zamknięcia (tools/migration-forms.sql)
+	Language  string        `db:"language"`
+	Status    string        `db:"status"`
+	CloseDate sql.NullInt64 `db:"close_date"`
+}
+
+// IsOpen mówi, czy formularz przyjmuje teraz odpowiedzi.
+func (t FormTemplate) IsOpen(now int64) bool {
+	if t.Status == "closed" {
+		return false
+	}
+	if t.CloseDate.Valid && t.CloseDate.Int64 > 0 && now > t.CloseDate.Int64 {
+		return false
+	}
+	return true
 }
 
 type FormField struct {
@@ -1767,6 +1783,89 @@ func (db *DB) FormFieldDelByName(name string, formtemplateID int64) error {
 		return fmt.Errorf("formfields: no rows deleted, tried to remove: %q", name)
 	}
 	return err
+}
+
+// --- nowe formularze (forms_fields.go, forms_manage.go) ---------------------
+
+// FormTemplateSetContent zapisuje definicję pól i pole z kwotą (designer pól).
+func (db *DB) FormTemplateSetContent(tmplID, userID int64, content string, moneyfield sql.NullString) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET content=$1, moneyfield=$2 WHERE id=$3 AND users_id_fk=$4`,
+		content, moneyfield, tmplID, userID)
+	return err
+}
+
+// FormTemplateSetAccess zapisuje język, status i termin zamknięcia formularza.
+func (db *DB) FormTemplateSetAccess(tmplID, userID int64, language, status string, closeDate sql.NullInt64) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET language=$1, status=$2, close_date=$3 WHERE id=$4 AND users_id_fk=$5`,
+		language, status, closeDate, tmplID, userID)
+	return err
+}
+
+// FormTemplateURLTaken mówi, czy organizacja ma już formularz pod tym adresem
+// (poza formularzem exceptID).
+func (db *DB) FormTemplateURLTaken(url string, userID, exceptID int64) bool {
+	var n int64
+	err := db.DB.Get(&n, `SELECT COUNT(id) FROM formtemplates WHERE url=$1 AND users_id_fk=$2 AND id<>$3`, url, userID, exceptID)
+	return err != nil || n > 0
+}
+
+// FormFieldRename zmienia nazwę pola, zachowując jego odpowiedzi
+// (formanswers wskazują na id pola, nie na nazwę).
+func (db *DB) FormFieldRename(tmplID int64, oldName, newName string) error {
+	_, err := db.DB.Exec(`UPDATE formfields SET name=$1 WHERE name=$2 AND formtemplates_id_fk=$3`, newName, oldName, tmplID)
+	return err
+}
+
+// FormFieldAnswerCounts zwraca, ile niepustych odpowiedzi ma każde pole
+// (klucz: nazwa pola). Designer ostrzega przed skasowaniem takich pól.
+func (db *DB) FormFieldAnswerCounts(tmplID int64) (map[string]int64, error) {
+	type row struct {
+		Name  string `db:"name"`
+		Count int64  `db:"cnt"`
+	}
+	var rows []row
+	err := db.DB.Select(&rows, `SELECT ff.name AS name, COUNT(fa.id) AS cnt FROM formfields ff
+		JOIN formanswers fa ON fa.formfields_id_fk=ff.id
+		WHERE ff.formtemplates_id_fk=$1 AND fa.value IS NOT NULL AND fa.value<>''
+		GROUP BY ff.name`, tmplID)
+	out := map[string]int64{}
+	for _, r := range rows {
+		out[r.Name] = r.Count
+	}
+	return out, err
+}
+
+// FormTemplateDelete kasuje formularz razem z polami, odpowiedziami i
+// zgłoszeniami. Dotyczy tylko zwykłych formularzy organizacji (nie dodatków).
+func (db *DB) FormTemplateDelete(tmplID, userID int64) error {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var n int64
+	if err := tx.Get(&n, `SELECT COUNT(id) FROM formtemplates WHERE id=$1 AND users_id_fk=$2 AND kind<>'order_addons'`, tmplID, userID); err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("FormTemplateDelete: form %d not found", tmplID)
+	}
+	stmts := []string{
+		`DELETE FROM formnotificationslog WHERE forms_id_fk IN (SELECT id FROM forms WHERE formtemplates_id_fk=$1)`,
+		`DELETE FROM formtemplates_notifs WHERE formtemplates_id_fk=$1`,
+		`DELETE FROM formanswers WHERE forms_id_fk IN (SELECT id FROM forms WHERE formtemplates_id_fk=$1)`,
+		`DELETE FROM formanswers WHERE formfields_id_fk IN (SELECT id FROM formfields WHERE formtemplates_id_fk=$1)`,
+		`DELETE FROM forms WHERE formtemplates_id_fk=$1`,
+		`DELETE FROM formfields WHERE formtemplates_id_fk=$1`,
+		`DELETE FROM formtemplates WHERE id=$1`,
+	}
+	for _, s := range stmts {
+		if _, err := tx.Exec(s, tmplID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (db *DB) FormAdd(f *Form) (int64, error) {

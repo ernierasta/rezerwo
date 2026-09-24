@@ -95,8 +95,13 @@ func ParseAddonFields(content string) []AddonField {
 
 		// multiplierField: liczba razy cena, z tekstem przed i po
 		f.Price = intOf(m["multipl"])
-		f.Before = str(m["before"])
-		f.After = str(m["after"])
+		// formBuilder i designer pól zapisują teksty jako "pre"/"post"
+		// (nawiasy z domyślnego "(" ... " Kč)" w kroku zamówienia są zbędne)
+		f.Before = strings.Trim(str(m["pre"]), "( ")
+		f.After = strings.Trim(str(m["post"]), ") ")
+		if f.Before == "" && f.After == "" {
+			f.Before, f.After = str(m["before"]), str(m["after"])
+		}
 
 		out = append(out, f)
 	}

@@ -69,6 +69,15 @@ type nFormVars struct {
 	MoneyField string
 	Fields     []FormField
 
+	// nowe ustawienia (tools/migration-forms.sql) i designer pól
+	Language     string
+	Status       string
+	CloseDateVal string
+	GuestURL     string
+	FieldList    []nFieldSummary
+	MoreFields   int
+	AnswersCount int64
+
 	Notifications       []Notification
 	NotificationID      int64
 	AdminNotificationID int64
@@ -147,9 +156,23 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		BankAccountID:       templ.BankAccountID.Int64,
 		Events:              events,
 		EventID:             templ.EventID.Int64,
+		Language:            formLang(templ),
+		Status:              templ.Status,
+		CloseDateVal:        dateInputValue(templ.CloseDate.Int64),
+		GuestURL:            fmt.Sprintf("/n/form/%s/%s", user.URL, templ.URL),
+		AnswersCount:        answers,
+	}
+	if v.Status == "" {
+		v.Status = "open"
 	}
 
-	v.SumBasic = templ.Name + ", " + templ.URL
+	v.FieldList = formFieldSummaries(templ, lang)
+	if len(v.FieldList) > 12 {
+		v.MoreFields = len(v.FieldList) - 12
+		v.FieldList = v.FieldList[:12]
+	}
+
+	v.SumBasic = formStatusLabel(templ, lang) + " · " + languageName(lang, v.Language)
 
 	v.SumFields = T(lang, "form.fields_count", len(fields))
 	if templ.MoneyAmountFieldName.String != "" {
@@ -189,6 +212,17 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 
 	v.SumAnswers = TN(lang, "count.answer", answers)
 	return v
+}
+
+// formStatusLabel opisuje, czy formularz przyjmuje odpowiedzi.
+func formStatusLabel(t FormTemplate, lang string) string {
+	if !t.IsOpen(nowUnix()) {
+		return T(lang, "formpage.closed_since")
+	}
+	if t.CloseDate.Valid && t.CloseDate.Int64 > 0 {
+		return T(lang, "formpage.open_until", FormatDate(lang, t.CloseDate.Int64))
+	}
+	return T(lang, "formpage.open")
 }
 
 // ADDONSKIND - rodzaj szablonu formularza, który jest definicją dodatków
@@ -321,8 +355,34 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 			if name := val("name"); name != "" {
 				templ.Name = name
 			}
-			if url := val("url"); url != "" {
+			if url := val("url"); url != "" && url != templ.URL {
+				if !formURLRe.MatchString(url) {
+					jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "newform.bad_url")})
+					return
+				}
+				if db.FormTemplateURLTaken(url, user.ID, templ.ID) {
+					jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "newform.url_taken", url)})
+					return
+				}
 				templ.URL = url
+			}
+			status := val("status")
+			if status != "closed" {
+				status = "open"
+			}
+			closeDate := ToNI(0)
+			if d := val("close_date"); d != "" {
+				day, err := time.ParseInLocation("2006-01-02", d, time.Local)
+				if err != nil {
+					jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": err.Error()})
+					return
+				}
+				// formularz przyjmuje odpowiedzi do końca wybranego dnia
+				closeDate = ToNI(day.Add(24*time.Hour - time.Second).Unix())
+			}
+			if err := db.FormTemplateSetAccess(templ.ID, user.ID, KnownLang(val("language")), status, closeDate); err != nil {
+				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+				return
 			}
 		case "page":
 			templ.Banner = ToNS(val("banner"))

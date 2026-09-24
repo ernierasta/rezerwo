@@ -97,19 +97,9 @@
       .finally(function () { btn.disabled = false; });
   }
 
-  // pola dodatków edytuje na razie stary designer formularzy (formBuilder),
-  // który otwiera się POST-em z form-id
+  // pola dodatków edytuje ten sam designer co formularze (forms_fields.go)
   function openFieldDesigner(templateID) {
-    var f = document.createElement('form');
-    f.method = 'POST';
-    f.action = '/admin/formeditor';
-    var i = document.createElement('input');
-    i.type = 'hidden';
-    i.name = 'form-id';
-    i.value = templateID;
-    f.appendChild(i);
-    document.body.appendChild(f);
-    f.submit();
+    location.href = '/admin/forms/' + templateID + '/fields';
   }
 
   page.addEventListener('sec:open', function (e) { initEditors(e.target); });

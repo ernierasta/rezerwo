@@ -1,0 +1,10 @@
+{{define "body"}}
+<div class="guest order-status gform-done">
+  <div class="done-mark" aria-hidden="true">✓</div>
+  <h1>{{.Title}}</h1>
+  <p class="when">{{.FormName}}</p>
+  {{if .UniqID}}<p class="uniq">{{T "gform.uniq_id"}} <b class="num">{{.UniqID}}</b></p>{{end}}
+  {{if .Text}}<div class="desc">{{.Text}}</div>{{else}}<p class="desc">{{T "gform.thanks_text"}}</p>{{end}}
+  <p class="again"><a href="{{.Again}}">{{T "gform.again"}}</a></p>
+</div>
+{{end}}

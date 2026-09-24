@@ -118,6 +118,8 @@ type nHomeRow struct {
 	PctPayed   int64
 	PctOrdered int64
 	Money      string
+	// Closed - formularz nie przyjmuje odpowiedzi
+	Closed bool
 }
 
 type nHomeVars struct {
@@ -214,6 +216,8 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		if err != nil {
 			log.Printf("AdminStartPage: forms: %v", err)
 		}
+		// najnowsze formularze na górze - to zwykle te bieżące
+		sort.Slice(templs, func(i, j int) bool { return templs[i].ID > templs[j].ID })
 		for _, ft := range templs {
 			if isAddonsTemplate(ft) {
 				continue // dodatki edytuje się w sekcji imprezy
@@ -223,9 +227,11 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 				log.Printf("AdminStartPage: form answers count: %v", err)
 			}
 			vars.Forms = append(vars.Forms, nHomeRow{
-				ID:   ft.ID,
-				Name: ft.Name,
-				Info: TN(lang, "count.answer", n),
+				ID:     ft.ID,
+				Name:   ft.Name,
+				DateS:  formStatusLabel(ft, lang),
+				Info:   TN(lang, "count.answer", n),
+				Closed: !ft.IsOpen(nowUnix()),
 			})
 		}
 

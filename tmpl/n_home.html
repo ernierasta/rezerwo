@@ -31,12 +31,12 @@
   {{end}}
 
   <h4>{{T "home.forms"}}
-    <button class="btn sm" onclick="location.href='/admin'">{{T "home.new_form"}}</button>
+    <button class="btn sm" id="new-form">{{T "home.new_form"}}</button>
   </h4>
   <div class="rows">
     {{range .Forms}}
-    <a class="row" href="/admin/forms/{{.ID}}">
-      <span>{{T "home.open_form"}}</span>
+    <a class="row{{if .Closed}} closed{{end}}" href="/admin/forms/{{.ID}}">
+      <span class="{{if .Closed}}muted{{end}}">{{.DateS}}</span>
       <span>{{.Name}}</span>
       <small class="num">{{.Info}}</small>
     </a>
@@ -61,8 +61,43 @@
 </a>
 {{end}}
 
+{{define "dialogs"}}
+<div class="dlg-back" id="nf-dlg" hidden>
+  <div class="dlg nf" role="dialog" aria-modal="true" aria-labelledby="nf-title">
+    <h3 id="nf-title">{{T "newform.title"}}</h3>
+    <div class="f" style="margin-top:14px"><label for="nf-name">{{T "newform.name"}}</label>
+      <input class="inp" id="nf-name" placeholder="{{T "newform.name_placeholder"}}" autocomplete="off"></div>
+    <div class="grid2">
+      <div class="f"><label for="nf-url">{{T "newform.url"}}</label>
+        <input class="inp" id="nf-url" spellcheck="false" autocomplete="off"><small id="nf-url-full"></small></div>
+      <div class="f"><label for="nf-lang">{{T "newform.language"}}</label>
+        <select class="inp" id="nf-lang">
+          <option value="pl" {{if eq lang "pl"}}selected{{end}}>polski</option>
+          <option value="cs" {{if eq lang "cs"}}selected{{end}}>čeština</option>
+          <option value="en" {{if eq lang "en"}}selected{{end}}>english</option>
+        </select></div>
+    </div>
+    <div class="f" style="margin-top:16px"><label>{{T "newform.start"}}</label>
+      <div class="nf-start">
+        {{if .Forms}}
+        <label class="opt"><input type="radio" name="nf-start" value="copy" checked><span><b>{{T "newform.start_copy"}}</b><small>{{T "newform.start_copy_hint"}}</small></span></label>
+        <select class="inp" id="nf-from">
+          {{range .Forms}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+        </select>
+        {{end}}
+        <label class="opt"><input type="radio" name="nf-start" value="person" {{if not .Forms}}checked{{end}}><span><b>{{T "newform.start_person"}}</b><small>{{T "newform.start_person_hint"}}</small></span></label>
+        <label class="opt"><input type="radio" name="nf-start" value="empty"><span><b>{{T "newform.start_empty"}}</b><small>{{T "newform.start_empty_hint"}}</small></span></label>
+      </div>
+    </div>
+    <div class="sec-f"><button class="btn" id="nf-ok">{{T "newform.create"}}</button><button class="btn quiet" id="nf-cancel">{{T "common.cancel"}}</button><small class="msg" id="nf-msg"></small></div>
+  </div>
+</div>
+{{end}}
+
 {{define "scripts"}}
+{{template "dialogs" .}}
 <script src="/js/n_copy.js"></script>
+<script src="/js/n_newform.js"></script>
 <script>
 document.getElementById('new-event').addEventListener('click', async function () {
   const name = prompt("{{T "field.name"}}");

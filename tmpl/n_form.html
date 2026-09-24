@@ -7,11 +7,12 @@
   <div class="dh">
     <h3>{{.Name}}</h3>
     <div class="r">
-      <a class="btn quiet" href="{{.PublicURL}}" target="_blank" rel="noopener">{{T "form.open_page"}}</a>
+      <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "form.open_page"}}</a>
       <a class="btn quiet" href="/admin/forms/{{.ID}}/answers">{{T "form.answers"}}</a>
+      <a class="btn quiet" href="/admin/start#newform={{.ID}}">{{T "formpage.copy"}}</a>
     </div>
   </div>
-  <p class="dsub">{{.PublicURL}}</p>
+  <p class="dsub"><span id="form-link">{{.PublicURL}}</span> <button class="link" id="copy-link" type="button">{{T "formpage.copy_link"}}</button></p>
 
   <div class="secs">
 
@@ -21,16 +22,43 @@
       <div class="sec-b" hidden>
         <div class="grid2">
           <div class="f"><label for="f-name">{{T "field.name"}}</label><input class="inp" id="f-name" data-field="name" value="{{.Name}}"></div>
-          <div class="f"><label for="f-url">{{T "field.form_url"}}</label><input class="inp" id="f-url" data-field="url" value="{{.URL}}"><small>{{.PublicURL}}</small></div>
+          <div class="f"><label for="f-url">{{T "field.form_url"}}</label><input class="inp" id="f-url" data-field="url" value="{{.URL}}" spellcheck="false"><small>{{.PublicURL}}</small></div>
+          <div class="f"><label for="f-language">{{T "newform.language"}}</label>
+            <select class="inp" id="f-language" data-field="language">
+              <option value="pl" {{if eq .Language "pl"}}selected{{end}}>polski</option>
+              <option value="cs" {{if eq .Language "cs"}}selected{{end}}>čeština</option>
+              <option value="en" {{if eq .Language "en"}}selected{{end}}>english</option>
+            </select>
+          </div>
+          <div class="f"><label>{{T "formpage.status"}}</label>
+            <input type="hidden" data-field="status" id="f-status" value="{{.Status}}">
+            <div class="seg" id="status-seg">
+              <button type="button" data-v="open" {{if ne .Status "closed"}}class="on"{{end}}>{{T "formpage.status_open"}}</button>
+              <button type="button" data-v="closed" {{if eq .Status "closed"}}class="on"{{end}}>{{T "formpage.status_closed"}}</button>
+            </div>
+          </div>
+          <div class="f"><label for="f-close">{{T "formpage.close_date"}}</label><input type="date" class="inp" id="f-close" data-field="close_date" value="{{.CloseDateVal}}"><small>{{T "formpage.close_date_hint"}}</small></div>
         </div>
-        <div class="sec-f"><button class="btn" data-save="basic">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+        <div class="sec-f"><button class="btn" data-save="basic">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small>
+          <button class="btn danger" type="button" id="form-delete" style="margin-left:auto">{{T "formpage.delete"}}</button></div>
       </div>
     </div>
 
-    <!-- Pola (stary edytor formBuilder, etap A z HARMONIJKA.md 7.2) -->
+    <!-- Pola: własny designer (forms_fields.go) -->
     <div class="sec" data-sec="pola">
-      <div class="sec-h"><b>{{T "form.sec.fields"}}</b><span>{{.SumFields}}</span>
-        <a class="act" href="#" id="edit-fields">{{T "field.edit_fields"}}</a>
+      <div class="sec-h"><b>{{T "form.sec.fields"}}</b><span>{{.SumFields}}</span><a class="act" href="#pola">{{T "common.show"}}</a></div>
+      <div class="sec-b" hidden>
+        {{if .FieldList}}
+        <table class="tbl fields-sum">
+          <tbody>
+          {{range .FieldList}}<tr><td>{{.Label}}{{if .Req}} <span class="miss">*</span>{{end}}</td><td class="muted">{{.Kind}}</td><td>{{if .Role}}<span class="st">{{.Role}}</span>{{end}}</td></tr>{{end}}
+          </tbody>
+        </table>
+        {{if .MoreFields}}<p class="muted" style="margin-top:6px">{{T "formpage.more_fields" .MoreFields}}</p>{{end}}
+        {{else}}
+        <p class="muted">{{T "formpage.fields_none"}}</p>
+        {{end}}
+        <div class="sec-f"><a class="btn" href="/admin/forms/{{.ID}}/fields">{{T "field.edit_fields"}}</a></div>
       </div>
     </div>
 
@@ -40,7 +68,8 @@
       <div class="sec-b" hidden>
         <div class="f"><label for="f-banner">{{T "field.main_banner"}}</label><input class="inp" id="f-banner" data-field="banner" value="{{.Banner}}"></div>
         <div class="f" style="margin-top:16px"><label>{{T "field.howto_form"}}</label><div class="ed" data-editor="howto">{{.HowTo}}</div></div>
-        <div class="f" style="margin-top:16px"><label>{{T "field.info_panel"}}</label><div class="ed" data-editor="infopanel">{{.InfoPanel}}</div></div>
+        <div class="f" style="margin-top:16px"><label>{{T "field.info_panel"}}</label><div class="ed" data-editor="infopanel">{{.InfoPanel}}</div>
+          <small><button class="link" type="button" id="gen-info">{{T "formpage.generate"}}</button> {{T "formpage.generate_hint"}}</small></div>
         <div class="f" style="margin-top:16px"><label>{{T "field.thankyou_text"}}</label><div class="ed" data-editor="thankyou">{{.ThankYou}}</div></div>
         <div class="sec-f"><button class="btn" data-save="page">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
@@ -119,31 +148,15 @@
 
   </div>
 </div>
+<div class="dlg-back" id="del-dlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true">
+    <h3>{{T "formpage.delete_title"}}</h3>
+    <p>{{T "formpage.delete_text" .Name (TN "count.answer" .AnswersCount)}}</p>
+    <div class="f"><label for="del-name">{{T "formpage.delete_confirm_label"}}</label><input class="inp" id="del-name" autocomplete="off"></div>
+    <div class="sec-f"><button class="btn danger" id="del-ok" disabled>{{T "formpage.delete"}}</button><button class="btn quiet" id="del-cancel">{{T "common.cancel"}}</button><small class="msg"></small></div>
+  </div>
+</div>
 {{end}}
 {{define "scripts"}}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  var page = document.getElementById('form-page');
-  var secs = RZ.sections(page, '/api/forms/' + page.dataset.formId + '/section',
-    {draftKey: 'rezerwo.form.' + page.dataset.formId + '.draft'});
-  RZ.loadLocale(document.documentElement.lang || 'pl').then(function () {
-    var acc = RZ.accordion(page, 'rezerwo.form.' + page.dataset.formId + '.sections');
-    secs.restore(acc); // niezapisane zmiany sprzed wyjścia ze strony
-  });
-  // stary edytor pól otwiera się POST-em z form-id
-  document.getElementById('edit-fields').addEventListener('click', function (e) {
-    e.preventDefault();
-    var f = document.createElement('form');
-    f.method = 'POST';
-    f.action = '/admin/formeditor';
-    var i = document.createElement('input');
-    i.type = 'hidden';
-    i.name = 'form-id';
-    i.value = page.dataset.formId;
-    f.appendChild(i);
-    document.body.appendChild(f);
-    f.submit();
-  });
-});
-</script>
+<script src="/js/n_form.js"></script>
 {{end}}

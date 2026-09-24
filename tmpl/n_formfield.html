@@ -1,0 +1,59 @@
+{{/* Jedno pole formularza gościa (forms_guest.go, RenderField).
+     Te same klasy buduje podgląd w designerze pól (js/n_fields.js). */}}
+{{define "ffield"}}
+{{if eq .Type "header"}}
+  <div class="ff ff-header w12">{{if eq .HeaderLevel "h2"}}<h2>{{.Label}}</h2>{{else if eq .HeaderLevel "h3"}}<h3>{{.Label}}</h3>{{else}}<h4>{{.Label}}</h4>{{end}}</div>
+{{else if eq .Type "paragraph"}}
+  <div class="ff ff-paragraph w12"><p>{{.Label}}</p></div>
+{{else if or (eq .Type "radio-group") (eq .Type "checkbox-group")}}
+  <fieldset class="ff ff-group w{{.Width}}" data-name="{{.Name}}" data-type="{{.Type}}" {{if .Required}}data-required{{end}}>
+    <legend class="ff-l">{{.Label}}{{if .Required}}<i class="req" aria-hidden="true">*</i>{{end}}</legend>
+    {{if .Desc}}<small class="ff-d">{{.Desc}}</small>{{end}}
+    <div class="opts{{if .Inline}} inline{{end}}{{if .Toggle}} toggles{{end}}">
+      {{$f := .}}
+      {{range .Options}}
+      <label class="opt" for="{{.ID}}">
+        <input type="{{if eq $f.Type "radio-group"}}radio{{else}}checkbox{{end}}" id="{{.ID}}" name="{{$f.Name}}" value="{{.Value}}" {{if .Selected}}checked{{end}}{{if and (eq $f.Type "radio-group") $f.Required}} required{{end}}>
+        <span>{{.Label}}</span>
+      </label>
+      {{end}}
+      {{if .Other}}
+      <label class="opt other" for="{{.ID}}-other">
+        <input type="{{if eq .Type "radio-group"}}radio{{else}}checkbox{{end}}" id="{{.ID}}-other" name="{{.Name}}" value="" data-other>
+        <span>{{T "gform.other"}}</span>
+        <input class="inp other-text" type="text" aria-label="{{T "gform.other"}}" disabled>
+      </label>
+      {{end}}
+    </div>
+    <small class="ff-err" role="alert" hidden></small>
+  </fieldset>
+{{else}}
+  <div class="ff ff-{{.Type}} w{{.Width}}{{if .IsMoney}} money{{end}}" data-name="{{.Name}}" data-type="{{.Type}}" {{if .Required}}data-required{{end}}>
+    <label class="ff-l" for="{{.ID}}">{{.Label}}{{if .Required}}<i class="req" aria-hidden="true">*</i>{{end}}</label>
+    {{if eq .Type "textarea"}}
+    <textarea class="inp" id="{{.ID}}" name="{{.Name}}" rows="{{if .Rows}}{{.Rows}}{{else}}3{{end}}" {{if .Required}}required{{end}} {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}>{{.Value}}</textarea>
+    {{else if eq .Type "select"}}
+    <select class="inp" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Multiple}}multiple{{end}}>
+      {{if not .Multiple}}<option value="">{{T "field.select_hint"}}</option>{{end}}
+      {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    {{else if eq .Type "number"}}
+    <input class="inp num" type="number" inputmode="decimal" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Min}}min="{{.Min}}"{{end}} {{if .Max}}max="{{.Max}}"{{end}} {{if .Step}}step="{{.Step}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}>
+    {{else if eq .Type "date"}}
+    <input class="inp" type="date" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Min}}min="{{.Min}}"{{end}} {{if .Max}}max="{{.Max}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}}>
+    {{else if eq .Type "multiplierField"}}
+    <div class="mult">
+      <input class="inp num" type="number" inputmode="numeric" min="0" step="1" id="{{.ID}}" name="{{.Name}}" data-price="{{.Price}}" {{if .Required}}required{{end}} {{if .Value}}value="{{.Value}}"{{end}}>
+      <span class="mult-x">× {{.Price}}</span>
+      <output class="mult-res" for="{{.ID}}">{{.Before}}<b>0</b>{{.After}}</output>
+    </div>
+    {{else}}
+    <input class="inp" type="{{.Subtype}}" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}}
+      {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}}
+      {{if eq .Name "name-REQUIRED"}}autocomplete="given-name"{{else if eq .Name "surname-REQUIRED"}}autocomplete="family-name"{{else if eq .Subtype "email"}}autocomplete="email"{{else if eq .Subtype "tel"}}autocomplete="tel"{{end}}>
+    {{end}}
+    {{if .Desc}}<small class="ff-d">{{.Desc}}</small>{{end}}
+    <small class="ff-err" role="alert" hidden></small>
+  </div>
+{{end}}
+{{end}}

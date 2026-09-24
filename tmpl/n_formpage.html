@@ -1,0 +1,53 @@
+{{define "body"}}
+<div class="guest gform{{if .Info}} has-info{{end}}" id="gform"
+     data-send="{{.SendURL}}" data-draft="{{.DraftKey}}" data-currency="{{.Currency}}" data-lang="{{.Lang}}">
+
+  <header class="gform-h">
+    {{if .Banner}}<div class="banner"><img src="{{.Banner}}" alt=""></div>{{end}}
+    <h1>{{.FormName}}</h1>
+    {{if .CloseNote}}<p class="when">{{.CloseNote}}</p>{{end}}
+    {{if .HowTo}}<div class="desc">{{.HowTo}}</div>{{end}}
+  </header>
+
+  {{if and (not .Open) (not .Preview)}}
+  <div class="gform-closed">
+    <h3>{{T "gform.closed_title"}}</h3>
+    <p>{{T "gform.closed"}}</p>
+  </div>
+  {{else}}
+
+  {{if .Preview}}<div class="draft-notice">{{T "gform.preview_closed"}}</div>{{end}}
+
+  <div class="gform-body">
+    {{if .Info}}
+    <details class="gform-info" open>
+      <summary>{{T "gform.info"}}</summary>
+      <div class="inner">{{.Info}}</div>
+    </details>
+    {{end}}
+
+    <form class="gform-form" id="gform-form" novalidate>
+      <p class="req-note muted"><i class="req">*</i> {{T "gform.required_note"}}</p>
+      {{if .UniqID}}<p class="uniq">{{T "gform.uniq_id"}} <b class="num" id="uniqid">{{.UniqID}}</b></p>{{end}}
+
+      {{range .Rows}}
+      <div class="ff-row">
+        {{range .Fields}}{{template "ffield" .}}{{end}}
+      </div>
+      {{end}}
+
+      <div class="gform-foot">
+        {{if .HasMoney}}
+        <div class="gform-sum">{{T "gform.to_pay"}} <b class="num" id="gform-total">0</b></div>
+        {{end}}
+        <p class="gform-msg" id="gform-msg" role="alert" hidden></p>
+        <button class="btn big" type="submit" id="gform-submit" {{if .Preview}}disabled{{end}}>{{T "gform.submit"}}</button>
+      </div>
+    </form>
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="/js/n_formpage.js"></script>
+{{end}}

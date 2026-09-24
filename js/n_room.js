@@ -128,7 +128,7 @@
     }
     var f = document.createElement('form');
     f.method = 'POST';
-    f.action = '/n/order';
+    f.action = '/order';
 
     var fields = {
       'event-id': eventID,

@@ -7,9 +7,8 @@ package main
 // którym edytorem admin go zbudował. JS (js/n_formpage.js) jest tylko do
 // walidacji, mnożnika, sumy i wysyłki.
 //
-// Adresy: /n/form/{userurl}/{formurl} (strona), .../send (zapis odpowiedzi),
-// .../done (podziękowanie). Stare /form/... działa bez zmian do czasu
-// przepięcia przy wdrożeniu.
+// Adresy: /form/{userurl}/{formurl} (strona), .../send (zapis odpowiedzi),
+// .../done (podziękowanie).
 
 import (
 	"bytes"
@@ -88,11 +87,7 @@ func guestForm(w http.ResponseWriter, r *http.Request, db *DB) (User, FormTempla
 
 func guestError(w http.ResponseWriter, r *http.Request, lang, key, what string) {
 	w.WriteHeader(http.StatusNotFound)
-	vars := struct {
-		Title string
-		Text  string
-	}{T(lang, key+"_title"), T(lang, key, what)}
-	guestRender(w, lang, vars, "tmpl/n_form_error.html")
+	guestRender(w, lang, nErrorVars{Title: T(lang, key+"_title"), Text: T(lang, key, what)}, "tmpl/n_error.html")
 }
 
 func guestRender(w http.ResponseWriter, lang string, vars interface{}, files ...string) {
@@ -139,7 +134,7 @@ func formCurrency(db *DB, user User, t FormTemplate) string {
 	return "CZK"
 }
 
-// GuestFormPage - GET /n/form/{userurl}/{formurl}
+// GuestFormPage - GET /form/{userurl}/{formurl}
 func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, templ, ok := guestForm(w, r, db)
@@ -159,7 +154,7 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			FormName: templ.Name,
 			HowTo:    template.HTML(templ.HowTo.String),
 			Rows:     BuildRenderRows(defs, templ.MoneyAmountFieldName.String),
-			SendURL:  fmt.Sprintf("/n/form/%s/%s/send", user.URL, templ.URL),
+			SendURL:  fmt.Sprintf("/form/%s/%s/send", user.URL, templ.URL),
 			Open:     templ.IsOpen(nowUnix()),
 			Currency: formCurrency(db, user, templ),
 			DraftKey: fmt.Sprintf("rezerwo.gform.%d", templ.ID),
@@ -181,17 +176,8 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			}
 		}
 
-		// panel informacyjny to szablon z funkcjami formularza ({{.Sum "pole"}})
-		if strings.TrimSpace(reallyEmpty(templ.InfoPanel.String)) != "" {
-			var buf bytes.Buffer
-			funcs := &FormFuncs{DB: db, User: user, Template: templ}
-			if t, err := template.New("infopanel").Parse(templ.InfoPanel.String); err != nil {
-				log.Printf("GuestFormPage: info panel parse: %v", err)
-			} else if err := t.Execute(&buf, funcs); err != nil {
-				log.Printf("GuestFormPage: info panel exec: %v", err)
-			}
-			v.Info = template.HTML(reallyEmpty(buf.String()))
-		}
+		// panel informacyjny: automatyczny, z wybranych pól albo własny tekst
+		v.Info = RenderInfoPanel(db, user, templ, panelMode(templ))
 
 		// formularz bez nazwiska jest anonimowy: dostaje unikatowy numer
 		if !strings.Contains(templ.Content.String, ROLESURNAME) {
@@ -209,7 +195,7 @@ type gformSendMsg struct {
 	Data   []FormAnswersJson `json:"data"`
 }
 
-// GuestFormSendAPI - POST /n/form/{userurl}/{formurl}/send
+// GuestFormSendAPI - POST /form/{userurl}/{formurl}/send
 func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, templ, ok := guestFormAPI(w, r, db)
@@ -249,7 +235,7 @@ func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r
 
 		jsonMsg(w, http.StatusOK, map[string]interface{}{
 			"id":   formID,
-			"done": fmt.Sprintf("/n/form/%s/%s/done?id=%d&t=%s", user.URL, templ.URL, formID, doneToken(formID)),
+			"done": fmt.Sprintf("/form/%s/%s/done?id=%d&t=%s", user.URL, templ.URL, formID, doneToken(formID)),
 		})
 	}
 }
@@ -390,7 +376,7 @@ type nFormDoneVars struct {
 	UniqID   string
 }
 
-// GuestFormDonePage - GET /n/form/{userurl}/{formurl}/done?id=..&t=..
+// GuestFormDonePage - GET /form/{userurl}/{formurl}/done?id=..&t=..
 func GuestFormDonePage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, templ, ok := guestForm(w, r, db)
@@ -401,7 +387,7 @@ func GuestFormDonePage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 		v := nFormDoneVars{
 			Title:    T(lang, "gform.thanks"),
 			FormName: templ.Name,
-			Again:    fmt.Sprintf("/n/form/%s/%s", user.URL, templ.URL),
+			Again:    fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
 		}
 
 		formID, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
@@ -424,4 +410,12 @@ func GuestFormDonePage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 		}
 		guestRender(w, lang, v, "tmpl/n_form_done.html")
 	}
+}
+
+// nErrorVars - strona błędu dla gościa (tmpl/n_error.html). Back pokazuje
+// przycisk powrotu do poprzedniej strony.
+type nErrorVars struct {
+	Title string
+	Text  string
+	Back  bool
 }

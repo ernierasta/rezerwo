@@ -579,7 +579,24 @@ h5.subhead {
 
 // --- edytor maila: pastylki danych zamówienia -------------------------------
 
-.mvar {
+// Na stronach imprezy i formularza edytor powstaje wprost na .ed, więc .ed
+// sam jest kontenerem Quilla, a pasek narzędzi stoi przed nim.
+.ed.ql-container.ql-snow {
+  font: inherit;
+  border-color: var(--line);
+  border-radius: 0 0 8px 8px;
+  min-height: 120px;
+
+  .ql-editor { line-height: 1.55; }
+  .ql-editor h1, .ql-editor h2, .ql-editor h3 { font-family: var(--display); font-weight: 500; }
+}
+.ql-toolbar.ql-snow:has(+ .ed) {
+  background: var(--surface);
+  border-color: var(--line);
+  border-radius: 8px 8px 0 0;
+}
+
+.mvar, .pvar {
   background: var(--blue-soft);
   border: 1px solid var(--blue);
   color: var(--blue-deep);
@@ -601,6 +618,7 @@ h5.subhead {
   box-shadow: 0 6px 20px rgba(44, 52, 64, .12);
   padding: 6px;
   min-width: 210px;
+  max-width: min(380px, calc(100vw - 16px));
   max-height: min(480px, 70vh);
   overflow-y: auto;
 
@@ -616,6 +634,7 @@ h5.subhead {
   }
   hr { border: 0; border-top: 1px solid var(--line); margin: 5px 0; }
   p { padding: 6px 10px; font-size: 14px; max-width: 260px; }
+  button.sub { padding: 3px 10px 3px 26px; font-size: 14px; color: var(--muted); }
 }
 
 .inp-row {
@@ -635,6 +654,13 @@ h5.subhead {
 .mail-pdf {
   margin-top: 14px;
   .f { margin-top: 8px; max-width: 560px; }
+}
+
+.mail-files {
+  margin-top: 18px;
+  summary { cursor: pointer; color: var(--muted); font-size: 14.5px; }
+  .grid2 { margin-top: 10px; }
+  small { display: block; margin-top: 6px; font-size: 13px; }
 }
 
 .dlg.dlg-wide { width: min(760px, 100%); }
@@ -803,6 +829,34 @@ h5.subhead {
 
   img { max-width: 100%; height: auto; }
   .desc { margin-top: 12px; line-height: 1.7; }
+}
+
+.pre { white-space: pre-line; }
+
+// logowanie admina
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+
+  .login-box {
+    width: min(380px, 100%);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px 26px 22px;
+  }
+  .brand { font-family: var(--display); font-size: 17px; color: var(--muted); }
+  h1 { font-size: 26px; margin: 4px 0 20px; }
+  .f { margin-bottom: 14px; }
+  .check { margin: 4px 0 16px; font-size: 14.5px; }
+  .msg { margin-bottom: 12px; font-size: 14px; color: var(--danger-ink); }
+  .btn { width: 100%; padding: 9px; }
+  .langs { display: flex; gap: 8px; justify-content: center; margin-top: 18px; font-size: 13px;
+    a { color: var(--muted); text-decoration: none; }
+    a.on { color: var(--ink); font-weight: 500; }
+  }
 }
 
 // krok zamówienia (dane osoby)
@@ -1533,3 +1587,79 @@ h5.subhead {
   td { padding: 6px 10px 6px 0; }
   td:nth-child(2) { white-space: nowrap; font-size: 14px; }
 }
+
+// --- panel informacyjny formularza (tmpl/n_infopanel.html, form_stats.go) ---
+
+.ipanel {
+  h4 { font-size: 16px; margin-bottom: 8px; }
+  h5 { font-family: var(--display); font-weight: 500; font-size: 14px; color: var(--muted); margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .03em; }
+
+  .ip-row, li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 10px;
+    align-items: baseline;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ip-row b, li b { font-weight: 600; white-space: nowrap; }
+  small { font-weight: 400; color: var(--muted); }
+  .ip-total { font-size: 15.5px; }
+  .ip-money { grid-column: 1 / -1; }
+  .ip-empty { margin-top: 8px; font-size: 14px; }
+
+  .ip-field { padding: 6px 0 2px; }
+  .ip-label { font-weight: 500; margin-bottom: 2px; }
+  ul { list-style: none; margin: 0; padding: 0 0 0 10px; }
+  li { font-size: 14.5px; }
+  li.other span { font-style: italic; }
+
+  ul.compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 2px 0 0;
+
+    li {
+      display: inline-flex;
+      gap: 6px;
+      padding: 1px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 13.5px;
+    }
+  }
+
+  .ip-bar {
+    grid-column: 1 / -1;
+    display: block;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--taken);
+    overflow: hidden;
+
+    i { display: block; height: 100%; background: #A9C0D6; border-radius: 3px; }
+    &.done i { background: #8FC19E; }
+  }
+  .done > b { color: #3F6B4D; }
+}
+
+// podgląd panelu na stronie formularza w panelu admina
+.panel-set {
+  .seg { margin: 2px 0 6px; flex-wrap: wrap; }
+  .panel-preview {
+    margin-top: 12px;
+    max-width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  #panel-text { margin-top: 10px; }
+}
+
+.ql-snow.ql-toolbar button.ql-wide { width: auto; padding: 3px 8px; font-size: 13.5px; color: var(--blue-deep); white-space: nowrap; }
+
+.fd .fd-panel h5 { margin-top: 10px; }
+.fd .fd-badges b.panel { background: var(--lemon); }

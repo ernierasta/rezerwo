@@ -82,28 +82,25 @@
     Quill.register(MailVar);
 
     editor = new Quill(editorEl, {
-      modules: {
-        toolbar: {
-          container: [
-            [{header: [1, 2, 3, false]}],
-            ['bold', 'italic', 'underline'],
-            ['link'],
-            [{list: 'ordered'}, {list: 'bullet'}],
-            [{indent: '-1'}, {indent: '+1'}],
-            [{color: ['#28a745', '#ffc107', '#fd7e14', '#dc3545', '#403734', '#000000']}],
-            [{align: []}],
-            ['clean'],
-            ['mailvar']
-          ],
-          handlers: {
-            mailvar: function () {
-              var range = editor.getSelection(true);
-              openVarMenu(varButton, function (code, arg) { insertChip(range.index, code, arg); });
-            }
+      modules: RZ.quillModules({
+        container: [
+          [{header: [1, 2, 3, false]}],
+          ['bold', 'italic', 'underline'],
+          ['link'],
+          [{list: 'ordered'}, {list: 'bullet'}],
+          [{indent: '-1'}, {indent: '+1'}],
+          [{color: ['#28a745', '#ffc107', '#fd7e14', '#dc3545', '#403734', '#000000']}],
+          [{align: []}],
+          ['clean'],
+          ['mailvar']
+        ],
+        handlers: {
+          mailvar: function () {
+            var range = editor.getSelection(true);
+            openVarMenu(varButton, function (code, arg) { insertChip(range.index, code, arg); });
           }
-        },
-        clipboard: {matchVisual: false}
-      },
+        }
+      }),
       theme: 'snow'
     });
   }
@@ -324,7 +321,7 @@
   // Pastylki na akcje. Znaczniki podmieniamy dopiero po innerHTML, żeby nazwa
   // konta z "&" czy "<" nie została zamieniona na encję wewnątrz akcji.
   function fromEditor() {
-    var root = editor.root.cloneNode(true);
+    var root = RZ.editorDOM(editor.root.cloneNode(true));
     var actions = [];
     root.querySelectorAll('.mvar').forEach(function (node) {
       actions.push(actionText(node.dataset.code, node.dataset.arg));

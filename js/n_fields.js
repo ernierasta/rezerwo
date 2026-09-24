@@ -25,6 +25,8 @@
   var btnRedo = document.getElementById('fd-redo');
   var stateEl = document.getElementById('fd-state');
   var draftKey = 'rezerwo.fields.' + formID;
+  var panelMode = root.dataset.panelMode || 'text';
+  var SUMMABLE = ['number', 'multiplierField', 'select', 'radio-group', 'checkbox-group'];
 
   var ROLE = {name: 'name-REQUIRED', surname: 'surname-REQUIRED', email: 'email-REQUIRED'};
   var PERSEAT = '-perseat';
@@ -56,6 +58,15 @@
     for (var k in ROLE) if (f.name === ROLE[k]) return k;
     return '';
   }
+  // inPanel - czy pole trafi do panelu informacyjnego (fieldInPanel w
+  // form_stats.go): w trybie automatycznym domyślnie pola z liczbami i opcjami,
+  // w pozostałych tylko te z włączonym przełącznikiem.
+  function inPanel(f) {
+    if (!isInput(f.type) || roleOf(f)) return false;
+    if (f.panel !== undefined) return !!f.panel;
+    return panelMode === 'auto' && SUMMABLE.indexOf(f.type) >= 0;
+  }
+
   function answersOf(f) { return f._orig ? (counts[f._orig] || 0) : 0; }
 
   // cleanHTML zostawia w etykiecie to samo co serwer (CleanLabel w formdef.go):
@@ -425,6 +436,9 @@
     var role = roleOf(f);
     if (role) b.push('<b class="role">' + esc(t('fields.role.' + role)) + '</b>');
     if (moneyId === f._id) b.push('<b class="money">' + esc(t('fields.role.money')) + '</b>');
+    if (!isAddons && (panelMode === 'auto' || panelMode === 'fields') && inPanel(f)) {
+      b.push('<b class="panel">' + esc(t('fields.panel_badge')) + (f.panel_goal ? ' / ' + esc(f.panel_goal) : '') + '</b>');
+    }
     if (isAddons && f.name && f.name.slice(-PERSEAT.length) === PERSEAT) b.push('<b>' + esc(t('fields.perseat_badge')) + '</b>');
     var n = answersOf(f);
     if (n) b.push('<b class="cnt">' + esc(t('fields.answers_badge', n)) + '</b>');
@@ -611,6 +625,8 @@
         h += '<small class="fd-under muted">' + esc(t('fields.perseat_hint')) + '</small>';
       }
 
+      if (!isAddons) h += panelHTML(f);
+
       // szerokość i wiersz
       h += row(t('fields.width'), '<div class="seg fd-widths" data-width>' + WIDTHS.map(function (w) {
         return '<button type="button" data-v="' + w[0] + '"' + ((f._w || 12) === w[0] ? ' class="on"' : '') + ' title="' + esc(t('fields.width_' + w[0])) + '">' + w[1] + '</button>';
@@ -631,6 +647,24 @@
     h += '<div class="fd-actions"><button class="btn quiet sm" data-act-sel="dup">' + esc(t('fields.duplicate')) + '</button>' +
       '<button class="btn danger sm" data-act-sel="del">' + esc(t('fields.delete_field')) + '</button></div>';
     props.innerHTML = h;
+  }
+
+  function panelHTML(f) {
+    var on = inPanel(f);
+    var h = '<div class="fd-box fd-panel"><h5>' + esc(t('fields.panel_title')) + '</h5>' +
+      check('_panel', on, t('fields.panel_show'));
+    if (on) {
+      h += row(t('fields.panel_goal'), inp('panel_goal', f.panel_goal || '', 'type="number" min="0" inputmode="numeric"'), t('fields.panel_goal_hint'));
+      if (CHOICE.indexOf(f.type) >= 0) {
+        var o = '<option value="">' + esc(t('fields.panel_all')) + '</option>';
+        (f.values || []).forEach(function (v) {
+          o += '<option value="' + esc(v.label) + '"' + (f.panel_only === v.label ? ' selected' : '') + '>' + esc(v.label) + '</option>';
+        });
+        h += row(t('fields.panel_only'), '<select class="inp" data-panel-only>' + o + '</select>', t('fields.panel_only_hint'));
+      }
+    }
+    h += '<small class="muted">' + esc(t('fields.panel_hint_' + panelMode)) + '</small></div>';
+    return h;
   }
 
   function optionsHTML(f) {
@@ -783,6 +817,11 @@
 
     if (el.matches('[data-convert]')) { convert(f, el.value); changed('', true); return; }
     if (el.matches('[data-role]')) { setRole(f, el.value); changed('', true); return; }
+    if (el.matches('[data-panel-only]')) {
+      if (el.value) f.panel_only = el.value; else delete f.panel_only;
+      changed('', true);
+      return;
+    }
     if (el.matches('[data-opt-sel]')) {
       var i = +el.closest('.fd-opt').dataset.i;
       if (el.type === 'radio') f.values.forEach(function (o, j) { o.selected = j === i; });
@@ -802,6 +841,9 @@
         break;
       case '_nr':
         f._nr = el.checked;
+        break;
+      case '_panel':
+        f.panel = el.checked;
         break;
       case 'multiple':
         f.multiple = el.checked;
@@ -1193,6 +1235,7 @@
         renderProps();
         afterChange();
         stateEl.textContent = t('common.saved');
+        document.getElementById('fd-draft').hidden = true;
         RZ.toast(t('common.saved'));
       })
       .catch(function (err) {

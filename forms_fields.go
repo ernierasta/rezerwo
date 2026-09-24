@@ -33,6 +33,7 @@ type nFieldsVars struct {
 	Content    template.JS // definicja pól (JSON)
 	MoneyField string
 	Counts     template.JS // {"nazwa pola": liczba odpowiedzi}
+	PanelMode  string      // tryb panelu informacyjnego (form_stats.go)
 }
 
 // FormFieldsPage - /admin/forms/{id}/fields
@@ -66,13 +67,14 @@ func FormFieldsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			ID:         templ.ID,
 			Name:       templ.Name,
 			IsAddons:   isAddonsTemplate(templ),
-			PublicURL:  fmt.Sprintf("/n/form/%s/%s", user.URL, templ.URL),
+			PublicURL:  fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
 			FormLang:   formLang(templ),
 			Currency:   formCurrency(db, user, templ),
 			Content:    template.JS(content),
 			MoneyField: templ.MoneyAmountFieldName.String,
 			Counts:     template.JS(countsJSON),
 			BackURL:    fmt.Sprintf("/admin/forms/%d#pola", templ.ID),
+			PanelMode:  panelMode(templ),
 		}
 		if v.IsAddons && templ.EventID.Valid {
 			v.BackURL = fmt.Sprintf("/admin/events/%d#dodatki", templ.EventID.Int64)

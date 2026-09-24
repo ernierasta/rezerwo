@@ -2,10 +2,8 @@ package main
 
 // guest.go: nowa strona rezerwacji dla gościa (etap 4 redesignu).
 //
-// Działa pod osobnym adresem /n/res/{user}, równolegle do starej strony
-// (/res/{user}), żeby dało się ją sprawdzić na prawdziwych danych, zanim
-// zastąpi tamtą. Zamówienie idzie do istniejącego /order - krok z danymi
-// osoby zostaje na razie bez zmian.
+// Adres /res/{user}; wybrane miejsca idą do kroku zamówienia /order
+// (guest_order.go).
 
 import (
 	"fmt"
@@ -71,7 +69,7 @@ func isAdminSession(r *http.Request, cs *sessions.CookieStore) bool {
 	return role == "admin"
 }
 
-// GuestReservationPage - /n/res/{user}
+// GuestReservationPage - /res/{user}
 func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userURL := mux.Vars(r)["user"]

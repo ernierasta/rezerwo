@@ -63,7 +63,7 @@
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(data)
     }).finally(function () {
-      location.href = '/n/res/' + page.dataset.userUrl + '?event-id=' + page.dataset.eventId;
+      location.href = '/res/' + page.dataset.userUrl + '?event-id=' + page.dataset.eventId;
     });
   });
 })();

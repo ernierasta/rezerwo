@@ -1,0 +1,25 @@
+{{define "body"}}
+<div class="login">
+  <div class="login-box">
+    <div class="brand">{{T "app.name"}}</div>
+    <h1>{{T "login.title"}}</h1>
+    <form id="login-form" novalidate>
+      <div class="f"><label for="email">{{T "login.email"}}</label>
+        <input class="inp" type="email" id="email" name="email" autocomplete="username" required autofocus></div>
+      <div class="f"><label for="password">{{T "login.password"}}</label>
+        <input class="inp" type="password" id="password" name="password" autocomplete="current-password" required></div>
+      <label class="check"><input type="checkbox" name="remember"> {{T "login.remember"}}</label>
+      <p class="msg bad" id="login-msg" hidden>{{T "login.failed"}}</p>
+      <button class="btn" type="submit">{{T "login.submit"}}</button>
+    </form>
+    <span class="langs">
+      <a href="/admin/lang?l=pl" {{if eq lang "pl"}}class="on"{{end}}>PL</a>
+      <a href="/admin/lang?l=cs" {{if eq lang "cs"}}class="on"{{end}}>CZ</a>
+      <a href="/admin/lang?l=en" {{if eq lang "en"}}class="on"{{end}}>EN</a>
+    </span>
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="/js/n_login.js"></script>
+{{end}}

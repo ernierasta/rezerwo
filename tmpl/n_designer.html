@@ -1,0 +1,152 @@
+{{define "head"}}
+<link href="/css/designer.css" rel="stylesheet" type="text/css">
+{{end}}
+{{define "body"}}
+<div class="designer" id="designer">
+  <input id="room-id" type="hidden" value="{{.Room.ID}}">
+  <input id="event-id" type="hidden" value="{{.EventID}}">
+
+  <div class="dz-head">
+    <div>
+      <h3 id="room-name">{{.Room.Name}}</h3>
+      <p class="dsub">{{T "dz.hint"}}</p>
+    </div>
+    <div class="r">
+      <a class="btn quiet" href="{{.Back}}">← {{.BackLabel}}</a>
+      <button class="btn" id="save" type="button">{{T "common.save"}}</button>
+    </div>
+  </div>
+
+  <div class="dz">
+    <aside class="dz-tools">
+      <details class="dz-g" open>
+        <summary>{{T "dz.add"}}</summary>
+        <div class="dz-row">
+          <label for="chairs-ammount">{{T "dz.table"}}</label>
+          <input class="inp" id="chairs-ammount" type="number" value="6" min="1" max="44" title="{{T "dz.seats_at_table"}}">
+          <select class="inp" id="table-shape">
+            <option value="vertical">{{T "dz.shape.rect"}}</option>
+            <option value="round">{{T "dz.shape.round"}}</option>
+            <option value="oval-vertical">{{T "dz.shape.oval"}}</option>
+          </select>
+          <button class="btn sm" id="add-table" type="button">+</button>
+        </div>
+        <div class="dz-row">
+          <label>{{T "dz.chair"}}</label>
+          <span class="muted dz-fill">{{T "dz.chair_hint"}}</span>
+          <button class="btn sm" id="add-chair" type="button">+</button>
+        </div>
+        <div class="dz-row">
+          <label for="label-title">{{T "dz.label"}}</label>
+          <input class="inp" id="label-title" type="text" placeholder="{{T "dz.label_ph"}}">
+          <input class="inp color" id="label-color" type="color" value="#2c3440">
+          <button class="btn sm" id="add-label" type="button">+</button>
+        </div>
+        <div class="dz-row">
+          <label for="object-label">{{T "dz.object"}}</label>
+          <input class="inp" id="object-label" type="text" placeholder="{{T "dz.object_ph"}}">
+          <input class="inp color" id="object-color" type="color" value="#d2e2f1">
+          <button class="btn sm" id="add-object" type="button">+</button>
+        </div>
+        <div class="dz-row dz-size">
+          <span></span>
+          <input class="inp" id="object-width" type="number" value="60" min="10" title="{{T "dz.width"}}">
+          <span class="muted">×</span>
+          <input class="inp" id="object-height" type="number" value="40" min="10" title="{{T "dz.height"}}">
+        </div>
+      </details>
+
+      <details class="dz-g" open>
+        <summary>{{T "dz.selected"}}</summary>
+        <p class="dz-note">{{T "dz.select_hint"}}</p>
+        <div class="dz-btns">
+          <button class="btn quiet sm" id="spawn-chairs" type="button">{{T "dz.spawn"}}</button>
+          <button class="btn quiet sm" id="rotate" type="button">{{T "dz.rotate"}}</button>
+          <button class="btn quiet sm" id="chair-toggle-disabled" type="button">{{T "dz.toggle_disabled"}}</button>
+          <button class="btn danger sm" id="delete" type="button">{{T "common.delete"}}</button>
+        </div>
+        <div class="dz-row">
+          <label for="table-change-shape">{{T "dz.change_shape"}}</label>
+          <select class="inp" id="table-change-shape">
+            <option value="vertical">{{T "dz.shape.rect_v"}}</option>
+            <option value="horizontal">{{T "dz.shape.rect_h"}}</option>
+            <option value="round">{{T "dz.shape.round"}}</option>
+            <option value="oval-vertical">{{T "dz.shape.oval_v"}}</option>
+            <option value="oval-horizontal">{{T "dz.shape.oval_h"}}</option>
+          </select>
+          <button class="btn quiet sm" id="change-table-type" type="button">{{T "common.change"}}</button>
+        </div>
+        <div class="dz-btns">
+          <button class="btn quiet sm" id="select-tables" type="button">{{T "dz.select_tables"}}</button>
+          <button class="btn quiet sm" id="select-chairs" type="button">{{T "dz.select_chairs"}}</button>
+        </div>
+      </details>
+
+      <details class="dz-g">
+        <summary>{{T "dz.numbers"}}</summary>
+        <p class="dz-note">{{T "dz.renumber_hint"}}</p>
+        <div class="dz-btns">
+          <button class="btn quiet sm" id="renumber-tables" type="button">{{T "dz.renumber_tables"}}</button>
+          <button class="btn quiet sm" id="renumber-chairs" type="button">{{T "dz.renumber_chairs"}}</button>
+        </div>
+      </details>
+
+      <details class="dz-g">
+        <summary>{{T "dz.room"}}</summary>
+        <div class="dz-row dz-size">
+          <label for="room-width">{{T "dz.size"}}</label>
+          <input class="inp" id="room-width" type="number" value="{{.Room.Width}}" min="1">
+          <span class="muted">×</span>
+          <input class="inp" id="room-height" type="number" value="{{.Room.Height}}" min="1">
+          <button class="btn quiet sm" id="set-room-size" type="button">{{T "common.set"}}</button>
+        </div>
+        <div class="dz-row">
+          <label for="grid-size">{{T "dz.grid"}}</label>
+          <input class="inp" id="grid-size" type="number" min="1" max="200">
+          <span class="muted">px</span>
+        </div>
+        <label class="check"><input id="grid-show" type="checkbox"> {{T "dz.grid_show"}}</label>
+        <label class="check"><input id="grid-snap" type="checkbox"> {{T "dz.grid_snap"}}</label>
+      </details>
+
+      <div class="dz-legend">
+        <span><i class="sw"></i>{{T "status.free"}}</span>
+        <span><i class="sw ordered"></i>{{T "status.ordered"}}</span>
+        <span><i class="sw payed"></i>{{T "status.payed"}}</span>
+        <span><i class="sw off"></i>{{T "status.disabled"}}</span>
+      </div>
+      <p class="dz-note">{{T "dz.seats" .Seats}}</p>
+    </aside>
+
+    <div class="dz-canvas">
+      <div id="room" style="width: {{.Room.Width}}px; height: {{.Room.Height}}px; position: relative;">
+        {{range .Tables}}
+        <div class="{{.Type}} {{.Orientation.String}}-{{.Capacity.Int64}}" id="{{.Type}}-{{.Number}}" name="{{.Number}}" orientation="{{.Orientation.String}}" furniture="{{.Type}}" capacity="{{.Capacity.Int64}}" style="{{if .Width.Valid}}width: {{.Width.Int64}}px; {{end}}{{if .Height.Valid}}height: {{.Height.Int64}}px; {{end}}top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+        {{end}}
+        {{range .Chairs}}
+        <div class="{{.Type}}{{if eq .AdminDisabled.Int64 1}} disabled{{end}}{{if .Status.String}} st-{{.Status.String}}{{end}}" id="{{.Type}}-{{.Number}}" name="{{.Number}}" orientation="{{.Orientation.String}}" furniture="{{.Type}}" price="{{.AdminPrice.Int64}}" currency="{{.AdminCurrency.String}}" capacity="{{.Capacity.Int64}}" style="top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Number}}</p></div>
+        {{end}}
+        {{range .Objects}}
+        <div class="{{.Type}}" id="{{.Type}}-{{.Number}}" name="{{.Number}}" orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="width: {{.Width.Int64}}px; height: {{.Height.Int64}}px; background: {{.Color.String}}; top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
+        {{end}}
+        {{range .Labels}}
+        <div class="{{.Type}}" id="{{.Type}}-{{.Number}}" name="{{.Number}}" orientation="{{.Orientation.String}}" furniture="{{.Type}}" style="{{if .Width.Valid}}width: {{.Width.Int64}}px; {{end}}{{if .Height.Valid}}height: {{.Height.Int64}}px; {{end}}color: {{.Color.String}}; top: {{.Y}}px; left: {{.X}}px; position: absolute;"><p>{{.Label.String}}</p></div>
+        {{end}}
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script>
+  window.Designer = {
+    tableNr: {{.TableNr}},
+    chairNr: {{.ChairNr}},
+    objectNr: {{.ObjectNr}},
+    labelNr: {{.LabelNr}}
+  };
+</script>
+<script src="/js/jquery.min.js"></script>
+<script src="/js/jquery-ui.min.js"></script>
+<script src="/js/n_designer.js"></script>
+{{end}}

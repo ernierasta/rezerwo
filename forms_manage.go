@@ -153,6 +153,18 @@ func FormCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 		if err := db.FormTemplateSetAccess(id, user.ID, language, "open", ToNI(0)); err != nil {
 			log.Printf("FormCreateAPI: access: %v", err)
 		}
+		// nowe formularze mają panel budowany automatycznie, kopie - jak źródło
+		mode := PANELAUTO
+		if msg.FromID > 0 {
+			if src, err := db.FormTemplateGetByID(msg.FromID, user.ID); err == nil {
+				mode = panelMode(src)
+			}
+		} else if msg.Preset == "" {
+			mode = PANELNONE
+		}
+		if err := db.FormTemplateSetPanelMode(id, user.ID, mode); err != nil {
+			log.Printf("FormCreateAPI: panel mode: %v", err)
+		}
 		if msg.FromID > 0 {
 			src, _ := db.FormTemplateGetByID(msg.FromID, user.ID)
 			if src.AdminNotificationID.Valid {
@@ -189,7 +201,25 @@ func FormDeleteAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 			return
 		}
-		jsonMsg(w, http.StatusOK, map[string]string{"msg": "deleted", "next": "/admin/start"})
+		jsonMsg(w, http.StatusOK, map[string]string{"msg": "deleted", "next": "/admin"})
+	}
+}
+
+// FormPanelPreviewAPI - GET /api/forms/{id}/infopanel?mode=auto
+// Podgląd panelu informacyjnego na stronie formularza w panelu admina.
+func FormPanelPreviewAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, templ, ok := adminFormTemplate(w, r, db, cs, false)
+		if !ok {
+			return
+		}
+		mode := r.URL.Query().Get("mode")
+		switch mode {
+		case PANELNONE, PANELAUTO, PANELFIELDS, PANELTEXT:
+		default:
+			mode = panelMode(templ)
+		}
+		jsonMsg(w, http.StatusOK, map[string]string{"html": string(RenderInfoPanel(db, user, templ, mode))})
 	}
 }
 

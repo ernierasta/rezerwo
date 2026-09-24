@@ -2,9 +2,8 @@ package main
 
 // admin_ui.go: nowy panel administracyjny (redesign "Harmonijka").
 //
-// Strony: /admin/start (lista imprez i formularzy), /admin/events/{id} (impreza
+// Strony: /admin (lista imprez i formularzy), /admin/events/{id} (impreza
 // jako sekcje harmonijki). Zapis sekcji: POST /api/events/{id}/section.
-// Stary panel (/admin, /admin/event, ...) działa bez zmian do czasu przełączenia.
 
 import (
 	"encoding/json"
@@ -13,7 +12,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -198,8 +196,11 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 
 			// przed imprezą pokazujemy, ile dni zostało
 			if e.Date > now {
-				row.Info = T(lang, "home.days_left", TN(lang, "count.day", (e.Date-now)/day)) +
-					strings.TrimPrefix(", "+row.Info, ", ")
+				left := T(lang, "home.days_left", TN(lang, "count.day", (e.Date-now)/day))
+				if row.Info != "" {
+					left += ", " + row.Info
+				}
+				row.Info = left
 			}
 
 			switch {
@@ -341,13 +342,9 @@ type nCatalogsVars struct {
 	Rooms    []nCatalogRoom
 	Mails    []nCatalogMail
 	Accounts []nCatalogAccount
-	// EventID - designer sali otwiera się zawsze w kontekście imprezy
-	// (ceny i wyłączone miejsca są per impreza), więc podajemy najbliższą.
-	EventID int64
 }
 
 // CatalogsPage - /admin/catalogs: wspólne sale, maile i konta.
-// Edycja otwiera na razie stare edytory; nowy wygląd tych ekranów to etap 6.
 func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := adminUser(w, r, db, cs)
@@ -357,8 +354,7 @@ func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		lang := PanelLang(r)
 
 		vars := nCatalogsVars{
-			NPage:   NPage{Title: T(lang, "catalog.title"), OrgName: orgName(user)},
-			EventID: nearestEventID(db, user.ID),
+			NPage: NPage{Title: T(lang, "catalog.title"), OrgName: orgName(user)},
 		}
 
 		rooms, err := db.RoomGetAllByUserID(user.ID)
@@ -632,7 +628,7 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		Language: language,
 		// podgląd nowej strony gościa dla TEJ imprezy (bez ?event-id strona
 		// pokazuje imprezę z otwartą sprzedażą)
-		GuestURL:        fmt.Sprintf("/n/res/%s?event-id=%d", user.URL, event.ID),
+		GuestURL:        fmt.Sprintf("/res/%s?event-id=%d", user.URL, event.ID),
 		DateVal:         dateInputValue(event.Date),
 		FromVal:         dateInputValue(event.FromDate),
 		ToVal:           dateInputValue(event.ToDate),
@@ -1131,59 +1127,6 @@ func statusLabel(lang string, payed bool) (string, string) {
 		return T(lang, "status.payed"), "paid"
 	}
 	return T(lang, "status.ordered"), "ord"
-}
-
-// EventRoomDesigner - /admin/events/{id}/rooms/{roomid}
-//
-// Designer sali otwiera się w kontekście imprezy (ceny i wyłączone miejsca są
-// per impreza) i do tej pory dało się do niego wejść tylko POST-em z panelu.
-// Ta przejściówka daje mu adres z ID, a samą stronę renderuje dalej stary
-// DesignerHTML - nowy wygląd designera to osobny krok.
-func EventRoomDesigner(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
-	designer := DesignerHTML(db, lang, cs)
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		user, ok := adminUser(w, r, db, cs)
-		if !ok {
-			return
-		}
-
-		vars := mux.Vars(r)
-		eventID, err := strconv.ParseInt(vars["id"], 10, 64)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		roomID, err := strconv.ParseInt(vars["roomid"], 10, 64)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-
-		event, err := db.EventGetByID(eventID)
-		if err != nil || event.UserID != user.ID {
-			log.Printf("EventRoomDesigner: event %d not for user %d: %v", eventID, user.ID, err)
-			http.NotFound(w, r)
-			return
-		}
-		if !userOwnsRoom(db, user.Email, roomID) {
-			log.Printf("EventRoomDesigner: user %q does not own room %d", user.Email, roomID)
-			http.NotFound(w, r)
-			return
-		}
-
-		// DesignerHTML czyta dane z formularza POST - podajemy je wprost,
-		// żeby nie kopiować całego handlera.
-		form := url.Values{
-			"room-id":  {strconv.FormatInt(roomID, 10)},
-			"event-id": {strconv.FormatInt(eventID, 10)},
-		}
-		r.Method = http.MethodPost
-		r.Form = form
-		r.PostForm = form
-
-		designer(w, r)
-	}
 }
 
 // --- API: zapis sekcji -----------------------------------------------------

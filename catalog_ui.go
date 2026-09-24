@@ -1,10 +1,7 @@
 package main
 
-// catalog_ui.go: nowe edytory katalogów - mail i konto bankowe (etap 6).
-//
-// Stare /admin/maileditor i /admin/bankacceditor zostają do czasu wyłączenia
-// starego panelu. Nowe strony mają adresy z ID (/admin/mails/{id},
-// /admin/accounts/{id}) i zapisują się jednym żądaniem JSON.
+// catalog_ui.go: edytory katalogów - mail i konto bankowe. Adresy z ID
+// (/admin/mails/{id}, /admin/accounts/{id}), zapis jednym żądaniem JSON.
 
 import (
 	"encoding/json"
@@ -31,8 +28,7 @@ type nMailVars struct {
 	Text      template.HTML
 	RelatedTo string
 	UsedBy    []string
-	// Attachments i Images pokazujemy tylko jako informację - pliki wgrywa
-	// się na razie w starym edytorze.
+	// Attachments i Images - nazwy plików z media/<org>/email/ rozdzielone ";"
 	Attachments string
 	Images      string
 	// Vars - JSON dla edytora: zmienne zamówienia i nazwy kont do kodu QR
@@ -155,6 +151,23 @@ type nMailMsg struct {
 	Subject   string `json:"subject"`
 	Text      string `json:"text"`
 	RelatedTo string `json:"related_to"`
+	// nazwy plików z media/<org>/email/ rozdzielone ";" - nil, gdy strona ich nie wysyła
+	Attachments *string `json:"attachments"`
+	Images      *string `json:"images"`
+}
+
+// cleanFileList porządkuje listę plików "a.pdf; b.jpg;" -> "a.pdf;b.jpg".
+// Ścieżki odrzucamy, pliki muszą leżeć w katalogu maili organizacji.
+func cleanFileList(s string) string {
+	out := []string{}
+	for _, f := range strings.Split(s, ";") {
+		f = strings.TrimSpace(f)
+		if f == "" || strings.ContainsAny(f, "/\\") || strings.HasPrefix(f, ".") {
+			continue
+		}
+		out = append(out, f)
+	}
+	return strings.Join(out, ";")
 }
 
 // MailSaveAPI - POST /api/mails/{id}
@@ -188,6 +201,12 @@ func MailSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 		}
 		if m.RelatedTo == "events" || m.RelatedTo == "forms" {
 			mail.RelatedTo = m.RelatedTo
+		}
+		if m.Attachments != nil {
+			mail.AttachedFilesDelimited = ToNS(cleanFileList(*m.Attachments))
+		}
+		if m.Images != nil {
+			mail.EmbeddedImgsDelimited = ToNS(cleanFileList(*m.Images))
 		}
 		mail.UpdatedDate = ToNI(time.Now().Unix())
 

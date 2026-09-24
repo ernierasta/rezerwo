@@ -1,6 +1,6 @@
 // n_newform.js - okno "Nowy formularz" na pulpicie (tmpl/n_home.html).
 // Kopia istniejącego formularza jest domyślna: formularze powtarzają się co
-// roku. Adres /admin/start#newform=ID otwiera okno z kopią formularza ID
+// roku. Adres /admin#newform=ID otwiera okno z kopią formularza ID
 // (przycisk "Kopiuj formularz" na stronie formularza).
 
 (function () {

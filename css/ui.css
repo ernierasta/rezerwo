@@ -786,7 +786,27 @@ h5.subhead a {
   background: var(--blue);
 }
 
-.mvar {
+.ed.ql-container.ql-snow {
+  font: inherit;
+  border-color: var(--line);
+  border-radius: 0 0 8px 8px;
+  min-height: 120px;
+}
+.ed.ql-container.ql-snow .ql-editor {
+  line-height: 1.55;
+}
+.ed.ql-container.ql-snow .ql-editor h1, .ed.ql-container.ql-snow .ql-editor h2, .ed.ql-container.ql-snow .ql-editor h3 {
+  font-family: var(--display);
+  font-weight: 500;
+}
+
+.ql-toolbar.ql-snow:has(+ .ed) {
+  background: var(--surface);
+  border-color: var(--line);
+  border-radius: 8px 8px 0 0;
+}
+
+.mvar, .pvar {
   background: var(--blue-soft);
   border: 1px solid var(--blue);
   color: var(--blue-deep);
@@ -795,10 +815,10 @@ h5.subhead a {
   font-size: 0.92em;
   white-space: nowrap;
 }
-.mvar.qr {
+.mvar.qr, .pvar.qr {
   cursor: pointer;
 }
-.mvar.bad {
+.mvar.bad, .pvar.bad {
   background: var(--lemon);
   border-color: #E3D38F;
   color: var(--ink);
@@ -813,6 +833,7 @@ h5.subhead a {
   box-shadow: 0 6px 20px rgba(44, 52, 64, 0.12);
   padding: 6px;
   min-width: 210px;
+  max-width: min(380px, calc(100vw - 16px));
   max-height: min(480px, 70vh);
   overflow-y: auto;
 }
@@ -837,6 +858,11 @@ h5.subhead a {
   padding: 6px 10px;
   font-size: 14px;
   max-width: 260px;
+}
+.mv-menu button.sub {
+  padding: 3px 10px 3px 26px;
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .inp-row {
@@ -864,6 +890,23 @@ h5.subhead a {
 .mail-pdf .f {
   margin-top: 8px;
   max-width: 560px;
+}
+
+.mail-files {
+  margin-top: 18px;
+}
+.mail-files summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+.mail-files .grid2 {
+  margin-top: 10px;
+}
+.mail-files small {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
 }
 
 .dlg.dlg-wide {
@@ -1117,6 +1160,64 @@ h5.subhead a {
 .order-status .desc {
   margin-top: 12px;
   line-height: 1.7;
+}
+
+.pre {
+  white-space: pre-line;
+}
+
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.login .login-box {
+  width: min(380px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 28px 26px 22px;
+}
+.login .brand {
+  font-family: var(--display);
+  font-size: 17px;
+  color: var(--muted);
+}
+.login h1 {
+  font-size: 26px;
+  margin: 4px 0 20px;
+}
+.login .f {
+  margin-bottom: 14px;
+}
+.login .check {
+  margin: 4px 0 16px;
+  font-size: 14.5px;
+}
+.login .msg {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--danger-ink);
+}
+.login .btn {
+  width: 100%;
+  padding: 9px;
+}
+.login .langs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 18px;
+  font-size: 13px;
+}
+.login .langs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.login .langs a.on {
+  color: var(--ink);
+  font-weight: 500;
 }
 
 .order-step {
@@ -2352,4 +2453,129 @@ h5.subhead a {
 .fields-sum td:nth-child(2) {
   white-space: nowrap;
   font-size: 14px;
+}
+
+.ipanel h4 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.ipanel h5 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--muted);
+  margin: 14px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ipanel .ip-row, .ipanel li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ipanel .ip-row b, .ipanel li b {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ipanel small {
+  font-weight: 400;
+  color: var(--muted);
+}
+.ipanel .ip-total {
+  font-size: 15.5px;
+}
+.ipanel .ip-money {
+  grid-column: 1/-1;
+}
+.ipanel .ip-empty {
+  margin-top: 8px;
+  font-size: 14px;
+}
+.ipanel .ip-field {
+  padding: 6px 0 2px;
+}
+.ipanel .ip-label {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.ipanel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 10px;
+}
+.ipanel li {
+  font-size: 14.5px;
+}
+.ipanel li.other span {
+  font-style: italic;
+}
+.ipanel ul.compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 0 0;
+}
+.ipanel ul.compact li {
+  display: inline-flex;
+  gap: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13.5px;
+}
+.ipanel .ip-bar {
+  grid-column: 1/-1;
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--taken);
+  overflow: hidden;
+}
+.ipanel .ip-bar i {
+  display: block;
+  height: 100%;
+  background: #A9C0D6;
+  border-radius: 3px;
+}
+.ipanel .ip-bar.done i {
+  background: #8FC19E;
+}
+.ipanel .done > b {
+  color: #3F6B4D;
+}
+
+.panel-set .seg {
+  margin: 2px 0 6px;
+  flex-wrap: wrap;
+}
+.panel-set .panel-preview {
+  margin-top: 12px;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.panel-set #panel-text {
+  margin-top: 10px;
+}
+
+.ql-snow.ql-toolbar button.ql-wide {
+  width: auto;
+  padding: 3px 8px;
+  font-size: 13.5px;
+  color: var(--blue-deep);
+  white-space: nowrap;
+}
+
+.fd .fd-panel h5 {
+  margin-top: 10px;
+}
+
+.fd .fd-badges b.panel {
+  background: var(--lemon);
 }

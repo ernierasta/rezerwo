@@ -1,6 +1,6 @@
 {{define "head"}}
-<link href="/css/quill.snow.css" rel="stylesheet">
-<script src="/js/quill.min.js"></script>
+<link href="/css/quill2.snow.css" rel="stylesheet">
+<script src="/js/quill2.min.js"></script>
 {{end}}
 {{define "body"}}
 <div class="doc" id="mail-page" data-mail-id="{{.ID}}" data-back="{{.Back}}" data-vars="{{.Vars}}">
@@ -46,13 +46,16 @@
     </div>
   </div>
 
-  {{if or .Attachments .Images}}
-  <p class="shared">
-    {{if .Attachments}}{{T "mail.attachments"}}: {{.Attachments}}{{end}}
-    {{if .Images}}{{if .Attachments}} · {{end}}{{T "mail.images"}}: {{.Images}}{{end}}
-    <br><small>{{T "mail.files_hint"}}</small>
-  </p>
-  {{end}}
+  <details class="mail-files"{{if or .Attachments .Images}} open{{end}}>
+    <summary>{{T "mail.files_title"}}</summary>
+    <div class="grid2">
+      <div class="f"><label for="f-attachments">{{T "mail.attachments"}}</label>
+        <input class="inp" id="f-attachments" data-field="attachments" value="{{.Attachments}}" placeholder="plik.pdf;plik2.jpeg"></div>
+      <div class="f"><label for="f-images">{{T "mail.images"}}</label>
+        <input class="inp" id="f-images" data-field="images" value="{{.Images}}" placeholder="obrazek.jpeg;logo.png"></div>
+    </div>
+    <small class="muted">{{T "mail.files_hint"}}</small>
+  </details>
 
   {{if .UsedBy}}
   <p class="shared">{{T "mail.used_by"}}: {{range $i, $n := .UsedBy}}{{if $i}}, {{end}}{{$n}}{{end}}</p>

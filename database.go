@@ -427,6 +427,8 @@ type FormTemplate struct {
 	Language  string        `db:"language"`
 	Status    string        `db:"status"`
 	CloseDate sql.NullInt64 `db:"close_date"`
+	// InfoPanelMode - none/auto/fields/text, patrz form_stats.go
+	InfoPanelMode string `db:"infopanel_mode"`
 }
 
 // IsOpen mówi, czy formularz przyjmuje teraz odpowiedzi.
@@ -590,6 +592,12 @@ func (db *DB) UserGetPass(email string) (string, error) {
 	passwd := ""
 	err := db.DB.Get(&passwd, `SELECT passwd FROM users WHERE email=$1`, email)
 	return passwd, err
+}
+
+// UserSetPass zapisuje hash hasła (auth.go), nigdy jawne hasło.
+func (db *DB) UserSetPass(email, hash string) error {
+	_, err := db.DB.Exec(`UPDATE users SET passwd=$1 WHERE email=$2`, hash, email)
+	return err
 }
 
 func (db *DB) UserGetAll() ([]User, error) {
@@ -1801,6 +1809,28 @@ func (db *DB) FormTemplateSetAccess(tmplID, userID int64, language, status strin
 	return err
 }
 
+// FormTemplateSetPanelMode zapisuje tryb panelu informacyjnego.
+func (db *DB) FormTemplateSetPanelMode(tmplID, userID int64, mode string) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET infopanel_mode=$1 WHERE id=$2 AND users_id_fk=$3`, mode, tmplID, userID)
+	return err
+}
+
+type fieldAnswerRow struct {
+	Name  string `db:"name"`
+	Value string `db:"value"`
+}
+
+// FormAnswerValuesForTemplate zwraca wszystkie odpowiedzi formularza z nazwą
+// pola - jedno zapytanie na całe zestawienie (form_stats.go).
+func (db *DB) FormAnswerValuesForTemplate(tmplID int64) ([]fieldAnswerRow, error) {
+	var rows []fieldAnswerRow
+	err := db.DB.Select(&rows, `SELECT ff.name AS name, fa.value AS value FROM formanswers fa
+		JOIN formfields ff ON ff.id=fa.formfields_id_fk
+		JOIN forms f ON f.id=fa.forms_id_fk
+		WHERE ff.formtemplates_id_fk=$1 AND fa.value IS NOT NULL`, tmplID)
+	return rows, err
+}
+
 // FormTemplateURLTaken mówi, czy organizacja ma już formularz pod tym adresem
 // (poza formularzem exceptID).
 func (db *DB) FormTemplateURLTaken(url string, userID, exceptID int64) bool {
@@ -2004,14 +2034,14 @@ func (db *DB) FormAnswerGetAllForTemplate(FormTemplateID int64) ([]FormAnswer, e
 // FormAnswerGetAllAnswersForFieldInts works only for data which can be converted to int64
 func (db *DB) FormAnswerGetAllAnswersForFieldInts(FieldID int64) ([]int64, error) {
 	fa := []int64{}
-	err := db.DB.Select(&fa, `SELECT Value FROM formanswers WHERE formfields_id_fk=$1 and Value IS NOT NULL`, FieldID)
+	err := db.DB.Select(&fa, `SELECT Value FROM formanswers WHERE formfields_id_fk=$1 AND Value IS NOT NULL AND trim(Value)<>''`, FieldID)
 	return fa, err
 }
 
 // FormAnswerGetAllAnswersForFieldStrings works only for data which can be converted to int64
 func (db *DB) FormAnswerGetAllAnswersForFieldStrings(FieldID int64) ([]string, error) {
 	fa := []string{}
-	err := db.DB.Select(&fa, `SELECT Value FROM formanswers WHERE formfields_id_fk=$1 and Value IS NOT NULL`, FieldID)
+	err := db.DB.Select(&fa, `SELECT Value FROM formanswers WHERE formfields_id_fk=$1 AND Value IS NOT NULL AND trim(Value)<>''`, FieldID)
 	return fa, err
 }
 

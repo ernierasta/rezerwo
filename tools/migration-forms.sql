@@ -17,3 +17,7 @@ ALTER TABLE formtemplates ADD COLUMN status TEXT NOT NULL DEFAULT 'open';
 -- Opcjonalny termin: po tej chwili (unix) formularz sam przestaje przyjmować
 -- odpowiedzi. NULL = bez terminu.
 ALTER TABLE formtemplates ADD COLUMN close_date INTEGER;
+
+-- Tryb panelu informacyjnego: none / auto / fields / text (form_stats.go).
+-- Dotychczasowe formularze mają własny tekst.
+ALTER TABLE formtemplates ADD COLUMN infopanel_mode TEXT NOT NULL DEFAULT 'text';

@@ -1,6 +1,6 @@
 {{define "head"}}
-<link href="/css/quill.snow.css" rel="stylesheet">
-<script src="/js/quill.min.js"></script>
+<link href="/css/quill2.snow.css" rel="stylesheet">
+<script src="/js/quill2.min.js"></script>
 {{end}}
 {{define "body"}}
 <div class="doc" id="form-page" data-form-id="{{.ID}}">
@@ -9,7 +9,7 @@
     <div class="r">
       <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "form.open_page"}}</a>
       <a class="btn quiet" href="/admin/forms/{{.ID}}/answers">{{T "form.answers"}}</a>
-      <a class="btn quiet" href="/admin/start#newform={{.ID}}">{{T "formpage.copy"}}</a>
+      <a class="btn quiet" href="/admin#newform={{.ID}}">{{T "formpage.copy"}}</a>
     </div>
   </div>
   <p class="dsub"><span id="form-link">{{.PublicURL}}</span> <button class="link" id="copy-link" type="button">{{T "formpage.copy_link"}}</button></p>
@@ -68,8 +68,24 @@
       <div class="sec-b" hidden>
         <div class="f"><label for="f-banner">{{T "field.main_banner"}}</label><input class="inp" id="f-banner" data-field="banner" value="{{.Banner}}"></div>
         <div class="f" style="margin-top:16px"><label>{{T "field.howto_form"}}</label><div class="ed" data-editor="howto">{{.HowTo}}</div></div>
-        <div class="f" style="margin-top:16px"><label>{{T "field.info_panel"}}</label><div class="ed" data-editor="infopanel">{{.InfoPanel}}</div>
-          <small><button class="link" type="button" id="gen-info">{{T "formpage.generate"}}</button> {{T "formpage.generate_hint"}}</small></div>
+        <div class="f panel-set" style="margin-top:16px" id="panel-set" data-fields="{{.PanelFields}}"><label>{{T "field.info_panel"}}</label>
+          <input type="hidden" data-field="infopanel_mode" id="f-panel-mode" value="{{.PanelMode}}">
+          <div class="seg" id="panel-seg">
+            <button type="button" data-v="none">{{T "panel.mode.none"}}</button>
+            <button type="button" data-v="auto">{{T "panel.mode.auto"}}</button>
+            <button type="button" data-v="fields">{{T "panel.mode.fields"}}</button>
+            <button type="button" data-v="text">{{T "panel.mode.text"}}</button>
+          </div>
+          <small class="panel-hint" data-mode="none">{{T "panel.hint.none"}}</small>
+          <small class="panel-hint" data-mode="auto">{{T "panel.hint.auto"}} <a href="/admin/forms/{{.ID}}/fields">{{T "panel.to_designer"}}</a></small>
+          <small class="panel-hint" data-mode="fields">{{T "panel.hint.fields"}} <a href="/admin/forms/{{.ID}}/fields">{{T "panel.to_designer"}}</a></small>
+          <small class="panel-hint" data-mode="text">{{T "panel.hint.text"}}</small>
+          <div class="panel-preview" id="panel-preview" hidden></div>
+          <div id="panel-text" hidden>
+            <div class="ed" data-editor="infopanel">{{.InfoPanel}}</div>
+            <small><button class="link" type="button" id="gen-info">{{T "panel.insert_all"}}</button></small>
+          </div>
+        </div>
         <div class="f" style="margin-top:16px"><label>{{T "field.thankyou_text"}}</label><div class="ed" data-editor="thankyou">{{.ThankYou}}</div></div>
         <div class="sec-f"><button class="btn" data-save="page">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>

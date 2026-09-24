@@ -87,9 +87,74 @@
     };
   }
 
+  // editorDOM porządkuje kopię treści edytora Quill 2 przed zapisem: listy
+  // Quill trzyma jako <ol><li data-list="bullet">, a maile i strony gości
+  // potrzebują zwykłych <ul>/<ol> (takich, jakie dawał Quill 1). Wcięcia
+  // zostają jako klasy ql-indent-N. Zmienia węzeł el w miejscu.
+  function editorDOM(el) {
+    el.querySelectorAll('.ql-ui').forEach(function (n) { n.remove(); });
+    el.querySelectorAll('ol').forEach(function (ol) {
+      var items = Array.prototype.slice.call(ol.children);
+      if (!items.some(function (li) { return li.hasAttribute('data-list'); })) return;
+      var frag = document.createDocumentFragment();
+      var cur = null, curTag = '';
+      items.forEach(function (li) {
+        var tag = li.getAttribute('data-list') === 'ordered' ? 'ol' : 'ul';
+        if (tag !== curTag) {
+          cur = document.createElement(tag);
+          frag.appendChild(cur);
+          curTag = tag;
+        }
+        li.removeAttribute('data-list');
+        cur.appendChild(li);
+      });
+      ol.replaceWith(frag);
+    });
+    return el;
+  }
+
+  // Quill 2 przy wczytywaniu HTML zamienia &nbsp; na zwykłe spacje, przez co
+  // wcięcia i "sklejone" daty w zapisanych treściach by się rozjechały.
+  // Ten matcher (po wbudowanym) przywraca twarde spacje tam, gdzie były.
+  function nbspMatcher(node, delta) {
+    var data = node.data || '';
+    if (data.indexOf('\u00a0') < 0 || delta.ops.length !== 1 || typeof delta.ops[0].insert !== 'string') return delta;
+    var text = delta.ops[0].insert, out = '', j = 0;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (ch !== ' ') {
+        var k = data.indexOf(ch, j);
+        if (k >= 0) j = k + 1;
+        out += ch;
+        continue;
+      }
+      while (j < data.length && !/\s/.test(data[j])) j++;
+      if (data[j] === '\u00a0') {
+        out += '\u00a0';
+        j++;
+      } else {
+        out += ' ';
+        while (j < data.length && /[^\S\u00a0]/.test(data[j])) j++;
+      }
+    }
+    delta.ops[0].insert = out;
+    return delta;
+  }
+
+  // quillModules - wspólna konfiguracja modułów edytora.
+  function quillModules(toolbar) {
+    return {toolbar: toolbar, clipboard: {matchers: [[Node.TEXT_NODE, nbspMatcher]]}};
+  }
+
+  // editorHTML - HTML do zapisu z edytora Quill (patrz editorDOM).
+  function editorHTML(q) {
+    return editorDOM(q.root.cloneNode(true)).innerHTML;
+  }
+
   // applyValues wstawia zapamiętane wartości z powrotem w pola sekcji.
   // Edytory Quill dostają treść przez clipboard, żeby Quill wiedział o zmianie.
-  function applyValues(sec, values, editors) {
+  // editorIn (opcjonalne) zamienia zapisany HTML na treść edytora (pastylki).
+  function applyValues(sec, values, editors, editorIn) {
     if (!values) return;
     sec.querySelectorAll('[data-field]').forEach(function (el) {
       var v = values[el.dataset.field];
@@ -102,6 +167,7 @@
       var v = values[name];
       if (v === undefined) return;
       var q = editors && editors[name];
+      if (editorIn) v = editorIn(name, v);
       if (q) q.clipboard.dangerouslyPasteHTML(v);
       else el.innerHTML = v;
     });
@@ -209,10 +275,23 @@
       sec.querySelectorAll('.ed[data-editor]').forEach(function (el) {
         var name = el.dataset.editor;
         if (editors[name]) return;
+        // opts.editorToolbar(name, toolbar) może dopisać własne przyciski,
+        // opts.editorIn / opts.editorOut zamieniają treść przy wczytaniu i zapisie
+        var initial = el.innerHTML;
+        var tb = opts.editorToolbar ? opts.editorToolbar(name, toolbar) : toolbar;
         editors[name] = new Quill(el, {
-          modules: {toolbar: toolbar, clipboard: {matchVisual: false}},
+          modules: quillModules(tb),
           theme: 'snow'
         });
+        if (opts.editorIn) {
+          var html = opts.editorIn(name, initial);
+          if (html !== initial) {
+            editors[name].setContents([]);
+            editors[name].clipboard.dangerouslyPasteHTML(html);
+            editors[name].history.clear();
+          }
+        }
+        if (opts.onEditor) opts.onEditor(name, editors[name]);
         editors[name].on('text-change', function () { markDirty(sec); });
       });
     }
@@ -230,7 +309,8 @@
       });
       sec.querySelectorAll('.ed[data-editor]').forEach(function (el) {
         var q = editors[el.dataset.editor];
-        out[el.dataset.editor] = q ? q.root.innerHTML : el.innerHTML;
+        if (q && opts.editorOut) out[el.dataset.editor] = opts.editorOut(el.dataset.editor, q);
+        else out[el.dataset.editor] = q ? editorHTML(q) : el.innerHTML;
       });
       return out;
     }
@@ -309,7 +389,7 @@
             return;
           }
           initEditors(sec);
-          applyValues(sec, drafts.get(name), editors);
+          applyValues(sec, drafts.get(name), editors, opts.editorIn);
           sec.classList.add('dirty');
           dirty[name] = true;
           restored = true;
@@ -335,6 +415,9 @@
     accordion: accordion,
     draft: draft,
     applyValues: applyValues,
-    draftNotice: draftNotice
+    draftNotice: draftNotice,
+    editorDOM: editorDOM,
+    quillModules: quillModules,
+    editorHTML: editorHTML
   };
 })(window);

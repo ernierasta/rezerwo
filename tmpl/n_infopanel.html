@@ -1,0 +1,35 @@
+{{/* Panel informacyjny budowany z pól formularza (form_stats.go, PanelVars).
+     Używany na stronie gościa i w podglądzie w panelu admina. */}}
+{{define "infopanel"}}
+<div class="ipanel">
+  <h4>{{T "panel.title"}}</h4>
+  <div class="ip-row ip-total"><span>{{T "panel.submissions"}}</span><b class="num">{{.Submissions}}</b></div>
+  {{if .Empty}}<p class="muted ip-empty">{{T "panel.empty"}}</p>{{end}}
+  {{range .Items}}
+    {{if .Header}}
+    <h5>{{.Header}}</h5>
+    {{else if .Options}}
+    <div class="ip-field">
+      <div class="ip-label">{{.Label}}</div>
+      <ul{{if .Compact}} class="compact"{{end}}>
+        {{$goal := .Goal}}
+        {{range .Options}}
+        <li class="{{if .Other}}other{{end}}">
+          <span>{{.Label}}</span>
+          <b class="num">{{.Count}}{{if $goal}}<small> / {{$goal}}</small>{{end}}</b>
+          {{if $goal}}<i class="ip-bar{{if ge .Count $goal}} done{{end}}"><i style="width:{{.Pct}}%"></i></i>{{end}}
+        </li>
+        {{end}}
+      </ul>
+    </div>
+    {{else}}
+    <div class="ip-row{{if .Done}} done{{end}}">
+      <span>{{.Label}}</span>
+      <b class="num">{{.Value}}{{if .Goal}}<small> / {{.Goal}}</small>{{end}}{{if .Unit}}<small> {{.Unit}}</small>{{end}}</b>
+      {{if .Money}}<small class="ip-money">{{.Money}}</small>{{end}}
+      {{if .Goal}}<i class="ip-bar{{if .Done}} done{{end}}"><i style="width:{{.Pct}}%"></i></i>{{end}}
+    </div>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

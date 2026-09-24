@@ -1,6 +1,6 @@
 package main
 
-// guest_order.go: krok zamówienia na nowej stronie gościa (/n/order).
+// guest_order.go: krok zamówienia na nowej stronie gościa (/order).
 //
 // Robi to samo co stare /order: zapisuje wybrane miejsca ze statusem "marked"
 // (ticker.go kasuje je po 5 minutach) i pokazuje formularz danych osoby.
@@ -77,7 +77,7 @@ func orderAddonFields(fields []AddonField, seats int64) []nOrderAddon {
 	return out
 }
 
-// GuestOrderPage - POST /n/order
+// GuestOrderPage - POST /order
 func GuestOrderPage(db *DB, lang string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

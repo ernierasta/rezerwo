@@ -1,66 +1,241 @@
+// designer.scss - designer sali (tmpl/n_designer.html, js/n_designer.js).
+// Ładowany obok ui.css. Geometria mebli (rozmiary stołów, marginesy, ramka
+// #room) musi zostać taka jak dawniej: js/n_designer.js odejmuje ją przy
+// zapisie pozycji, a room_svg.go rysuje stronę gościa z tych samych liczb.
+
 @import 'variables';
 
-.table { 
-	padding: 0.5em; 
-	float: left; 
-	margin: 10px 10px 10px 0; 
-	background: $table-color; 
+// --- układ strony -----------------------------------------------------------
+
+.designer {
+  padding: 22px 24px 60px;
+}
+
+.dz-head {
+  display: flex;
+  gap: 10px 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+
+  h3 { font-size: 28px; letter-spacing: -0.01em; }
+  .r { margin-left: auto; display: flex; gap: 8px; }
+}
+
+.dz {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.dz-tools {
+  position: sticky;
+  top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 14px 14px;
+  font-size: 14.5px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+
+  .inp { min-height: 32px; padding: 4px 8px; font-size: 14px; }
+  .inp.color { width: 38px; padding: 2px; flex: none; }
+  .check { margin-top: 6px; font-size: 14px; }
+}
+
+.dz-g {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0 12px;
+
+  summary {
+    cursor: pointer;
+    font-weight: 500;
+    padding: 4px 0;
+    list-style-position: outside;
+  }
+}
+
+.dz-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+
+  > label, > span:first-child { width: 58px; flex: none; color: var(--muted); font-size: 13.5px; }
+  .inp { flex: 1; min-width: 0; }
+  input[type="number"] { width: 64px; flex: none; }
+  .dz-fill { flex: 1; font-size: 13px; }
+}
+
+.dz-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dz-note { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+.dz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+
+  span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw {
+    width: 13px; height: 13px; border-radius: 4px;
+    background: var(--surface); border: 1.5px solid #A9C0D6;
+  }
+  .sw.ordered { background: var(--lemon); border-color: #D9C77E; }
+  .sw.payed { background: var(--leaf); border-color: #9CC5A8; }
+  .sw.off { background: #CBD2D9; border-color: #B6BEC7; }
+}
+
+.dz-canvas {
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  max-height: calc(100vh - 150px);
+}
+
+@media (max-width: 900px) {
+  .dz { grid-template-columns: 1fr; }
+  .dz-tools { position: static; max-height: none; }
+  .designer { padding-inline: 16px; }
+}
+
+// --- sala i meble -----------------------------------------------------------
+
+#room {
+  border: 3px dashed #C9D4DF;
+  border-radius: 4px;
+  background: var(--pane);
+  background-origin: padding-box;
+  user-select: none;
+
+  > div { cursor: move; }
+  p { margin: 0; }
+}
+
+.table {
+  margin: 10px;
+  background: #DCE3EA;
+  color: var(--muted);
+  font-size: 12px;
+  border-radius: 3px;
 }
 
 .chair {
-	float: left;
-	background: $chair-bg-color-free;
-	width: $table;
-	height: $table;
-	text-align: center;
-	margin: 2px;
+  width: $table;
+  height: $table;
+  margin: 2px;
+  border: 1.5px solid #A9C0D6;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 10px;
+  line-height: 1;
+
+  &.st-marked, &.st-ordered { background: var(--lemon); border-color: #D9C77E; }
+  &.st-payed { background: var(--leaf); border-color: #9CC5A8; }
+  &.disabled { background: #CBD2D9; border-color: #B6BEC7; color: var(--muted); }
 }
 
-.hidden {
-	display: none;
-}
-.chair-vert {
-	width: 20px;
-	height: 25px;
+.object {
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--ink);
 }
 
-.chair-horiz {
-	width: 25px;
-	height: 20px;
+.label {
+  font-size: 14px;
+  white-space: nowrap;
 }
 
-%table-horiz {
-	width: $table;
+.object, .table, .chair { text-align: center; }
+.object > p, .table > p, .chair > p {
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-.vertical-2 {
-	@extend %table-horiz;
-	height: $table-2;
+// zaznaczenie (jQuery UI selectable)
+#room .ui-selecting { box-shadow: 0 0 0 2px #A9C0D6; }
+#room .ui-selected {
+  box-shadow: 0 0 0 2px var(--blue-deep), 0 0 10px rgba(61, 98, 133, .35);
+  z-index: 5;
+}
+.ui-selectable-helper {
+  position: absolute;
+  z-index: 100;
+  border: 1px dashed var(--blue-deep);
+  background: rgba(210, 226, 241, .25);
 }
 
-.vertical-4 {
-	@extend %table-horiz;
-	height: $table-4;
+// prostokątne stoły: vertical-N / horizontal-N (N = liczba miejsc)
+@each $n, $len in (2: $table-2, 4: $table-4, 6: $table-6, 8: $table-8, 10: $table-10,
+    12: $table-12, 14: $table-14, 16: $table-16, 18: $table-18, 20: $table-20,
+    22: $table-22, 24: $table-24, 26: $table-26, 28: $table-28, 30: $table-30) {
+  .vertical-#{$n} { width: $table; height: $len; }
+  .horizontal-#{$n} { width: $len; height: $table; }
 }
 
-.vertical-6 {
-	@extend %table-horiz;
-	height: $table-6;
+// Okrągłe i owalne stoły (round-N, oval-vertical-N, oval-horizontal-N).
+// Rozmiary dobrane tak, żeby SpawnChairs zmieścił krzesła dookoła.
+$round-chair-pitch: 30px;
+$round-chair-dist: $table / 2 + $table-gap;
+$pi: 3.14159;
+@for $n from 1 through 44 {
+  $d: max(40px, round($round-chair-pitch * $n / $pi - 2 * $round-chair-dist));
+  .round-#{$n} { width: $d; height: $d; border-radius: 50%; }
+
+  $s: max(40px, 3px * $n);
+  $b: $s / 2 + $round-chair-dist;
+  $a: max(1.5 * $b, (1.06 * $round-chair-pitch * $n - 2 * $pi * $b) / 4 + $b);
+  $l: round(2 * ($a - $round-chair-dist));
+  .oval-horizontal-#{$n} { width: $l; height: $s; border-radius: 50%; }
+  .oval-vertical-#{$n} { width: $s; height: $l; border-radius: 50%; }
 }
 
-.vertical-8 {
-	@extend %table-horiz;
-	height: $table-8;
+// prowadnice przy przeciąganiu (DrawGuides)
+#room .guide {
+  position: absolute;
+  display: block;
+  z-index: 95;
+  pointer-events: none;
+  background: #C2577A;
 }
+#room .guide-v { width: 1px; }
+#room .guide-h { height: 1px; }
 
-.mouseover {
-	width: $table-mouseover;
+// uchwyty zmiany rozmiaru stołów i obiektów (css jQuery UI nie ładujemy)
+$resize-edge: 8px;
+#room .ui-resizable-handle {
+  position: absolute;
+  display: block;
+  font-size: 0.1px;
+  z-index: 90;
+  touch-action: none;
 }
-
-#table-storage .ui-selecting {background: #FECA40;}
-#table-storage .ui-selected {background: #F39814; color: white;}
-#table-storage {margin: 0; padding: 0; height: 300px; position: relative; padding:0; border:solid 1px #DDD;}
-#table-storage > div {position: absolute; margin: 0; padding:10px; border:solid 1px #CCC; width: 100px;}
-.ui-selectable-helper {position: absolute; z-index: 100; border:1px dotted black;}
-
-#droppable { width: 500px; height: 500px; padding: 0.5em; float: left; margin: 10px; border: 3px dashed black; }
+#room .ui-resizable-n, #room .ui-resizable-s { height: $resize-edge; left: 0; width: 100%; }
+#room .ui-resizable-e, #room .ui-resizable-w { width: $resize-edge; top: 0; height: 100%; }
+#room .ui-resizable-n { top: -$resize-edge / 2; cursor: n-resize; }
+#room .ui-resizable-s { bottom: -$resize-edge / 2; cursor: s-resize; }
+#room .ui-resizable-e { right: -$resize-edge / 2; cursor: e-resize; }
+#room .ui-resizable-w { left: -$resize-edge / 2; cursor: w-resize; }
+#room .ui-resizable-ne, #room .ui-resizable-nw, #room .ui-resizable-se, #room .ui-resizable-sw {
+  width: $resize-edge + 2px;
+  height: $resize-edge + 2px;
+  z-index: 91;
+}
+#room .ui-resizable-ne { top: -$resize-edge / 2; right: -$resize-edge / 2; cursor: ne-resize; }
+#room .ui-resizable-nw { top: -$resize-edge / 2; left: -$resize-edge / 2; cursor: nw-resize; }
+#room .ui-resizable-se { bottom: -$resize-edge / 2; right: -$resize-edge / 2; cursor: se-resize; }
+#room .ui-resizable-sw { bottom: -$resize-edge / 2; left: -$resize-edge / 2; cursor: sw-resize; }

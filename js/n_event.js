@@ -33,7 +33,7 @@
       var name = el.dataset.editor;
       if (editors[name]) return;
       editors[name] = new Quill(el, {
-        modules: {toolbar: quillToolbar, clipboard: {matchVisual: false}},
+        modules: RZ.quillModules(quillToolbar),
         theme: 'snow'
       });
       editors[name].on('text-change', function () { markDirty(sec); });
@@ -60,7 +60,7 @@
     });
     sec.querySelectorAll('.ed[data-editor]').forEach(function (el) {
       var q = editors[el.dataset.editor];
-      out[el.dataset.editor] = q ? q.root.innerHTML : el.innerHTML;
+      out[el.dataset.editor] = q ? RZ.editorHTML(q) : el.innerHTML;
     });
     return out;
   }

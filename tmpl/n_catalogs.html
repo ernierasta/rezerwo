@@ -4,11 +4,11 @@
   <p class="dsub">{{T "catalog.hint"}}</p>
 
   <h4>{{T "catalog.rooms"}}
-    <button class="btn sm" data-post="/admin/designer" data-ask="name">{{T "catalog.new_room"}}</button>
+    {{if .Rooms}}<button class="btn sm" id="new-room">{{T "catalog.new_room"}}</button>{{end}}
   </h4>
   <div class="rows">
     {{range .Rooms}}
-    <a class="row" href="#" data-post="/admin/designer" data-params="room-id={{.ID}}&event-id={{$.EventID}}">
+    <a class="row" href="/admin/rooms/{{.ID}}">
       <span class="num">{{.Size}}</span>
       <span>{{.Name}}{{if .Shared}} <small class="muted">({{T "catalog.shared"}})</small>{{end}}</span>
       <small class="num">{{.Seats}}</small>
@@ -48,14 +48,24 @@
     {{end}}
   </div>
 </div>
+
+<div class="dlg-back" id="room-dlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="room-dlg-title">
+    <h3 id="room-dlg-title">{{T "catalog.new_room"}}</h3>
+    <p class="muted">{{T "catalog.new_room_hint"}}</p>
+    <div class="f"><label for="room-src">{{T "catalog.room_source"}}</label>
+      <select class="inp" id="room-src">{{range .Rooms}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div>
+    <div class="f" style="margin-top:12px"><label for="room-name">{{T "field.name"}}</label>
+      <input class="inp" id="room-name" autocomplete="off"></div>
+    <div class="sec-f"><button class="btn" id="room-ok">{{T "catalog.create_room"}}</button><button class="btn quiet" id="room-cancel">{{T "common.cancel"}}</button><small class="msg"></small></div>
+  </div>
+</div>
 {{end}}
 {{define "scripts"}}
 <script src="/js/n_newmail.js"></script>
 <script>
 document.getElementById('new-mail').addEventListener('click', function () { RZNewMail.open(); });
 
-// Stare edytory otwierają się POST-em z parametrami w treści, więc zamiast
-// zwykłych linków wysyłamy ukryty formularz.
 document.getElementById('catalogs').addEventListener('click', async function (e) {
   // nowe katalogi (mail, konto) tworzy API i od razu otwieramy ich stronę
   var add = e.target.closest('[data-create]');
@@ -73,35 +83,30 @@ document.getElementById('catalogs').addEventListener('click', async function (e)
     location.href = add.dataset.go + created.id;
     return;
   }
-
-  var el = e.target.closest('[data-post]');
-  if (!el) return;
-  e.preventDefault();
-
-  var params = {};
-  (el.dataset.params || '').split('&').filter(Boolean).forEach(function (p) {
-    var kv = p.split('=');
-    params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
-  });
-
-  if (el.dataset.ask === 'name') {
-    var name = prompt("{{T "field.name"}}");
-    if (!name) return;
-    params.name = name;
-  }
-
-  var f = document.createElement('form');
-  f.method = 'POST';
-  f.action = el.dataset.post;
-  Object.keys(params).forEach(function (k) {
-    var i = document.createElement('input');
-    i.type = 'hidden';
-    i.name = k;
-    i.value = params[k];
-    f.appendChild(i);
-  });
-  document.body.appendChild(f);
-  f.submit();
 });
+
+// nowa sala powstaje jako kopia istniejącej (z meblami), potem otwiera się designer
+(function () {
+  var btn = document.getElementById('new-room');
+  var dlg = document.getElementById('room-dlg');
+  if (!btn) return;
+  var name = document.getElementById('room-name');
+  var msg = dlg.querySelector('.msg');
+  var ok = document.getElementById('room-ok');
+  btn.addEventListener('click', function () {
+    dlg.hidden = false;
+    msg.textContent = '';
+    name.focus();
+  });
+  document.getElementById('room-cancel').addEventListener('click', function () { dlg.hidden = true; });
+  dlg.addEventListener('keydown', function (e) { if (e.key === 'Escape') dlg.hidden = true; });
+  ok.addEventListener('click', function () {
+    if (!name.value.trim()) { name.focus(); return; }
+    ok.disabled = true;
+    RZ.postJSON('/api/roomcopy', {room_id: Number(document.getElementById('room-src').value), name: name.value.trim()})
+      .then(function (r) { location.href = '/admin/rooms/' + r.room_id; })
+      .catch(function (err) { msg.textContent = err.message; msg.classList.add('bad'); ok.disabled = false; });
+  });
+})();
 </script>
 {{end}}

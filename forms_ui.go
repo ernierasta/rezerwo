@@ -2,9 +2,8 @@ package main
 
 // forms_ui.go: nowy panel - strona formularza (harmonijka) i tabela odpowiedzi.
 //
-// Definicje pól dalej edytuje formBuilder w starym edytorze (/admin/formeditor),
-// zgodnie z etapem A z rozdz. 7.2 HARMONIJKA.md - format JSON się nie zmienia.
-// Tutaj są tylko ustawienia formularza, teksty strony, maile, konto i odpowiedzi.
+// Definicje pól edytuje designer pól (forms_fields.go). Tutaj są ustawienia
+// formularza, teksty strony, maile, konto i odpowiedzi.
 
 import (
 	"encoding/csv"
@@ -77,6 +76,10 @@ type nFormVars struct {
 	FieldList    []nFieldSummary
 	MoreFields   int
 	AnswersCount int64
+
+	// panel informacyjny (form_stats.go)
+	PanelMode   string
+	PanelFields template.JS // pola do menu pastylek w trybie "własny tekst"
 
 	Notifications       []Notification
 	NotificationID      int64
@@ -159,12 +162,15 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		Language:            formLang(templ),
 		Status:              templ.Status,
 		CloseDateVal:        dateInputValue(templ.CloseDate.Int64),
-		GuestURL:            fmt.Sprintf("/n/form/%s/%s", user.URL, templ.URL),
+		GuestURL:            fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
 		AnswersCount:        answers,
 	}
 	if v.Status == "" {
 		v.Status = "open"
 	}
+
+	v.PanelMode = panelMode(templ)
+	v.PanelFields = panelFieldsJSON(templ)
 
 	v.FieldList = formFieldSummaries(templ, lang)
 	if len(v.FieldList) > 12 {
@@ -185,7 +191,7 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 			texts++
 		}
 	}
-	v.SumPage = TN(lang, "count.text", int64(texts))
+	v.SumPage = TN(lang, "count.text", int64(texts)) + ", " + T(lang, "panel.mode_sum."+panelMode(templ))
 	if templ.Banner.String != "" {
 		v.SumPage = T(lang, "field.main_banner") + ", " + v.SumPage
 	}
@@ -212,6 +218,36 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 
 	v.SumAnswers = TN(lang, "count.answer", answers)
 	return v
+}
+
+// panelFieldsJSON - pola formularza dla menu "Wstaw zestawienie" w edytorze
+// panelu (js/n_form.js): nazwa, etykieta, rodzaj i opcje.
+func panelFieldsJSON(templ FormTemplate) template.JS {
+	type opt struct {
+		Name    string   `json:"name"`
+		Label   string   `json:"label"`
+		Type    string   `json:"type"`
+		Options []string `json:"options,omitempty"`
+	}
+	out := []opt{}
+	defs, _ := ParseFormDef(templ.Content.String)
+	for _, d := range defs {
+		name := d.S("name")
+		if !isInputType(d.S("type")) || name == "" || name == ROLENAME || name == ROLESURNAME || name == ROLEEMAIL {
+			continue
+		}
+		o := opt{Name: name, Label: plainLabel(d.S("label")), Type: d.S("type")}
+		if vals, ok := d["values"].([]interface{}); ok {
+			for _, v := range vals {
+				if vm, ok := v.(map[string]interface{}); ok {
+					o.Options = append(o.Options, plainLabel(str(vm["label"])))
+				}
+			}
+		}
+		out = append(out, o)
+	}
+	b, _ := json.Marshal(out)
+	return template.JS(b)
 }
 
 // formStatusLabel opisuje, czy formularz przyjmuje odpowiedzi.
@@ -388,6 +424,14 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 			templ.Banner = ToNS(val("banner"))
 			templ.HowTo = ToNS(html("howto"))
 			templ.InfoPanel = ToNS(html("infopanel"))
+			mode := val("infopanel_mode")
+			switch mode {
+			case PANELNONE, PANELAUTO, PANELFIELDS, PANELTEXT:
+				if err := db.FormTemplateSetPanelMode(templ.ID, user.ID, mode); err != nil {
+					jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+					return
+				}
+			}
 			templ.ThankYou = ToNS(html("thankyou"))
 		case "mail_guest":
 			templ.NotificationID = ToNI(id64("notifications_id_fk"))

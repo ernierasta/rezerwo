@@ -9,12 +9,11 @@
 </head>
 <body class="n">
   <div class="topbar">
-    <a class="brand" href="/admin/start">{{T "app.name"}}</a>
+    <a class="brand" href="/admin">{{T "app.name"}}</a>
     {{if .Crumb}}<span class="crumb">{{.Crumb}}</span>{{end}}
     <div class="r">
-      <a href="/admin/start">{{T "nav.events"}}</a>
+      <a href="/admin">{{T "nav.events"}}</a>
       <a href="/admin/catalogs">{{T "nav.catalogs"}}</a>
-      <a href="/admin">{{T "nav.old_panel"}}</a>
       {{if .OrgName}}<span class="muted">{{.OrgName}}</span>{{end}}
       <span class="langs">
         <a href="/admin/lang?l=pl" {{if eq lang "pl"}}class="on"{{end}}>PL</a>

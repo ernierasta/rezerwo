@@ -1,0 +1,7 @@
+{{define "body"}}
+<div class="guest order-status">
+  <h1>{{.Title}}</h1>
+  <p class="desc pre">{{.Text}}</p>
+  {{if .Back}}<p style="margin-top:24px"><button class="btn" type="button" onclick="history.back()">{{T "common.back"}}</button></p>{{end}}
+</div>
+{{end}}

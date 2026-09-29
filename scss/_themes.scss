@@ -1,0 +1,328 @@
+// _themes.scss - tokeny kolorów i tematy stron dla gości (themes.go).
+//
+// Temat "pastel" siedzi w :root (panel admina), pozostałe nadpisują zmienne pod
+// [data-theme] - na <html> strony gościa albo na próbce w wyborze tematu
+// w panelu. Domyślny temat stron gościa to "klasyczny" (themes.go).
+//
+// Nowy temat: blok tutaj + pozycja w guestThemes (themes.go) + nazwa
+// w locales/*.toml ([theme]).
+
+:root, [data-theme="pastel"] {
+  --bg: #F2F5F8;
+  --surface: #FFFFFF;
+  --pane: #F8FAFC;
+  --ink: #2C3440;
+  --muted: #6E7885;
+  --line: #E1E7EE;
+  --line-strong: #B7CDE2;
+  --blue: #D2E2F1;       // tło przycisków (tekst --ink)
+  --blue-soft: #E9F1F8;
+  --blue-deep: #3D6285;  // akcent: linki, wybrane miejsce (tekst --on-accent)
+  --on-accent: #FFFFFF;
+  --lemon: #F4EBC6;
+  --lemon-line: #E3D38F;
+  --leaf: #D5EBDB;
+  --taken: #E2E7EC;
+  --danger-ink: #9A4F45;
+  --danger-soft: #FCF6F5;
+  --danger-line: #E3C3BE;
+  --ok-ink: #3F6B4D;
+  --warn-ink: #9A7B1F;
+  --bar-done: #8FC19E;
+  --table: #DCE3EA;      // plan sali: stoły
+  --seat-line: #A9C0D6;  // obrys wolnego miejsca, pasek postępu
+  --seat-off: #CBD2D9;   // miejsce niedostępne
+  --seat-off-line: #B6BEC7;
+  --shade: 44, 52, 64;   // cienie i tło pod oknem: rgba(var(--shade), .1)
+  color-scheme: light;
+}
+
+[data-theme="piasek"] {
+  --bg: #F6F1EA;
+  --surface: #FFFDFA;
+  --pane: #FBF7F1;
+  --ink: #3A3029;
+  --muted: #7D7066;
+  --line: #E8DDD0;
+  --line-strong: #DDBFA6;
+  --blue: #EFD9C6;
+  --blue-soft: #F8EDE3;
+  --blue-deep: #A0573A;
+  --on-accent: #FFFFFF;
+  --lemon: #F3E6BF;
+  --lemon-line: #E0CB8C;
+  --leaf: #DCE8D2;
+  --taken: #E7E0D7;
+  --danger-ink: #A0463A;
+  --danger-soft: #FBF1EE;
+  --danger-line: #E8C6BD;
+  --ok-ink: #56753F;
+  --warn-ink: #8A6818;
+  --bar-done: #A9C58F;
+  --table: #E6DCCF;
+  --seat-line: #D2B49C;
+  --seat-off: #D6CEC4;
+  --seat-off-line: #C4BAAF;
+  --shade: 58, 48, 41;
+  color-scheme: light;
+}
+
+[data-theme="szalwia"] {
+  --bg: #EFF4F0;
+  --surface: #FFFFFF;
+  --pane: #F6F9F7;
+  --ink: #27332C;
+  --muted: #62726A;
+  --line: #DCE6DF;
+  --line-strong: #AFCDBB;
+  --blue: #CFE3D6;
+  --blue-soft: #E6F1EA;
+  --blue-deep: #3E6B55;
+  --on-accent: #FFFFFF;
+  --lemon: #F1EAC4;
+  --lemon-line: #DDCD8C;
+  --leaf: #D3EAD9;
+  --taken: #E0E7E2;
+  --danger-ink: #9A4F45;
+  --danger-soft: #FCF6F5;
+  --danger-line: #E3C3BE;
+  --ok-ink: #3A6E50;
+  --warn-ink: #85691A;
+  --bar-done: #8FC19E;
+  --table: #D8E3DB;
+  --seat-line: #9FC2AE;
+  --seat-off: #CAD3CD;
+  --seat-off-line: #B4BFB8;
+  --shade: 39, 51, 44;
+  color-scheme: light;
+}
+
+// Klasyczny: kolory dawnej strony rezerwacji (Bootstrap 4). Miejsca jak
+// kiedyś: wolne zielone, wybrane żółte, zamówione pomarańczowe, zapłacone
+// czerwone, niedostępne ciemnobrązowe - do tych kolorów odwołują się też
+// stare teksty organizatorów (.free-text itd.).
+[data-theme="klasyczny"] {
+  --bg: #FFFFFF;
+  --surface: #FFFFFF;
+  --pane: #F8F9FA;
+  --ink: #212529;
+  --muted: #6C757D;
+  --line: #DEE2E6;
+  --line-strong: #ADB5BD;
+  --blue: #CCE5FF;
+  --blue-soft: #E7F1FF;
+  --blue-deep: #007BFF;
+  --on-accent: #FFFFFF;
+  --btn-bg: #007BFF;     // przyciski jak btn-primary
+  --btn-ink: #FFFFFF;
+  --lemon: #FFF3CD;
+  --lemon-line: #FFE08A;
+  --leaf: #D4EDDA;
+  --taken: #E9ECEF;
+  --danger-ink: #C82333;
+  --danger-soft: #FDF2F3;
+  --danger-line: #F1AEB5;
+  --ok-ink: #218838;
+  --warn-ink: #B8860B;
+  --bar-done: #28A745;
+  --table: #808080;
+  --seat-line: #28A745;
+  --seat-off: #403734;
+  --seat-off-line: #403734;
+  --shade: 0, 0, 0;
+  color-scheme: light;
+
+  $free: #28A745;
+  $marked: #FFC107;
+  $ordered: #FD7E14;
+  $payed: #DC3545;
+  $off: #403734;
+
+  // body.n button { color: inherit } jest mocniejsze od samego .btn
+  .btn:not(.quiet):not(.danger) { color: var(--btn-ink); }
+  .btn:not(.quiet):not(.danger):hover { background: #0069D9; }
+
+  .f-table ~ .f-num { fill: #FFFFFF; }
+
+  .chair-free { fill: $free; stroke: $free; }
+  .chair-free:hover { fill: #218838; stroke: #218838; }
+  .chair-free ~ .f-num { fill: #FFFFFF; }
+  .chair-selected { fill: $marked; stroke: #D39E00; stroke-width: 2; }
+  .chair-selected ~ .f-num, .chair-selected + .f-num { fill: #212529; }
+  .chair-taken { fill: $payed; stroke: $payed; }
+  .chair-taken ~ .f-num { fill: #FFFFFF; }
+  .st-marked .chair-taken { fill: $marked; stroke: $marked; }
+  .st-ordered .chair-taken { fill: $ordered; stroke: $ordered; }
+  .st-marked .chair-taken ~ .f-num, .st-ordered .chair-taken ~ .f-num { fill: #212529; }
+  .chair-disabled { fill: $off; stroke: $off; }
+  .chair-disabled ~ .f-num { fill: #D3D3D3; }
+
+  .legend {
+    .sw { border-color: $free; background: $free; }
+    .sw.sel { background: $marked; border-color: $marked; }
+    .sw.ordered { background: $ordered; border-color: $ordered; }
+    .sw.payed { background: $payed; border-color: $payed; }
+    .sw.off { background: $off; border-color: $off; }
+    .lg-taken { display: none; }
+    .lg-classic { display: flex; }
+  }
+
+  .free-text { color: $free; }
+  .marked-text { color: #D39E00; }
+  .ordered-text { color: $ordered; }
+  .payed-text { color: $payed; }
+  .disabled-text { color: $off; }
+
+  // próbka w wyborze tematu
+  .tp-card {
+    i { background: $free; border-color: $free; }
+    i + i { background: $marked; border-color: $marked; }
+    b { background: var(--btn-bg); }
+  }
+}
+
+// Ciemne: --blue to przygaszony przycisk z jasnym tekstem, --blue-deep jasny
+// akcent z ciemnym tekstem (--on-accent).
+
+[data-theme="noc"] {
+  --bg: #141B24;
+  --surface: #1C2530;
+  --pane: #18212B;
+  --ink: #E3E9F0;
+  --muted: #93A0AF;
+  --line: #2C3846;
+  --line-strong: #45627F;
+  --blue: #2E4A66;
+  --blue-soft: #22364A;
+  --blue-deep: #8DB8E0;
+  --on-accent: #0F1620;
+  --lemon: #4A4226;
+  --lemon-line: #7A6B38;
+  --leaf: #22402F;
+  --taken: #333D49;
+  --danger-ink: #E89A8E;
+  --danger-soft: #3A2323;
+  --danger-line: #6E3B36;
+  --ok-ink: #8FCFA2;
+  --warn-ink: #E0C274;
+  --bar-done: #5FA876;
+  --table: #2A3643;
+  --seat-line: #58799A;
+  --seat-off: #202830;
+  --seat-off-line: #4A5461;
+  --shade: 0, 0, 0;
+  color-scheme: dark;
+}
+
+[data-theme="grafit"] {
+  --bg: #161616;
+  --surface: #212121;
+  --pane: #1B1B1B;
+  --ink: #ECE8E1;
+  --muted: #A19A90;
+  --line: #34322F;
+  --line-strong: #6B5A3C;
+  --blue: #4A3F2C;
+  --blue-soft: #2E2A22;
+  --blue-deep: #E3B769;
+  --on-accent: #1A1611;
+  --lemon: #4A4226;
+  --lemon-line: #7A6B38;
+  --leaf: #2A3F2E;
+  --taken: #3A3836;
+  --danger-ink: #EE9C8C;
+  --danger-soft: #3A2420;
+  --danger-line: #6E3E36;
+  --ok-ink: #9CCB9F;
+  --warn-ink: #E3C274;
+  --bar-done: #6FAE7A;
+  --table: #302E2C;
+  --seat-line: #8A7552;
+  --seat-off: #1C1B1A;
+  --seat-off-line: #4A4744;
+  --shade: 0, 0, 0;
+  color-scheme: dark;
+}
+
+[data-theme="sliwka"] {
+  --bg: #1C1620;
+  --surface: #261E2B;
+  --pane: #211A26;
+  --ink: #EEE4EE;
+  --muted: #A895AA;
+  --line: #3A2F40;
+  --line-strong: #6E4A72;
+  --blue: #4D3150;
+  --blue-soft: #33253A;
+  --blue-deep: #E6A3C3;
+  --on-accent: #22141C;
+  --lemon: #4A4226;
+  --lemon-line: #7A6B38;
+  --leaf: #2A3F33;
+  --taken: #3F3545;
+  --danger-ink: #F0A08F;
+  --danger-soft: #3C2226;
+  --danger-line: #6E3A40;
+  --ok-ink: #9ED0AC;
+  --warn-ink: #E6C47A;
+  --bar-done: #6FAE7A;
+  --table: #352B3B;
+  --seat-line: #8A6690;
+  --seat-off: #201A24;
+  --seat-off-line: #4E4254;
+  --shade: 0, 0, 0;
+  color-scheme: dark;
+}
+
+// --- wybór tematu w panelu (szablon "themepick", js/n_ui.js) -------------
+
+.theme-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 10px;
+  margin-bottom: 4px;
+
+  .tp {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-start;
+    padding: 6px 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    text-align: left;
+
+    &:hover { border-color: var(--line-strong); }
+    &.on { border-color: var(--blue-deep); box-shadow: 0 0 0 2px var(--blue-deep); }
+  }
+
+  // miniatura strony gościa w kolorach tematu (zmienne z data-theme)
+  .tp-prev {
+    display: block;
+    width: 100%;
+    height: 58px;
+    border-radius: 6px;
+    background: var(--bg);
+    padding: 8px;
+    margin-bottom: 4px;
+  }
+  .tp-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 5px 6px;
+
+    i { display: block; width: 9px; height: 9px; border-radius: 2px; border: 1.5px solid var(--seat-line); background: var(--surface); }
+    i + i { background: var(--blue-deep); border-color: var(--blue-deep); }
+    b { display: block; margin-left: auto; width: 30px; height: 11px; border-radius: 3px; background: var(--blue); }
+  }
+
+  .tp-name { font-weight: 500; font-size: 14.5px; padding-inline: 2px; }
+  small { color: var(--muted); font-size: 12.5px; padding-inline: 2px; }
+}

@@ -300,6 +300,8 @@ type Event struct {
 	PreviousEventID      sql.NullInt64  `db:"previous_event_id"`
 	Status               sql.NullString `db:"status"`
 	AddonsFormTemplateID sql.NullInt64  `db:"addons_formtemplate_id"`
+	// Theme - temat graficzny strony gościa (themes.go, tools/migration-themes.sql)
+	Theme sql.NullString `db:"theme"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -429,6 +431,8 @@ type FormTemplate struct {
 	CloseDate sql.NullInt64 `db:"close_date"`
 	// InfoPanelMode - none/auto/fields/text, patrz form_stats.go
 	InfoPanelMode string `db:"infopanel_mode"`
+	// Theme - temat graficzny strony gościa (themes.go, tools/migration-themes.sql)
+	Theme string `db:"theme"`
 }
 
 // IsOpen mówi, czy formularz przyjmuje teraz odpowiedzi.
@@ -1156,6 +1160,12 @@ func (db *DB) EventClearRooms(eventID int64) error {
 
 // EventSetStatus ustawia stan imprezy: "draft" (szkic, niewidoczna dla gości)
 // albo "published". Osobna metoda, bo stare zapytania nie znają tej kolumny.
+// EventSetTheme ustawia temat graficzny stron imprezy dla gości.
+func (db *DB) EventSetTheme(eventID, userID int64, theme string) error {
+	_, err := db.DB.Exec(`UPDATE events SET theme=$1 WHERE id=$2 AND users_id_fk=$3`, theme, eventID, userID)
+	return err
+}
+
 func (db *DB) EventSetStatus(eventID, userID int64, status string) error {
 	_, err := db.DB.Exec(`UPDATE events SET status=$1 WHERE id=$2 AND users_id_fk=$3`, status, eventID, userID)
 	return err
@@ -1810,6 +1820,12 @@ func (db *DB) FormTemplateSetAccess(tmplID, userID int64, language, status strin
 }
 
 // FormTemplateSetPanelMode zapisuje tryb panelu informacyjnego.
+// FormTemplateSetTheme ustawia temat graficzny strony formularza.
+func (db *DB) FormTemplateSetTheme(tmplID, userID int64, theme string) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET theme=$1 WHERE id=$2 AND users_id_fk=$3`, theme, tmplID, userID)
+	return err
+}
+
 func (db *DB) FormTemplateSetPanelMode(tmplID, userID int64, mode string) error {
 	_, err := db.DB.Exec(`UPDATE formtemplates SET infopanel_mode=$1 WHERE id=$2 AND users_id_fk=$3`, mode, tmplID, userID)
 	return err

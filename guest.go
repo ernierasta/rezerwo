@@ -33,6 +33,8 @@ type nGuestFurniture struct {
 	TextY  float64
 	Table  int64
 	Title  string
+	// LabelInk - kolor podpisu na obiekcie, czytelny na jego tle
+	LabelInk string
 }
 
 type nGuestVars struct {
@@ -163,7 +165,7 @@ func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w 
 			vars.Rooms = append(vars.Rooms, gr)
 		}
 
-		t, err := template.New("n_reservation.html").Funcs(TmplFuncs(lng)).
+		t, err := template.New("n_reservation.html").Funcs(GuestFuncs(lng, event.Theme.String)).
 			ParseFiles("tmpl/n_reservation.html", "tmpl/n_guest_base.html")
 		if err != nil {
 			log.Printf("GuestReservationPage: template parse: %v", err)
@@ -185,7 +187,9 @@ func guestRoom(db *DB, room Room, event Event, lang string) nGuestRoom {
 		gr.Tables = append(gr.Tables, guestFurniture(t, ""))
 	}
 	for _, o := range sr.Objects {
-		gr.Objects = append(gr.Objects, guestFurniture(o, ""))
+		gf := guestFurniture(o, "")
+		gf.LabelInk = contrastInk(o.Color)
+		gr.Objects = append(gr.Objects, gf)
 	}
 	for _, l := range sr.Labels {
 		gf := guestFurniture(l, "")

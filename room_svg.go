@@ -14,6 +14,7 @@ package main
 import (
 	"html/template"
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -34,10 +35,13 @@ type svgFurniture struct {
 	X, Y   float64
 	W, H   float64
 	// Shape: "rect" albo "ellipse"
-	Shape    string
-	Color    string
-	Label    string
-	Status   string // tylko krzesła: free, taken, selected, disabled
+	Shape  string
+	Color  string
+	Label  string
+	Status string // tylko krzesła: free, taken, selected, disabled
+	// State - dokładny stan zajętego krzesła (marked/ordered/payed); temat
+	// "klasyczny" koloruje je osobno jak dawna strona rezerwacji
+	State    string
 	Price    int64
 	Currency string
 }
@@ -187,6 +191,18 @@ func chairStatus(f FurnitureFull) string {
 	}
 }
 
+// takenState - stan rezerwacji zajętego krzesła, pusty dla pozostałych.
+func takenState(status, reservation string) string {
+	if status != "taken" {
+		return ""
+	}
+	switch reservation {
+	case "marked", "ordered", "payed":
+		return reservation
+	}
+	return ""
+}
+
 // reservedUnder mówi, ile rezerwacji blokuje skasowanie mebla i czego dotyczą:
 // "chair" - samo krzesło, "table" - krzesła stojące przy stole.
 func reservedUnder(db *DB, m DeleteMsg) (int64, string, error) {
@@ -269,6 +285,7 @@ func buildSVGRoom(db *DB, room Room, event Event) svgRoom {
 			H:        svgChairSize,
 			Shape:    "rect",
 			Status:   status,
+			State:    takenState(status, c.Status.String),
 			Price:    price,
 			Currency: currency,
 		})
@@ -313,4 +330,34 @@ func buildSVGRoom(db *DB, room Room, event Event) svgRoom {
 	}
 
 	return out
+}
+
+// contrastInk wybiera kolor tekstu (biały albo prawie czarny) czytelniejszy
+// na tle w kolorze bg ("#rgb" albo "#rrggbb", jak zapisuje designer), wg
+// kontrastu WCAG. Dla innych zapisów zwraca "" - zostaje kolor domyślny.
+func contrastInk(bg string) string {
+	h := strings.TrimPrefix(strings.TrimSpace(bg), "#")
+	if len(h) == 3 {
+		h = string([]byte{h[0], h[0], h[1], h[1], h[2], h[2]})
+	}
+	if len(h) != 6 {
+		return ""
+	}
+	v, err := strconv.ParseUint(h, 16, 32)
+	if err != nil {
+		return ""
+	}
+	lin := func(c uint64) float64 {
+		s := float64(c) / 255
+		if s <= 0.03928 {
+			return s / 12.92
+		}
+		return math.Pow((s+0.055)/1.055, 2.4)
+	}
+	l := 0.2126*lin(v>>16&0xff) + 0.7152*lin(v>>8&0xff) + 0.0722*lin(v&0xff)
+	const dark = 0.0137 // luminancja #212529
+	if (1.05)/(l+0.05) > (l+0.05)/(dark+0.05) {
+		return "#FFFFFF"
+	}
+	return "#212529"
 }

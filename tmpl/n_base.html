@@ -28,3 +28,18 @@
   {{block "scripts" .}}{{end}}
 </body>
 </html>{{end}}
+
+{{/* Wybór tematu strony gościa (themes.go). Wymaga .Theme i .Themes;
+     próbki malują zmienne CSS tematu (data-theme), obsługa w js/n_ui.js. */}}
+{{define "themepick"}}
+<div class="f"><label>{{T "theme.label"}}</label>
+  <input type="hidden" data-field="theme" value="{{.Theme}}">
+  <div class="theme-pick" role="radiogroup" aria-label="{{T "theme.label"}}">
+    {{range .Themes}}<button type="button" role="radio" class="tp{{if eq .Key $.Theme}} on{{end}}" data-v="{{.Key}}" aria-checked="{{if eq .Key $.Theme}}true{{else}}false{{end}}">
+      <span class="tp-prev" data-theme="{{.Key}}" aria-hidden="true"><span class="tp-card"><i></i><i></i><b></b></span></span>
+      <span class="tp-name">{{T (printf "theme.%s" .Key)}}</span><small>{{if .Dark}}{{T "theme.dark"}}{{else}}{{T "theme.light"}}{{end}}</small>
+    </button>{{end}}
+  </div>
+  <small>{{T "theme.hint"}}</small>
+</div>
+{{end}}

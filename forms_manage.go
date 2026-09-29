@@ -165,6 +165,14 @@ func FormCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 		if err := db.FormTemplateSetPanelMode(id, user.ID, mode); err != nil {
 			log.Printf("FormCreateAPI: panel mode: %v", err)
 		}
+		// kopia dostaje temat źródła, nowy formularz - domyślny
+		if msg.FromID > 0 {
+			if src, err := db.FormTemplateGetByID(msg.FromID, user.ID); err == nil {
+				if err := db.FormTemplateSetTheme(id, user.ID, ThemeKey(src.Theme)); err != nil {
+					log.Printf("FormCreateAPI: theme: %v", err)
+				}
+			}
+		}
 		if msg.FromID > 0 {
 			src, _ := db.FormTemplateGetByID(msg.FromID, user.ID)
 			if src.AdminNotificationID.Valid {

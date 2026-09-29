@@ -307,6 +307,7 @@ type ReservationOrderStatusVars struct {
 	HiddenName    string
 	LBLStatusText template.HTML
 	BTNOk         string
+	Theme         string // atrybut data-theme (themes.go)
 }
 
 // TODO: split it, too long!
@@ -599,6 +600,7 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 			LBLStatus:     event.OrderedNoteTitle,
 			LBLStatusText: template.HTML(stsText),
 			BTNOk:         "OK",
+			Theme:         themeAttr(event.Theme.String),
 		}
 
 		// nowy wygląd strony statusu zamówienia (redesign, etap 4);
@@ -1173,6 +1175,9 @@ func EventCopyAPI(db *DB, dF string, cs *sessions.CookieStore) func(w http.Respo
 			// kopia wie, z czego powstała - stąd porównanie sprzedaży edycji
 			if perr := db.EventSetPreviousEdition(newEventID, user.ID, ToNI(src.ID)); perr != nil {
 				log.Printf("EventCopyAPI: previous edition: %v", perr)
+			}
+			if terr := db.EventSetTheme(newEventID, user.ID, ThemeKey(src.Theme.String)); terr != nil {
+				log.Printf("EventCopyAPI: theme: %v", terr)
 			}
 		}
 		if err != nil {

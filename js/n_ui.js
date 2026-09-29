@@ -171,7 +171,31 @@
       if (q) q.clipboard.dangerouslyPasteHTML(v);
       else el.innerHTML = v;
     });
+    syncThemePick(sec);
   }
+
+  // Wybór tematu strony gościa (szablon "themepick" w n_base.html): próbki
+  // zapisują klucz w ukrytym polu sekcji, input oznacza sekcję jako zmienioną.
+  function syncThemePick(root) {
+    root.querySelectorAll('.theme-pick').forEach(function (box) {
+      var inp = box.parentNode.querySelector('input[data-field="theme"]');
+      box.querySelectorAll('.tp').forEach(function (b) {
+        var on = b.dataset.v === inp.value;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.theme-pick .tp');
+    if (!b) return;
+    var inp = b.closest('.f').querySelector('input[data-field="theme"]');
+    if (inp.value === b.dataset.v) return;
+    inp.value = b.dataset.v;
+    syncThemePick(b.closest('.f'));
+    inp.dispatchEvent(new Event('input', {bubbles: true}));
+  });
 
   // draftNotice pokazuje na górze strony, że wartości pochodzą ze szkicu.
   function draftNotice(onDiscard) {

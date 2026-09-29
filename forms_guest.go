@@ -90,11 +90,17 @@ func guestError(w http.ResponseWriter, r *http.Request, lang, key, what string) 
 	guestRender(w, lang, nErrorVars{Title: T(lang, key+"_title"), Text: T(lang, key, what)}, "tmpl/n_error.html")
 }
 
+// guestRender - strony bez imprezy/formularza (logowanie, błędy): temat pastel.
 func guestRender(w http.ResponseWriter, lang string, vars interface{}, files ...string) {
+	guestRenderTheme(w, lang, "pastel", vars, files...)
+}
+
+// guestRenderTheme - strona gościa z tematem graficznym imprezy/formularza.
+func guestRenderTheme(w http.ResponseWriter, lang, theme string, vars interface{}, files ...string) {
 	all := append([]string{}, files...)
 	all = append(all, "tmpl/n_guest_base.html")
 	name := strings.TrimPrefix(files[0], "tmpl/")
-	t, err := template.New(name).Funcs(TmplFuncs(lang)).ParseFiles(all...)
+	t, err := template.New(name).Funcs(GuestFuncs(lang, theme)).ParseFiles(all...)
 	if err != nil {
 		log.Printf("guestRender %v: %v", files, err)
 		http.Error(w, "template error", http.StatusInternalServerError)
@@ -186,7 +192,7 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			v.UniqID = hex.EncodeToString(b)
 		}
 
-		guestRender(w, lang, v, "tmpl/n_formpage.html", "tmpl/n_formfield.html")
+		guestRenderTheme(w, lang, templ.Theme, v, "tmpl/n_formpage.html", "tmpl/n_formfield.html")
 	}
 }
 
@@ -408,7 +414,7 @@ func GuestFormDonePage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				v.Text = template.HTML(reallyEmpty(buf.String()))
 			}
 		}
-		guestRender(w, lang, v, "tmpl/n_form_done.html")
+		guestRenderTheme(w, lang, templ.Theme, v, "tmpl/n_form_done.html")
 	}
 }
 

@@ -77,6 +77,10 @@ type nFormVars struct {
 	MoreFields   int
 	AnswersCount int64
 
+	// Theme - temat strony gościa, Themes - lista do wyboru (themes.go)
+	Theme  string
+	Themes []GuestTheme
+
 	// panel informacyjny (form_stats.go)
 	PanelMode   string
 	PanelFields template.JS // pola do menu pastylek w trybie "własny tekst"
@@ -164,6 +168,8 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		CloseDateVal:        dateInputValue(templ.CloseDate.Int64),
 		GuestURL:            fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
 		AnswersCount:        answers,
+		Theme:               ThemeKey(templ.Theme),
+		Themes:              guestThemes,
 	}
 	if v.Status == "" {
 		v.Status = "open"
@@ -195,6 +201,7 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 	if templ.Banner.String != "" {
 		v.SumPage = T(lang, "field.main_banner") + ", " + v.SumPage
 	}
+	v.SumPage = T(lang, "theme.label") + ": " + ThemeName(lang, templ.Theme) + ", " + v.SumPage
 
 	v.SumMailGuest, v.MissMailGuest = notificationName(db, user, templ.NotificationID.Int64, lang)
 	v.SumMailAdmin, v.MissMailAdmin = notificationName(db, user, templ.AdminNotificationID.Int64, lang)
@@ -433,6 +440,10 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 				}
 			}
 			templ.ThankYou = ToNS(html("thankyou"))
+			if err := db.FormTemplateSetTheme(templ.ID, user.ID, ThemeKey(val("theme"))); err != nil {
+				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+				return
+			}
 		case "mail_guest":
 			templ.NotificationID = ToNI(id64("notifications_id_fk"))
 		case "mail_admin":

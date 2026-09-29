@@ -78,7 +78,8 @@
     <div class="sec" data-sec="strona">
       <div class="sec-h"><b>{{T "event.sec.guest_page"}}</b><span>{{.SumGuest}}</span><a class="act" href="#strona">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
-        <div class="f"><label>{{T "field.main_desc"}}</label><div class="ed" data-editor="maindesc">{{.MainDesc}}</div></div>
+        {{template "themepick" .}}
+        <div class="f" style="margin-top:18px"><label>{{T "field.main_desc"}}</label><div class="ed" data-editor="maindesc">{{.MainDesc}}</div></div>
         <div class="f" style="margin-top:14px"><label for="f-mainbanner">{{T "field.main_banner"}}</label><input class="inp" id="f-mainbanner" data-field="mainbanner" value="{{.MainBanner}}"></div>
 
         {{range .RoomTexts}}

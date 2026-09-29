@@ -169,7 +169,7 @@ func GuestOrderPage(db *DB, lang string) func(w http.ResponseWriter, r *http.Req
 			vars.TotalPriceLabel = fmt.Sprintf("%s %s", totalPrice, currency)
 		}
 
-		t, err := template.New("n_order.html").Funcs(TmplFuncs(lng)).
+		t, err := template.New("n_order.html").Funcs(GuestFuncs(lng, event.Theme.String)).
 			ParseFiles("tmpl/n_order.html", "tmpl/n_guest_base.html")
 		if err != nil {
 			log.Printf("GuestOrderPage: template parse: %v", err)

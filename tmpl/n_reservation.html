@@ -28,6 +28,7 @@
           <button class="btn quiet sm" data-zoom="out" aria-label="{{T "guest.zoom_out"}}">−</button>
           <button class="btn quiet sm" data-zoom="in" aria-label="{{T "guest.zoom_in"}}">+</button>
           <button class="btn quiet sm" data-zoom="reset">{{T "guest.zoom_reset"}}</button>
+          <span class="pan-hint">{{T "guest.pan_hint"}}</span>
           <span class="free num">{{$r.SeatsFree}}/{{$r.SeatsTotal}} {{T "guest.free_seats"}}</span>
         </div>
         <svg viewBox="0 0 {{$r.Width}} {{$r.Height}}" role="img" aria-label="{{$r.Name}}">
@@ -37,7 +38,7 @@
           {{else}}
           <rect class="f-object" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="4" fill="{{.Color}}"></rect>
           {{end}}
-          {{if .Label}}<text class="f-label" x="{{.CX}}" y="{{.TextY}}" text-anchor="middle">{{.Label}}</text>{{end}}
+          {{if .Label}}<text class="f-label" x="{{.CX}}" y="{{.TextY}}" text-anchor="middle"{{with .LabelInk}} fill="{{.}}"{{end}}>{{.Label}}</text>{{end}}
           {{end}}
 
           {{range $r.Labels}}
@@ -54,7 +55,7 @@
           {{end}}
 
           {{range $r.Chairs}}
-          <g class="chair" data-number="{{.Number}}" data-room="{{$r.RoomID}}" data-table="{{.Table}}"
+          <g class="chair{{with .State}} st-{{.}}{{end}}" data-number="{{.Number}}" data-room="{{$r.RoomID}}" data-table="{{.Table}}"
              data-price="{{.Price}}" data-currency="{{.Currency}}" data-status="{{.Status}}">
             <rect class="chair-{{.Status}}" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="5">
               <title>{{.Title}}</title>
@@ -67,7 +68,9 @@
         <ul class="legend" aria-label="{{T "guest.legend"}}">
           <li><i class="sw free"></i>{{T "status.free"}}</li>
           <li><i class="sw sel"></i>{{T "guest.selected"}}</li>
-          <li><i class="sw taken"></i>{{T "guest.taken"}}</li>
+          <li class="lg-taken"><i class="sw taken"></i>{{T "guest.taken"}}</li>
+          <li class="lg-classic"><i class="sw ordered"></i>{{T "status.ordered"}}</li>
+          <li class="lg-classic"><i class="sw payed"></i>{{T "status.payed"}}</li>
           <li><i class="sw off"></i>{{T "guest.unavailable"}}</li>
         </ul>
       </div>

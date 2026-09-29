@@ -498,6 +498,10 @@ type nEventVars struct {
 	PreviousEventID int64
 	OtherEvents     []Event
 
+	// Theme - temat strony gościa, Themes - lista do wyboru (themes.go)
+	Theme  string
+	Themes []GuestTheme
+
 	SumBasic, SumDates, SumRoom, SumGuest string
 	SumMailGuest, SumMailAdmin, SumBank   string
 	SumForms, SumRes, SumSettings         string
@@ -656,6 +660,8 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		HideCosts:       event.HideCosts.Bool,
 		Draft:           event.Status.String == "draft",
 		PreviousEventID: event.PreviousEventID.Int64,
+		Theme:           ThemeKey(event.Theme.String),
+		Themes:          guestThemes,
 	}
 
 	// do wyboru poprzedniej edycji: inne imprezy organizacji, od najnowszej
@@ -737,7 +743,7 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 	if event.MainBanner.Valid && event.MainBanner.String != "" {
 		guest = T(lang, "field.main_banner") + ", " + guest
 	}
-	v.SumGuest = guest
+	v.SumGuest = T(lang, "theme.label") + ": " + ThemeName(lang, event.Theme.String) + ", " + guest
 
 	v.SumMailGuest, v.MissMailGuest = notificationName(db, user, event.ThankYouNotificationsID.Int64, lang)
 	v.SumMailAdmin, v.MissMailAdmin = notificationName(db, user, event.AdminNotificationsID.Int64, lang)
@@ -1247,6 +1253,11 @@ func EventSectionSave(db *DB, loc *time.Location, dF string, cs *sessions.Cookie
 			event.OrderedNoteTitle = val("ordered_note_title")
 			event.OrderedNoteText = html("ordered_note_text")
 			event.HowTo = html("how_to")
+			event.Theme = ToNS(ThemeKey(val("theme")))
+			if err := db.EventSetTheme(event.ID, user.ID, event.Theme.String); err != nil {
+				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
+				return
+			}
 		case "mail_guest":
 			event.ThankYouNotificationsID = ToNI(id64("thankyou_notifications_id_fk"))
 		case "mail_admin":

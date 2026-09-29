@@ -175,6 +175,8 @@ func TmplFuncs(lang string) template.FuncMap {
 		"lang":  func() string { return lang },
 		"money": FormatMoney,
 		"date":  func(unix int64) string { return FormatDate(lang, unix) },
+		// temat strony gościa, patrz GuestFuncs (themes.go)
+		"theme": func() string { return "" },
 	}
 }
 

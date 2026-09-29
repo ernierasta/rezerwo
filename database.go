@@ -685,12 +685,6 @@ func (db *DB) RoomGetAllByUserID(userID int64) ([]Room, error) {
 	return rooms, err
 }
 
-func (db *DB) RoomGetUsersAndSharedByUserID(userID int64) ([]Room, error) {
-	rooms := []Room{}
-	err := db.DB.Select(&rooms, `SELECT r.* FROM rooms r LEFT JOIN users_rooms ur ON r.id = ur.rooms_id_fk WHERE ur.users_id_fk = $1 OR r.`, userID)
-	return rooms, err
-}
-
 // TODO: do we need banner_img here? probably separate function for setting banner
 // would be better idea.
 func (db *DB) RoomMod(room *Room) error {

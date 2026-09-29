@@ -17,8 +17,9 @@ go run tools/securecookie.go   # generate AuthenticationKey / EncryptionKey for 
 tools/backup-db                # copy db.sql into backup/
 ```
 
-Tests: only `mail_test.go`, an integration test that sends real mail:
-`MSERVER= MUSER= MPASS= MTO= go test -run TestSendMail`. `database_test.go.off` is intentionally disabled.
+Tests: `go test -skip TestSendMail .` runs the unit tests. `database_test.go` runs DB methods on a fresh temp DB built from `testdata/schema.sql` (production schema dump) — refresh it after every schema migration: `sqlite3 db.sql .schema | grep -v sqlite_sequence > testdata/schema.sql` (keep the header comment).
+`mail_test.go` is an integration test that sends real mail and fails without its env vars:
+`MSERVER= MUSER= MPASS= MTO= go test -run TestSendMail`.
 
 ## Runtime requirements
 

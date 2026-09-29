@@ -127,14 +127,12 @@ func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w 
 			return
 		}
 
-		imbName, imbW, imbH := parseBanner(event.MainBanner.String)
-
 		vars := nGuestVars{
 			Title:           event.Name,
 			EventID:         event.ID,
 			EventName:       event.Name,
 			When:            FormatDate(lng, event.Date),
-			Banner:          template.HTML(getImgHTML(imbName, user.URL, MEDIAROOT, imbW, imbH)),
+			Banner:          ParseBanner(event.MainBanner.String).ImgHTML(user.URL),
 			Desc:            template.HTML(event.MainDesc.String),
 			HowTo:           template.HTML(event.HowTo),
 			DefaultPrice:    event.DefaultPrice,
@@ -159,8 +157,7 @@ func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w 
 				gr.Desc = template.HTML(roomDescs[i])
 			}
 			if event.MainBanner.String == "" && i < len(roomBanners) {
-				name, bw, bh := parseBanner(roomBanners[i])
-				gr.Banner = template.HTML(getImgHTML(name, user.URL, MEDIAROOT, bw, bh))
+				gr.Banner = ParseBanner(roomBanners[i]).ImgHTML(user.URL)
 			}
 			vars.Rooms = append(vars.Rooms, gr)
 		}

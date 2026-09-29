@@ -25,23 +25,31 @@ import (
 
 // mailVar - zmienna do wstawienia w treść maila imprezy. Code to akcja bez
 // nawiasów, Label klucz tłumaczenia. InSubject: czy ma sens w temacie.
+// Account: akcja bierze nazwę konta bankowego ({{.PayInfo "Konto"}}).
 type mailVar struct {
 	Code      string `json:"code"`
 	Label     string `json:"label"`
 	InSubject bool   `json:"subject"`
+	Account   bool   `json:"account,omitempty"`
 }
 
 var eventMailVars = []mailVar{
-	{".Name", "mail.var.name", true},
-	{".Surname", "mail.var.surname", true},
-	{".Email", "mail.var.email", false},
-	{".Phone", "mail.var.phone", false},
-	{".Notes", "mail.var.notes", false},
-	{".Sits", "mail.var.sits", true},
-	{".Rooms", "mail.var.rooms", true},
-	{".TotalPrice", "mail.var.total", true},
-	{".EventName", "mail.var.event", true},
-	{".EventDate", "mail.var.event_date", true},
+	{".Name", "mail.var.name", true, false},
+	{".Surname", "mail.var.surname", true, false},
+	{".Email", "mail.var.email", false, false},
+	{".Phone", "mail.var.phone", false, false},
+	{".Notes", "mail.var.notes", false, false},
+	{".Sits", "mail.var.sits", true, false},
+	{".Rooms", "mail.var.rooms", true, false},
+	{".TotalPrice", "mail.var.total", true, false},
+	{".EventName", "mail.var.event", true, false},
+	{".EventDate", "mail.var.event_date", true, false},
+	// dane do przelewu dla tych, którzy nie zapłacą kodem QR (pay.go)
+	{".PayInfo", "mail.var.pay_info", false, true},
+	{".PayAccount", "mail.var.pay_account", false, true},
+	{".PayIBAN", "mail.var.pay_iban", false, true},
+	{".PayVS", "mail.var.pay_vs", false, true},
+	{".PayMessage", "mail.var.pay_message", false, true},
 }
 
 // complete uzupełnia OrderFuncs tak, żeby obie ścieżki wysyłki dawały te same
@@ -88,7 +96,7 @@ func (o *OrderFuncs) complete(db *DB) {
 		o.Rooms = strings.Join(uniqueStrings(o.RoomsL), ", ")
 	}
 
-	if o.EventID != 0 && (o.EventName == "" || o.EventDate == "") {
+	if o.EventID != 0 {
 		event, err := db.EventGetByID(o.EventID)
 		if err != nil {
 			log.Printf("OrderFuncs.complete: event %d: %v", o.EventID, err)
@@ -97,7 +105,13 @@ func (o *OrderFuncs) complete(db *DB) {
 		if o.EventName == "" {
 			o.EventName = event.Name
 		}
-		o.EventDate = FormatDate(event.Language.String, event.Date)
+		if o.EventDate == "" {
+			o.EventDate = FormatDate(event.Language.String, event.Date)
+		}
+		if o.Lang == "" {
+			o.Lang = event.Language.String
+		}
+		o.payPrefix = event.PayMessage
 	}
 }
 
@@ -248,6 +262,7 @@ func sampleOrderFuncs(db *DB, user User, lang string, mailID int64, preview bool
 		User:        user,
 		NameSurname: "podglad",
 		Preview:     preview,
+		Lang:        lang,
 	}
 	if of.EventName == "" {
 		of.EventName = T(lang, "mail.sample.event")

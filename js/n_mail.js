@@ -23,64 +23,16 @@
   if (mailPage && mailPage.dataset.vars) {
     try { meta = JSON.parse(mailPage.dataset.vars); } catch (e) { /* zostaje puste */ }
   }
+  var V = RZ.vars; // pastylki danych zamówienia (n_vars.js)
 
   var relatedEl = document.getElementById('f-related');
   function isEvents() { return !relatedEl || relatedEl.value === 'events'; }
-
-  // --- pastylka zmiennej -----------------------------------------------------
-
-  // {{.Name}}, {{ .Surname }}, {{.QRPayMail "Konto"}}, {{.PDF "opis"}}
-  var ACTION = /\{\{\s*(\.[A-Za-z]+)(?:\s+("(?:[^"\\]|\\.)*"))?\s*\}\}/g;
-
-  function simpleVar(code) {
-    for (var i = 0; i < meta.vars.length; i++) {
-      if (meta.vars[i].code === code) return meta.vars[i];
-    }
-    return null;
-  }
-
-  function hasAccount(name) { return meta.accounts.indexOf(name) >= 0; }
-
-  function chipLabel(code, arg) {
-    if (code === '.QRPayMail') {
-      return RZ.t('mail.qr') + ': ' + (hasAccount(arg) ? arg : RZ.t('mail.qr_choose'));
-    }
-    var v = simpleVar(code);
-    return v ? RZ.t(v.label) : code;
-  }
-
-  function actionText(code, arg) {
-    // JSON.stringify daje literał, który Go przyjmuje jako napis w szablonie
-    return '{{' + code + (arg !== undefined && arg !== null ? ' ' + JSON.stringify(arg) : '') + '}}';
-  }
 
   var editor = null;
   var editorEl = document.getElementById('mail-editor');
 
   if (editorEl && typeof Quill !== 'undefined') {
-    var Embed = Quill.import('blots/embed');
-
-    class MailVar extends Embed {
-      static create(value) {
-        var node = super.create();
-        node.dataset.code = value.code;
-        if (value.arg !== undefined && value.arg !== null) node.dataset.arg = value.arg;
-        node.textContent = chipLabel(value.code, value.arg);
-        if (value.code === '.QRPayMail') {
-          node.classList.add('qr');
-          if (!hasAccount(value.arg)) node.classList.add('bad');
-        }
-        return node;
-      }
-      static value(node) {
-        return {code: node.dataset.code, arg: node.dataset.arg};
-      }
-    }
-    MailVar.blotName = 'mailvar';
-    MailVar.tagName = 'span';
-    MailVar.className = 'mvar';
-    Quill.register(MailVar);
-
+    V.setup(meta, '.QRPayMail');
     editor = new Quill(editorEl, {
       modules: RZ.quillModules({
         container: [
@@ -94,121 +46,13 @@
           ['clean'],
           ['mailvar']
         ],
-        handlers: {
-          mailvar: function () {
-            var range = editor.getSelection(true);
-            openVarMenu(varButton, function (code, arg) { insertChip(range.index, code, arg); });
-          }
-        }
+        handlers: {mailvar: V.toolbarHandler(function () { return editor; })}
       }),
       theme: 'snow'
     });
   }
 
-  var varButton = page.querySelector('.ql-mailvar');
-
-  function insertChip(index, code, arg) {
-    editor.insertEmbed(index, 'mailvar', {code: code, arg: arg}, 'user');
-    editor.setSelection(index + 1, 0, 'user');
-  }
-
-  // Kliknięcie w pastylkę QR pozwala zmienić konto.
-  if (editor) {
-    editor.root.addEventListener('click', function (e) {
-      var node = e.target.closest('.mvar.qr');
-      if (!node) return;
-      var blot = Quill.find(node);
-      if (!blot || blot === node) return;
-      var index = editor.getIndex(blot);
-      openAccountMenu(node, function (name) {
-        editor.deleteText(index, 1, 'user');
-        insertChip(index, '.QRPayMail', name);
-      });
-    });
-  }
-
-  // --- menu wstawiania -------------------------------------------------------
-
-  var menu = null;
-
-  function closeMenu() {
-    if (menu) menu.remove();
-    menu = null;
-    document.removeEventListener('mousedown', outside, true);
-    document.removeEventListener('keydown', onEsc, true);
-  }
-  function outside(e) { if (menu && !menu.contains(e.target)) closeMenu(); }
-  function onEsc(e) { if (e.key === 'Escape') closeMenu(); }
-
-  // items: [{label, action}] albo {sep: true} albo {note: 'tekst'}
-  function openMenu(anchor, items) {
-    closeMenu();
-    menu = document.createElement('div');
-    menu.className = 'mv-menu';
-    menu.setAttribute('role', 'menu');
-    items.forEach(function (it) {
-      if (it.sep) { menu.appendChild(document.createElement('hr')); return; }
-      if (it.note) {
-        var p = document.createElement('p');
-        p.className = 'muted';
-        p.textContent = it.note;
-        menu.appendChild(p);
-        return;
-      }
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.setAttribute('role', 'menuitem');
-      b.textContent = it.label;
-      b.addEventListener('mousedown', function (e) { e.preventDefault(); });
-      b.addEventListener('click', function () {
-        if (it.keepOpen) { it.action(); return; }
-        closeMenu();
-        it.action();
-      });
-      menu.appendChild(b);
-    });
-    document.body.appendChild(menu);
-
-    var r = anchor.getBoundingClientRect();
-    var left = Math.min(r.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - menu.offsetWidth - 8);
-    menu.style.left = Math.max(8, left) + 'px';
-    menu.style.top = (r.bottom + window.scrollY + 4) + 'px';
-
-    setTimeout(function () {
-      document.addEventListener('mousedown', outside, true);
-      document.addEventListener('keydown', onEsc, true);
-    }, 0);
-    var first = menu.querySelector('button');
-    if (first) first.focus();
-  }
-
-  function accountItems(pick) {
-    if (!meta.accounts.length) return [{note: RZ.t('mail.no_accounts')}];
-    return meta.accounts.map(function (name) {
-      return {label: name, action: function () { pick(name); }};
-    });
-  }
-
-  function openAccountMenu(anchor, pick) { openMenu(anchor, accountItems(pick)); }
-
-  function openVarMenu(anchor, pick, subjectOnly) {
-    var items = meta.vars
-      .filter(function (v) { return !subjectOnly || v.subject; })
-      .map(function (v) {
-        return {label: RZ.t(v.label), action: function () { pick(v.code); }};
-      });
-    if (!subjectOnly) {
-      items.push({sep: true});
-      items.push({
-        label: RZ.t('mail.qr') + ' ›',
-        keepOpen: true,
-        action: function () {
-          openAccountMenu(anchor, function (name) { pick('.QRPayMail', name); });
-        }
-      });
-    }
-    openMenu(anchor, items);
-  }
+  var varButton = editor ? V.attach(editor) : null;
 
   // --- temat: [Etykieta] <-> {{.Code}} --------------------------------------
 
@@ -216,14 +60,15 @@
 
   function subjectToEditor(s) {
     if (!isEvents()) return s;
-    return s.replace(ACTION, function (all, code, arg) {
-      var v = arg ? null : simpleVar(code);
+    return s.replace(/\{\{\s*(\.[A-Za-z]+)\s*\}\}/g, function (all, code) {
+      var v = V.simpleVar(code);
       return v ? '[' + RZ.t(v.label) + ']' : all;
     });
   }
 
   function subjectFromEditor(s) {
     meta.vars.forEach(function (v) {
+      if (v.account) return;
       s = s.split('[' + RZ.t(v.label) + ']').join('{{' + v.code + '}}');
     });
     return s;
@@ -239,8 +84,8 @@
       var val0 = subjectEl.value;
       var start = subjectCaret ? subjectEl.selectionStart : val0.length;
       var end = subjectCaret ? subjectEl.selectionEnd : val0.length;
-      openVarMenu(subjectVar, function (code) {
-        var tag = '[' + RZ.t(simpleVar(code).label) + ']';
+      V.openVarMenu(subjectVar, function (code) {
+        var tag = '[' + RZ.t(V.simpleVar(code).label) + ']';
         var val = subjectEl.value;
         if (start > 0 && !/\s/.test(val.charAt(start - 1))) tag = ' ' + tag;
         if (end < val.length && !/\s/.test(val.charAt(end))) tag = tag + ' ';
@@ -265,71 +110,15 @@
     pdfInfoF.hidden = !on;
   }
 
-  function unquote(arg) {
-    try { return JSON.parse(arg); } catch (e) { return arg.slice(1, -1); }
-  }
-
-  // Zamienia znane akcje w tekście na pastylki. Działa na węzłach tekstu, więc
-  // akcje w atrybutach (np. w linku) i nieznane akcje zostają jak były.
   function toEditor(html) {
-    var tpl = document.createElement('template');
-    tpl.innerHTML = html || '';
-    var pdf = null;
-    if (!isEvents()) return {html: tpl.innerHTML, pdf: pdf};
-
-    var walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT);
-    var texts = [];
-    while (walker.nextNode()) texts.push(walker.currentNode);
-
-    texts.forEach(function (node) {
-      var s = node.data;
-      ACTION.lastIndex = 0;
-      if (!ACTION.test(s)) return;
-      ACTION.lastIndex = 0;
-
-      var frag = document.createDocumentFragment();
-      var last = 0, m;
-      while ((m = ACTION.exec(s)) !== null) {
-        var code = m[1], arg = m[2] ? unquote(m[2]) : null, chip = null;
-        if (code === '.PDF' && arg !== null) {
-          if (pdf === null) pdf = arg;
-          chip = '';
-        } else if ((code === '.QRPayMail' || code === '.QRPay') && arg !== null) {
-          chip = {code: '.QRPayMail', arg: arg};
-        } else if (arg === null && simpleVar(code)) {
-          chip = {code: code};
-        }
-        if (chip === null) continue;
-
-        frag.appendChild(document.createTextNode(s.slice(last, m.index)));
-        if (chip) {
-          var span = document.createElement('span');
-          span.className = 'mvar';
-          span.dataset.code = chip.code;
-          if (chip.arg !== undefined) span.dataset.arg = chip.arg;
-          span.textContent = chipLabel(chip.code, chip.arg);
-          frag.appendChild(span);
-        }
-        last = m.index + m[0].length;
-      }
-      frag.appendChild(document.createTextNode(s.slice(last)));
-      node.parentNode.replaceChild(frag, node);
-    });
-    return {html: tpl.innerHTML, pdf: pdf};
+    if (!isEvents()) return {html: html || '', pdf: null};
+    return V.toEditor(html, true);
   }
 
-  // Pastylki na akcje. Znaczniki podmieniamy dopiero po innerHTML, żeby nazwa
-  // konta z "&" czy "<" nie została zamieniona na encję wewnątrz akcji.
   function fromEditor() {
-    var root = RZ.editorDOM(editor.root.cloneNode(true));
-    var actions = [];
-    root.querySelectorAll('.mvar').forEach(function (node) {
-      actions.push(actionText(node.dataset.code, node.dataset.arg));
-      node.replaceWith(document.createTextNode('⁣MV' + (actions.length - 1) + '⁣'));
-    });
-    var html = root.innerHTML.replace(/⁣MV(\d+)⁣/g, function (all, i) { return actions[+i]; });
+    var html = V.fromEditor(editor);
     if (pdfBox && pdfBox.checked && isEvents()) {
-      html += actionText('.PDF', pdfInfo.value.trim());
+      html += V.actionText('.PDF', pdfInfo.value.trim());
     }
     return html;
   }
@@ -517,4 +306,97 @@
     document.body.appendChild(back);
     close.focus();
   }
+})();
+
+// Konto bankowe: czeski numer konta (předčíslí-číslo) i kod banku składają
+// się w IBAN, a wpisany IBAN rozkłada się z powrotem na numer i kod banku.
+// Zapisywany jest tylko IBAN (z ewentualnym "+BIC" na końcu).
+(function () {
+  'use strict';
+
+  var ibanEl = document.getElementById('f-iban');
+  var numEl = document.getElementById('f-cz-number');
+  var bankEl = document.getElementById('f-cz-bank');
+  var hint = document.getElementById('cz-hint');
+  if (!ibanEl || !numEl || !bankEl) return;
+
+  function digits(s) { return /^\d+$/.test(s); }
+
+  // mod 97 na długim ciągu cyfr, kawałkami (nie mieści się w liczbie JS)
+  function mod97(s) {
+    var r = 0;
+    for (var i = 0; i < s.length; i += 7) r = parseInt(r + s.substr(i, 7), 10) % 97;
+    return r;
+  }
+
+  // suma kontrolna czeskiego numeru konta: wagi od prawej 1,2,4,8,5,10,9,7,3,6
+  function czMod11(s) {
+    var w = [1, 2, 4, 8, 5, 10, 9, 7, 3, 6], sum = 0;
+    for (var i = 0; i < s.length; i++) sum += parseInt(s.charAt(s.length - 1 - i), 10) * w[i];
+    return sum % 11 === 0;
+  }
+
+  function pad(s, n) { while (s.length < n) s = '0' + s; return s; }
+
+  // "19-2000145399", "0800" -> "CZ6508000000192000145399", albo "" i powód
+  function toIBAN(acc, bank) {
+    acc = acc.replace(/\s+/g, '');
+    var parts = acc.split('-');
+    var prefix = parts.length === 2 ? parts[0] : '';
+    var number = parts.length === 2 ? parts[1] : parts[0];
+    if (parts.length > 2 || (prefix && (!digits(prefix) || prefix.length > 6)) ||
+        !digits(number) || number.length < 2 || number.length > 10) return {err: 'account.cz_bad_number'};
+    if (!/^\d{4}$/.test(bank)) return {err: 'account.cz_bad_bank'};
+    if ((prefix && !czMod11(prefix)) || !czMod11(number)) return {err: 'account.cz_bad_checksum'};
+    var bban = bank + pad(prefix, 6) + pad(number, 10);
+    var check = 98 - mod97(bban + '123500');
+    return {iban: 'CZ' + pad(String(check), 2) + bban};
+  }
+
+  // IBAN (bez spacji, bez +BIC) -> numer i kod banku; null dla nie-czeskich
+  function fromIBAN(iban) {
+    if (!/^CZ\d{22}$/.test(iban)) return null;
+    var bank = iban.substr(4, 4);
+    var prefix = iban.substr(8, 6).replace(/^0+/, '');
+    var number = iban.substr(14).replace(/^0+/, '');
+    return {number: (prefix ? prefix + '-' : '') + number, bank: bank};
+  }
+
+  function splitIBAN() {
+    var v = ibanEl.value.replace(/\s+/g, '').toUpperCase();
+    var i = v.indexOf('+');
+    return i < 0 ? {iban: v, bic: ''} : {iban: v.slice(0, i), bic: v.slice(i)};
+  }
+
+  function setHint(key) {
+    if (!hint) return;
+    hint.textContent = RZ.t(key || 'account.cz_hint');
+    hint.classList.toggle('bad', !!key);
+  }
+
+  function fromCZ() {
+    var acc = numEl.value.trim(), bank = bankEl.value.trim();
+    if (!acc && !bank) { setHint(); return; }
+    if (!acc || bank.length < 4) { setHint(); return; }
+    var r = toIBAN(acc, bank);
+    if (r.err) { setHint(r.err); return; }
+    setHint();
+    ibanEl.value = r.iban + splitIBAN().bic;
+    ibanEl.dispatchEvent(new Event('input', {bubbles: true})); // szkic
+  }
+
+  function fromIBANField() {
+    var cz = fromIBAN(splitIBAN().iban);
+    if (!cz) return;
+    numEl.value = cz.number;
+    bankEl.value = cz.bank;
+    setHint();
+  }
+
+  numEl.addEventListener('input', fromCZ);
+  bankEl.addEventListener('input', fromCZ);
+  ibanEl.addEventListener('input', function (e) { if (e.isTrusted) fromIBANField(); });
+  fromIBANField();
+  // szkic z przeglądarki podmienia IBAN po wczytaniu tłumaczeń
+  RZ.ready.then(fromIBANField);
 })();

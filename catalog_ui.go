@@ -246,18 +246,16 @@ func namedBody(w http.ResponseWriter, r *http.Request) (string, bool) {
 
 type nAccountVars struct {
 	NPage
-	ID          int64
-	Name        string
-	IBAN        string
-	Recipient   string
-	Bank        string
-	Currency    string
-	Message     string
-	VarSymbol   string
-	AmountField string
-	UsedBy      []string
-	Back        string
-	BackLabel   string
+	ID        int64
+	Name      string
+	IBAN      string
+	Recipient string
+	Bank      string
+	Currency  string
+	VarSymbol string
+	UsedBy    []string
+	Back      string
+	BackLabel string
 }
 
 // AccountPage - /admin/accounts/{id}
@@ -280,16 +278,14 @@ func AccountPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 				Crumb:   acc.Name,
 				OrgName: orgName(user),
 			},
-			ID:          acc.ID,
-			Name:        acc.Name,
-			IBAN:        acc.IBAN,
-			Recipient:   acc.RecipientName.String,
-			Bank:        acc.BankID.String,
-			Currency:    acc.Currency,
-			Message:     acc.Message.String,
-			VarSymbol:   varsym,
-			AmountField: acc.AmountField.String,
-			UsedBy:      accountUsedBy(db, user, acc.ID),
+			ID:        acc.ID,
+			Name:      acc.Name,
+			IBAN:      acc.IBAN,
+			Recipient: acc.RecipientName.String,
+			Bank:      acc.BankID.String,
+			Currency:  acc.Currency,
+			VarSymbol: varsym,
+			UsedBy:    accountUsedBy(db, user, acc.ID),
 		}
 		vars.Back, vars.BackLabel = backLink(r, lang, "catalog.accounts")
 		nRender(w, lang, vars, "tmpl/n_account.html")
@@ -348,14 +344,12 @@ func accountUsedBy(db *DB, user User, accID int64) []string {
 }
 
 type nAccountMsg struct {
-	Name        string `json:"name"`
-	IBAN        string `json:"iban"`
-	Recipient   string `json:"recipient"`
-	Bank        string `json:"bank"`
-	Currency    string `json:"currency"`
-	Message     string `json:"message"`
-	VarSymbol   string `json:"varsymbol"`
-	AmountField string `json:"amountfield"`
+	Name      string `json:"name"`
+	IBAN      string `json:"iban"`
+	Recipient string `json:"recipient"`
+	Bank      string `json:"bank"`
+	Currency  string `json:"currency"`
+	VarSymbol string `json:"varsymbol"`
 }
 
 // AccountSaveAPI - POST /api/accounts/{id}
@@ -384,8 +378,6 @@ func AccountSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		acc.IBAN = strings.TrimSpace(m.IBAN)
 		acc.RecipientName = ToNS(strings.TrimSpace(m.Recipient))
 		acc.BankID = ToNS(strings.TrimSpace(m.Bank))
-		acc.Message = ToNS(strings.TrimSpace(m.Message))
-		acc.AmountField = ToNS(strings.TrimSpace(m.AmountField))
 		if c := strings.TrimSpace(m.Currency); c != "" {
 			acc.Currency = c
 		}
@@ -409,6 +401,8 @@ func AccountSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		resp := map[string]interface{}{"msg": "saved", "title": acc.Name}
 		if acc.IBAN == "" {
 			resp["warning"] = T(lang, "account.no_iban")
+		} else if iban, _ := splitIBAN(acc.IBAN); !ibanValid(iban) {
+			resp["warning"] = T(lang, "account.bad_iban")
 		}
 		jsonMsg(w, http.StatusOK, resp)
 	}

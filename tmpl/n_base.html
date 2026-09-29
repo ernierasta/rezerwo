@@ -43,3 +43,34 @@
   <small>{{T "theme.hint"}}</small>
 </div>
 {{end}}
+
+{{/* Wybór bannera (banner.go, nBannerPick): wgranie pliku do katalogu
+     organizacji albo wybór wgranego, miniaturka i szerokość. W ukrytym polu
+     jest wartość do bazy ("plik.png" albo "plik.png;50%"), resztę rysuje
+     n_ui.js (syncBannerPick). */}}
+{{define "bannerpick"}}
+<div class="f bpick" data-base="{{.Base}}"><label>{{.Label}}</label>
+  <input type="hidden" data-field="{{.Field}}" value="{{.Value}}">
+  <div class="bp-box">
+    <div class="bp-thumb"><img alt="" hidden><span class="bp-none">{{T "banner.none"}}</span></div>
+    <div class="bp-ctl">
+      <div class="bp-btns">
+        <button type="button" class="btn quiet sm bp-up">{{T "banner.upload"}}</button>
+        <button type="button" class="btn quiet sm bp-choose">{{T "banner.choose"}}</button>
+        <button type="button" class="link bp-del">{{T "banner.remove"}}</button>
+      </div>
+      <div class="bp-w"><span>{{T "banner.width"}}</span>
+        <div class="seg" role="radiogroup" aria-label="{{T "banner.width"}}">
+          <button type="button" data-w="100">{{T "banner.auto"}}</button>
+          <button type="button" data-w="75">75%</button>
+          <button type="button" data-w="50">50%</button>
+          <button type="button" data-w="33">33%</button>
+        </div>
+      </div>
+      <small class="bp-name"></small>
+      <small class="bp-hint">{{T "banner.hint"}}</small>
+    </div>
+  </div>
+  <input type="file" class="bp-file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+</div>
+{{end}}

@@ -3,7 +3,7 @@
      data-send="{{.SendURL}}" data-draft="{{.DraftKey}}" data-currency="{{.Currency}}" data-lang="{{.Lang}}">
 
   <header class="gform-h">
-    {{if .Banner}}<div class="banner"><img src="{{.Banner}}" alt=""></div>{{end}}
+    {{if .Banner}}<div class="banner">{{.Banner}}</div>{{end}}
     <h1>{{.FormName}}</h1>
     {{if .CloseNote}}<p class="when">{{.CloseNote}}</p>{{end}}
     {{if .HowTo}}<div class="desc">{{.HowTo}}</div>{{end}}

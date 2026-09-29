@@ -86,6 +86,7 @@ func main() {
 	rtr.HandleFunc("/api/mails/{id:[0-9]+}", MailSaveAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/mails/sources", MailSourcesAPI(db, cookieStore)).Methods("GET")
 	rtr.HandleFunc("/api/mails/preview", MailSourcePreviewAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/media/banners", BannerFilesAPI(db, cookieStore)).Methods("GET", "POST")
 	rtr.HandleFunc("/api/mails/{id:[0-9]+}/preview", MailPreviewAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/mails/{id:[0-9]+}/test", MailTestAPI(db, *mailConf, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/accounts", AccountCreateAPI(db, cookieStore)).Methods("POST")
@@ -255,47 +256,6 @@ func designerAPIAuth(w http.ResponseWriter, r *http.Request, db *DB, cs *session
 		return false
 	}
 	return true
-}
-
-// parseBanner separates info from db into:
-// filename, width, height
-// in db it is like:
-// myfile.png;400;300 or just myfile.png (size is not used for displaying,
-// banner is always scaled to page width)
-func parseBanner(dbstring string) (string, int, int) {
-	if dbstring == "" {
-		return "", -1, -1
-	}
-	ss := strings.Split(dbstring, ";")
-	if len(ss) == 1 {
-		return strings.TrimSpace(ss[0]), -1, -1
-	}
-	if len(ss) != 3 {
-		log.Printf("parseBanner: wrong nr of banner data, len:%d, from db:%v", len(ss), dbstring)
-		return "", -1, -1
-	}
-	w, err := strconv.Atoi(ss[1])
-	if err != nil {
-		log.Print("parseBanner: wrong img width info in db(can't convert to int):", err)
-	}
-	h, err := strconv.Atoi(ss[2])
-	if err != nil {
-		log.Print("parseBanner: wrong img height info in db(can't convert to int):", err)
-	}
-	return ss[0], w, h
-}
-
-// path is unix specific here
-func getImgHTML(imgName, userName, mediaRootPath string, w, h int) string {
-	if imgName == "" {
-		return ""
-	}
-	//<img id="banner_img" src="/%s/%s/%s" width="%d" height="%d">
-	return fmt.Sprintf(`<img id="banner_img" src="/%s/%s/%s">`,
-		mediaRootPath,
-		userName,
-		imgName,
-	)
 }
 
 type ReservationOrderStatusVars struct {
@@ -1861,7 +1821,7 @@ func (i *FormFuncs) MTotal(FormFieldName string) string {
 }
 
 func (i *FormFuncs) generateQRimg(accountName string) (string, string) {
-	return GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, "", "")
+	return GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, "", "", i.Template.PayMessage)
 }
 
 func (i *FormFuncs) QRPay(accountName string) template.HTML {
@@ -1873,7 +1833,7 @@ func (i *FormFuncs) QRPay(accountName string) template.HTML {
 // customize imgPrefix (avoid using the same qrcode file if multiple QRImages for one form),
 // customize field name (again, when multiple QRcodes should be generated).
 func (i *FormFuncs) QRPayFieldPrefix(accountName, field, imgPrefix string) template.HTML {
-	_, imgpath := GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, field, imgPrefix)
+	_, imgpath := GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, field, imgPrefix, i.Template.PayMessage)
 	return template.HTML(fmt.Sprintf(`<img width="200" src="/%s" alt="QRError">`, imgpath))
 }
 
@@ -1888,7 +1848,7 @@ func (i *FormFuncs) QRPayMail(accountName string) template.HTML {
 
 // QRPayMailFieldPrefix the same as QRPayPrefixField but for mail notifications
 func (i *FormFuncs) QRPayMailFieldPrefix(accountName, field, imgPrefix string) template.HTML {
-	imgname, imgpath := GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, field, imgPrefix)
+	imgname, imgpath := GenerateQRimg(accountName, i.DB, i.User, i.Template, i.NameSurname, "", i.FormID, field, imgPrefix, i.Template.PayMessage)
 	i.EmbeddedImgs = append(i.EmbeddedImgs, EmbImg{
 		NamePath: imgpath,
 		CID:      getCID(imgname, i.User.URL),
@@ -1919,11 +1879,17 @@ type OrderFuncs struct {
 	// bez generowania biletów PDF (zaznaczamy tylko, że byłyby w załączniku)
 	Preview     bool
 	PDFAttached bool
+
+	// Lang - język etykiet w danych do przelewu (.PayInfo), język imprezy
+	Lang string
+
+	// payPrefix - początek wiadomości dla odbiorcy z imprezy (complete)
+	payPrefix string
 }
 
 func (o *OrderFuncs) generateQRimg(accountName string) (string, string) {
 	etp := FormTemplate{}
-	return GenerateQRimg(accountName, o.DB, o.User, etp, o.NameSurname, o.TotalPrice, -1, "", "")
+	return GenerateQRimg(accountName, o.DB, o.User, etp, o.NameSurname, o.TotalPrice, -1, "", "", o.payPrefix)
 }
 
 func (o *OrderFuncs) QRPay(accountName string) template.HTML {
@@ -1975,7 +1941,8 @@ func (o *OrderFuncs) PDF(info string) template.HTML {
 // Options: when TotalPrice is given it is used, otherwise FormID need to be provided to determine money field name.
 // If FieldName is given, it is used as FieldName or display name failback, but FormID is still needed.
 // Function also handles multiplication field well (extracts sum from it).
-func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurname, TotalPrice string, FormID int64, FieldName string, ImgPrefix string) (string, string) {
+// msgPrefix - początek wiadomości dla odbiorcy (z imprezy albo formularza).
+func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurname, TotalPrice string, FormID int64, FieldName string, ImgPrefix string, msgPrefix string) (string, string) {
 	ba, err := db.BankAccountGetByName(accountName, u.ID)
 	if err != nil {
 		log.Printf("GenerateQRimg: no account with this name found, name given by admin: %q, userID: %d(%s), %v", accountName, u.ID, u.URL, err)
@@ -2020,7 +1987,7 @@ func GenerateQRimg(accountName string, db *DB, u User, t FormTemplate, NameSurna
 	if err != nil {
 		log.Printf("GenerateQRimg: error converting money amount to int64 %q, %v", am, err)
 	}
-	qr := NewQRPayment(ba.IBAN, ba.RecipientName.String, float64(ami), ba.Currency, ba.Message.String+"_"+NameSurname, ba.VarSymbol.Int64)
+	qr := NewQRPayment(ba.IBAN, ba.RecipientName.String, float64(ami), ba.Currency, payMessage(msgPrefix, NameSurname), ba.VarSymbol.Int64)
 	log.Println(ba)
 	err = qr.GenCode(imgpath)
 	if err != nil {

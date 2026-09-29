@@ -7,7 +7,7 @@
   <div class="dh">
     <h3>{{.Name}}</h3>
     <div class="r">
-      <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "common.guest_page"}}</a>
+      <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "common.res_preview"}}</a>
       <button class="btn quiet" data-copy-event="{{.ID}}">{{T "common.copy"}}</button>
     </div>
   </div>
@@ -74,29 +74,63 @@
       </div>
     </div>
 
-    <!-- Strona dla gości -->
+    <!-- Wygląd (strona dla gości) -->
     <div class="sec" data-sec="strona">
       <div class="sec-h"><b>{{T "event.sec.guest_page"}}</b><span>{{.SumGuest}}</span><a class="act" href="#strona">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
-        {{template "themepick" .}}
-        <div class="f" style="margin-top:18px"><label>{{T "field.main_desc"}}</label><div class="ed" data-editor="maindesc">{{.MainDesc}}</div></div>
-        <div class="f" style="margin-top:14px"><label for="f-mainbanner">{{T "field.main_banner"}}</label><input class="inp" id="f-mainbanner" data-field="mainbanner" value="{{.MainBanner}}"></div>
+        <div class="grp">
+          {{template "themepick" .}}
+        </div>
 
-        {{range .RoomTexts}}
-        <div class="f" style="margin-top:18px"><label>{{.DescLabel}}</label><div class="ed" data-editor="{{.DescField}}">{{.Desc}}</div></div>
-        <div class="f" style="margin-top:14px"><label>{{.BannerLabel}}</label><input class="inp" data-field="{{.BannerField}}" value="{{.Banner}}"></div>
+        <div class="grp">
+          <h5 class="grp-h">{{T "event.grp.header"}}</h5>
+          <div class="f"><label>{{T "field.main_desc"}}</label><div class="ed" data-editor="maindesc">{{.MainDesc}}</div></div>
+          {{template "bannerpick" .MainBanner}}
+        </div>
+
+        {{if .RoomTexts}}
+        <div class="grp">
+          <h5 class="grp-h">{{T "event.grp.rooms"}}</h5>
+          {{range .RoomTexts}}
+          <div class="pair">
+            <h6>{{.Title}}</h6>
+            <div class="f"><label>{{.DescLabel}}</label><div class="ed" data-editor="{{.DescField}}">{{.Desc}}</div></div>
+            {{template "bannerpick" .Banner}}
+          </div>
+          {{end}}
+          <small class="grp-hint">{{T "event.grp.room_banner_hint"}}</small>
+        </div>
         {{end}}
 
-        <div class="f" style="margin-top:18px"><label>{{T "field.order_howto"}}</label><div class="ed" data-editor="order_howto">{{.OrderHowto}}</div></div>
-        <div class="f" style="margin-top:14px"><label for="f-ondesc">{{T "field.order_notes_desc"}}</label><input class="inp" id="f-ondesc" data-field="order_notes_desc" value="{{.OrderNotesDesc}}"></div>
+        <div class="grp">
+          <h5 class="grp-h">{{T "event.grp.order"}}</h5>
+          <div class="f"><label>{{T "field.order_howto"}}</label><div class="ed" data-editor="order_howto">{{.OrderHowto}}</div></div>
+          <div class="f"><label for="f-ondesc">{{T "field.order_notes_desc"}}</label><input class="inp" id="f-ondesc" data-field="order_notes_desc" value="{{.OrderNotesDesc}}"></div>
+        </div>
 
-        <div class="f" style="margin-top:18px"><label for="f-nostitle">{{T "field.no_sits_title"}}</label><input class="inp" id="f-nostitle" data-field="no_sits_selected_title" value="{{.NoSitsTitle}}"></div>
-        <div class="f" style="margin-top:10px"><label>{{T "field.no_sits_text"}}</label><div class="ed" data-editor="no_sits_selected_text">{{.NoSitsText}}</div></div>
+        <div class="grp">
+          <h5 class="grp-h">{{T "event.grp.messages"}}</h5>
+          <div class="pair">
+            <h6>{{T "event.grp.no_sits"}}</h6>
+            <small class="pair-hint">{{T "event.grp.no_sits_hint"}}</small>
+            <div class="f"><label for="f-nostitle">{{T "field.msg_title"}}</label><input class="inp" id="f-nostitle" data-field="no_sits_selected_title" value="{{.NoSitsTitle}}"></div>
+            <div class="f"><label>{{T "field.msg_text"}}</label><div class="ed" data-editor="no_sits_selected_text">{{.NoSitsText}}</div></div>
+          </div>
+          <div class="pair">
+            <h6>{{T "event.grp.ordered"}}</h6>
+            <small class="pair-hint">{{T "event.grp.ordered_hint"}}</small>
+            <div class="f"><label for="f-ordtitle">{{T "field.msg_title"}}</label><input class="inp" id="f-ordtitle" data-field="ordered_note_title" value="{{.OrderedTitle}}"></div>
+            <div class="f"><label>{{T "field.msg_text"}}</label><div class="ed" data-editor="ordered_note_text" data-vars="{{.OrderVars}}">{{.OrderedText}}</div></div>
+          </div>
+        </div>
 
-        <div class="f" style="margin-top:18px"><label for="f-ordtitle">{{T "field.ordered_title"}}</label><input class="inp" id="f-ordtitle" data-field="ordered_note_title" value="{{.OrderedTitle}}"></div>
-        <div class="f" style="margin-top:10px"><label>{{T "field.ordered_text"}}</label><div class="ed" data-editor="ordered_note_text">{{.OrderedText}}</div></div>
-
-        <div class="f" style="margin-top:18px"><label>{{T "field.howto_legend"}}</label><div class="ed" data-editor="how_to">{{.HowTo}}</div></div>
+        <div class="grp">
+          <h5 class="grp-h">{{T "event.grp.legend"}}</h5>
+          <div class="f"><label>{{T "field.howto_legend"}}</label>
+            <small class="grp-hint">{{T "legend.hint"}}</small>
+            <div class="legend-warn" id="legend-warn" hidden><p></p><button type="button" class="btn quiet sm" id="legend-remove">{{T "legend.remove"}}</button></div>
+            <div class="ed" data-editor="how_to">{{.HowTo}}</div></div>
+        </div>
 
         <div class="sec-f"><button class="btn" data-save="guest">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
@@ -142,7 +176,10 @@
             {{range .BankAccounts}}<option value="{{.ID}}" {{if eq $.BankAccountID .ID}}selected{{end}}>{{.Name}} — {{.IBAN}}</option>{{end}}
           </select>
         </div>
-        {{if .BankAccountID}}<p class="shared"><a href="/admin/accounts/{{.BankAccountID}}?back={{printf "/admin/events/%d#konto" .ID}}">{{T "account.iban"}} …</a></p>{{end}}
+        {{if .BankAccountID}}<p class="shared"><a href="/admin/accounts/{{.BankAccountID}}?back={{printf "/admin/events/%d#konto" .ID}}">{{T "account.edit"}} …</a></p>{{end}}
+        <div class="f"><label for="f-pay-message">{{T "account.event_message"}}</label>
+          <input class="inp" id="f-pay-message" data-field="pay_message" value="{{.PayMessage}}" maxlength="40">
+          <small>{{T "account.event_message_hint"}}</small></div>
         <div class="sec-f"><button class="btn" data-save="bank">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>
@@ -303,5 +340,6 @@
 {{end}}
 {{define "scripts"}}
 <script src="/js/n_copy.js"></script>
+<script src="/js/n_vars.js"></script>
 <script src="/js/n_event.js"></script>
 {{end}}

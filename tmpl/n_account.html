@@ -14,6 +14,12 @@
     <div class="f"><label for="f-currency">{{T "field.currency"}}</label>
       <input class="inp" id="f-currency" data-field="currency" value="{{.Currency}}"></div>
 
+    <div class="f"><label for="f-cz-number">{{T "account.cz_number"}}</label>
+      <input class="inp num" id="f-cz-number" placeholder="19-2000145399" autocomplete="off">
+      <small id="cz-hint">{{T "account.cz_hint"}}</small></div>
+    <div class="f"><label for="f-cz-bank">{{T "account.cz_bank"}}</label>
+      <input class="inp num" id="f-cz-bank" placeholder="0800" maxlength="4" inputmode="numeric" autocomplete="off"></div>
+
     <div class="f" style="grid-column:1/-1"><label for="f-iban">{{T "account.iban"}}</label>
       <input class="inp num" id="f-iban" data-field="iban" value="{{.IBAN}}">
       <small>{{T "account.iban_hint"}}</small></div>
@@ -22,13 +28,6 @@
       <input class="inp" id="f-recipient" data-field="recipient" value="{{.Recipient}}"></div>
     <div class="f"><label for="f-varsymbol">{{T "account.varsymbol"}}</label>
       <input class="inp num" id="f-varsymbol" data-field="varsymbol" value="{{.VarSymbol}}"></div>
-
-    <div class="f"><label for="f-message">{{T "account.message"}}</label>
-      <input class="inp" id="f-message" data-field="message" value="{{.Message}}">
-      <small>{{T "account.message_hint"}}</small></div>
-    <div class="f"><label for="f-amountfield">{{T "account.amount_field"}}</label>
-      <input class="inp" id="f-amountfield" data-field="amountfield" value="{{.AmountField}}">
-      <small>{{T "account.amount_field_hint"}}</small></div>
   </div>
 
   {{if .UsedBy}}

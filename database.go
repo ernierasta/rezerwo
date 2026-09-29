@@ -302,6 +302,9 @@ type Event struct {
 	AddonsFormTemplateID sql.NullInt64  `db:"addons_formtemplate_id"`
 	// Theme - temat graficzny strony gościa (themes.go, tools/migration-themes.sql)
 	Theme sql.NullString `db:"theme"`
+	// PayMessage - początek wiadomości dla odbiorcy przelewu (pay.go,
+	// tools/migration-paymessage.sql)
+	PayMessage string `db:"pay_message"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -433,6 +436,9 @@ type FormTemplate struct {
 	InfoPanelMode string `db:"infopanel_mode"`
 	// Theme - temat graficzny strony gościa (themes.go, tools/migration-themes.sql)
 	Theme string `db:"theme"`
+	// PayMessage - początek wiadomości dla odbiorcy przelewu (pay.go,
+	// tools/migration-paymessage.sql)
+	PayMessage string `db:"pay_message"`
 }
 
 // IsOpen mówi, czy formularz przyjmuje teraz odpowiedzi.
@@ -485,10 +491,12 @@ type BankAccount struct {
 	RecipientName sql.NullString `db:"recipientname"`
 	BankID        sql.NullString `db:"bank"`
 	Currency      string         `db:"currency"`
-	Message       sql.NullString `db:"message"`
-	VarSymbol     sql.NullInt64  `db:"varsymbol"`
-	AmountField   sql.NullString `db:"amountfield"`
-	UserID        int64          `db:"users_id_fk"`
+	// Message i AmountField - nieużywane: wiadomość dla odbiorcy ustawia się
+	// w imprezie/formularzu (pay_message), pole kwoty w formularzu (moneyfield)
+	Message     sql.NullString `db:"message"`
+	VarSymbol   sql.NullInt64  `db:"varsymbol"`
+	AmountField sql.NullString `db:"amountfield"`
+	UserID      int64          `db:"users_id_fk"`
 }
 
 type Notification struct {
@@ -1154,6 +1162,12 @@ func (db *DB) EventClearRooms(eventID int64) error {
 
 // EventSetStatus ustawia stan imprezy: "draft" (szkic, niewidoczna dla gości)
 // albo "published". Osobna metoda, bo stare zapytania nie znają tej kolumny.
+// EventSetPayMessage ustawia początek wiadomości dla odbiorcy przelewu.
+func (db *DB) EventSetPayMessage(eventID, userID int64, msg string) error {
+	_, err := db.DB.Exec(`UPDATE events SET pay_message=$1 WHERE id=$2 AND users_id_fk=$3`, msg, eventID, userID)
+	return err
+}
+
 // EventSetTheme ustawia temat graficzny stron imprezy dla gości.
 func (db *DB) EventSetTheme(eventID, userID int64, theme string) error {
 	_, err := db.DB.Exec(`UPDATE events SET theme=$1 WHERE id=$2 AND users_id_fk=$3`, theme, eventID, userID)
@@ -1814,6 +1828,12 @@ func (db *DB) FormTemplateSetAccess(tmplID, userID int64, language, status strin
 }
 
 // FormTemplateSetPanelMode zapisuje tryb panelu informacyjnego.
+// FormTemplateSetPayMessage ustawia początek wiadomości dla odbiorcy przelewu.
+func (db *DB) FormTemplateSetPayMessage(tmplID, userID int64, msg string) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET pay_message=$1 WHERE id=$2 AND users_id_fk=$3`, msg, tmplID, userID)
+	return err
+}
+
 // FormTemplateSetTheme ustawia temat graficzny strony formularza.
 func (db *DB) FormTemplateSetTheme(tmplID, userID int64, theme string) error {
 	_, err := db.DB.Exec(`UPDATE formtemplates SET theme=$1 WHERE id=$2 AND users_id_fk=$3`, theme, tmplID, userID)

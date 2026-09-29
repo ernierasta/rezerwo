@@ -22,7 +22,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"path"
 	"strconv"
 	"strings"
 
@@ -51,7 +50,7 @@ type nFormPageVars struct {
 	Title    string
 	Lang     string
 	FormName string
-	Banner   string
+	Banner   template.HTML
 	HowTo    template.HTML
 	Info     template.HTML
 	Rows     []RenderRow
@@ -165,9 +164,7 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			Currency: formCurrency(db, user, templ),
 			DraftKey: fmt.Sprintf("rezerwo.gform.%d", templ.ID),
 		}
-		if templ.Banner.String != "" {
-			v.Banner = path.Join("/", MEDIAROOT, user.URL, templ.Banner.String)
-		}
+		v.Banner = ParseBanner(templ.Banner.String).ImgHTML(user.URL)
 		if v.Open && templ.CloseDate.Valid && templ.CloseDate.Int64 > 0 {
 			v.CloseNote = T(lang, "gform.open_until", FormatDate(lang, templ.CloseDate.Int64))
 		}

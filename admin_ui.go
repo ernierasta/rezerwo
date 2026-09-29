@@ -440,10 +440,10 @@ func nearestEventID(db *DB, userID int64) int64 {
 // --- strona imprezy --------------------------------------------------------
 
 type nRoomText struct {
+	Title                string
 	DescLabel, DescField string
 	Desc                 template.HTML
-	BannerLabel          string
-	BannerField, Banner  string
+	Banner               nBannerPick
 }
 
 type nResRow struct {
@@ -472,7 +472,7 @@ type nEventVars struct {
 	EventRooms []Room
 
 	MainDesc       template.HTML
-	MainBanner     string
+	MainBanner     nBannerPick
 	RoomTexts      []nRoomText
 	OrderHowto     template.HTML
 	OrderNotesDesc string
@@ -481,12 +481,17 @@ type nEventVars struct {
 	OrderedTitle   string
 	OrderedText    template.HTML
 	HowTo          template.HTML
+	// OrderVars - zmienne zamówienia dla pastylek w "Po zamówieniu – tekst"
+	// (JSON jak w edytorze maila, mailEditorVars)
+	OrderVars string
 
 	Notifications  []Notification
 	ThankYouMailID int64
 	AdminMailID    int64
 	BankAccounts   []BankAccount
 	BankAccountID  int64
+	// PayMessage - początek wiadomości dla odbiorcy przelewu
+	PayMessage string
 
 	Forms []FormTemplate
 
@@ -642,7 +647,7 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		UserRooms:       userRooms,
 		EventRooms:      evRooms,
 		MainDesc:        template.HTML(event.MainDesc.String),
-		MainBanner:      event.MainBanner.String,
+		MainBanner:      bannerPick(T(lang, "field.main_banner"), "mainbanner", event.MainBanner.String, user),
 		OrderHowto:      template.HTML(event.OrderHowto),
 		OrderNotesDesc:  event.OrderNotesDescription,
 		NoSitsTitle:     event.NoSitsSelectedTitle,
@@ -650,11 +655,13 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		OrderedTitle:    event.OrderedNoteTitle,
 		OrderedText:     template.HTML(event.OrderedNoteText),
 		HowTo:           template.HTML(event.HowTo),
+		OrderVars:       mailEditorVars(db, user),
 		Notifications:   notifs,
 		ThankYouMailID:  event.ThankYouNotificationsID.Int64,
 		AdminMailID:     event.AdminNotificationsID.Int64,
 		BankAccounts:    bankAccs,
 		BankAccountID:   event.BankAccountsID.Int64,
+		PayMessage:      event.PayMessage,
 		Forms:           eventForms,
 		Sharable:        event.Sharable.Bool,
 		HideCosts:       event.HideCosts.Bool,
@@ -689,12 +696,11 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 			name = " (" + evRooms[i].Name + ")"
 		}
 		v.RoomTexts = append(v.RoomTexts, nRoomText{
-			DescLabel:   T(lang, "field.room_desc", i+1) + name,
-			DescField:   fmt.Sprintf("room%ddesc", i+1),
-			Desc:        template.HTML(descs[i]),
-			BannerLabel: T(lang, "field.room_banner", i+1) + name,
-			BannerField: fmt.Sprintf("room%dbanner", i+1),
-			Banner:      banners[i],
+			Title:     T(lang, "field.room_n", i+1) + name,
+			DescLabel: T(lang, "field.desc"),
+			DescField: fmt.Sprintf("room%ddesc", i+1),
+			Desc:      template.HTML(descs[i]),
+			Banner:    bannerPick(T(lang, "field.main_banner"), fmt.Sprintf("room%dbanner", i+1), banners[i], user),
 		})
 	}
 
@@ -751,6 +757,9 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 	if event.BankAccountsID.Valid && event.BankAccountsID.Int64 != 0 {
 		if ba, err := db.BankAccountGetByID(event.BankAccountsID.Int64, user.ID); err == nil {
 			v.SumBank = ba.Name + ", " + ba.IBAN
+			if msg := event.PayMessage; msg != "" {
+				v.SumBank += " · " + T(lang, "pay.message") + ": " + msg
+			}
 		} else {
 			v.SumBank = T(lang, "common.not_set")
 			v.MissBank = true
@@ -1237,21 +1246,27 @@ func EventSectionSave(db *DB, loc *time.Location, dF string, cs *sessions.Cookie
 			}
 		case "guest":
 			event.MainDesc = ToNS(html("maindesc"))
-			event.MainBanner = ToNS(val("mainbanner"))
+			event.MainBanner = ToNS(cleanBanner(val("mainbanner")))
 			event.Room1Desc = ToNS(html("room1desc"))
-			event.Room1Banner = ToNS(val("room1banner"))
+			event.Room1Banner = ToNS(cleanBanner(val("room1banner")))
 			event.Room2Desc = ToNS(html("room2desc"))
-			event.Room2Banner = ToNS(val("room2banner"))
+			event.Room2Banner = ToNS(cleanBanner(val("room2banner")))
 			event.Room3Desc = ToNS(html("room3desc"))
-			event.Room3Banner = ToNS(val("room3banner"))
+			event.Room3Banner = ToNS(cleanBanner(val("room3banner")))
 			event.Room4Desc = ToNS(html("room4desc"))
-			event.Room4Banner = ToNS(val("room4banner"))
+			event.Room4Banner = ToNS(cleanBanner(val("room4banner")))
 			event.OrderHowto = html("order_howto")
 			event.OrderNotesDescription = val("order_notes_desc")
 			event.NoSitsSelectedTitle = val("no_sits_selected_title")
 			event.NoSitsSelectedText = html("no_sits_selected_text")
 			event.OrderedNoteTitle = val("ordered_note_title")
 			event.OrderedNoteText = html("ordered_note_text")
+			// tekst jest szablonem z danymi zamówienia (ParseOrderTmpl) - zepsuty
+			// pokazałby gościowi surowe {{...}}
+			if _, err := template.New("ordered").Parse(event.OrderedNoteText); err != nil {
+				jsonMsg(w, http.StatusBadRequest, nSectionResp{Msg: T(lang, "field.ordered_text") + ": " + err.Error()})
+				return
+			}
 			event.HowTo = html("how_to")
 			event.Theme = ToNS(ThemeKey(val("theme")))
 			if err := db.EventSetTheme(event.ID, user.ID, event.Theme.String); err != nil {
@@ -1264,6 +1279,11 @@ func EventSectionSave(db *DB, loc *time.Location, dF string, cs *sessions.Cookie
 			event.AdminNotificationsID = ToNI(id64("admin_notifications_id_fk"))
 		case "bank":
 			event.BankAccountsID = ToNI(id64("bank_account_id"))
+			event.PayMessage = strings.TrimSpace(val("pay_message"))
+			if err := db.EventSetPayMessage(event.ID, user.ID, event.PayMessage); err != nil {
+				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
+				return
+			}
 		case "settings":
 			event.Sharable = ToNB(flag("sharable"))
 			event.HideCosts = ToNB(flag("hidecosts"))

@@ -60,7 +60,7 @@ type nFormVars struct {
 	URL       string
 	PublicURL string
 
-	Banner    string
+	Banner    nBannerPick
 	HowTo     template.HTML
 	InfoPanel template.HTML
 	ThankYou  template.HTML
@@ -90,6 +90,7 @@ type nFormVars struct {
 	AdminNotificationID int64
 	BankAccounts        []BankAccount
 	BankAccountID       int64
+	PayMessage          string
 	Events              []Event
 	EventID             int64
 
@@ -150,7 +151,7 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		Name:                templ.Name,
 		URL:                 templ.URL,
 		PublicURL:           fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
-		Banner:              templ.Banner.String,
+		Banner:              bannerPick(T(lang, "field.main_banner"), "banner", templ.Banner.String, user),
 		HowTo:               template.HTML(templ.HowTo.String),
 		InfoPanel:           template.HTML(templ.InfoPanel.String),
 		ThankYou:            template.HTML(templ.ThankYou.String),
@@ -161,6 +162,7 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		AdminNotificationID: templ.AdminNotificationID.Int64,
 		BankAccounts:        bankAccs,
 		BankAccountID:       templ.BankAccountID.Int64,
+		PayMessage:          templ.PayMessage,
 		Events:              events,
 		EventID:             templ.EventID.Int64,
 		Language:            formLang(templ),
@@ -209,6 +211,9 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 	if templ.BankAccountID.Valid && templ.BankAccountID.Int64 != 0 {
 		if ba, err := db.BankAccountGetByID(templ.BankAccountID.Int64, user.ID); err == nil {
 			v.SumBank = ba.Name + ", " + ba.IBAN
+			if templ.PayMessage != "" {
+				v.SumBank += " · " + T(lang, "pay.message") + ": " + templ.PayMessage
+			}
 		} else {
 			v.SumBank, v.MissBank = T(lang, "common.not_set"), true
 		}
@@ -428,7 +433,7 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 				return
 			}
 		case "page":
-			templ.Banner = ToNS(val("banner"))
+			templ.Banner = ToNS(cleanBanner(val("banner")))
 			templ.HowTo = ToNS(html("howto"))
 			templ.InfoPanel = ToNS(html("infopanel"))
 			mode := val("infopanel_mode")
@@ -455,6 +460,11 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 		case "bank":
 			templ.BankAccountID = ToNI(id64("bankaccounts_id_fk"))
 			templ.MoneyAmountFieldName = ToNS(val("moneyfield"))
+			templ.PayMessage = strings.TrimSpace(val("pay_message"))
+			if err := db.FormTemplateSetPayMessage(templ.ID, user.ID, templ.PayMessage); err != nil {
+				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+				return
+			}
 		case "event":
 			templ.EventID = ToNI(id64("events_id_fk"))
 			if err := db.FormTemplateSetEvent(templ.ID, user.ID, templ.EventID); err != nil {

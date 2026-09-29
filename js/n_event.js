@@ -1,9 +1,10 @@
 // n_event.js - strona imprezy jako harmonijka.
-// Każda sekcja ma własne "Zapisz"/"Anuluj" i własne żądanie API.
+// Każda sekcja ma własne "Zapisz"/"Anuluj" i własne żądanie API; zapis,
+// szkic niezapisanych zmian i edytory Quill daje RZ.sections (n_ui.js).
 //
-// Niezapisane zmiany trzymamy jako szkic w przeglądarce (localStorage), więc
-// można wyjść do innego ekranu (np. do designera sali) i wrócić do tych samych
-// wartości. Do bazy trafiają dopiero po kliknięciu "Zapisz".
+// Własne rzeczy imprezy: pastylki danych zamówienia w tekście "Po zamówieniu"
+// (n_vars.js), ostrzeżenie o opisie kolorów w tekście pod planem sali,
+// dopisywanie sal i dodatki.
 
 (function () {
   'use strict';
@@ -11,123 +12,122 @@
   var page = document.getElementById('event-page');
   if (!page) return;
   var eventID = page.dataset.eventId;
-  var drafts = RZ.draft('rezerwo.event.' + eventID + '.draft');
+  var t = RZ.t;
+  var V = RZ.vars;
 
-  var quillToolbar = [
-    [{header: [1, 2, 3, false]}],
-    ['bold', 'italic', 'underline'],
-    ['link'],
-    [{list: 'ordered'}, {list: 'bullet'}],
-    [{indent: '-1'}, {indent: '+1'}],
-    [{color: ['#28a745', '#ffc107', '#fd7e14', '#dc3545', '#403734', '#000000']}],
-    [{align: []}],
-    ['clean']
-  ];
+  // "Po zamówieniu – tekst" jest wykonywany jako szablon z danymi zamówienia
+  // (ParseOrderTmpl), więc ma te same pastylki co mail - kod QR jako zwykły
+  // obrazek na stronie (.QRPay), bez PDF.
+  var ORDERED = 'ordered_note_text';
+  var orderedEl = page.querySelector('.ed[data-editor="' + ORDERED + '"]');
+  if (orderedEl && V && typeof Quill !== 'undefined') {
+    var meta = {};
+    try { meta = JSON.parse(orderedEl.dataset.vars || '{}'); } catch (e) { meta = {}; }
+    V.setup(meta, '.QRPay');
+  }
 
-  var editors = {};   // nazwa pola -> Quill
-  var dirty = {};     // nazwa sekcji -> czy są niezapisane zmiany
+  var legend = legendCheck();
 
-  // Quill tworzymy dopiero, gdy sekcja jest rozwinięta (strona otwiera się szybciej).
-  function initEditors(sec) {
-    sec.querySelectorAll('.ed[data-editor]').forEach(function (el) {
-      var name = el.dataset.editor;
-      if (editors[name]) return;
-      editors[name] = new Quill(el, {
-        modules: RZ.quillModules(quillToolbar),
-        theme: 'snow'
+  var secs = RZ.sections(page, '/api/events/' + eventID + '/section', {
+    draftKey: 'rezerwo.event.' + eventID + '.draft',
+    editorToolbar: function (name, tb) {
+      if (name !== ORDERED) return tb;
+      return {
+        container: tb.concat([['mailvar']]),
+        handlers: {mailvar: V.toolbarHandler(function () { return secs.editors[ORDERED]; })}
+      };
+    },
+    editorIn: function (name, html) { return name === ORDERED ? V.toEditor(html).html : html; },
+    editorOut: function (name, q) { return name === ORDERED ? V.fromEditor(q) : RZ.editorHTML(q); },
+    onEditor: function (name, q) {
+      if (name === ORDERED) V.attach(q);
+      if (name === 'how_to') legend.watch(q);
+    }
+  });
+
+  // --- opis kolorów w tekście pod planem sali ----------------------------------
+  //
+  // Pod planem sali strona gościa ma automatyczną legendę kolorów zgodną
+  // z tematem. Starsze imprezy mają kolory opisane też w tekście ("Zielony =
+  // wolne"), który po zmianie tematu kłamie. Niczego nie zmieniamy sami:
+  // pokazujemy ostrzeżenie z przyciskiem, który usuwa w edytorze tylko te
+  // linijki (można cofnąć Ctrl+Z albo "Anuluj").
+  function legendCheck() {
+    var box = document.getElementById('legend-warn');
+    var themeInp = page.querySelector('[data-sec="strona"] input[data-field="theme"]');
+    var startTheme = themeInp ? themeInp.value : '';
+    var quill = null;
+
+    // słowo koloru przed "=" / "–" / "-" / ":"
+    var COLOR = /(zielon|żółt|zolt|pomarańcz|pomarancz|czerwon|czarn|biał|bial|granatow|szar|niebiesk|fiolet|brąz|braz|zelen|žlut|oranžov|červen|čern|bíl|šed|modr|hněd|green|yellow|orange|red\b|black|white|gr[ae]y|blue|brown|purple)/i;
+    var SEP = /\s*(=|–|—|\s-\s|:)\s*/;
+    var TITLE = /^\s*(legend[ae]?|legenda planu)\s*:?\s*$/i;
+
+    function colorBlocks(root) {
+      var out = [];
+      root.querySelectorAll('li, p').forEach(function (el) {
+        var txt = el.textContent;
+        var m = SEP.exec(txt);
+        if (!m || m.index > 60) return;
+        if (COLOR.test(txt.slice(0, m.index))) out.push(el);
       });
-      editors[name].on('text-change', function () { markDirty(sec); });
-    });
-  }
+      return out;
+    }
 
-  function markDirty(sec) {
-    sec.classList.add('dirty');
-    dirty[sec.dataset.sec] = true;
-    drafts.save(sec.dataset.sec, values(sec));
-  }
+    function update() {
+      if (!box || !quill) return;
+      var found = colorBlocks(quill.root).length > 0;
+      box.hidden = !found;
+      if (found) {
+        var changed = themeInp && themeInp.value !== startTheme;
+        box.querySelector('p').textContent = t(changed ? 'legend.warn_theme' : 'legend.warn');
+      }
+    }
 
-  function clearDirty(sec) {
-    sec.classList.remove('dirty');
-    delete dirty[sec.dataset.sec];
-    drafts.clear(sec.dataset.sec);
-  }
-
-  function values(sec) {
-    var out = {};
-    sec.querySelectorAll('[data-field]').forEach(function (el) {
-      if (el.type === 'checkbox') out[el.dataset.field] = el.checked;
-      else out[el.dataset.field] = el.value;
-    });
-    sec.querySelectorAll('.ed[data-editor]').forEach(function (el) {
-      var q = editors[el.dataset.editor];
-      out[el.dataset.editor] = q ? RZ.editorHTML(q) : el.innerHTML;
-    });
-    return out;
-  }
-
-  function save(sec, section, btn) {
-    var msg = sec.querySelector('.sec-f .msg');
-    btn.disabled = true;
-    if (msg) { msg.textContent = RZ.t('common.loading'); msg.classList.remove('bad'); }
-
-    RZ.postJSON('/api/events/' + eventID + '/section', {section: section, values: values(sec)})
-      .then(function (resp) {
-        clearDirty(sec);
-        if (msg) msg.textContent = RZ.t('common.saved');
-        RZ.toast(RZ.t('common.saved'));
-        if (resp.summary) {
-          var span = sec.querySelector('.sec-h > span');
-          if (span) {
-            span.textContent = resp.summary;
-            span.classList.toggle('miss', !!resp.missing);
-          }
+    function remove() {
+      var tpl = document.createElement('template');
+      tpl.innerHTML = RZ.editorHTML(quill);
+      var root = tpl.content;
+      colorBlocks(root).forEach(function (el) {
+        var list = el.parentNode;
+        el.remove();
+        if (list && /^(UL|OL)$/.test(list.tagName) && !list.querySelector('li')) {
+          // nagłówek "Legenda:" nad usuniętą listą też znika
+          var prev = list.previousElementSibling;
+          if (prev && TITLE.test(prev.textContent)) prev.remove();
+          list.remove();
         }
-        if (resp.title) {
-          var h = document.querySelector('.dh h3');
-          if (h) h.textContent = resp.title;
-        }
-        if (resp.subtitle) {
-          var s = document.querySelector('.dsub');
-          if (s) s.textContent = resp.subtitle;
-        }
-      })
-      .catch(function (err) {
-        if (msg) { msg.textContent = RZ.t('common.save_error') + ': ' + err.message; msg.classList.add('bad'); }
-      })
-      .finally(function () { btn.disabled = false; });
+      });
+      // "Legenda:" bez listy pod spodem (np. opis kolorów był w akapitach)
+      root.querySelectorAll('h1, h2, h3, h4, p').forEach(function (el) {
+        var next = el.nextElementSibling;
+        if (TITLE.test(el.textContent) && (!next || /^H\d$/.test(next.tagName))) el.remove();
+      });
+      quill.setContents(quill.clipboard.convert({html: tpl.innerHTML}), 'user');
+      RZ.toast(t('legend.removed'));
+      update();
+    }
+
+    if (box) box.querySelector('button').addEventListener('click', function () { if (quill) remove(); });
+    page.addEventListener('input', function (e) { if (e.target === themeInp) update(); });
+
+    return {
+      watch: function (q) {
+        quill = q;
+        q.on('text-change', update);
+        update();
+      }
+    };
   }
+
+  // --- sale i dodatki ----------------------------------------------------------
 
   // pola dodatków edytuje ten sam designer co formularze (forms_fields.go)
   function openFieldDesigner(templateID) {
     location.href = '/admin/forms/' + templateID + '/fields';
   }
 
-  page.addEventListener('sec:open', function (e) { initEditors(e.target); });
-
-  page.addEventListener('input', function (e) {
-    var sec = e.target.closest('.sec');
-    if (sec) markDirty(sec);
-  });
-  page.addEventListener('change', function (e) {
-    var sec = e.target.closest('.sec');
-    if (sec) markDirty(sec);
-  });
-
   page.addEventListener('click', function (e) {
-    var saveBtn = e.target.closest('[data-save]');
-    if (saveBtn) {
-      e.preventDefault();
-      save(saveBtn.closest('.sec'), saveBtn.dataset.save, saveBtn);
-      return;
-    }
-    if (e.target.closest('[data-cancel]')) {
-      e.preventDefault();
-      // "Anuluj" wyrzuca szkic tej sekcji i wraca do wartości z bazy
-      var sec = e.target.closest('.sec');
-      if (sec) drafts.clear(sec.dataset.sec);
-      location.reload();
-      return;
-    }
     // dodatki: utworzenie definicji i przejście do designera pól
     if (e.target.id === 'addons-create') {
       e.preventDefault();
@@ -137,7 +137,7 @@
         .then(function (resp) { openFieldDesigner(resp.id); })
         .catch(function (err) {
           createBtn.disabled = false;
-          RZ.toast(RZ.t('common.save_error') + ': ' + err.message);
+          RZ.toast(t('common.save_error') + ': ' + err.message);
         });
       return;
     }
@@ -156,7 +156,7 @@
         var list = rooms.value.split(',').filter(Boolean);
         if (list.indexOf(id) === -1) list.push(id);
         rooms.value = list.join(',');
-        markDirty(rooms.closest('.sec'));
+        secs.markDirty(rooms.closest('.sec'));
       }
       return;
     }
@@ -164,35 +164,12 @@
       e.preventDefault();
       var r = document.getElementById('f-rooms');
       r.value = '';
-      markDirty(r.closest('.sec'));
+      secs.markDirty(r.closest('.sec'));
     }
   });
 
   RZ.loadLocale(document.documentElement.lang || 'pl').then(function () {
     var acc = RZ.accordion(page, 'rezerwo.event.' + eventID + '.sections');
-
-    // przywracamy niezapisane zmiany sprzed wyjścia ze strony
-    var pending = drafts.sections();
-    if (!pending.length) return;
-
-    var restored = false;
-    pending.forEach(function (name) {
-      var sec = acc.open(name);
-      if (!sec) {           // sekcji już nie ma (np. zmienił się szablon)
-        drafts.clear(name);
-        return;
-      }
-      RZ.applyValues(sec, drafts.get(name), editors);
-      sec.classList.add('dirty');
-      dirty[name] = true;
-      restored = true;
-    });
-
-    if (restored) {
-      RZ.draftNotice(function () {
-        drafts.clearAll();
-        location.reload();
-      });
-    }
+    secs.restore(acc); // niezapisane zmiany sprzed wyjścia ze strony
   });
 })();

@@ -954,6 +954,50 @@ h5.subhead a {
 }
 .guest .desc {
   margin-top: 14px;
+  max-width: 72ch;
+}
+.guest .desc > * + * {
+  margin-top: 0.7em;
+}
+.guest .desc h1, .guest .desc h2, .guest .desc h3 {
+  line-height: 1.25;
+}
+.guest .desc h1 {
+  font-size: 26px;
+}
+.guest .desc h2 {
+  font-size: 22px;
+}
+.guest .desc h3 {
+  font-size: 18px;
+}
+.guest .desc > * + h1, .guest .desc > * + h2, .guest .desc > * + h3 {
+  margin-top: 1.1em;
+}
+.guest .desc ul, .guest .desc ol {
+  margin-bottom: 0;
+  padding-left: 1.4em;
+}
+.guest .desc li + li {
+  margin-top: 0.25em;
+}
+.guest .desc .ql-align-center {
+  text-align: center;
+}
+.guest .desc .ql-align-right {
+  text-align: right;
+}
+.guest .desc .ql-align-justify {
+  text-align: justify;
+}
+.guest .desc .ql-indent-1 {
+  padding-left: 2em;
+}
+.guest .desc .ql-indent-2 {
+  padding-left: 4em;
+}
+.guest .room > .desc {
+  margin: 0 0 14px;
 }
 
 .roomtabs {

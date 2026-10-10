@@ -158,7 +158,14 @@
     });
     fields = [];
     groups.forEach(function (g) {
-      g.forEach(function (f, i) { f._nr = i === 0; fields.push(f); });
+      var sum = 0;
+      g.forEach(function (f, i) {
+        var w = isInput(f.type) ? f._w : 12;
+        f._nr = i === 0 && isInput(f.type) && prevSum + w <= 12;
+        sum += w;
+        fields.push(f);
+      });
+      prevSum = isInput(g[0].type) ? sum : 12;
     });
     moneyId = 0;
     fields.forEach(function (f) { if (money && f.name === money) moneyId = f._id; });
@@ -185,7 +192,10 @@
   function serialize() {
     var out = [], k = 0;
     layoutRows().forEach(function (r) {
+    // _nr tylko tam, gdzie bez niego wiersz skleiłby się z poprzednim -
+    // inaczej pole zapisane osobno nie dałoby się postawić obok innego
       var multi = r.inp && (r.fields.length > 1 || (r.fields[0]._w || 12) < 12);
+    var prevSum = 12;
       if (multi) k++;
       r.fields.forEach(function (f) {
         var o = {};
@@ -357,7 +367,7 @@
     return f;
   }
 
-  function addField(kind, index) {
+  function addField(kind, index, newRow) {
     var f = newField(kind);
     if (!f) return;
     if (index === undefined) {
@@ -394,6 +404,7 @@
         return '<div class="ff ff-paragraph"><p>' + label + '</p></div>';
       case 'radio-group':
       case 'checkbox-group':
+    if (newRow) ownRow(index);
         var it = f.type === 'radio-group' ? 'radio' : 'checkbox';
         h = '<fieldset class="ff ff-group"><legend class="ff-l">' + label + req + '</legend>' + desc +
           '<div class="opts' + (f.inline ? ' inline' : '') + '">';
@@ -1082,6 +1093,7 @@
     var tool = e.target.closest('[data-act]');
     var item = e.target.closest('.fd-item');
     if (!item) {
+        c._nr = false;
       if (e.target === canvas || e.target.closest('.gform-form') === e.target) select(0);
       return;
     }
@@ -1138,7 +1150,7 @@
       var d = dx * dx + dy * dy;
       if (d < bestD) { bestD = d; best = {el: it, r: r}; }
     });
-    var horiz = best.el.parentNode.children.length > 1;
+    var horiz = best.el.parentNode.children.length > 1 || !best.el.classList.contains('w12');
     var before = horiz ? e.clientX < best.r.left + best.r.width / 2 : e.clientY < best.r.top + best.r.height / 2;
     var idx = indexOfId(+best.el.dataset.id);
     return {index: before ? idx : idx + 1, el: best.el, before: before, horiz: horiz};
@@ -1166,17 +1178,36 @@
     var tg = dropTarget(e);
     clearDrop();
     if (dragSrc.add) {
-      addField(dragSrc.add, tg.index);
+      addField(dragSrc.add, tg.index, tg.row);
     } else {
       var from = indexOfId(dragSrc.move);
       if (from >= 0) {
         var f = fields[from];
         var to = tg.index > from ? tg.index - 1 : tg.index;
-        if (to !== from) {
+        if (to !== from || tg.horiz || tg.row) {
+          // upuszczone obok innego pola - staje w jego wierszu; przed polem
+          // zaczynającym wiersz przejmuje jego „nowy wiersz”
+          var tf = tg.el && byId(+tg.el.dataset.id);
+          if (tg.horiz) {
+            f._nr = !!(tg.before && tf && tf !== f && tf._nr);
+            if (f._nr) tf._nr = false;
+          }
           fields.splice(from, 1);
           fields.splice(to, 0, f);
           sel = f._id;
           changed('', true);
+  // ownRow stawia pole fields[i] w osobnym wierszu: nie dokleja się do
+  // poprzedniego i następne pole też się do niego nie dokleja
+  function ownRow(i) {
+    fields[i]._nr = true;
+    var nx = fields[i + 1];
+    if (nx && isInput(nx.type)) nx._nr = true;
+  }
+
+  // ROWZONE - pas przy górnej/dolnej krawędzi wiersza z polami obok siebie,
+  // gdzie upuszczenie wstawia pole jako nowy wiersz nad/pod nim
+  var ROWZONE = 14;
+
         }
       }
     }
@@ -1191,6 +1222,15 @@
 
   // --- okno dialogowe ----------------------------------------------------
 
+    if (horiz) {
+      var row = best.el.parentNode, rr = row.getBoundingClientRect();
+      var up = e.clientY < rr.top + ROWZONE, down = e.clientY > rr.bottom - ROWZONE;
+      if (up || down) {
+        var edge = row.children[up ? 0 : row.children.length - 1];
+        var ei = indexOfId(+edge.dataset.id);
+        return {index: up ? ei : ei + 1, el: row, before: up, row: true};
+      }
+    }
   var dlg = document.getElementById('fd-dlg');
   var dlgOK = null;
   function dialog(title, body, okLabel, onOK, danger) {
@@ -1225,6 +1265,7 @@
     RZ.postJSON('/api/forms/' + formID + '/fields', {content: serialize(), moneyfield: moneyName(), renames: renames()})
       .then(function (resp) {
         counts = resp.counts || {};
+          if (tg.row) ownRow(to);
         load(resp.content, resp.moneyfield);
         sel = selIdx >= 0 && fields[selIdx] ? fields[selIdx]._id : 0;
         savedSig = signature();

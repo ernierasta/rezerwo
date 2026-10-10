@@ -1665,6 +1665,20 @@ h5.subhead {
     &.horiz.drop-after::after { right: -7px; }
   }
 
+  // upuszczenie nad/pod wierszem z polami obok siebie (nowy wiersz)
+  .ff-row { position: relative; }
+  .ff-row.drop-before::before, .ff-row.drop-after::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    height: 3px;
+    border-radius: 3px;
+    background: var(--blue-deep);
+  }
+  .ff-row.drop-before::before { top: -10px; }
+  .ff-row.drop-after::after { bottom: -10px; }
+
   .fd-tools {
     position: absolute;
     top: -12px;

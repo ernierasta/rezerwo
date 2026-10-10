@@ -2880,6 +2880,24 @@ h5.subhead a {
 .fd .fd-item.horiz.drop-after::after {
   right: -7px;
 }
+.fd .ff-row {
+  position: relative;
+}
+.fd .ff-row.drop-before::before, .fd .ff-row.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--blue-deep);
+}
+.fd .ff-row.drop-before::before {
+  top: -10px;
+}
+.fd .ff-row.drop-after::after {
+  bottom: -10px;
+}
 .fd .fd-tools {
   position: absolute;
   top: -12px;

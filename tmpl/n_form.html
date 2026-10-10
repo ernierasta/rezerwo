@@ -98,10 +98,13 @@
       <div class="sec-h"><b>{{T "form.sec.mail_guest"}}</b><span {{if .MissMailGuest}}class="miss"{{end}}>{{.SumMailGuest}}</span><a class="act" href="#mail-gosc">{{if .MissMailGuest}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-guest">{{T "form.sec.mail_guest"}}</label>
-          <select class="inp" id="f-mail-guest" data-field="notifications_id_fk">
-            <option value="0">{{T "field.select_hint"}}</option>
-            {{range .Notifications}}<option value="{{.ID}}" {{if eq $.NotificationID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
-          </select>
+          <div class="pick">
+            <select class="inp" id="f-mail-guest" data-field="notifications_id_fk">
+              <option value="0">{{T "field.select_hint"}}</option>
+              {{range .Notifications}}<option value="{{.ID}}" {{if eq $.NotificationID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+            <button type="button" class="btn quiet sm" data-new="mail" data-kind="forms" data-select="f-mail-guest" data-edit="/admin/mails/" data-back="/admin/forms/{{.ID}}#mail-gosc">{{T "catalog.new_mail"}} …</button>
+          </div>
         </div>
         {{if .NotificationID}}<p class="shared"><a href="/admin/mails/{{.NotificationID}}?back={{printf "/admin/forms/%d#mail-gosc" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_guest">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
@@ -113,10 +116,13 @@
       <div class="sec-h"><b>{{T "form.sec.mail_admin"}}</b><span {{if .MissMailAdmin}}class="miss"{{end}}>{{.SumMailAdmin}}</span><a class="act" href="#mail-zarzad">{{if .MissMailAdmin}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-admin">{{T "form.sec.mail_admin"}}</label>
-          <select class="inp" id="f-mail-admin" data-field="admin_notifications_id_fk">
-            <option value="0">{{T "field.select_hint"}}</option>
-            {{range .Notifications}}<option value="{{.ID}}" {{if eq $.AdminNotificationID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
-          </select>
+          <div class="pick">
+            <select class="inp" id="f-mail-admin" data-field="admin_notifications_id_fk">
+              <option value="0">{{T "field.select_hint"}}</option>
+              {{range .Notifications}}<option value="{{.ID}}" {{if eq $.AdminNotificationID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+            <button type="button" class="btn quiet sm" data-new="mail" data-kind="forms" data-select="f-mail-admin" data-edit="/admin/mails/" data-back="/admin/forms/{{.ID}}#mail-zarzad">{{T "catalog.new_mail"}} …</button>
+          </div>
         </div>
         {{if .AdminNotificationID}}<p class="shared"><a href="/admin/mails/{{.AdminNotificationID}}?back={{printf "/admin/forms/%d#mail-zarzad" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_admin">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
@@ -129,10 +135,13 @@
       <div class="sec-b" hidden>
         <div class="grid2">
           <div class="f"><label for="f-bank">{{T "field.bank_account"}}</label>
-            <select class="inp" id="f-bank" data-field="bankaccounts_id_fk">
-              <option value="0">{{T "field.select_hint"}}</option>
-              {{range .BankAccounts}}<option value="{{.ID}}" {{if eq $.BankAccountID .ID}}selected{{end}}>{{.Name}} — {{.IBAN}}</option>{{end}}
-            </select>
+            <div class="pick">
+              <select class="inp" id="f-bank" data-field="bankaccounts_id_fk">
+                <option value="0">{{T "field.select_hint"}}</option>
+                {{range .BankAccounts}}<option value="{{.ID}}" {{if eq $.BankAccountID .ID}}selected{{end}}>{{.Name}} — {{.IBAN}}</option>{{end}}
+              </select>
+              <button type="button" class="btn quiet sm" data-new="account" data-select="f-bank" data-edit="/admin/accounts/" data-back="/admin/forms/{{.ID}}#konto">{{T "catalog.new_account"}} …</button>
+            </div>
           </div>
           <div class="f"><label for="f-money">{{T "field.money_field"}}</label>
             <select class="inp" id="f-money" data-field="moneyfield">
@@ -179,5 +188,6 @@
 </div>
 {{end}}
 {{define "scripts"}}
+<script src="{{asset "/js/n_new.js"}}"></script>
 <script src="{{asset "/js/n_form.js"}}"></script>
 {{end}}

@@ -44,6 +44,7 @@
       if (name === 'how_to') legend.watch(q);
     }
   });
+  if (window.RZNew) RZNew.wire(page, secs); // przyciski "Nowy mail …" itd.
 
   // --- opis kolorów w tekście pod planem sali ----------------------------------
   //

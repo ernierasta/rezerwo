@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -242,27 +243,29 @@ func MailSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 	}
 }
 
-type nNewNamedMsg struct {
-	Name string `json:"name"`
+// nNewMsg - nowy element katalogu: pusty albo kopia własnego (copy_of).
+type nNewMsg struct {
+	Name   string `json:"name"`
+	CopyOf int64  `json:"copy_of"`
 }
 
-func namedBody(w http.ResponseWriter, r *http.Request) (string, bool) {
+func newBody(w http.ResponseWriter, r *http.Request) (nNewMsg, bool) {
+	var m nNewMsg
 	if r.Method != http.MethodPost {
 		jsonMsg(w, http.StatusMethodNotAllowed, map[string]string{"msg": "POST only"})
-		return "", false
+		return m, false
 	}
 	body, _ := io.ReadAll(r.Body)
-	var m nNewNamedMsg
 	if err := json.Unmarshal(body, &m); err != nil {
 		jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": err.Error()})
-		return "", false
+		return m, false
 	}
-	name := strings.TrimSpace(m.Name)
-	if name == "" {
+	m.Name = strings.TrimSpace(m.Name)
+	if m.Name == "" {
 		jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": "empty name"})
-		return "", false
+		return m, false
 	}
-	return name, true
+	return m, true
 }
 
 // --- konto bankowe ---------------------------------------------------------
@@ -432,28 +435,223 @@ func AccountSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 	}
 }
 
-// AccountCreateAPI - POST /api/accounts
+// AccountCreateAPI - POST /api/accounts: puste konto albo kopia własnego.
 func AccountCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := adminUser(w, r, db, cs)
 		if !ok {
 			return
 		}
-		name, ok := namedBody(w, r)
+		m, ok := newBody(w, r)
 		if !ok {
 			return
 		}
 
-		id, err := db.BankAccountAdd(&BankAccount{
-			Name:     name,
-			Currency: "CZK",
-			UserID:   user.ID,
-		})
+		acc := BankAccount{Currency: "CZK"}
+		if m.CopyOf != 0 {
+			src, err := db.BankAccountGetByID(m.CopyOf, user.ID)
+			if err != nil {
+				jsonMsg(w, http.StatusNotFound, map[string]string{"msg": "account not found"})
+				return
+			}
+			acc = src
+			acc.ID = 0
+		}
+		acc.Name = m.Name
+		acc.UserID = user.ID
+
+		id, err := db.BankAccountAdd(&acc)
 		if err != nil {
 			log.Printf("AccountCreateAPI: %v", err)
 			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": fmt.Sprint(err)})
 			return
 		}
 		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "created", "id": id})
+	}
+}
+
+type nAccountSource struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	IBAN      string `json:"iban"`
+	Recipient string `json:"recipient"`
+	Currency  string `json:"currency"`
+	VarSymbol int64  `json:"varsymbol"`
+}
+
+// AccountSourcesAPI - GET /api/accounts/sources: konta do okna "Nowe konto".
+func AccountSourcesAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := adminUser(w, r, db, cs)
+		if !ok {
+			return
+		}
+		mine := []nAccountSource{}
+		accs, err := db.BankAccountGetAll(user.ID)
+		if err != nil {
+			log.Printf("AccountSourcesAPI: %v", err)
+		}
+		for _, a := range accs {
+			mine = append(mine, nAccountSource{
+				ID:        a.ID,
+				Name:      a.Name,
+				IBAN:      a.IBAN,
+				Recipient: a.RecipientName.String,
+				Currency:  a.Currency,
+				VarSymbol: a.VarSymbol.Int64,
+			})
+		}
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"mine": mine})
+	}
+}
+
+// --- sala --------------------------------------------------------------------
+
+// pusta sala dostaje najczęstszy rozmiar sal w bazie
+const (
+	newRoomWidth  = 800
+	newRoomHeight = 950
+)
+
+// RoomCreateAPI - POST /api/rooms: pusta sala albo kopia własnej (z meblami).
+func RoomCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := adminUser(w, r, db, cs)
+		if !ok {
+			return
+		}
+		m, ok := newBody(w, r)
+		if !ok {
+			return
+		}
+
+		var id int64
+		var err error
+		if m.CopyOf != 0 {
+			if !roomOfUser(db, user.ID, m.CopyOf) {
+				jsonMsg(w, http.StatusNotFound, map[string]string{"msg": "room not found"})
+				return
+			}
+			id, err = db.RoomWithFurnituresCopy(m.CopyOf, m.Name)
+		} else {
+			id, err = db.RoomAdd(&Room{Name: m.Name, Width: newRoomWidth, Height: newRoomHeight, Sharable: ToNI(0)})
+		}
+		if err == nil {
+			err = db.RoomAssignToUser(user.ID, id)
+		}
+		if err != nil {
+			log.Printf("RoomCreateAPI: %v", err)
+			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": fmt.Sprint(err)})
+			return
+		}
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "created", "id": id})
+	}
+}
+
+func roomOfUser(db *DB, userID, roomID int64) bool {
+	rooms, err := db.RoomGetAllByUserID(userID)
+	if err != nil {
+		log.Printf("roomOfUser: %v", err)
+		return false
+	}
+	for _, room := range rooms {
+		if room.ID == roomID {
+			return true
+		}
+	}
+	return false
+}
+
+// nRoomShape - prostokąt (albo elipsa) w miniaturze planu sali.
+type nRoomShape struct {
+	Type    string  `json:"t"`
+	X       float64 `json:"x"`
+	Y       float64 `json:"y"`
+	W       float64 `json:"w"`
+	H       float64 `json:"h"`
+	Ellipse bool    `json:"e,omitempty"`
+	Color   string  `json:"c,omitempty"`
+}
+
+type nRoomSource struct {
+	ID     int64        `json:"id"`
+	Name   string       `json:"name"`
+	Width  int64        `json:"width"`
+	Height int64        `json:"height"`
+	Size   string       `json:"size"`
+	Seats  string       `json:"seats"`
+	Shapes []nRoomShape `json:"shapes"`
+}
+
+// roomShapes - meble sali do miniatury, z tą samą geometrią co plan gościa
+// (room_svg.go).
+func roomShapes(db *DB, roomID int64) ([]nRoomShape, int) {
+	out := []nRoomShape{}
+	seats := 0
+	ff, err := db.FurnitureGetAllByRoomID(roomID)
+	if err != nil {
+		log.Printf("roomShapes: %v", err)
+		return out, 0
+	}
+	for _, f := range ff {
+		s := nRoomShape{Type: f.Type, X: float64(f.X), Y: float64(f.Y), W: float64(f.Width.Int64), H: float64(f.Height.Int64), Color: f.Color.String}
+		switch f.Type {
+		case "table":
+			w, h, shape := tableSize(f.Orientation.String, f.Capacity.Int64)
+			if s.W <= 0 {
+				s.W = w
+			}
+			if s.H <= 0 {
+				s.H = h
+			}
+			s.X += svgTableMargin
+			s.Y += svgTableMargin
+			s.Ellipse = shape == "ellipse"
+			s.Color = ""
+		case "chair":
+			s.X += svgChairMargin
+			s.Y += svgChairMargin
+			s.W, s.H = svgChairSize, svgChairSize
+			s.Color = ""
+			seats++
+		case "label":
+			if s.H <= 0 {
+				s.H = svgChairSize
+			}
+		}
+		out = append(out, s)
+	}
+	return out, seats
+}
+
+// RoomSourcesAPI - GET /api/rooms/sources: sale do okna "Nowa sala",
+// z miniaturą planu.
+func RoomSourcesAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := adminUser(w, r, db, cs)
+		if !ok {
+			return
+		}
+		lang := PanelLang(r)
+		mine := []nRoomSource{}
+		rooms, err := db.RoomGetAllByUserID(user.ID)
+		if err != nil {
+			log.Printf("RoomSourcesAPI: %v", err)
+		}
+		for _, room := range rooms {
+			shapes, seats := roomShapes(db, room.ID)
+			mine = append(mine, nRoomSource{
+				ID:     room.ID,
+				Name:   room.Name,
+				Width:  room.Width,
+				Height: room.Height,
+				Size:   T(lang, "catalog.size", room.Width, room.Height),
+				Seats:  TN(lang, "count.seat", int64(seats)),
+				Shapes: shapes,
+			})
+		}
+		// najnowsze na górze
+		sort.SliceStable(mine, func(i, j int) bool { return mine[i].ID > mine[j].ID })
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"mine": mine})
 	}
 }

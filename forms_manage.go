@@ -82,6 +82,8 @@ type nFormCreateMsg struct {
 	Language string `json:"language"`
 	FromID   int64  `json:"from_id"`
 	Preset   string `json:"preset"` // empty | person
+	// EventID - formularz tworzony ze strony imprezy od razu do niej należy
+	EventID int64 `json:"event_id"`
 }
 
 // FormCreateAPI - POST /api/forms
@@ -177,6 +179,14 @@ func FormCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			src, _ := db.FormTemplateGetByID(msg.FromID, user.ID)
 			if src.AdminNotificationID.Valid {
 				db.FormTemplateSetAdminNotification(id, user.ID, src.AdminNotificationID)
+			}
+		}
+
+		if msg.EventID > 0 {
+			if e, err := db.EventGetByID(msg.EventID); err == nil && e.UserID == user.ID {
+				if err := db.FormTemplateSetEvent(id, user.ID, ToNI(e.ID)); err != nil {
+					log.Printf("FormCreateAPI: event: %v", err)
+				}
 			}
 		}
 

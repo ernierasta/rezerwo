@@ -66,6 +66,7 @@
                 {{range .UserRooms}}<option value="{{.ID}}">{{.Name}} ({{.ID}})</option>{{end}}
               </select>
               <button class="btn quiet sm" id="room-add">{{T "field.add_room"}}</button>
+              <button type="button" class="btn quiet sm" data-new="room" data-list="f-rooms" data-edit="/admin/events/{{.ID}}/rooms/">{{T "catalog.new_room"}} …</button>
               <button class="btn quiet sm" id="room-clear">{{T "field.clear_rooms"}}</button>
               {{range .EventRooms}}<a class="btn quiet sm" href="/admin/events/{{$.ID}}/rooms/{{.ID}}">{{T "field.edit_layout"}}: {{.Name}}</a>{{end}}
             </div>
@@ -142,10 +143,13 @@
       <div class="sec-h"><b>{{T "event.sec.mail_guest"}}</b><span {{if .MissMailGuest}}class="miss"{{end}}>{{.SumMailGuest}}</span><a class="act" href="#mail-gosc">{{if .MissMailGuest}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-guest">{{T "field.thankyou_mail"}}</label>
-          <select class="inp" id="f-mail-guest" data-field="thankyou_notifications_id_fk">
-            <option value="0">{{T "field.select_hint"}}</option>
-            {{range .Notifications}}<option value="{{.ID}}" {{if eq $.ThankYouMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
-          </select>
+          <div class="pick">
+            <select class="inp" id="f-mail-guest" data-field="thankyou_notifications_id_fk">
+              <option value="0">{{T "field.select_hint"}}</option>
+              {{range .Notifications}}<option value="{{.ID}}" {{if eq $.ThankYouMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+            <button type="button" class="btn quiet sm" data-new="mail" data-kind="events" data-select="f-mail-guest" data-edit="/admin/mails/" data-back="/admin/events/{{.ID}}#mail-gosc">{{T "catalog.new_mail"}} …</button>
+          </div>
         </div>
         {{if .ThankYouMailID}}<p class="shared"><a href="/admin/mails/{{.ThankYouMailID}}?back={{printf "/admin/events/%d#mail-gosc" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_guest">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
@@ -157,10 +161,13 @@
       <div class="sec-h"><b>{{T "event.sec.mail_admin"}}</b><span {{if .MissMailAdmin}}class="miss"{{end}}>{{.SumMailAdmin}}</span><a class="act" href="#mail-zarzad">{{if .MissMailAdmin}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-admin">{{T "field.admin_mail"}}</label>
-          <select class="inp" id="f-mail-admin" data-field="admin_notifications_id_fk">
-            <option value="0">{{T "field.select_hint"}}</option>
-            {{range .Notifications}}<option value="{{.ID}}" {{if eq $.AdminMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
-          </select>
+          <div class="pick">
+            <select class="inp" id="f-mail-admin" data-field="admin_notifications_id_fk">
+              <option value="0">{{T "field.select_hint"}}</option>
+              {{range .Notifications}}<option value="{{.ID}}" {{if eq $.AdminMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+            <button type="button" class="btn quiet sm" data-new="mail" data-kind="events" data-select="f-mail-admin" data-edit="/admin/mails/" data-back="/admin/events/{{.ID}}#mail-zarzad">{{T "catalog.new_mail"}} …</button>
+          </div>
         </div>
         {{if .AdminMailID}}<p class="shared"><a href="/admin/mails/{{.AdminMailID}}?back={{printf "/admin/events/%d#mail-zarzad" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_admin">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
@@ -172,10 +179,13 @@
       <div class="sec-h"><b>{{T "event.sec.bank"}}</b><span class="num {{if .MissBank}}miss{{end}}">{{.SumBank}}</span><a class="act" href="#konto">{{if .MissBank}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-bank">{{T "field.bank_account"}}</label>
-          <select class="inp" id="f-bank" data-field="bank_account_id">
-            <option value="0">{{T "field.select_hint"}}</option>
-            {{range .BankAccounts}}<option value="{{.ID}}" {{if eq $.BankAccountID .ID}}selected{{end}}>{{.Name}} — {{.IBAN}}</option>{{end}}
-          </select>
+          <div class="pick">
+            <select class="inp" id="f-bank" data-field="bank_account_id">
+              <option value="0">{{T "field.select_hint"}}</option>
+              {{range .BankAccounts}}<option value="{{.ID}}" {{if eq $.BankAccountID .ID}}selected{{end}}>{{.Name}} — {{.IBAN}}</option>{{end}}
+            </select>
+            <button type="button" class="btn quiet sm" data-new="account" data-select="f-bank" data-edit="/admin/accounts/" data-back="/admin/events/{{.ID}}#konto">{{T "catalog.new_account"}} …</button>
+          </div>
         </div>
         {{if .BankAccountID}}<p class="shared"><a href="/admin/accounts/{{.BankAccountID}}?back={{printf "/admin/events/%d#konto" .ID}}">{{T "account.edit"}} …</a></p>{{end}}
         <div class="f"><label for="f-pay-message">{{T "account.event_message"}}</label>
@@ -198,7 +208,7 @@
         {{else}}
         <p class="shared">{{T "event.forms.none"}}</p>
         {{end}}
-        <p class="shared"><a href="/admin">{{T "event.forms.new"}}</a></p>
+        <a class="btn quiet sm" style="margin-top:12px" href="/admin#newform&event={{.ID}}&lang={{.Language}}">{{T "newform.title"}} …</a>
         <div class="sec-f"><button class="btn" data-save="forms">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>
@@ -353,5 +363,6 @@
 {{define "scripts"}}
 <script src="{{asset "/js/n_copy.js"}}"></script>
 <script src="{{asset "/js/n_vars.js"}}"></script>
+<script src="{{asset "/js/n_new.js"}}"></script>
 <script src="{{asset "/js/n_event.js"}}"></script>
 {{end}}

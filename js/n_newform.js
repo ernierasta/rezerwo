@@ -1,7 +1,8 @@
 // n_newform.js - okno "Nowy formularz" na pulpicie (tmpl/n_home.html).
 // Kopia istniejącego formularza jest domyślna: formularze powtarzają się co
 // roku. Adres /admin#newform=ID otwiera okno z kopią formularza ID
-// (przycisk "Kopiuj formularz" na stronie formularza).
+// (przycisk "Kopiuj formularz" na stronie formularza), a /admin#newform&event=ID
+// &lang=pl - okno dla nowego formularza imprezy ID (strona imprezy).
 
 (function () {
   'use strict';
@@ -17,6 +18,7 @@
   var msg = document.getElementById('nf-msg');
   var ok = document.getElementById('nf-ok');
   var urlEdited = false, base = '', timer = null;
+  var eventID = 0; // formularz od razu podpięty do imprezy
 
   function nextName(s) {
     // "Bal 2026" -> "Bal 2027"
@@ -90,7 +92,8 @@
       url: url.value.trim(),
       language: lang.value,
       from_id: start() === 'copy' && from ? parseInt(from.value, 10) : 0,
-      preset: start() === 'person' ? 'person' : ''
+      preset: start() === 'person' ? 'person' : '',
+      event_id: eventID
     }).then(function (resp) {
       location.href = resp.next;
     }).catch(function (err) {
@@ -101,10 +104,14 @@
   });
 
   RZ.loadLocale(document.documentElement.lang || 'pl').then(function () {
-    var m = /newform=(\d+)/.exec(location.hash);
-    if (m) {
-      history.replaceState(null, '', location.pathname);
-      open(+m[1]);
-    }
+    var h = location.hash;
+    if (!/^#newform/.test(h)) return;
+    history.replaceState(null, '', location.pathname);
+    var m = /newform=(\d+)/.exec(h);
+    var ev = /event=(\d+)/.exec(h);
+    var lg = /lang=(\w+)/.exec(h);
+    if (ev) eventID = +ev[1];
+    if (lg && lang.querySelector('option[value="' + lg[1] + '"]')) lang.value = lg[1];
+    open(m ? +m[1] : 0);
   });
 })();

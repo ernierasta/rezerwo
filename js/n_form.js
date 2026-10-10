@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     editorOut: panel.fromEditor,
     onEditor: panel.onEditor
   });
+  if (window.RZNew) RZNew.wire(page, secs); // przyciski "Nowy mail …" itd.
 
   RZ.loadLocale(document.documentElement.lang || 'pl').then(function () {
     var acc = RZ.accordion(page, 'rezerwo.form.' + formID + '.sections');

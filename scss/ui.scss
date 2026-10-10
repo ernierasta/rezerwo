@@ -307,6 +307,15 @@ textarea.inp { min-height: 80px; }
 }
 .grp-hint { display: block; color: var(--muted); font-size: 13px; }
 .f .grp-hint { margin: -2px 0 8px; }
+// wybór z katalogu z przyciskiem "Nowy mail …" obok (js/n_new.js)
+.pick {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  select { flex: 1 1 220px; min-width: 0; }
+  .btn { white-space: nowrap; }
+}
 
 // para pól, które należą do siebie (tytuł + tekst jednego komunikatu,
 // opis + banner jednej sali)
@@ -1266,6 +1275,26 @@ h5.subhead {
     min-height: 0;
 
     .nm-subj { font-weight: 500; margin-bottom: 8px; overflow-wrap: anywhere; }
+    .nm-dl {
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      gap: 4px 14px;
+      margin: 8px 0 0;
+      dt { color: var(--muted); }
+      dd { margin: 0; overflow-wrap: anywhere; }
+    }
+    // miniatura planu sali
+    .nm-room {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      margin-bottom: 8px;
+      .bg { fill: var(--pane); stroke: var(--line); stroke-width: 2; }
+      .table { fill: var(--line); }
+      .chair { fill: var(--blue-deep); opacity: .55; }
+      .object { fill: var(--muted); opacity: .5; }
+      .label { fill: none; stroke: var(--line); stroke-dasharray: 4 3; }
+    }
     iframe { flex: 1; width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
   }
 }

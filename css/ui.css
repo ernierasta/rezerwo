@@ -829,6 +829,20 @@ textarea.inp {
   margin: -2px 0 8px;
 }
 
+.pick {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pick select {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.pick .btn {
+  white-space: nowrap;
+}
+
 .pair {
   border-left: 3px solid var(--blue-soft);
   padding: 2px 0 4px 14px;
@@ -2197,6 +2211,46 @@ h5.subhead a {
   font-weight: 500;
   margin-bottom: 8px;
   overflow-wrap: anywhere;
+}
+.nm .nm-prev .nm-dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 8px 0 0;
+}
+.nm .nm-prev .nm-dl dt {
+  color: var(--muted);
+}
+.nm .nm-prev .nm-dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.nm .nm-prev .nm-room {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin-bottom: 8px;
+}
+.nm .nm-prev .nm-room .bg {
+  fill: var(--pane);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+.nm .nm-prev .nm-room .table {
+  fill: var(--line);
+}
+.nm .nm-prev .nm-room .chair {
+  fill: var(--blue-deep);
+  opacity: 0.55;
+}
+.nm .nm-prev .nm-room .object {
+  fill: var(--muted);
+  opacity: 0.5;
+}
+.nm .nm-prev .nm-room .label {
+  fill: none;
+  stroke: var(--line);
+  stroke-dasharray: 4 3;
 }
 .nm .nm-prev iframe {
   flex: 1;

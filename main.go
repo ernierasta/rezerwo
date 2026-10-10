@@ -90,6 +90,9 @@ func main() {
 	rtr.HandleFunc("/api/mails/{id:[0-9]+}/preview", MailPreviewAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/mails/{id:[0-9]+}/test", MailTestAPI(db, *mailConf, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/accounts", AccountCreateAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/accounts/sources", AccountSourcesAPI(db, cookieStore)).Methods("GET")
+	rtr.HandleFunc("/api/rooms", RoomCreateAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/rooms/sources", RoomSourcesAPI(db, cookieStore)).Methods("GET")
 	rtr.HandleFunc("/api/accounts/{id:[0-9]+}", AccountSaveAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/admin/forms/{id:[0-9]+}", FormPage(db, cookieStore))
 	rtr.HandleFunc("/admin/forms/{id:[0-9]+}/answers", AnswersPage(db, cookieStore))
@@ -127,7 +130,6 @@ func main() {
 	http.HandleFunc("/admin/lang", SetPanelLangHandler(db, cookieStore))
 	http.HandleFunc("/api/login", LoginAPI(db, cookieStore))
 	http.HandleFunc("/api/room", DesignerSetRoomSize(db, cookieStore))
-	http.HandleFunc("/api/roomcopy", CopyRoomAPI(db, cookieStore))
 	http.HandleFunc("/api/eventcopyinfo", EventCopyInfoAPI(db, cookieStore))
 	http.HandleFunc("/api/eventcopy", EventCopyAPI(db, dateFormat, cookieStore))
 	http.HandleFunc("/api/furnit", DesignerMoveObject(db, cookieStore))
@@ -776,59 +778,6 @@ func DesignerSetRoomSize(db *DB, cs *sessions.CookieStore) func(w http.ResponseW
 			if err != nil {
 				log.Println(err)
 			}
-		}
-	}
-}
-
-type RoomIDMsg struct {
-	RoomID int64  `json:"room_id"`
-	Name   string `json:"name"` // new name for room copy
-}
-
-func CopyRoomAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
-		if err != nil {
-			log.Printf("CopyRoomAPI: session error: %v", err)
-			return
-		}
-
-		user, err := db.UserGetByEmail(email)
-		if err != nil {
-			log.Printf("CopyRoomAPI: can not get user by mail %q, %v", email, err)
-			return
-		}
-
-		if r.Method == "POST" {
-			var m RoomIDMsg
-			dec := json.NewDecoder(r.Body)
-			err := dec.Decode(&m)
-			if err != nil {
-				log.Println(err)
-			}
-			if !userOwnsRoom(db, email, m.RoomID) {
-				log.Printf("CopyRoomAPI: user %q does not own room %d", email, m.RoomID)
-				jsonMsg(w, http.StatusForbidden, map[string]interface{}{"msg": "forbidden"})
-				return
-			}
-			if strings.TrimSpace(m.Name) == "" {
-				jsonMsg(w, http.StatusBadRequest, map[string]interface{}{"msg": "empty name"})
-				return
-			}
-			roomID, err := db.RoomWithFurnituresCopy(m.RoomID, strings.TrimSpace(m.Name))
-			if err != nil {
-				log.Println(err)
-				jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": "Nie udało się skopiować pomieszczenia!\n" + err.Error()})
-				return
-			}
-			err = db.RoomAssignToUser(user.ID, roomID)
-			if err != nil {
-				log.Printf("CopyRoomAPI: room assignment error, %v", err)
-				jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": "Nie udało się przypisać pomieszczenia!\n" + err.Error()})
-				return
-			}
-			jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": fmt.Sprintf("copied room %d to %d", m.RoomID, roomID), "room_id": roomID})
 		}
 	}
 }

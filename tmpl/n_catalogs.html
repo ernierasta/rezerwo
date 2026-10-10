@@ -4,7 +4,7 @@
   <p class="dsub">{{T "catalog.hint"}}</p>
 
   <h4>{{T "catalog.rooms"}}
-    {{if .Rooms}}<button class="btn sm" id="new-room">{{T "catalog.new_room"}}</button>{{end}}
+    <button class="btn sm" id="new-room">{{T "catalog.new_room"}}</button>
   </h4>
   <div class="rows">
     {{range .Rooms}}
@@ -34,7 +34,7 @@
   </div>
 
   <h4>{{T "catalog.accounts"}}
-    <button class="btn sm" data-create="/api/accounts" data-go="/admin/accounts/">{{T "catalog.new_account"}}</button>
+    <button class="btn sm" id="new-account">{{T "catalog.new_account"}}</button>
   </h4>
   <div class="rows accounts">
     {{range .Accounts}}
@@ -49,100 +49,12 @@
   </div>
 </div>
 
-<div class="dlg-back" id="room-dlg" hidden>
-  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="room-dlg-title">
-    <h3 id="room-dlg-title">{{T "catalog.new_room"}}</h3>
-    <p class="muted">{{T "catalog.new_room_hint"}}</p>
-    <div class="f"><label for="room-src">{{T "catalog.room_source"}}</label>
-      <select class="inp" id="room-src">{{range .Rooms}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div>
-    <div class="f" style="margin-top:12px"><label for="room-name">{{T "field.name"}}</label>
-      <input class="inp" id="room-name" autocomplete="off"></div>
-    <div class="sec-f"><button class="btn" id="room-ok">{{T "catalog.create_room"}}</button><button class="btn quiet" id="room-cancel">{{T "common.cancel"}}</button><small class="msg"></small></div>
-  </div>
-</div>
-<div class="dlg-back" id="name-dlg" hidden>
-  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="name-title">
-    <h3 id="name-title"></h3>
-    <div class="f" style="margin-top:14px"><label for="name-inp">{{T "field.name"}}</label>
-      <input class="inp" id="name-inp" autocomplete="off"></div>
-    <div class="sec-f"><button class="btn" id="name-ok">{{T "newmail.create"}}</button><button class="btn quiet" id="name-cancel">{{T "common.cancel"}}</button><small class="msg"></small></div>
-  </div>
-</div>
 {{end}}
 {{define "scripts"}}
-<script src="{{asset "/js/n_newmail.js"}}"></script>
+<script src="{{asset "/js/n_new.js"}}"></script>
 <script>
-document.getElementById('new-mail').addEventListener('click', function () { RZNewMail.open(); });
-
-// nowe katalogi (konto itp.) tworzy API i od razu otwieramy ich stronę;
-// nazwę podaje się we własnym oknie, nie w prompt()
-(function () {
-  var dlg = document.getElementById('name-dlg');
-  var name = document.getElementById('name-inp');
-  var msg = dlg.querySelector('.msg');
-  var ok = document.getElementById('name-ok');
-  var add = null;
-  function close() { dlg.hidden = true; }
-  document.getElementById('catalogs').addEventListener('click', function (e) {
-    var a = e.target.closest('[data-create]');
-    if (!a) return;
-    e.preventDefault();
-    add = a;
-    document.getElementById('name-title').textContent = a.textContent.trim();
-    name.value = '';
-    msg.textContent = '';
-    ok.disabled = false;
-    dlg.hidden = false;
-    name.focus();
-  });
-  document.getElementById('name-cancel').addEventListener('click', close);
-  dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
-  dlg.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') close();
-    if (e.key === 'Enter') ok.click();
-  });
-  ok.addEventListener('click', async function () {
-    var n = name.value.trim();
-    if (!n || !add) { name.focus(); return; }
-    ok.disabled = true;
-    try {
-      var resp = await fetch(add.dataset.create, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name: n})
-      });
-      if (!resp.ok) throw new Error();
-      var created = await resp.json();
-      location.href = add.dataset.go + created.id;
-    } catch (err) {
-      msg.textContent = "{{T "common.save_error"}}";
-      ok.disabled = false;
-    }
-  });
-})();
-
-// nowa sala powstaje jako kopia istniejącej (z meblami), potem otwiera się designer
-(function () {
-  var btn = document.getElementById('new-room');
-  var dlg = document.getElementById('room-dlg');
-  if (!btn) return;
-  var name = document.getElementById('room-name');
-  var msg = dlg.querySelector('.msg');
-  var ok = document.getElementById('room-ok');
-  btn.addEventListener('click', function () {
-    dlg.hidden = false;
-    msg.textContent = '';
-    name.focus();
-  });
-  document.getElementById('room-cancel').addEventListener('click', function () { dlg.hidden = true; });
-  dlg.addEventListener('keydown', function (e) { if (e.key === 'Escape') dlg.hidden = true; });
-  ok.addEventListener('click', function () {
-    if (!name.value.trim()) { name.focus(); return; }
-    ok.disabled = true;
-    RZ.postJSON('/api/roomcopy', {room_id: Number(document.getElementById('room-src').value), name: name.value.trim()})
-      .then(function (r) { location.href = '/admin/rooms/' + r.room_id; })
-      .catch(function (err) { msg.textContent = err.message; msg.classList.add('bad'); ok.disabled = false; });
-  });
-})();
+document.getElementById('new-mail').addEventListener('click', function () { RZNew.mail(); });
+document.getElementById('new-account').addEventListener('click', function () { RZNew.account(); });
+document.getElementById('new-room').addEventListener('click', function () { RZNew.room(); });
 </script>
 {{end}}

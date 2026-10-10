@@ -598,41 +598,49 @@
       if (sec) markDirty(sec);
     });
 
+    // save zapisuje sekcję przyciskiem btn ([data-save]); zwraca obietnicę,
+    // żeby można było zapisać i od razu przejść dalej (np. do nowego maila)
+    function save(btn) {
+      var sec = btn.closest('.sec');
+      var msg = sec.querySelector('.sec-f .msg');
+      btn.disabled = true;
+      if (msg) { msg.textContent = t('common.loading'); msg.classList.remove('bad'); }
+
+      return postJSON(saveURL, {section: btn.dataset.save, values: values(sec)})
+        .then(function (resp) {
+          sec.classList.remove('dirty');
+          delete dirty[sec.dataset.sec];
+          drafts.clear(sec.dataset.sec);
+          if (msg) msg.textContent = t('common.saved');
+          toast(t('common.saved'));
+          var span = sec.querySelector('.sec-h > span');
+          if (span && resp.summary) {
+            span.textContent = resp.summary;
+            span.classList.toggle('miss', !!resp.missing);
+          }
+          if (resp.title) {
+            var h = document.querySelector('.dh h3');
+            if (h) h.textContent = resp.title;
+          }
+          if (resp.subtitle) {
+            var s = document.querySelector('.dsub');
+            if (s) s.textContent = resp.subtitle;
+          }
+          if (opts.onSaved) opts.onSaved(btn.dataset.save, resp);
+          return resp;
+        })
+        .catch(function (err) {
+          if (msg) { msg.textContent = t('common.save_error') + ': ' + err.message; msg.classList.add('bad'); }
+          throw err;
+        })
+        .finally(function () { btn.disabled = false; });
+    }
+
     root.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-save]');
       if (btn) {
         e.preventDefault();
-        var sec = btn.closest('.sec');
-        var msg = sec.querySelector('.sec-f .msg');
-        btn.disabled = true;
-        if (msg) { msg.textContent = t('common.loading'); msg.classList.remove('bad'); }
-
-        postJSON(saveURL, {section: btn.dataset.save, values: values(sec)})
-          .then(function (resp) {
-            sec.classList.remove('dirty');
-            delete dirty[sec.dataset.sec];
-            drafts.clear(sec.dataset.sec);
-            if (msg) msg.textContent = t('common.saved');
-            toast(t('common.saved'));
-            var span = sec.querySelector('.sec-h > span');
-            if (span && resp.summary) {
-              span.textContent = resp.summary;
-              span.classList.toggle('miss', !!resp.missing);
-            }
-            if (resp.title) {
-              var h = document.querySelector('.dh h3');
-              if (h) h.textContent = resp.title;
-            }
-            if (resp.subtitle) {
-              var s = document.querySelector('.dsub');
-              if (s) s.textContent = resp.subtitle;
-            }
-            if (opts.onSaved) opts.onSaved(btn.dataset.save, resp);
-          })
-          .catch(function (err) {
-            if (msg) { msg.textContent = t('common.save_error') + ': ' + err.message; msg.classList.add('bad'); }
-          })
-          .finally(function () { btn.disabled = false; });
+        save(btn).catch(function () { /* błąd jest już w .msg sekcji */ });
         return;
       }
       if (e.target.closest('[data-cancel]')) {
@@ -647,6 +655,8 @@
     return {
       markDirty: markDirty,
       editors: editors,
+      // saveSection(sec) - zapis sekcji tak jak jej przycisk "Zapisz"
+      saveSection: function (sec) { return save(sec.querySelector('[data-save]')); },
 
       // restore przywraca niezapisane zmiany po powrocie na stronę.
       // Wołać po zbudowaniu harmonijki, z jej uchwytem.

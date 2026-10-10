@@ -17,6 +17,7 @@
         <button type="button" class="on" data-view="desktop">{{T "fields.view_desktop"}}</button>
         <button type="button" data-view="phone">{{T "fields.view_phone"}}</button>
       </div>
+      {{if not .IsAddons}}<button type="button" class="btn quiet sm fd-try-btn" id="fd-try" aria-pressed="false" title="{{T "fields.try_title"}}">{{T "fields.try"}}</button>{{end}}
       {{if not .IsAddons}}<a class="btn quiet sm" href="{{.PublicURL}}" target="_blank" rel="noopener" id="fd-open">{{T "fields.open_guest"}}</a>{{end}}
       <span class="fd-state muted" id="fd-state"></span>
       <button class="btn" id="fd-save" title="Ctrl+S">{{T "common.save"}}</button>
@@ -86,5 +87,6 @@
     stats: {{.Stats}}
   };
 </script>
+<script src="{{asset "/js/n_formconds.js"}}"></script>
 <script src="{{asset "/js/n_fields.js"}}"></script>
 {{end}}

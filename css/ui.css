@@ -2844,6 +2844,9 @@ h5.subhead a {
 .fd .fd-item.dragging {
   opacity: 0.35;
 }
+.fd .fd-item.cond {
+  border-left: 3px solid var(--bar-done);
+}
 .fd .fd-item .fd-inert {
   pointer-events: none;
   user-select: none;
@@ -2954,6 +2957,55 @@ h5.subhead a {
 .fd .fd-badges b.cnt {
   background: var(--taken);
   color: var(--muted);
+}
+.fd .fd-badges b.cond {
+  background: var(--leaf);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fd .fd-badges b.bad {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+.fd .fd-try-btn[aria-pressed=true] {
+  background: var(--blue-soft);
+  border-color: var(--blue-deep);
+  color: var(--blue-deep);
+}
+.fd .fd-try .ff-row {
+  margin-bottom: 18px;
+  gap: 16px 18px;
+}
+.fd.trying .fd-pal {
+  opacity: 0.5;
+}
+.fd .fd-condvals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+  margin-bottom: 4px;
+}
+.fd .fd-cond .miss {
+  display: block;
+  margin-top: 6px;
+}
+.fd .fd-optgroup {
+  border-left: 3px solid var(--bar-done);
+  padding: 2px 0 4px 10px;
+  margin: 10px 0;
+}
+.fd .fd-optgroup h6 {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.fd .fd-optgroup.orphan {
+  border-left-color: var(--danger-ink);
+}
+.fd .fd-optgroup.orphan h6 {
+  color: var(--danger-ink);
 }
 .fd .fd-empty {
   background: var(--surface);

@@ -1645,6 +1645,8 @@ h5.subhead {
     &:focus-visible { outline: 2px solid var(--blue-deep); outline-offset: 1px; }
     &.sel { border: 1px solid var(--blue-deep); background: var(--blue-soft); box-shadow: 0 0 0 3px rgba(61, 98, 133, .08); }
     &.dragging { opacity: .35; }
+    // pole warunkowe (własny warunek albo sekcji, formconds.go)
+    &.cond { border-left: 3px solid var(--bar-done); }
 
     .fd-inert { pointer-events: none; user-select: none; }
     .fd-inert .ff .inp, .fd-inert .opt { background: var(--surface); }
@@ -1710,6 +1712,25 @@ h5.subhead {
     b { font-weight: 500; font-size: 11.5px; line-height: 1; padding: 3px 7px; border-radius: 10px; background: var(--blue); color: var(--ink); }
     b.money { background: var(--leaf); }
     b.cnt { background: var(--taken); color: var(--muted); }
+    b.cond { background: var(--leaf); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    b.bad { background: var(--danger-soft); color: var(--danger-ink); }
+  }
+
+  // tryb próby: formularz jak u gościa, z działającymi warunkami
+  .fd-try-btn[aria-pressed="true"] { background: var(--blue-soft); border-color: var(--blue-deep); color: var(--blue-deep); }
+  .fd-try .ff-row { margin-bottom: 18px; gap: 16px 18px; }
+  &.trying .fd-pal { opacity: .5; }
+
+  // warunek pola i opcje pola zależnego w grupach
+  .fd-condvals { display: flex; flex-wrap: wrap; gap: 0 16px; margin-bottom: 4px; }
+  .fd-cond .miss { display: block; margin-top: 6px; }
+  .fd-optgroup {
+    border-left: 3px solid var(--bar-done);
+    padding: 2px 0 4px 10px;
+    margin: 10px 0;
+
+    h6 { font-size: 13.5px; font-weight: 600; margin: 0 0 6px; }
+    &.orphan { border-left-color: var(--danger-ink); h6 { color: var(--danger-ink); } }
   }
 
   .fd-empty {

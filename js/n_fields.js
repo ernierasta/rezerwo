@@ -7,6 +7,8 @@
 //   _new   pole jeszcze niezapisane - nazwa idzie za etykietą
 //   _w     szerokość 1-12 (col-md-N), _nr - zacznij nowy wiersz
 // Przy zapisie szerokości zamieniają się z powrotem na klasy row-N col-md-N.
+// Warunki (show_if, depends_on, when przy opcjach - formconds.go) odwołują
+// się do nazw pól i wartości opcji; zmiana nazwy czy opcji poprawia odwołania.
 
 (function () {
   'use strict';
@@ -44,6 +46,8 @@
   var savedSig = '';
   var undoStack = [], redoStack = [], current = null, lastKey = '', lastTime = 0;
   var dragSrc = null;
+  var trying = false, tryConds = null;
+  var btnTry = document.getElementById('fd-try');
 
   // --- pomocnicze --------------------------------------------------------
 
@@ -97,6 +101,85 @@
   }
 
   function answersOf(f) { return f._orig ? (counts[f._orig] || 0) : 0; }
+
+  // --- warunki: pola warunkowe i zależne opcje (formconds.go) --------------
+
+  function isChoice(f) { return CHOICE.indexOf(f.type) >= 0; }
+  function optValue(o) { return o.value || plain(o.label); }
+  function byName(name) {
+    for (var i = 0; i < fields.length; i++) if (fields[i].name === name && isInput(fields[i].type)) return fields[i];
+    return null;
+  }
+
+  // parentsFor - pola wyboru nad polem i: od nich może zależeć
+  function parentsFor(i) {
+    return fields.slice(0, i).filter(function (p) { return isChoice(p) && p.name; });
+  }
+
+  // sectionOf - nagłówek, pod którym stoi pole i (albo null)
+  function sectionOf(i) {
+    for (var j = i - 1; j >= 0; j--) if (fields[j].type === 'header') return fields[j];
+    return null;
+  }
+
+  // effCond - warunek pola: własny albo sekcji (FieldConds w formconds.go)
+  function effCond(f) {
+    if (roleOf(f)) return null;
+    if (f.show_if) return f.show_if;
+    if (f.type === 'header') return null;
+    var h = sectionOf(indexOfId(f._id));
+    return (h && h.show_if) || null;
+  }
+
+  function depOf(f) { return isChoice(f) && f.depends_on ? f.depends_on : ''; }
+
+  // condProblem - opis błędu warunku pola albo '' (checkConds w formconds.go)
+  function condProblem(f) {
+    if (isAddons) return '';
+    var ok = parentsFor(indexOfId(f._id)).map(function (p) { return p.name; });
+    if (f.show_if && !roleOf(f)) {
+      if (ok.indexOf(f.show_if.field) < 0) return t('fields.cond_bad');
+      if (!(f.show_if.values || []).length) return t('fields.cond_novalues');
+    }
+    if (depOf(f) && ok.indexOf(f.depends_on) < 0) return t('fields.cond_bad');
+    return '';
+  }
+
+  function condText(c) {
+    var p = byName(c.field);
+    var labels = (c.values || []).map(function (v) {
+      var o = p && (p.values || []).filter(function (x) { return optValue(x) === v; })[0];
+      return o ? o.label : v;
+    });
+    return (p ? plain(p.label) : c.field) + ': ' + labels.join(', ');
+  }
+
+  // renameRefs - pole zmieniło nazwę z old na nu
+  function renameRefs(old, nu) {
+    if (!old || old === nu) return;
+    fields.forEach(function (x) {
+      if (x.show_if && x.show_if.field === old) x.show_if.field = nu;
+      if (x.depends_on === old) x.depends_on = nu;
+    });
+  }
+
+  // renameValue - opcja pola parent zmieniła wartość z old na nu
+  function renameValue(parent, old, nu) {
+    fields.forEach(function (x) {
+      if (x.show_if && x.show_if.field === parent) {
+        x.show_if.values = x.show_if.values.map(function (v) { return v === old ? nu : v; });
+      }
+      if (x.depends_on === parent) (x.values || []).forEach(function (o) { if (o.when === old) o.when = nu; });
+    });
+  }
+
+  // dropRefs - pole name znika: warunki od niego też
+  function dropRefs(name) {
+    fields.forEach(function (x) {
+      if (x.show_if && x.show_if.field === name) delete x.show_if;
+      if (x.depends_on === name) delete x.depends_on;
+    });
+  }
 
   // cleanHTML zostawia w etykiecie to samo co serwer (CleanLabel w formdef.go):
   // pogrubienie, kursywę, podkreślenie, nowy wiersz i link.
@@ -397,6 +480,7 @@
   }
 
   function addField(kind, index, newRow) {
+    if (trying) setTrying(false);
     var f = newField(kind);
     if (!f) return;
     if (index === undefined) {
@@ -420,39 +504,58 @@
 
   // --- podgląd (te same klasy co tmpl/n_formfield.html) -------------------
 
-  function fieldHTML(f) {
+  // fieldHTML - pole jak u gościa. live: tryb próby - pole z szerokością,
+  // nazwą, warunkami i wartościami opcji jak w szablonie, do n_formconds.js
+  function fieldHTML(f, live) {
+    var h = fieldBody(f, live);
+    return live ? h.replace(/ tabindex="-1"/g, '') : h;
+  }
+
+  function fieldBody(f, live) {
     var req = f.required ? '<i class="req">*</i>' : '';
     var desc = f.description ? '<small class="ff-d">' + esc(f.description) + '</small>' : '';
     var label = cleanHTML(f.label) || '<span class="muted">' + esc(t('fields.no_label')) + '</span>';
     var h = '';
+    var attrs = '', cls = '', dep = depOf(f);
+    if (live) {
+      var c = effCond(f);
+      cls = ' w' + (isInput(f.type) ? (f._w || 12) : 12);
+      if (isInput(f.type)) attrs += ' data-name="' + esc(f.name) + '" data-type="' + esc(f.type) + '"';
+      if (c) attrs += ' data-show="' + esc(JSON.stringify({field: c.field, values: c.values || []})) + '"';
+      if (dep) attrs += ' data-dep="' + esc(dep) + '"';
+    }
+    function when(o) { return live && dep ? ' data-when="' + esc(o.when || '') + '"' : ''; }
 
     switch (f.type) {
       case 'header':
         var lvl = f.subtype === 'h3' ? 'h3' : (f.subtype === 'h4' || f.subtype === 'h5' || f.subtype === 'h6') ? 'h4' : 'h2';
-        return '<div class="ff ff-header"><' + lvl + '>' + label + '</' + lvl + '></div>';
+        return '<div class="ff ff-header' + cls + '"' + attrs + '><' + lvl + '>' + label + '</' + lvl + '></div>';
       case 'paragraph':
-        return '<div class="ff ff-paragraph"><p>' + label + '</p></div>';
+        return '<div class="ff ff-paragraph' + cls + '"' + attrs + '><p>' + label + '</p></div>';
       case 'radio-group':
       case 'checkbox-group':
         var it = f.type === 'radio-group' ? 'radio' : 'checkbox';
-        h = '<fieldset class="ff ff-group"><legend class="ff-l">' + label + req + '</legend>' + desc +
+        var nm = live ? ' name="try-' + f._id + '"' : '';
+        h = '<fieldset class="ff ff-group' + cls + '"' + attrs + '><legend class="ff-l">' + label + req + '</legend>' + desc +
           '<div class="opts' + (f.inline ? ' inline' : '') + '">';
         (f.values || []).forEach(function (o) {
-          h += '<label class="opt"><input type="' + it + '" tabindex="-1"' + (o.selected ? ' checked' : '') + '><span>' + esc(o.label) + '</span>' + optStat(f, o.label) + '</label>';
+          h += '<label class="opt"' + when(o) + '><input type="' + it + '" tabindex="-1"' + nm + ' value="' + esc(optValue(o)) + '"' + (o.selected ? ' checked' : '') + '><span>' + esc(o.label) + '</span>' + optStat(f, o.label) + '</label>';
         });
-        if (f.other) h += '<label class="opt other"><input type="' + it + '" tabindex="-1"><span>' + esc(t('gform.other')) + '</span><input class="inp other-text" disabled tabindex="-1"></label>';
+        if (f.other) h += '<label class="opt other"><input type="' + it + '" tabindex="-1"' + nm + ' value=""><span>' + esc(t('gform.other')) + '</span><input class="inp other-text" disabled tabindex="-1"></label>';
         return h + '</div></fieldset>';
     }
 
-    h = '<div class="ff ff-' + esc(f.type) + (moneyId === f._id ? ' money' : '') + '"><label class="ff-l">' + label + req + '</label>';
+    h = '<div class="ff ff-' + esc(f.type) + cls + (moneyId === f._id ? ' money' : '') + '"' + attrs + '><label class="ff-l">' + label + req + '</label>';
     switch (f.type) {
       case 'textarea':
         h += '<textarea class="inp" rows="' + esc(f.rows || 3) + '" tabindex="-1" placeholder="' + esc(f.placeholder || '') + '"></textarea>';
         break;
       case 'select':
         h += '<select class="inp" tabindex="-1"' + (f.multiple ? ' multiple' : '') + '>';
-        if (!f.multiple) h += '<option>' + esc(t('field.select_hint')) + '</option>';
-        (f.values || []).forEach(function (o) { h += '<option' + (o.selected && !f.multiple ? ' selected' : '') + '>' + esc(o.label) + optStat(f, o.label, true) + '</option>'; });
+        if (!f.multiple) h += '<option value="">' + esc(t('field.select_hint')) + '</option>';
+        (f.values || []).forEach(function (o) {
+          h += '<option value="' + esc(optValue(o)) + '"' + when(o) + (o.selected && !f.multiple ? ' selected' : '') + '>' + esc(o.label) + optStat(f, o.label, true) + '</option>';
+        });
         h += '</select>';
         break;
       case 'number':
@@ -480,6 +583,14 @@
       b.push('<b class="panel">' + esc(t(atField(f) ? 'fields.panel_badge_field' : 'fields.panel_badge')) + (f.panel_goal ? ' / ' + esc(f.panel_goal) : '') + '</b>');
     }
     if (isAddons && f.name && f.name.slice(-PERSEAT.length) === PERSEAT) b.push('<b>' + esc(t('fields.perseat_badge')) + '</b>');
+    var pr = condProblem(f);
+    if (pr) {
+      b.push('<b class="bad">⚠ ' + esc(pr) + '</b>');
+    } else if (!isAddons) {
+      if (f.show_if && !roleOf(f)) b.push('<b class="cond" title="' + esc(condText(f.show_if)) + '">⤷ ' + esc(condText(f.show_if)) + '</b>');
+      var dp = depOf(f) && byName(f.depends_on);
+      if (dp) b.push('<b class="cond">↳ ' + esc(t('fields.dep_badge', plain(dp.label))) + '</b>');
+    }
     var n = answersOf(f);
     if (n) b.push('<b class="cnt">' + esc(t('fields.answers_badge', n)) + '</b>');
     return b.length ? '<span class="fd-badges">' + b.join('') + '</span>' : '';
@@ -492,12 +603,17 @@
         (isAddons ? '' : '<button class="btn" data-add="preset-person">' + esc(t('fields.add_person')) + '</button>') + '</div>';
       return;
     }
+    if (trying) {
+      renderTry();
+      return;
+    }
     var h = '<div class="gform-form">';
     layoutRows().forEach(function (r) {
       h += '<div class="ff-row">';
       r.fields.forEach(function (f) {
         var w = isInput(f.type) ? (f._w || 12) : 12;
-        h += '<div class="fd-item w' + w + (f._id === sel ? ' sel' : '') + '" data-id="' + f._id + '" draggable="true" tabindex="0">' +
+        var cond = !isAddons && effCond(f) ? ' cond' : '';
+        h += '<div class="fd-item w' + w + cond + (f._id === sel ? ' sel' : '') + '" data-id="' + f._id + '" draggable="true" tabindex="0">' +
           '<div class="fd-tools">' +
           '<button type="button" data-act="up" title="' + esc(t('fields.move_up')) + ' (Alt+↑)">↑</button>' +
           '<button type="button" data-act="down" title="' + esc(t('fields.move_down')) + ' (Alt+↓)">↓</button>' +
@@ -513,7 +629,30 @@
     canvas.parentNode.scrollTop = scroll;
   }
 
+  // renderTry - tryb próby: formularz jak u gościa, warunki działają
+  function renderTry() {
+    var h = '<div class="gform-form fd-try">';
+    layoutRows().forEach(function (r) {
+      h += '<div class="ff-row">';
+      r.fields.forEach(function (f) { h += fieldHTML(f, true); });
+      h += '</div>';
+    });
+    canvas.innerHTML = h + '</div>';
+    tryConds = RZ.formConds(canvas.querySelector('.gform-form'));
+  }
+
+  function setTrying(on) {
+    if (!btnTry) return;
+    trying = on;
+    btnTry.setAttribute('aria-pressed', on ? 'true' : 'false');
+    root.classList.toggle('trying', on);
+    if (on) sel = 0;
+    render();
+    renderProps();
+  }
+
   function select(id) {
+    if (trying && id) setTrying(false);
     sel = id;
     canvas.querySelectorAll('.fd-item').forEach(function (el) {
       el.classList.toggle('sel', +el.dataset.id === id);
@@ -570,6 +709,11 @@
   }
 
   function renderProps() {
+    if (trying) {
+      props.innerHTML = '<h4>' + esc(t('fields.try_title')) + '</h4><p class="muted">' + esc(t('fields.try_hint')) + '</p>' +
+        '<button class="btn quiet sm" data-try-end>' + esc(t('fields.try_end')) + '</button>';
+      return;
+    }
     var f = byId(sel);
     if (!f) {
       props.innerHTML = overviewHTML();
@@ -684,6 +828,8 @@
         '<small class="fd-keyerr miss" hidden></small></details>';
     }
 
+    h += condHTML(f);
+
     h += '<div class="fd-actions"><button class="btn quiet sm" data-act-sel="dup">' + esc(t('fields.duplicate')) + '</button>' +
       '<button class="btn danger sm" data-act-sel="del">' + esc(t('fields.delete_field')) + '</button></div>';
     props.innerHTML = h;
@@ -714,16 +860,106 @@
     return h;
   }
 
+  // condHTML - "Kiedy pokazać": zawsze / jak sekcja / gdy pole wyboru wyżej
+  // ma jedną z zaznaczonych opcji
+  function condHTML(f) {
+    if (isAddons) return '';
+    var head = f.type === 'header';
+    var h = '<div class="fd-box fd-cond"><h5>' + esc(t(head ? 'fields.cond_title_section' : 'fields.cond_title')) + '</h5>';
+    if (roleOf(f)) return h + '<small class="muted">' + esc(t('fields.cond_role')) + '</small></div>';
+    var i = indexOfId(f._id);
+    var ps = parentsFor(i);
+    var sec = head ? null : sectionOf(i);
+    var secCond = sec && sec.show_if;
+    if (!ps.length && !f.show_if) {
+      return h + (secCond ? '<p class="muted small">' + esc(t('fields.cond_in_section', [plain(sec.label), condText(secCond)])) + '</p>' : '') +
+        '<small class="muted">' + esc(t('fields.cond_none')) + '</small></div>';
+    }
+    var cur = f.show_if ? f.show_if.field : '';
+    var o = '<option value="">' + esc(t(secCond ? 'fields.cond_section' : 'fields.cond_always')) + '</option>';
+    ps.forEach(function (p) {
+      o += '<option value="' + esc(p.name) + '"' + (cur === p.name ? ' selected' : '') + '>' + esc(t('fields.cond_when', plain(p.label) || p.name)) + '</option>';
+    });
+    var parent = null;
+    ps.forEach(function (p) { if (p.name === cur) parent = p; });
+    if (cur && !parent) o += '<option value="' + esc(cur) + '" selected>⚠ ' + esc(cur) + '</option>';
+    h += row(t('fields.cond_show'), '<select class="inp" data-cond-field>' + o + '</select>');
+    if (parent) {
+      var vals = f.show_if.values || [];
+      h += '<div class="fd-condvals">' + (parent.values || []).map(function (x) {
+        var v = optValue(x);
+        return '<label class="check fd-check"><input type="checkbox" data-cond-val value="' + esc(v) + '"' + (vals.indexOf(v) >= 0 ? ' checked' : '') + '><span>' + esc(x.label) + '</span></label>';
+      }).join('') + '</div>';
+      if (!vals.length) h += '<small class="miss">' + esc(t('fields.cond_novalues')) + '</small>';
+    } else if (cur) {
+      h += '<small class="miss">' + esc(t('fields.cond_bad')) + '</small>';
+    }
+    if (secCond) {
+      h += '<p class="muted small">' + esc(t('fields.cond_in_section', [plain(sec.label), condText(secCond)])) +
+        (f.show_if ? ' ' + esc(t('fields.cond_own')) : '') + '</p>';
+    }
+    if (head) h += '<small class="muted">' + esc(t('fields.cond_section_hint')) + '</small>';
+    return h + '</div>';
+  }
+
+  // depHTML - wybór pola, od którego zależą opcje
+  function depHTML(f) {
+    if (isAddons) return '';
+    var ps = parentsFor(indexOfId(f._id));
+    if (!ps.length && !f.depends_on) return '';
+    var o = '<option value="">' + esc(t('fields.dep_none')) + '</option>', found = false;
+    ps.forEach(function (p) {
+      if (p.name === f.depends_on) found = true;
+      o += '<option value="' + esc(p.name) + '"' + (p.name === f.depends_on ? ' selected' : '') + '>' + esc(plain(p.label) || p.name) + '</option>';
+    });
+    if (f.depends_on && !found) o += '<option value="' + esc(f.depends_on) + '" selected>⚠ ' + esc(f.depends_on) + '</option>';
+    return row(t('fields.dep_label'), '<select class="inp" data-depsel>' + o + '</select>', f.depends_on ? '' : t('fields.dep_hint'));
+  }
+
+  function optRowHTML(o, i, single) {
+    return '<div class="fd-opt" data-i="' + i + '">' +
+      '<input type="' + (single ? 'radio' : 'checkbox') + '" name="fd-optsel" data-opt-sel' + (o.selected ? ' checked' : '') + ' title="' + esc(t('fields.option_default')) + '">' +
+      '<input class="inp" data-opt-label value="' + esc(o.label) + '" aria-label="' + esc(t('fields.option')) + ' ' + (i + 1) + '">' +
+      '<button type="button" data-opt-up title="' + esc(t('fields.move_up')) + '">↑</button>' +
+      '<button type="button" data-opt-del title="' + esc(t('common.delete')) + '">✕</button></div>';
+  }
+
+  // optGroups - grupy opcji pola zależnego: po jednej na opcję rodzica,
+  // opcje z nieistniejącą już wartością rodzica i na końcu "przy każdym"
+  function optGroups(f) {
+    var p = depOf(f) && byName(f.depends_on);
+    if (!p || !isChoice(p)) return null;
+    var groups = (p.values || []).map(function (o) { return {when: optValue(o), label: o.label}; });
+    var known = groups.map(function (g) { return g.when; });
+    (f.values || []).forEach(function (o) {
+      var w = o.when || '';
+      if (w && known.indexOf(w) < 0) {
+        known.push(w);
+        groups.push({when: w, label: t('fields.dep_orphan', w), orphan: true});
+      }
+    });
+    groups.push({when: '', label: t('fields.dep_always')});
+    return groups;
+  }
+
   function optionsHTML(f) {
     var single = f.type !== 'checkbox-group' && !(f.type === 'select' && f.multiple);
-    var h = '<div class="f fd-f"><label>' + esc(t('fields.options')) + '</label><div class="fd-opts">';
-    (f.values || []).forEach(function (o, i) {
-      h += '<div class="fd-opt" data-i="' + i + '">' +
-        '<input type="' + (single ? 'radio' : 'checkbox') + '" name="fd-optsel" data-opt-sel' + (o.selected ? ' checked' : '') + ' title="' + esc(t('fields.option_default')) + '">' +
-        '<input class="inp" data-opt-label value="' + esc(o.label) + '" aria-label="' + esc(t('fields.option')) + ' ' + (i + 1) + '">' +
-        '<button type="button" data-opt-up title="' + esc(t('fields.move_up')) + '">↑</button>' +
-        '<button type="button" data-opt-del title="' + esc(t('common.delete')) + '">✕</button></div>';
-    });
+    var h = depHTML(f);
+    var groups = optGroups(f);
+    if (groups) {
+      h += '<div class="f fd-f"><label>' + esc(t('fields.options')) + '</label>';
+      groups.forEach(function (g) {
+        h += '<div class="fd-optgroup' + (g.orphan ? ' orphan' : '') + '"><h6>' + esc(g.label) + '</h6><div class="fd-opts">';
+        (f.values || []).forEach(function (o, i) { if ((o.when || '') === g.when) h += optRowHTML(o, i, single); });
+        h += '</div><div class="fd-optbar"><button type="button" class="link" data-opt-add data-when="' + esc(g.when) + '">+ ' + esc(t('fields.option_add')) + '</button>' +
+          '<button type="button" class="link" data-opt-paste data-when="' + esc(g.when) + '">' + esc(t('fields.option_paste')) + '</button></div></div>';
+      });
+      h += (single ? '<div class="fd-optbar"><button type="button" class="link" data-opt-nodefault>' + esc(t('fields.option_nodefault')) + '</button></div>' : '') +
+        '<small>' + esc(t('fields.dep_hint')) + '</small></div>';
+      return h;
+    }
+    h += '<div class="f fd-f"><label>' + esc(t('fields.options')) + '</label><div class="fd-opts">';
+    (f.values || []).forEach(function (o, i) { h += optRowHTML(o, i, single); });
     h += '</div><div class="fd-optbar"><button type="button" class="link" data-opt-add>+ ' + esc(t('fields.option_add')) + '</button>' +
       '<button type="button" class="link" data-opt-paste>' + esc(t('fields.option_paste')) + '</button>' +
       (single ? '<button type="button" class="link" data-opt-nodefault>' + esc(t('fields.option_nodefault')) + '</button>' : '') +
@@ -743,21 +979,27 @@
     f.label = html;
     if (f._new && !f._nameEdited && isInput(f.type) && !roleOf(f)) {
       var suffix = isAddons && f.name && f.name.slice(-PERSEAT.length) === PERSEAT ? PERSEAT : '';
+      var old = f.name;
       f.name = uniqueName((slug(html) || f.type) + suffix, f._id);
+      renameRefs(old, f.name);
       var k = props.querySelector('[data-prop="_name"]');
       if (k) k.value = f.name;
     }
   }
 
   function setRole(f, role) {
-    var old = roleOf(f);
+    var old = roleOf(f), oldName = f.name;
     if (role === old) return;
     if (role) {
       // inne pole z tą rolą wraca do zwykłego
       fields.forEach(function (x) {
-        if (x !== f && x.name === ROLE[role]) x.name = uniqueName(slug(x.label) || 'pole', x._id);
+        if (x !== f && x.name === ROLE[role]) {
+          x.name = uniqueName(slug(x.label) || 'pole', x._id);
+          renameRefs(ROLE[role], x.name);
+        }
       });
       f.name = ROLE[role];
+      delete f.show_if;
       f.required = true;
       if (role === 'email') f.subtype = 'email';
       else if (f.subtype === 'email') f.subtype = 'text';
@@ -765,6 +1007,7 @@
     } else {
       f.name = uniqueName(slug(f.label) || 'pole', f._id);
     }
+    renameRefs(oldName, f.name);
   }
 
   function setKey(f, value, errEl) {
@@ -776,6 +1019,7 @@
     else if (value === ROLE.name || value === ROLE.surname || value === ROLE.email) msg = t('fields.key_role_reserved');
     if (errEl) { errEl.textContent = msg; errEl.hidden = !msg; }
     if (msg) return false;
+    renameRefs(f.name, value);
     f.name = value;
     f._nameEdited = true;
     return true;
@@ -803,6 +1047,7 @@
         (f.values || []).forEach(function (o) { if (o.selected) { if (seen) o.selected = false; seen = true; } });
       }
     } else {
+      delete f.depends_on;
       f.subtype = type === 'date' ? undefined : type;
       if (f.subtype === undefined) delete f.subtype;
       if (type !== 'number') { delete f.min; delete f.max; delete f.step; }
@@ -825,7 +1070,10 @@
     if (el.matches('[data-opt-label]')) {
       var i = +el.closest('.fd-opt').dataset.i;
       var o = f.values[i];
-      if (!o.value || o.value === o.label) o.value = el.value;
+      if (!o.value || o.value === o.label) {
+        renameValue(f.name, optValue(o), el.value);
+        o.value = el.value;
+      }
       o.label = el.value;
       changed('opt:' + f._id + ':' + i);
       return;
@@ -863,6 +1111,22 @@
     var el = e.target;
 
     if (el.matches('[data-convert]')) { convert(f, el.value); changed('', true); return; }
+    if (el.matches('[data-cond-field]')) {
+      if (el.value) f.show_if = {field: el.value, values: []}; else delete f.show_if;
+      changed('', true);
+      return;
+    }
+    if (el.matches('[data-cond-val]')) {
+      f.show_if.values = Array.prototype.filter.call(props.querySelectorAll('[data-cond-val]'), function (c) { return c.checked; })
+        .map(function (c) { return c.value; });
+      changed('', true);
+      return;
+    }
+    if (el.matches('[data-depsel]')) {
+      if (el.value) f.depends_on = el.value; else delete f.depends_on;
+      changed('', true);
+      return;
+    }
     if (el.matches('[data-role]')) { setRole(f, el.value); changed('', true); return; }
     if (el.matches('[data-panel-only]')) {
       if (el.value) f.panel_only = el.value; else delete f.panel_only;
@@ -927,7 +1191,9 @@
     }
     if (e.target.matches('[data-opt-label]') && e.key === 'Enter') {
       e.preventDefault();
-      addOption(byId(sel), +e.target.closest('.fd-opt').dataset.i + 1);
+      var oi = +e.target.closest('.fd-opt').dataset.i;
+      var of = byId(sel);
+      addOption(of, oi + 1, depOf(of) ? (of.values[oi].when || '') : undefined);
     }
     if (e.target.matches('[data-linkurl]') && e.key === 'Enter') {
       e.preventDefault();
@@ -956,14 +1222,23 @@
     changed('');
   }
 
-  function addOption(f, at) {
+  // addOption dodaje opcję na pozycji at (domyślnie na końcu); when - grupa
+  // pola zależnego, nowa opcja staje na końcu tej grupy
+  function addOption(f, at, when) {
     var n = (f.values || []).length + 1;
     var label = t('fields.new.option', n);
     f.values = f.values || [];
-    f.values.splice(at === undefined ? f.values.length : at, 0, {label: label, value: label, selected: false});
+    if (at === undefined) {
+      at = f.values.length;
+      if (when !== undefined) {
+        f.values.forEach(function (o, i) { if ((o.when || '') === when) at = i + 1; });
+      }
+    }
+    var o = {label: label, value: label, selected: false};
+    if (when) o.when = when;
+    f.values.splice(at, 0, o);
     changed('', true);
-    var inputs = props.querySelectorAll('[data-opt-label]');
-    var el = inputs[at === undefined ? inputs.length - 1 : at];
+    var el = props.querySelector('.fd-opt[data-i="' + at + '"] [data-opt-label]');
     if (el) { el.focus(); el.select(); }
   }
 
@@ -974,6 +1249,7 @@
 
     if (b.matches('[data-add]')) { addField(b.dataset.add); return; }
     if (b.matches('[data-deselect]')) { select(0); return; }
+    if (b.matches('[data-try-end]')) { setTrying(false); return; }
     if (!f) return;
 
     if (b.matches('[data-cmd]')) {
@@ -1027,22 +1303,33 @@
       changed('', true);
       return;
     }
-    if (b.matches('[data-opt-add]')) { addOption(f); return; }
+    if (b.matches('[data-opt-add]')) { addOption(f, undefined, b.dataset.when); return; }
     if (b.matches('[data-opt-nodefault]')) {
       (f.values || []).forEach(function (o) { o.selected = false; });
       changed('', true);
       return;
     }
     if (b.matches('[data-opt-del]')) {
-      f.values.splice(+b.closest('.fd-opt').dataset.i, 1);
+      var gone = f.values.splice(+b.closest('.fd-opt').dataset.i, 1)[0];
+      var v = optValue(gone);
+      if (!f.values.some(function (o) { return optValue(o) === v; })) {
+        // warunki innych pól na tę opcję
+        fields.forEach(function (x) {
+          if (x.show_if && x.show_if.field === f.name) x.show_if.values = x.show_if.values.filter(function (y) { return y !== v; });
+        });
+      }
       changed('', true);
       return;
     }
     if (b.matches('[data-opt-up]')) {
+      // w polu zależnym w obrębie grupy
       var i = +b.closest('.fd-opt').dataset.i;
-      if (i > 0) {
-        var tmp = f.values[i - 1];
-        f.values[i - 1] = f.values[i];
+      var grp = depOf(f) ? (f.values[i].when || '') : null;
+      var j = i - 1;
+      while (j >= 0 && grp !== null && (f.values[j].when || '') !== grp) j--;
+      if (j >= 0) {
+        var tmp = f.values[j];
+        f.values[j] = f.values[i];
         f.values[i] = tmp;
         changed('', true);
       }
@@ -1052,8 +1339,15 @@
       dialog(t('fields.option_paste'), '<p class="muted">' + esc(t('fields.option_paste_hint')) + '</p><textarea class="inp" rows="8" id="fd-paste"></textarea>',
         t('fields.option_paste_ok'), function () {
           var lines = document.getElementById('fd-paste').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+          var when = b.dataset.when;
           f.values = f.values || [];
-          lines.forEach(function (l) { f.values.push({label: l, value: l, selected: false}); });
+          var at = f.values.length;
+          if (when !== undefined) f.values.forEach(function (o, k) { if ((o.when || '') === when) at = k + 1; });
+          lines.forEach(function (l, k) {
+            var o = {label: l, value: l, selected: false};
+            if (when) o.when = when;
+            f.values.splice(at + k, 0, o);
+          });
           changed('', true);
         });
       setTimeout(function () { document.getElementById('fd-paste').focus(); }, 30);
@@ -1110,6 +1404,7 @@
         var n = answersOf(f);
         var doDelete = function () {
           fields.splice(i, 1);
+          if (isInput(f.type) && f.name) dropRefs(f.name);
           if (moneyId === f._id) moneyId = 0;
           if (sel === f._id) sel = 0;
           changed('', true);
@@ -1129,6 +1424,7 @@
   }
 
   canvas.addEventListener('click', function (e) {
+    if (trying) return;
     var add = e.target.closest('[data-add]');
     if (add) {
       if (add.dataset.add === 'preset-person') {
@@ -1150,6 +1446,10 @@
     var id = +item.dataset.id;
     if (tool) { act(tool.dataset.act, id); return; }
     select(id);
+  });
+
+  canvas.addEventListener('change', function () {
+    if (trying && tryConds) tryConds.apply();
   });
 
   canvas.addEventListener('dblclick', function (e) {
@@ -1228,7 +1528,7 @@
   }
 
   canvas.addEventListener('dragover', function (e) {
-    if (!dragSrc) return;
+    if (!dragSrc || trying) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = dragSrc.add ? 'copy' : 'move';
     clearDrop();
@@ -1244,7 +1544,7 @@
   });
 
   canvas.addEventListener('drop', function (e) {
-    if (!dragSrc) return;
+    if (!dragSrc || trying) return;
     e.preventDefault();
     var tg = dropTarget(e);
     clearDrop();
@@ -1309,6 +1609,8 @@
     if (btnSave.disabled) return;
     var bad = fields.filter(function (f) { return isInput(f.type) && !f.name; })[0];
     if (bad) { select(bad._id); RZ.toast(t('fields.key_bad')); return; }
+    var badc = fields.filter(function (f) { return condProblem(f); })[0];
+    if (badc) { select(badc._id); RZ.toast(condProblem(badc)); return; }
 
     btnSave.disabled = true;
     stateEl.textContent = t('common.loading');
@@ -1337,6 +1639,7 @@
   }
 
   btnSave.addEventListener('click', save);
+  if (btnTry) btnTry.addEventListener('click', function () { setTrying(!trying); });
   btnUndo.addEventListener('click', undo);
   btnRedo.addEventListener('click', redo);
 

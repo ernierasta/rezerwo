@@ -159,6 +159,7 @@ func fieldStat(d FormDefField, answers []string) FieldStat {
 func countOptions(d FormDefField, answers []string) []OptionStat {
 	type opt struct{ label, value string }
 	var opts []opt
+	seen := map[string]bool{}
 	if vals, ok := d["values"].([]interface{}); ok {
 		for _, v := range vals {
 			vm, ok := v.(map[string]interface{})
@@ -169,6 +170,11 @@ func countOptions(d FormDefField, answers []string) []OptionStat {
 			if o.value == "" {
 				o.value = o.label
 			}
+			// pole zależne może mieć tę samą opcję w kilku grupach (formconds.go)
+			if seen[o.value] {
+				continue
+			}
+			seen[o.value] = true
 			opts = append(opts, o)
 		}
 	}

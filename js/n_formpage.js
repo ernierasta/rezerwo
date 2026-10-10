@@ -1,7 +1,7 @@
 // n_formpage.js - formularz dla gościa (tmpl/n_formpage.html).
 // Pola renderuje serwer; tu jest tylko: mnożnik i suma do zapłaty, opcja
-// "Inne", walidacja z komunikatami w języku formularza, szkic w przeglądarce
-// i wysyłka. Format wysyłanych danych jak w starym formRender:
+// "Inne", pola warunkowe (n_formconds.js), walidacja z komunikatami w języku
+// formularza, szkic w przeglądarce i wysyłka. Ukryte pola idą puste. Format wysyłanych danych jak w starym formRender:
 // [{name: "pole", userData: ["wartość", ...]}].
 
 (function () {
@@ -19,6 +19,7 @@
   var currency = root.dataset.currency || '';
   var draftKey = root.dataset.draft;
   var sent = false;
+  var conds = null;
 
   // --- pomocnicze --------------------------------------------------------
 
@@ -53,7 +54,7 @@
     if (!totalEl) return;
     var sum = 0;
     fields.forEach(function (ff) {
-      if (!ff.classList.contains('money')) return;
+      if (!ff.classList.contains('money') || ff.hidden) return;
       var inp = ff.querySelector('input');
       if (!inp) return;
       if (ff.dataset.type === 'multiplierField') sum += multValue(inp).total;
@@ -105,13 +106,14 @@
 
   function collect() {
     return fields.map(function (ff) {
-      return {name: ff.dataset.name, userData: valueOf(ff)};
+      return {name: ff.dataset.name, userData: ff.hidden ? [] : valueOf(ff)};
     });
   }
 
   // --- walidacja ---------------------------------------------------------
 
   function errorOf(ff) {
+    if (ff.hidden) return '';
     var type = ff.dataset.type;
     var required = ff.hasAttribute('data-required');
 
@@ -201,14 +203,23 @@
     if (vals[0] !== undefined) el.value = vals[0];
   }
 
+  // fillAll wpisuje zapisane wartości {nazwa: {v, o}}. Opcje pola zależnego
+  // pojawiają się dopiero po wyborze rodzica, więc wpisujemy kilka razy.
+  function fillAll(d) {
+    for (var k = 0; k < 3; k++) {
+      fields.forEach(function (ff) {
+        if (d[ff.dataset.name]) setField(ff, d[ff.dataset.name]);
+      });
+      if (!conds.apply()) break;
+    }
+  }
+
   // restoreDraft oddaje true, jeśli był szkic tego formularza
   function restoreDraft() {
     var d;
     try { d = JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch (e) { d = null; }
     if (!d) return false;
-    fields.forEach(function (ff) {
-      if (d[ff.dataset.name]) setField(ff, d[ff.dataset.name]);
-    });
+    fillAll(d);
     return true;
   }
 
@@ -272,11 +283,14 @@
       setField(ff, m[k]);
       if (valueOf(ff).some(function (v) { return v !== ''; })) filled.push(ff);
     });
+    conds.apply();
     var note = document.getElementById('gform-remembered');
     if (!filled.length || !note) return;
     note.hidden = false;
     document.getElementById('gform-remembered-clear').addEventListener('click', function () {
       filled.forEach(function (ff) { setField(ff, {v: [''], o: ''}); });
+      conds.apply();
+      updateTotal();
       try { localStorage.removeItem(rememberKey); } catch (e) { /* nic */ }
       note.hidden = true;
       saveDraft();
@@ -285,11 +299,21 @@
 
   // --- zdarzenia ---------------------------------------------------------
 
+  // applyConds przelicza pola warunkowe; ukryte pole nie pokazuje błędu
+  function applyConds() {
+    var changed = conds.apply();
+    if (changed) {
+      fields.forEach(function (ff) { if (ff.hidden && ff.classList.contains('bad')) showError(ff, ''); });
+    }
+    return changed;
+  }
+
   form.addEventListener('input', function (e) {
     var ff = e.target.closest('.ff');
     if (!ff) return;
     if (ff.dataset.type === 'multiplierField') updateMult(ff);
     if (e.target.classList.contains('other-text')) syncOther(ff, true);
+    applyConds();
     if (ff.classList.contains('bad')) showError(ff, errorOf(ff));
     if (!form.querySelector('.ff.bad')) msgEl.hidden = true;
     updateTotal();
@@ -300,6 +324,7 @@
     var ff = e.target.closest('.ff');
     if (!ff) return;
     syncOther(ff);
+    if (applyConds()) updateTotal();
     if (ff.classList.contains('bad')) showError(ff, errorOf(ff));
     saveDraft();
   });
@@ -347,6 +372,9 @@
         submit.textContent = label;
       });
   });
+
+  // pola warunkowe: od razu, żeby ukryte pola nie mignęły przed wczytaniem tekstów
+  conds = RZ.formConds(form, valueOf);
 
   // Bez ostrzeżenia "Opuścić stronę?" (beforeunload): ten dialog rysuje
   // przeglądarka w swoim języku, a wpisane dane i tak przeżywają w szkicu.

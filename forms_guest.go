@@ -229,7 +229,13 @@ func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r
 			return
 		}
 
-		if bad := checkRequired(templ, msg.Data); bad != "" {
+		// ukryte pola (warunki, formconds.go) idą puste i nie są wymagane
+		defs, err := ParseFormDef(templ.Content.String)
+		if err != nil {
+			log.Printf("GuestFormSendAPI: form %d: %v", templ.ID, err)
+		}
+		vis := ApplyConds(defs, msg.Data)
+		if bad := checkRequired(defs, vis, msg.Data); bad != "" {
 			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "gform.err.missing", bad), "field": bad})
 			return
 		}
@@ -264,13 +270,10 @@ func guestFormAPI(w http.ResponseWriter, r *http.Request, db *DB) (User, FormTem
 	return user, templ, true
 }
 
-// checkRequired sprawdza po stronie serwera pola wymagane i rolę e-maila.
-// Zwraca etykietę pierwszego brakującego pola.
-func checkRequired(templ FormTemplate, data []FormAnswersJson) string {
-	defs, err := ParseFormDef(templ.Content.String)
-	if err != nil {
-		return ""
-	}
+// checkRequired sprawdza po stronie serwera pola wymagane i rolę e-maila;
+// pola ukryte warunkiem (vis z ApplyConds) pomija. Zwraca etykietę pierwszego
+// brakującego pola.
+func checkRequired(defs []FormDefField, vis []bool, data []FormAnswersJson) string {
 	got := map[string]bool{}
 	for _, d := range data {
 		for _, v := range d.UserData {
@@ -279,9 +282,9 @@ func checkRequired(templ FormTemplate, data []FormAnswersJson) string {
 			}
 		}
 	}
-	for _, d := range defs {
+	for i, d := range defs {
 		name := d.S("name")
-		if !isInputType(d.S("type")) || name == "" {
+		if !isInputType(d.S("type")) || name == "" || !vis[i] {
 			continue
 		}
 		req := d.B("required") || name == ROLENAME || name == ROLESURNAME || name == ROLEEMAIL

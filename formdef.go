@@ -141,6 +141,9 @@ func CleanFormDef(ff []FormDefField) ([]FormDefField, error) {
 		seen[name] = true
 		f["name"] = name
 	}
+	if err := checkConds(ff); err != nil {
+		return nil, err
+	}
 	return ff, nil
 }
 
@@ -153,6 +156,7 @@ type RenderOption struct {
 	Selected bool
 	ID       string
 	Stat     *OptionStat // stan opcji przy polu (panel_place), patrz form_stats.go
+	When     string      // opcja pola zależnego: wartość rodzica (formconds.go)
 }
 
 // RenderField to pole gotowe dla szablonu tmpl/n_formfield.html.
@@ -187,6 +191,8 @@ type RenderField struct {
 	Width       int  // 1-12 (col-md-N), 12 = cały wiersz
 	HeaderLevel string
 	Stat        *PanelItem // stan pola przy polu (panel_place), patrz form_stats.go
+	ShowIf      string     // warunek pokazania (własny albo sekcji) jako JSON, formconds.go
+	DependsOn   string     // opcje zależne od pola o tej nazwie, formconds.go
 }
 
 // IsInput mówi, czy pole zbiera odpowiedź.
@@ -222,12 +228,17 @@ func FieldLayout(className string) (row string, width int) {
 func BuildRenderRows(ff []FormDefField, moneyField string) []RenderRow {
 	var rows []RenderRow
 	rowIdx := map[string]int{}
+	conds := FieldConds(ff)
 
 	for i, d := range ff {
 		f := renderField(d, i)
 		if f.Type == "" || f.Type == "button" || f.Type == "hidden" {
 			continue
 		}
+		if conds[i] != nil {
+			f.ShowIf = conds[i].JSON()
+		}
+		f.DependsOn = dependsOn(d)
 		if f.IsInput() && f.Name == "" {
 			continue
 		}
@@ -326,6 +337,7 @@ func renderField(d FormDefField, idx int) RenderField {
 				Value:    str(vm["value"]),
 				Selected: boolOf(vm["selected"]),
 				ID:       fmt.Sprintf("f%d-%d", idx, j),
+				When:     strings.TrimSpace(str(vm["when"])),
 			}
 			if o.Value == "" {
 				o.Value = o.Label

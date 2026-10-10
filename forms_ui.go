@@ -512,11 +512,6 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 
 // --- odpowiedzi ------------------------------------------------------------
 
-type nAnswerCol struct {
-	Key   string `json:"key"`
-	Label string `json:"label"`
-}
-
 type nAnswerRow struct {
 	ID        int64             `json:"id"`
 	Name      string            `json:"name"`
@@ -527,31 +522,20 @@ type nAnswerRow struct {
 	LastMail  int64             `json:"last_mail"`
 	MailCount int64             `json:"mail_count"`
 	Values    map[string]string `json:"values"`
+	// widoczność pól przy warunkach, patrz form_report.go
+	NA    []string            `json:"na,omitempty"`
+	Out   []string            `json:"out,omitempty"`
+	Picks map[string][]string `json:"picks,omitempty"`
 }
 
 type nAnswersResp struct {
-	FormID        int64          `json:"form_id"`
-	FormName      string         `json:"form_name"`
-	MoneyField    string         `json:"money_field"`
-	Columns       []nAnswerCol   `json:"columns"`
-	Rows          []nAnswerRow   `json:"rows"`
-	Notifications []nResNotifOpt `json:"notifications"`
-}
-
-func answerColumns(db *DB, templ FormTemplate) ([]nAnswerCol, map[int64]string) {
-	ff, err := db.FormFieldGetAllForTmpl(templ.ID)
-	if err != nil {
-		log.Printf("answerColumns: %v", err)
-	}
-	ff = filterFormFields(ff)
-
-	cols := make([]nAnswerCol, 0, len(ff))
-	byID := map[int64]string{}
-	for _, f := range ff {
-		cols = append(cols, nAnswerCol{Key: f.Name, Label: plainLabel(f.Display)})
-		byID[f.ID] = f.Name
-	}
-	return cols, byID
+	FormID        int64            `json:"form_id"`
+	FormName      string           `json:"form_name"`
+	MoneyField    string           `json:"money_field"`
+	Columns       []nAnswerCol     `json:"columns"`
+	Sections      []nAnswerSection `json:"sections"`
+	Rows          []nAnswerRow     `json:"rows"`
+	Notifications []nResNotifOpt   `json:"notifications"`
 }
 
 // plainLabel czyści etykietę pola z HTML. W bazie zdarzają się etykiety
@@ -562,7 +546,7 @@ func plainLabel(s string) string {
 	return strings.TrimSpace(html.UnescapeString(bluemonday.StripTagsPolicy().Sanitize(s)))
 }
 
-func answerRows(db *DB, user User, templ FormTemplate, byID map[int64]string) []nAnswerRow {
+func answerRows(db *DB, user User, templ FormTemplate, sch answerSchema) []nAnswerRow {
 	forms, err := db.FormGetAll(user.ID, templ.ID)
 	if err != nil {
 		log.Printf("answerRows: %v", err)
@@ -596,10 +580,11 @@ func answerRows(db *DB, user User, templ FormTemplate, byID map[int64]string) []
 			log.Printf("answerRows: answers of form %d: %v", f.ID, err)
 		}
 		for _, a := range ans {
-			if key, ok := byID[a.FormFieldID]; ok {
+			if key, ok := sch.ByID[a.FormFieldID]; ok {
 				row.Values[key] = a.Value.String
 			}
 		}
+		row.NA, row.Out, row.Picks = sch.rowVisibility(row.Values)
 		rows = append(rows, row)
 	}
 	return rows
@@ -639,7 +624,7 @@ func AnswersListAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		if !ok {
 			return
 		}
-		cols, byID := answerColumns(db, templ)
+		sch := loadAnswerSchema(db, templ, PanelLang(r))
 		notifs, err := db.NotificationGetAllForUser(user.ID)
 		if err != nil {
 			log.Printf("AnswersListAPI: notifications: %v", err)
@@ -649,8 +634,9 @@ func AnswersListAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			FormID:     templ.ID,
 			FormName:   templ.Name,
 			MoneyField: templ.MoneyAmountFieldName.String,
-			Columns:    cols,
-			Rows:       answerRows(db, user, templ, byID),
+			Columns:    sch.Cols,
+			Sections:   sch.Sections,
+			Rows:       answerRows(db, user, templ, sch),
 		}
 		for _, n := range notifs {
 			resp.Notifications = append(resp.Notifications, nResNotifOpt{ID: n.ID, Name: n.Name})
@@ -659,9 +645,8 @@ func AnswersListAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 	}
 }
 
-func answersRefreshed(db *DB, user User, templ FormTemplate) []nAnswerRow {
-	_, byID := answerColumns(db, templ)
-	return answerRows(db, user, templ, byID)
+func answersRefreshed(db *DB, user User, templ FormTemplate, lang string) []nAnswerRow {
+	return answerRows(db, user, templ, loadAnswerSchema(db, templ, lang))
 }
 
 // AnswersStatusAPI - POST /api/forms/{id}/answers/status
@@ -693,7 +678,7 @@ func AnswersStatusAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": "some answers not updated", "failed": failed})
 			return
 		}
-		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "ok", "rows": answersRefreshed(db, user, templ)})
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "ok", "rows": answersRefreshed(db, user, templ, PanelLang(r))})
 	}
 }
 
@@ -723,7 +708,7 @@ func AnswersDeleteAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": "some answers not deleted", "failed": failed})
 			return
 		}
-		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "ok", "rows": answersRefreshed(db, user, templ)})
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "ok", "rows": answersRefreshed(db, user, templ, PanelLang(r))})
 	}
 }
 
@@ -773,7 +758,7 @@ func AnswersMailAPI(db *DB, mailConf MailConfig, cs *sessions.CookieStore) func(
 			"msg":    fmt.Sprintf("sent %d of %d", sent, len(m.IDs)),
 			"sent":   sent,
 			"failed": failed,
-			"rows":   answersRefreshed(db, user, templ),
+			"rows":   answersRefreshed(db, user, templ, PanelLang(r)),
 		})
 	}
 }
@@ -804,6 +789,14 @@ func sendFormAnswerMail(db *DB, mailConf MailConfig, user User, templ FormTempla
 }
 
 // AnswersCSVAPI - GET /api/forms/{id}/answers.csv
+// Parametry (eksport widoku ze strony odpowiedzi):
+//
+//	ids=1,2,3  tylko te zgłoszenia
+//	cols=a,b   tylko te pola (kolejność z formularza)
+//	na=1       pola, których gość nie widział, jako "n/d" zamiast pustych
+//
+// Pole z opcjami zależnymi stoi zaraz za swoim rodzicem, żeby było wiadomo,
+// do czego odnosi się wybór.
 func AnswersCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, templ, ok := adminFormTemplate(w, r, db, cs, false)
@@ -811,8 +804,24 @@ func AnswersCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			return
 		}
 		lang := PanelLang(r)
-		cols, byID := answerColumns(db, templ)
-		rows := answerRows(db, user, templ, byID)
+		q := r.URL.Query()
+		sch := loadAnswerSchema(db, templ, lang)
+		rows := answerRows(db, user, templ, sch)
+
+		if ids := splitParam(q.Get("ids")); ids != nil {
+			keep := rows[:0]
+			for _, row := range rows {
+				if ids[strconv.FormatInt(row.ID, 10)] {
+					keep = append(keep, row)
+				}
+			}
+			rows = keep
+		}
+		cols := csvColumns(sch.Cols, splitParam(q.Get("cols")))
+		na := ""
+		if q.Get("na") == "1" {
+			na = T(lang, "answers.na")
+		}
 
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q",
@@ -835,10 +844,68 @@ func AnswersCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 				row.Status,
 				FormatDate(lang, row.Created),
 			}
+			hidden := map[string]bool{}
+			for _, k := range row.NA {
+				hidden[k] = true
+			}
 			for _, c := range cols {
-				rec = append(rec, row.Values[c.Key])
+				v := row.Values[c.Key]
+				if hidden[c.Key] && strings.TrimSpace(v) == "" {
+					v = na
+				}
+				rec = append(rec, v)
 			}
 			cw.Write(rec)
 		}
 	}
+}
+
+// splitParam zamienia "a,b,c" na zbiór (nil, gdy parametru nie ma).
+func splitParam(s string) map[string]bool {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	out := map[string]bool{}
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out[p] = true
+		}
+	}
+	return out
+}
+
+// csvColumns wybiera kolumny (only == nil: wszystkie) i przestawia pola
+// zależne zaraz za ich rodzica (a kilka zależnych w kolejności formularza).
+func csvColumns(all []nAnswerCol, only map[string]bool) []nAnswerCol {
+	var cols []nAnswerCol
+	for _, c := range all {
+		if only == nil || only[c.Key] {
+			cols = append(cols, c)
+		}
+	}
+	present := map[string]bool{}
+	for _, c := range cols {
+		present[c.Key] = true
+	}
+	children := map[string][]nAnswerCol{}
+	for _, c := range cols {
+		if c.Parent != "" && present[c.Parent] {
+			children[c.Parent] = append(children[c.Parent], c)
+		}
+	}
+	out := make([]nAnswerCol, 0, len(cols))
+	var add func(c nAnswerCol)
+	add = func(c nAnswerCol) {
+		out = append(out, c)
+		for _, ch := range children[c.Key] {
+			add(ch)
+		}
+	}
+	for _, c := range cols {
+		if c.Parent != "" && present[c.Parent] {
+			continue
+		}
+		add(c)
+	}
+	return out
 }

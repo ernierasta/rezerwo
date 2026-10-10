@@ -54,7 +54,8 @@ func panelMode(t FormTemplate) string {
 type OptionStat struct {
 	Label string
 	Count int64
-	Other bool // odpowiedź spoza listy opcji ("Inne: ...")
+	Other bool   // odpowiedź spoza listy opcji ("Inne: ...")
+	When  string // pole zależne: grupa opcji (wartość rodzica)
 	Goal  int64
 	Pct   int
 }
@@ -113,6 +114,13 @@ func parseNumber(s string) (float64, bool) {
 
 // fieldStat liczy zestawienie pola na podstawie jego definicji.
 func fieldStat(d FormDefField, answers []string) FieldStat {
+	return fieldStatDep(d, answers, nil)
+}
+
+// fieldStatDep jak fieldStat; parents (równoległe do answers) to wybory
+// rodzica pola zależnego (formconds.go) - opcje liczą się wtedy osobno
+// w każdej grupie "when".
+func fieldStatDep(d FormDefField, answers []string, parents [][]string) FieldStat {
 	st := FieldStat{
 		Name:  d.S("name"),
 		Label: plainLabel(d.S("label")),
@@ -145,7 +153,7 @@ func fieldStat(d FormDefField, answers []string) FieldStat {
 		}
 	case "select", "radio-group", "checkbox-group":
 		st.Kind = "options"
-		st.Options = countOptions(d, answers)
+		st.Options = countOptions(d, answers, parents)
 	default:
 		st.Kind = "filled"
 		st.Filled = int64(len(answers))
@@ -153,58 +161,116 @@ func fieldStat(d FormDefField, answers []string) FieldStat {
 	return st
 }
 
-// countOptions liczy wybory opcji w kolejności z definicji. Checkboxy są
-// zapisane jako "A, B", więc najpierw szukamy całych znanych opcji (także
-// tych z przecinkiem w nazwie), a resztę liczymy jako "Inne".
-func countOptions(d FormDefField, answers []string) []OptionStat {
-	type opt struct{ label, value string }
-	var opts []opt
+// choiceOpt - opcja pola wyboru z definicji.
+type choiceOpt struct{ label, value, when string }
+
+// choiceOptions zwraca opcje pola w kolejności z definicji. Pole zależne może
+// mieć tę samą wartość w kilku grupach "when" - wtedy jest kilka wpisów.
+func choiceOptions(d FormDefField) []choiceOpt {
+	var opts []choiceOpt
+	vals, _ := d["values"].([]interface{})
+	for _, v := range vals {
+		vm, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		o := choiceOpt{label: plainLabel(str(vm["label"])), value: strings.TrimSpace(str(vm["value"])), when: strings.TrimSpace(str(vm["when"]))}
+		if o.value == "" {
+			o.value = o.label
+		}
+		opts = append(opts, o)
+	}
+	return opts
+}
+
+// isMultiChoice mówi, czy odpowiedź pola może mieć kilka wartości ("A, B").
+func isMultiChoice(d FormDefField) bool {
+	return d.S("type") == "checkbox-group" || (d.S("type") == "select" && d.B("multiple"))
+}
+
+// answerPicks dzieli zapisaną odpowiedź pola wyboru na wybrane wartości.
+// Checkboxy są zapisane jako "A, B", więc najpierw szukamy całych znanych
+// opcji (także tych z przecinkiem w nazwie, dłuższe najpierw, żeby "Tak,
+// chętnie" nie zostało policzone jako "Tak"); reszta to wpisy "Inne".
+// Zwraca znane wartości (known) i resztę (other).
+func answerPicks(d FormDefField, a string) (known, other []string) {
+	a = strings.TrimSpace(a)
+	if a == "" {
+		return nil, nil
+	}
+	var values []string
 	seen := map[string]bool{}
-	if vals, ok := d["values"].([]interface{}); ok {
-		for _, v := range vals {
-			vm, ok := v.(map[string]interface{})
-			if !ok {
-				continue
-			}
-			o := opt{label: plainLabel(str(vm["label"])), value: strings.TrimSpace(str(vm["value"]))}
-			if o.value == "" {
-				o.value = o.label
-			}
-			// pole zależne może mieć tę samą opcję w kilku grupach (formconds.go)
-			if seen[o.value] {
-				continue
-			}
+	for _, o := range choiceOptions(d) {
+		if o.value != "" && !seen[o.value] {
 			seen[o.value] = true
-			opts = append(opts, o)
+			values = append(values, o.value)
 		}
 	}
-	// dłuższe wartości najpierw, żeby "Tak, chętnie" nie zostało policzone jako "Tak"
-	byLen := make([]int, len(opts))
-	for i := range byLen {
-		byLen[i] = i
+	if !isMultiChoice(d) {
+		if seen[a] {
+			return []string{a}, nil
+		}
+		return nil, []string{a}
 	}
-	sort.SliceStable(byLen, func(a, b int) bool { return len(opts[byLen[a]].value) > len(opts[byLen[b]].value) })
+	sort.SliceStable(values, func(i, j int) bool { return len(values[i]) > len(values[j]) })
+	rest := ", " + a + ", "
+	for _, v := range values {
+		if strings.Contains(rest, ", "+v+", ") {
+			known = append(known, v)
+			rest = strings.Replace(rest, ", "+v+", ", ", ", 1)
+		}
+	}
+	for _, p := range strings.Split(rest, ", ") {
+		if p = strings.TrimSpace(p); p != "" {
+			other = append(other, p)
+		}
+	}
+	return known, other
+}
+
+// allPicks to answerPicks jako jedna lista (znane i "Inne").
+func allPicks(d FormDefField, a string) []string {
+	k, o := answerPicks(d, a)
+	return append(k, o...)
+}
+
+// countOptions liczy wybory opcji w kolejności z definicji, a odpowiedzi
+// spoza listy jako "Inne". Z parents (pole zależne) każda grupa "when" ma
+// własne liczniki: opcja liczy się w grupie, gdy rodzic ma wartość "when".
+func countOptions(d FormDefField, answers []string, parents [][]string) []OptionStat {
+	opts := choiceOptions(d)
+	grouped := parents != nil
+	if !grouped {
+		// bez rodzica ta sama wartość w kilku grupach to jedna opcja
+		seen := map[string]bool{}
+		var uniq []choiceOpt
+		for _, o := range opts {
+			if !seen[o.value] {
+				seen[o.value] = true
+				o.when = ""
+				uniq = append(uniq, o)
+			}
+		}
+		opts = uniq
+	}
 
 	counts := make([]int64, len(opts))
 	other := map[string]int64{}
 	var otherOrder []string
-	for _, a := range answers {
-		rest := ", " + a + ", "
-		for _, i := range byLen {
-			v := opts[i].value
-			if v == "" {
-				continue
-			}
-			if strings.Contains(rest, ", "+v+", ") {
-				counts[i]++
-				rest = strings.Replace(rest, ", "+v+", ", ", ", 1)
+	for i, a := range answers {
+		known, rest := answerPicks(d, a)
+		for _, v := range known {
+			for j, o := range opts {
+				if o.value != v {
+					continue
+				}
+				if grouped && o.when != "" && (i >= len(parents) || !anyIn([]string{o.when}, parents[i])) {
+					continue
+				}
+				counts[j]++
 			}
 		}
-		for _, p := range strings.Split(rest, ", ") {
-			p = strings.TrimSpace(p)
-			if p == "" {
-				continue
-			}
+		for _, p := range rest {
 			if _, ok := other[p]; !ok {
 				otherOrder = append(otherOrder, p)
 			}
@@ -214,7 +280,7 @@ func countOptions(d FormDefField, answers []string) []OptionStat {
 
 	out := make([]OptionStat, 0, len(opts)+len(other))
 	for i, o := range opts {
-		out = append(out, OptionStat{Label: o.label, Count: counts[i]})
+		out = append(out, OptionStat{Label: o.label, Count: counts[i], When: o.when})
 	}
 	for _, p := range otherOrder {
 		out = append(out, OptionStat{Label: p, Count: other[p], Other: true})
@@ -223,13 +289,15 @@ func countOptions(d FormDefField, answers []string) []OptionStat {
 }
 
 // OptionCount zwraca liczbę wyborów jednej opcji (po etykiecie albo wartości).
+// Pole zależne ma opcję w każdej grupie osobno - liczy się suma.
 func (st FieldStat) OptionCount(option string) int64 {
+	var n int64
 	for _, o := range st.Options {
 		if o.Label == option {
-			return o.Count
+			n += o.Count
 		}
 	}
-	return 0
+	return n
 }
 
 // Value to główna liczba zestawienia jako tekst.
@@ -267,10 +335,91 @@ type PanelItem struct {
 	Pct     int
 	Done    bool // cel osiągnięty
 	Options []OptionStat
+	// Groups - pole zależne: opcje w grupach wg wyboru rodzica
+	Groups []OptionGroup
 	// Compact - krótkie opcje (klasy "1A", "2B") jako kafelki, a nie lista
 	Compact bool
 	// Only - "licz tylko opcję": stan tej jednej opcji (przy polu)
 	Only *OptionStat
+}
+
+// OptionGroup - opcje pola zależnego dostępne przy jednym wyborze rodzica
+// (Label pusty: opcje wspólne i "Inne").
+type OptionGroup struct {
+	Label   string
+	Options []OptionStat
+}
+
+// groupOptions układa opcje pola zależnego w grupy "when" w kolejności
+// pierwszego wystąpienia; etykiety grup to etykiety opcji rodzica.
+func groupOptions(opts []OptionStat, parent FormDefField) []OptionGroup {
+	labels := map[string]string{}
+	for _, o := range choiceOptions(parent) {
+		if _, ok := labels[o.value]; !ok {
+			labels[o.value] = o.label
+		}
+	}
+	var out []OptionGroup
+	idx := map[string]int{}
+	var common []OptionStat
+	for _, o := range opts {
+		if o.When == "" {
+			common = append(common, o)
+			continue
+		}
+		i, ok := idx[o.When]
+		if !ok {
+			l := labels[o.When]
+			if l == "" {
+				l = o.When
+			}
+			i = len(out)
+			idx[o.When] = i
+			out = append(out, OptionGroup{Label: l})
+		}
+		out[i].Options = append(out[i].Options, o)
+	}
+	if len(common) > 0 {
+		out = append(out, OptionGroup{Options: common})
+	}
+	return out
+}
+
+// depAnswers zbiera odpowiedzi pola zależnego i wybory rodzica z całych
+// zgłoszeń (równoległe listy dla fieldStatDep).
+func depAnswers(recs map[int64]map[string]string, name string, parent FormDefField) ([]string, [][]string) {
+	ids := make([]int64, 0, len(recs))
+	for id := range recs {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(a, b int) bool { return ids[a] < ids[b] })
+	var answers []string
+	var parents [][]string
+	for _, id := range ids {
+		v := strings.TrimSpace(recs[id][name])
+		if v == "" {
+			continue
+		}
+		answers = append(answers, v)
+		parents = append(parents, allPicks(parent, recs[id][parent.S("name")]))
+	}
+	return answers, parents
+}
+
+// loadFormRecords zwraca odpowiedzi wg zgłoszenia: id -> pole -> wartość.
+func loadFormRecords(db *DB, tmplID int64) map[int64]map[string]string {
+	rows, err := db.FormAnswerRecordsForTemplate(tmplID)
+	if err != nil {
+		log.Printf("loadFormRecords %d: %v", tmplID, err)
+	}
+	out := map[int64]map[string]string{}
+	for _, r := range rows {
+		if out[r.FormID] == nil {
+			out[r.FormID] = map[string]string{}
+		}
+		out[r.FormID][r.Name] = r.Value
+	}
+	return out
 }
 
 type PanelVars struct {
@@ -326,6 +475,14 @@ func BuildPanel(db *DB, user User, templ FormTemplate, mode string) PanelVars {
 	v := PanelVars{Submissions: n, Fields: map[string]PanelItem{}}
 	currency := currencySign(formCurrency(db, user, templ))
 
+	byName := map[string]FormDefField{}
+	for _, d := range defs {
+		if n := d.S("name"); n != "" {
+			byName[n] = d
+		}
+	}
+	var recs map[int64]map[string]string // całe zgłoszenia, tylko dla pól zależnych
+
 	var pendingHeader template.HTML
 	for _, d := range defs {
 		if d.S("type") == "header" {
@@ -341,6 +498,14 @@ func BuildPanel(db *DB, user User, templ FormTemplate, mode string) PanelVars {
 			pendingHeader = ""
 		}
 		st := fieldStat(d, answers[d.S("name")])
+		parent, dep := byName[dependsOn(d)]
+		if dep {
+			if recs == nil {
+				recs = loadFormRecords(db, templ.ID)
+			}
+			ans, par := depAnswers(recs, d.S("name"), parent)
+			st = fieldStatDep(d, ans, par)
+		}
 		goal := intOf(d["panel_goal"])
 		it := PanelItem{Label: st.Label, Value: st.Value(), Goal: goal}
 
@@ -364,6 +529,9 @@ func BuildPanel(db *DB, user User, templ FormTemplate, mode string) PanelVars {
 				}
 			}
 			it.Compact = short && goal == 0 && len(it.Options) >= 5
+			if dep {
+				it.Groups = groupOptions(it.Options, parent)
+			}
 		} else if st.Kind == "filled" {
 			it.Unit = T(formLang(templ), "panel.filled")
 			it.Pct, it.Done = pct(st.Filled, goal), goal > 0 && st.Filled >= goal
@@ -407,7 +575,8 @@ func AttachFieldStats(rows []RenderRow, items map[string]PanelItem) {
 					continue
 				}
 				for k := range it.Options {
-					if it.Options[k].Label == o.Label && !it.Options[k].Other {
+					w := it.Options[k].When
+					if it.Options[k].Label == o.Label && !it.Options[k].Other && (w == "" || w == o.When) {
 						o.Stat = &it.Options[k]
 						break
 					}

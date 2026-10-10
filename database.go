@@ -1861,6 +1861,24 @@ func (db *DB) FormAnswerValuesForTemplate(tmplID int64) ([]fieldAnswerRow, error
 	return rows, err
 }
 
+type formAnswerRecord struct {
+	FormID int64  `db:"form_id"`
+	Name   string `db:"name"`
+	Value  string `db:"value"`
+}
+
+// FormAnswerRecordsForTemplate zwraca odpowiedzi formularza z id zgłoszenia
+// i nazwą pola - zestawienia pól zależnych potrzebują całych zgłoszeń
+// (form_stats.go).
+func (db *DB) FormAnswerRecordsForTemplate(tmplID int64) ([]formAnswerRecord, error) {
+	var rows []formAnswerRecord
+	err := db.DB.Select(&rows, `SELECT fa.forms_id_fk AS form_id, ff.name AS name, fa.value AS value FROM formanswers fa
+		JOIN formfields ff ON ff.id=fa.formfields_id_fk
+		JOIN forms f ON f.id=fa.forms_id_fk
+		WHERE ff.formtemplates_id_fk=$1 AND fa.value IS NOT NULL`, tmplID)
+	return rows, err
+}
+
 // FormTemplateURLTaken mówi, czy organizacja ma już formularz pod tym adresem
 // (poza formularzem exceptID).
 func (db *DB) FormTemplateURLTaken(url string, userID, exceptID int64) bool {

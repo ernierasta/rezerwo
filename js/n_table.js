@@ -8,8 +8,11 @@
 //     rows: [...],
 //     storageKey: 'rezerwo.res.22',
 //     onSelect: function (rows) {},
-//     onRowClick: function (row) {}
+//     onRowClick: function (row) {},
+//     autoHide: function (col, rows) {}  // true = schowaj kolumnę przy tych wierszach
 //   });
+// kolumna może mieć też group (nagłówek nad kolumnami - dwa poziomy głowicy)
+// i cellClass(row) / cellTitle(row) dla komórki.
 //   t.setRows(rows); t.selected(); t.visibleRows();
 
 (function (global) {
@@ -24,7 +27,8 @@
       filters: {},           // klucz kolumny -> tekst
       hidden: {},            // klucz kolumny -> true
       selected: {},          // id wiersza -> true
-      idKey: opts.idKey || 'id'
+      idKey: opts.idKey || 'id',
+      shown: []              // kolumny narysowane ostatnio (bez ukrytych i schowanych)
     };
 
     // zapamiętany widok: kolumny, sortowanie, filtry
@@ -75,6 +79,8 @@
         var col = state.columns.filter(function (c) { return c.key === state.sort.key; })[0];
         rows.sort(function (a, b) {
           var av = a[state.sort.key], bv = b[state.sort.key];
+          // kolumny wyliczane (np. pola formularza) sortują się po swoim tekście
+          if (col && col.text && col.type !== 'num' && col.type !== 'date') { av = col.text(a); bv = col.text(b); }
           if (col && (col.type === 'num' || col.type === 'date')) {
             return (Number(av) - Number(bv)) * state.sort.dir;
           }
@@ -95,7 +101,11 @@
 
     function render() {
       var rows = visibleRows();
-      var cols = state.columns.filter(function (c) { return !state.hidden[c.key]; });
+      var cols = state.columns.filter(function (c) {
+        if (state.hidden[c.key]) return false;
+        return !(opts.autoHide && rows.length && opts.autoHide(c, rows));
+      });
+      state.shown = cols;
 
       var table = document.createElement('table');
       table.className = 'tbl';
@@ -134,6 +144,26 @@
         if (col.align === 'right') th.className = 'r';
         htr.appendChild(th);
       });
+      if (cols.some(function (c) { return c.group; })) {
+        // górny wiersz głowicy: grupy kolejnych kolumn (sekcje formularza)
+        var gtr = document.createElement('tr');
+        gtr.className = 'grp';
+        gtr.appendChild(document.createElement('th'));
+        var last = null;
+        cols.forEach(function (col) {
+          var g = col.group || '';
+          if (last && last.dataset.g === g) {
+            last.colSpan += 1;
+            return;
+          }
+          last = document.createElement('th');
+          last.dataset.g = g;
+          last.textContent = g;
+          if (g) last.className = 'g';
+          gtr.appendChild(last);
+        });
+        thead.appendChild(gtr);
+      }
       thead.appendChild(htr);
       table.appendChild(thead);
 
@@ -161,6 +191,14 @@
           var td = document.createElement('td');
           if (col.align === 'right') td.className = 'r';
           if (col.type === 'num' || col.type === 'date') td.classList.add('num');
+          if (col.cellClass) {
+            var cc = col.cellClass(row);
+            if (cc) td.classList.add(cc);
+          }
+          if (col.cellTitle) {
+            var ct = col.cellTitle(row);
+            if (ct) td.title = ct;
+          }
           if (col.render) {
             var out = col.render(row);
             if (out instanceof Node) td.appendChild(out);
@@ -205,6 +243,12 @@
       setRowFilter: function (fn) { opts.rowFilter = fn; render(); },
       toggleColumn: function (key, hide) { state.hidden[key] = hide; storeView(); render(); },
       hiddenColumns: function () { return state.hidden; },
+      setHidden: function (keys, hide) {
+        keys.forEach(function (k) { state.hidden[k] = hide; });
+        storeView();
+        render();
+      },
+      shownColumns: function () { return state.shown; },
       clearSelection: function () { state.selected = {}; render(); notifySelect(); },
       selected: selectedRows,
       visibleRows: visibleRows,

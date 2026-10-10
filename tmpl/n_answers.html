@@ -5,6 +5,7 @@
     <h3>{{T "form.answers"}}</h3>
     <div class="r">
       <a class="btn quiet" href="/api/forms/{{.ID}}/answers.csv">CSV</a>
+      <a class="btn quiet" id="ans-csv-view" href="/api/forms/{{.ID}}/answers.csv?na=1" title="{{T "answers.csv_view_title"}}">{{T "answers.csv_view"}}</a>
     </div>
   </div>
 
@@ -16,6 +17,11 @@
       <button data-quick="unpaid">{{T "status.ordered"}}</button>
       <button data-quick="nomail">{{T "res.filter_nomail"}}</button>
     </div>
+    <select class="inp" id="ans-branch" style="max-width:260px" title="{{T "answers.branch_hint"}}" hidden><option value="">{{T "answers.branch_all"}}</option></select>
+    <div class="seg" id="ans-view">
+      <button data-view="table" class="on">{{T "answers.view_table"}}</button>
+      <button data-view="summary">{{T "answers.view_summary"}}</button>
+    </div>
     <select class="inp" id="ans-notif" style="max-width:260px"><option value="0">{{T "field.select_hint"}}</option></select>
     <label class="chk"><input type="checkbox" id="ans-pane" checked> {{T "form.detail_panel"}}</label>
     <details class="cols"><summary class="link">{{T "form.columns"}}</summary><div id="ans-cols"></div></details>
@@ -23,6 +29,7 @@
 
   <div class="res-layout">
     <div class="wide" id="ans-table"></div>
+    <div class="ans-summary" id="ans-summary" hidden></div>
     <aside class="detail-pane" id="ans-detail" hidden></aside>
   </div>
 

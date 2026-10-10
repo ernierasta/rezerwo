@@ -8,18 +8,21 @@
   {{range .Items}}
     {{if .Header}}
     <h5>{{.Header}}</h5>
+    {{else if .Groups}}
+    <div class="ip-field">
+      <div class="ip-label">{{.Label}}</div>
+      {{range .Groups}}
+      {{if .Label}}<div class="ip-group">{{.Label}}</div>{{end}}
+      <ul class="{{if .Label}}ip-sub{{end}}">
+        {{range .Options}}{{template "ipopt" .}}{{end}}
+      </ul>
+      {{end}}
+    </div>
     {{else if .Options}}
     <div class="ip-field">
       <div class="ip-label">{{.Label}}</div>
       <ul{{if .Compact}} class="compact"{{end}}>
-        {{$goal := .Goal}}
-        {{range .Options}}
-        <li class="{{if .Other}}other{{end}}">
-          <span>{{.Label}}</span>
-          <b class="num">{{.Count}}{{if $goal}}<small> / {{$goal}}</small>{{end}}</b>
-          {{if $goal}}<i class="ip-bar{{if ge .Count $goal}} done{{end}}"><i style="width:{{.Pct}}%"></i></i>{{end}}
-        </li>
-        {{end}}
+        {{range .Options}}{{template "ipopt" .}}{{end}}
       </ul>
     </div>
     {{else}}
@@ -32,4 +35,13 @@
     {{end}}
   {{end}}
 </div>
+{{end}}
+
+{{/* opcja z liczbą wyborów; cel pola jest w samej opcji (BuildPanel) */}}
+{{define "ipopt"}}
+<li class="{{if .Other}}other{{end}}">
+  <span>{{.Label}}</span>
+  <b class="num">{{.Count}}{{if .Goal}}<small> / {{.Goal}}</small>{{end}}</b>
+  {{if .Goal}}<i class="ip-bar{{if .Done}} done{{end}}"><i style="width:{{.Pct}}%"></i></i>{{end}}
+</li>
 {{end}}

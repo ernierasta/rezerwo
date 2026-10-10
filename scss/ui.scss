@@ -674,6 +674,68 @@ textarea.inp { min-height: 80px; }
   .colopt { display: block; font-size: 14px; padding-block: 3px; white-space: nowrap; }
 }
 
+// tabela odpowiedzi formularza (js/n_answers.js): sekcje i pola warunkowe
+.tbl tr.grp th {
+  padding-block: 5px;
+  border-bottom: 0;
+  color: var(--ink);
+  font-weight: 600;
+
+  &.g { border-left: 2px solid var(--line-strong); }
+}
+.tbl td.na { color: var(--muted); opacity: .55; }
+.tbl td.out { color: var(--warn-ink); font-style: italic; }
+
+.detail-pane {
+  .sec-h { font-family: var(--display); font-weight: 500; font-size: 14px; color: var(--muted); margin: 14px 0 2px; text-transform: uppercase; letter-spacing: .03em; }
+  .sec-na { font-size: 13.5px; color: var(--muted); padding-block: 6px; border-bottom: 1px solid var(--line); }
+  .kv-row .out { color: var(--warn-ink); font-style: italic; }
+}
+
+.cols .colsec { display: block; font-size: 14px; font-weight: 600; padding: 8px 0 2px; white-space: nowrap; }
+.cols .colsec:first-child { padding-top: 0; }
+.cols .colsec + .colopt, .cols .colsec ~ .colopt { padding-left: 18px; }
+
+// zestawienie odpowiedzi
+.ans-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  align-items: start;
+
+  h4 { grid-column: 1 / -1; font-family: var(--display); font-weight: 500; font-size: 14px; color: var(--muted); margin: 10px 0 0; text-transform: uppercase; letter-spacing: .03em; }
+  h4:first-child { margin-top: 0; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .lbl { font-weight: 500; }
+  .seen { font-size: 13px; color: var(--muted); margin: 2px 0 6px; }
+  .big { font-size: 20px; font-weight: 600; }
+  .opt-grp { font-size: 13.5px; color: var(--muted); margin-top: 8px; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  .opt-grp + ul { padding-left: 12px; }
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 40px;
+    gap: 2px 8px;
+    align-items: baseline;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  li.other span:first-child { font-style: italic; }
+  li.zero { grid-template-columns: minmax(0, 1fr) auto 40px; font-size: 13px; }
+  li.zero span { white-space: normal; }
+  li b { font-weight: 600; }
+  li small { color: var(--muted); text-align: right; }
+  .bar { grid-column: 1 / -1; display: block; height: 4px; border-radius: 2px; background: var(--taken); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--blue); }
+}
+
 .tbl tr.sel td { background: var(--blue-soft); }
 .tbl tbody tr:hover td { background: var(--pane); }
 .tbl input[type="checkbox"] { margin: 0; }
@@ -1902,6 +1964,9 @@ h5.subhead {
   ul { list-style: none; margin: 0; padding: 0 0 0 10px; }
   li { font-size: 14.5px; }
   li.other span { font-style: italic; }
+  // pole zależne: grupy opcji wg wyboru rodzica
+  .ip-group { font-size: 13.5px; color: var(--muted); padding: 6px 0 0 10px; }
+  ul.ip-sub { padding-left: 22px; }
 
   ul.compact {
     display: flex;

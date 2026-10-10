@@ -1,9 +1,9 @@
 {{define "body"}}
 <div class="doc wide-doc" id="res-page" data-event-id="{{.ID}}">
+  {{template "up" .}}
   <div class="dh">
     <h3>{{T "event.sec.reservations"}}</h3>
     <div class="r">
-      <a class="btn quiet" href="/admin/events/{{.ID}}">{{.EventName}}</a>
       <a class="btn quiet" href="/api/events/{{.ID}}/reservations.csv">CSV</a>
     </div>
   </div>
@@ -44,6 +44,6 @@
 </div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_table.js"></script>
-<script src="/js/n_reservations.js"></script>
+<script src="{{asset "/js/n_table.js"}}"></script>
+<script src="{{asset "/js/n_reservations.js"}}"></script>
 {{end}}

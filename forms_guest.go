@@ -409,10 +409,35 @@ func GuestFormDonePage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 					log.Printf("GuestFormDonePage: exec: %v", err)
 				}
 				v.Text = template.HTML(reallyEmpty(buf.String()))
+				if v.Text == "" {
+					v.Text = formDefaultPayText(db, user, templ, form, funcs, lang)
+				}
 			}
 		}
 		guestRenderTheme(w, lang, templ.Theme, v, "tmpl/n_form_done.html")
 	}
+}
+
+// formDefaultPayText - formularz bez własnego podziękowania, ale z kontem
+// i kwotą do zapłaty: gość musi się dowiedzieć, ile i gdzie zapłacić.
+// Te same dane do przelewu co {{.PayInfo}} imprezy, plus kod QR.
+func formDefaultPayText(db *DB, user User, templ FormTemplate, form Form, funcs *FormFuncs, lang string) template.HTML {
+	if !templ.BankAccountID.Valid || templ.MoneyAmountFieldName.String == "" {
+		return ""
+	}
+	ba, err := db.BankAccountGetByID(templ.BankAccountID.Int64, user.ID)
+	if err != nil || ba.IBAN == "" {
+		return ""
+	}
+	amount := funcs.MTotal(templ.MoneyAmountFieldName.String)
+	if n, err := strconv.ParseInt(strings.TrimSpace(amount), 10, 64); err != nil || n <= 0 {
+		return ""
+	}
+	of := &OrderFuncs{DB: db, User: user, Lang: lang, TotalPrice: amount,
+		Name: form.Name.String, Surname: form.Surname.String, payPrefix: templ.PayMessage}
+	return template.HTML("<p>"+template.HTMLEscapeString(T(lang, "gform.thanks_text"))+"</p>"+
+		"<p>"+template.HTMLEscapeString(T(lang, "order.done_pay"))+"</p>") +
+		of.PayInfo(ba.Name) + "<p>" + funcs.QRPay(ba.Name) + "</p>"
 }
 
 // nErrorVars - strona błędu dla gościa (tmpl/n_error.html). Back pokazuje

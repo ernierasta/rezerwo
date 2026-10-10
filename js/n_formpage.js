@@ -18,7 +18,7 @@
   var totalEl = document.getElementById('gform-total');
   var currency = root.dataset.currency || '';
   var draftKey = root.dataset.draft;
-  var sent = false, touched = false;
+  var sent = false;
 
   // --- pomocnicze --------------------------------------------------------
 
@@ -65,11 +65,14 @@
 
   // --- opcja "Inne" ------------------------------------------------------
 
-  function syncOther(ff) {
+  // fromText: zmiana przyszła z pola tekstowego - wpisanie czegoś zaznacza "Inne",
+  // bo goście klikają od razu w pole, a nie w kwadracik obok
+  function syncOther(ff, fromText) {
     var other = ff.querySelector('[data-other]');
     if (!other) return;
     var txt = ff.querySelector('.other-text');
-    txt.disabled = !other.checked;
+    if (fromText && txt.value.trim() !== '' && !other.checked) other.checked = true;
+    txt.classList.toggle('off', !other.checked);
     other.value = txt.value.trim();
     if (other.checked && document.activeElement === other) txt.focus();
   }
@@ -91,6 +94,11 @@
     }
     if (el.multiple) {
       return Array.prototype.slice.call(el.selectedOptions).map(function (o) { return o.value; });
+    }
+    if (el.hasAttribute('data-date')) {
+      // zapis zawsze jako dd.mm.rrrr, niezależnie od tego, jak gość wpisał
+      var dt = RZ.parseDate(el.value);
+      return [dt ? RZ.fmtDate(dt) : el.value.trim()];
     }
     return [el.value.trim()];
   }
@@ -116,20 +124,10 @@
 
     var el = ff.querySelector('input, select, textarea');
     if (!el) return '';
-    var v = el.validity;
-    if (v.valueMissing || (required && el.value.trim() === '')) {
+    if (required && el.value.trim() === '') {
       return el.tagName === 'SELECT' ? t('gform.err.choose') : t('gform.err.required');
     }
-    if (v.typeMismatch && el.type === 'email') return t('gform.err.email');
-    if (v.badInput) return t('gform.err.number');
-    if (v.rangeUnderflow) return t('gform.err.min', el.min);
-    if (v.rangeOverflow) return t('gform.err.max', el.max);
-    if (v.stepMismatch) return t('gform.err.step');
-    if (v.tooLong) return t('gform.err.too_long', el.maxLength);
-    if (el.type === 'email' && el.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim())) {
-      return t('gform.err.email');
-    }
-    return '';
+    return RZ.inputError(el);
   }
 
   function showError(ff, text) {
@@ -214,9 +212,8 @@
   form.addEventListener('input', function (e) {
     var ff = e.target.closest('.ff');
     if (!ff) return;
-    touched = true;
     if (ff.dataset.type === 'multiplierField') updateMult(ff);
-    if (e.target.classList.contains('other-text')) syncOther(ff);
+    if (e.target.classList.contains('other-text')) syncOther(ff, true);
     if (ff.classList.contains('bad')) showError(ff, errorOf(ff));
     if (!form.querySelector('.ff.bad')) msgEl.hidden = true;
     updateTotal();
@@ -226,7 +223,6 @@
   form.addEventListener('change', function (e) {
     var ff = e.target.closest('.ff');
     if (!ff) return;
-    touched = true;
     syncOther(ff);
     if (ff.classList.contains('bad')) showError(ff, errorOf(ff));
     saveDraft();
@@ -238,6 +234,12 @@
     if (!ff || ff.contains(e.relatedTarget)) return;
     var inp = e.target;
     if (inp.value !== '' || ff.classList.contains('bad')) showError(ff, errorOf(ff));
+  });
+
+  // domyślne "0" w polu liczbowym: wpisana liczba zastępuje zero, a nie daje "025"
+  form.addEventListener('focusin', function (e) {
+    var el = e.target;
+    if (el.type === 'number' && el.value === '0') setTimeout(function () { el.select(); }, 0);
   });
 
   form.addEventListener('submit', function (e) {
@@ -269,13 +271,9 @@
       });
   });
 
-  window.addEventListener('beforeunload', function (e) {
-    if (touched && !sent) {
-      // szkic i tak jest zapisany, ale ostrzeżenie chroni przed zamknięciem karty
-      e.preventDefault();
-      e.returnValue = '';
-    }
-  });
+  // Bez ostrzeżenia "Opuścić stronę?" (beforeunload): ten dialog rysuje
+  // przeglądarka w swoim języku, a wpisane dane i tak przeżywają w szkicu.
+  RZ.noNativeTips(form);
 
   // panel informacyjny na telefonie zwinięty, żeby formularz był od razu widać
   var info = root.querySelector('.gform-info');

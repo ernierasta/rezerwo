@@ -52,6 +52,53 @@
     recount();
   }
 
+  // walidacja z komunikatami w języku imprezy (form ma novalidate, bo natywne
+  // dymki przeglądarki byłyby w jej języku, np. czeskim na polskiej imprezie)
+  var form = document.getElementById('order-form');
+  var fields = Array.prototype.slice.call(form.querySelectorAll('input:not([hidden]), select, textarea'));
+
+  function showError(el, text) {
+    var box = el.closest('.f');
+    var err = box.querySelector('.ff-err');
+    if (!err) {
+      err = document.createElement('small');
+      err.className = 'ff-err';
+      err.setAttribute('role', 'alert');
+      box.appendChild(err);
+    }
+    box.classList.toggle('bad', !!text);
+    err.textContent = text;
+    err.hidden = !text;
+    if (text) el.setAttribute('aria-invalid', 'true');
+    else el.removeAttribute('aria-invalid');
+  }
+
+  form.addEventListener('focusout', function (e) {
+    var el = e.target;
+    if (fields.indexOf(el) < 0) return;
+    if (el.value !== '' || el.closest('.f').classList.contains('bad')) showError(el, RZ.inputError(el));
+  });
+
+  form.addEventListener('input', function (e) {
+    var el = e.target;
+    if (fields.indexOf(el) >= 0 && el.closest('.f').classList.contains('bad')) showError(el, RZ.inputError(el));
+  });
+
+  form.addEventListener('submit', function (e) {
+    var first = null;
+    fields.forEach(function (el) {
+      var text = RZ.inputError(el);
+      showError(el, text);
+      if (text && !first) first = el;
+    });
+    if (first) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+
+  RZ.noNativeTips(form);
+
   document.getElementById('cancel-order').addEventListener('click', function () {
     var data = {
       rooms: document.getElementById('rooms').value,

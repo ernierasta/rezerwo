@@ -4,6 +4,7 @@
 name = "Rezerwo"
 
 [nav]
+home = "Akce a formuláře"
 events = "Akce"
 forms = "Formuláře"
 catalogs = "Katalogy"
@@ -90,6 +91,13 @@ selling = "prodej běží"
 finished = "ukončená"
 reservation_open = "rezervace %s – %s"
 
+[event.forms]
+hint = "Zaškrtnuté formuláře patří k této akci."
+other = "nyní u akce: %s"
+none = "Zatím nemáte žádný formulář."
+new = "Nový formulář vytvoříte na hlavní stránce."
+open = "otevřít"
+
 [event.sec]
 basic = "Základní"
 dates = "Termíny"
@@ -105,6 +113,7 @@ reports = "Přehledy"
 settings = "Nastavení"
 
 [order]
+page_title = "Lístky objednány!"
 countdown = "Místa jsou blokovaná ještě"
 expired = "Čas vypršel, vyberte místa znovu."
 email = "E-mail"
@@ -118,11 +127,15 @@ submit = "Objednávám"
 cancel = "Zrušit objednávku"
 seats_taken = "Tato místa jsou už obsazená"
 seats_taken_text = "Někdo byl rychlejší, nebo jsou místa blokovaná jiným zájemcem. Vyberte prosím jiná místa nebo to zkuste za 5 minut."
+done_title = "Děkujeme za objednávku!"
+done_text = "Potvrzení jsme poslali na zadaný e-mail."
+done_pay = "Prosíme o platbu:"
 
 [guest]
 free_seats = "volná místa"
 your_seats = "Vaše místa"
 nothing_selected = "Vyberte místa v plánu sálu."
+sold_out = "Všechna místa jsou již obsazena."
 total = "Celkem"
 order = "Objednávám"
 seat = "stůl %d, místo %d"
@@ -139,6 +152,10 @@ legend = "Označení míst"
 no_seats_title = "Nejsou vybraná místa"
 draft_title = "Rezervace ještě nezačaly"
 draft_text = "Tato akce zatím není zveřejněná. Podívejte se prosím později nebo se ozvěte pořadateli."
+no_event_title = "Rezervace teď neprobíhá"
+no_event = "Pořadatel teď nemá otevřenou žádnou akci. Podívejte se prosím později nebo se ozvěte pořadateli."
+no_rooms_title = "K akci nejsou přiřazeny sály"
+no_rooms = "Pořadatel zatím k této akci nepřiřadil sál. Podívejte se prosím později."
 
 [mail]
 subject = "Předmět"
@@ -330,6 +347,8 @@ none_yet = "Zatím nejsou žádné odpovědi."
 created = "Odesláno"
 fields_count = "%d polí"
 money_from = "částka z pole „%s“"
+columns = "Sloupce"
+detail_panel = "Panel podrobností"
 
 [form.sec]
 basic = "Základní"
@@ -457,6 +476,7 @@ many = "%d textů"
 [gform]
 no_org_title = "Organizace nenalezena"
 no_org = "Na adrese „%s“ není žádná organizace. Zkontrolujte odkaz nebo nám napište: admin (at) zori.cz."
+date_ph = "dd.mm.rrrr"
 no_form_title = "Formulář nenalezen"
 no_form = "Formulář „%s“ neexistuje. Zkontrolujte odkaz nebo se zeptejte pořadatele."
 open_until = "Odpovědi přijímáme do %s."
@@ -485,6 +505,10 @@ number = "Zadejte číslo."
 min = "Nejméně %s."
 max = "Nejvíce %s."
 step = "Zadejte celé číslo."
+step_n = "Zadejte hodnotu po %s, např. %s nebo %s."
+date = "Zadejte datum jako dd.mm.rrrr, např. 18.12.2026."
+date_min = "Nejdříve %s."
+date_max = "Nejpozději %s."
 too_long = "Nejvýše %d znaků."
 fix = "Opravte označená pole."
 

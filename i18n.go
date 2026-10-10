@@ -175,6 +175,14 @@ func TmplFuncs(lang string) template.FuncMap {
 		"lang":  func() string { return lang },
 		"money": FormatMoney,
 		"date":  func(unix int64) string { return FormatDate(lang, unix) },
+		// asset dokłada znacznik wersji pliku (mtime), żeby przeglądarka
+		// pobrała nowe js/css po zmianie, a nie trzymała starego z cache.
+		"asset": func(p string) string {
+			if fi, err := os.Stat(strings.TrimPrefix(p, "/")); err == nil {
+				return fmt.Sprintf("%s?v=%d", p, fi.ModTime().Unix())
+			}
+			return p
+		},
 		// temat strony gościa, patrz GuestFuncs (themes.go)
 		"theme": func() string { return "" },
 	}

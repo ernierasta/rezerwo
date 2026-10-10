@@ -60,30 +60,66 @@
     <div class="sec-f"><button class="btn" id="room-ok">{{T "catalog.create_room"}}</button><button class="btn quiet" id="room-cancel">{{T "common.cancel"}}</button><small class="msg"></small></div>
   </div>
 </div>
+<div class="dlg-back" id="name-dlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="name-title">
+    <h3 id="name-title"></h3>
+    <div class="f" style="margin-top:14px"><label for="name-inp">{{T "field.name"}}</label>
+      <input class="inp" id="name-inp" autocomplete="off"></div>
+    <div class="sec-f"><button class="btn" id="name-ok">{{T "newmail.create"}}</button><button class="btn quiet" id="name-cancel">{{T "common.cancel"}}</button><small class="msg"></small></div>
+  </div>
+</div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_newmail.js"></script>
+<script src="{{asset "/js/n_newmail.js"}}"></script>
 <script>
 document.getElementById('new-mail').addEventListener('click', function () { RZNewMail.open(); });
 
-document.getElementById('catalogs').addEventListener('click', async function (e) {
-  // nowe katalogi (mail, konto) tworzy API i od razu otwieramy ich stronę
-  var add = e.target.closest('[data-create]');
-  if (add) {
+// nowe katalogi (konto itp.) tworzy API i od razu otwieramy ich stronę;
+// nazwę podaje się we własnym oknie, nie w prompt()
+(function () {
+  var dlg = document.getElementById('name-dlg');
+  var name = document.getElementById('name-inp');
+  var msg = dlg.querySelector('.msg');
+  var ok = document.getElementById('name-ok');
+  var add = null;
+  function close() { dlg.hidden = true; }
+  document.getElementById('catalogs').addEventListener('click', function (e) {
+    var a = e.target.closest('[data-create]');
+    if (!a) return;
     e.preventDefault();
-    var newName = prompt("{{T "field.name"}}");
-    if (!newName) return;
-    var resp = await fetch(add.dataset.create, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({name: newName})
-    });
-    if (!resp.ok) { alert("{{T "common.save_error"}}"); return; }
-    var created = await resp.json();
-    location.href = add.dataset.go + created.id;
-    return;
-  }
-});
+    add = a;
+    document.getElementById('name-title').textContent = a.textContent.trim();
+    name.value = '';
+    msg.textContent = '';
+    ok.disabled = false;
+    dlg.hidden = false;
+    name.focus();
+  });
+  document.getElementById('name-cancel').addEventListener('click', close);
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+  dlg.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') close();
+    if (e.key === 'Enter') ok.click();
+  });
+  ok.addEventListener('click', async function () {
+    var n = name.value.trim();
+    if (!n || !add) { name.focus(); return; }
+    ok.disabled = true;
+    try {
+      var resp = await fetch(add.dataset.create, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: n})
+      });
+      if (!resp.ok) throw new Error();
+      var created = await resp.json();
+      location.href = add.dataset.go + created.id;
+    } catch (err) {
+      msg.textContent = "{{T "common.save_error"}}";
+      ok.disabled = false;
+    }
+  });
+})();
 
 // nowa sala powstaje jako kopia istniejącej (z meblami), potem otwiera się designer
 (function () {

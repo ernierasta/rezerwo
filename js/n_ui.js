@@ -452,6 +452,71 @@
     };
   }
 
+  // --- walidacja pól na stronach gościa ------------------------------------
+  // Strony gościa są ZAWSZE w języku imprezy/formularza, nie przeglądarki.
+  // Dlatego formularze mają novalidate, a komunikaty bierzemy z katalogu
+  // (gform.err.*) - natywne dymki przeglądarki byłyby w jej języku.
+
+  // parseDate("18.12.2026") -> Date albo null. Przyjmuje d.m.rrrr (także
+  // z "/" lub "-") i rrrr-mm-dd (dawny zapis pola daty).
+  function parseDate(s) {
+    s = String(s || '').trim();
+    var m = /^(\d{1,2})[./-]\s*(\d{1,2})[./-]\s*(\d{4})$/.exec(s), y, mo, d;
+    if (m) { d = +m[1]; mo = +m[2]; y = +m[3]; } else {
+      m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+      if (!m) return null;
+      y = +m[1]; mo = +m[2]; d = +m[3];
+    }
+    var dt = new Date(y, mo - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+    return dt;
+  }
+
+  function fmtDate(dt) {
+    return (dt.getDate() < 10 ? '0' : '') + dt.getDate() + '.' +
+      (dt.getMonth() < 9 ? '0' : '') + (dt.getMonth() + 1) + '.' + dt.getFullYear();
+  }
+
+  // inputError(el) zwraca komunikat błędu jednego pola albo "".
+  function inputError(el) {
+    var v = el.validity;
+    var val = el.value.trim();
+    if (v.valueMissing || (el.required && val === '')) {
+      return el.tagName === 'SELECT' ? t('gform.err.choose') : t('gform.err.required');
+    }
+    if (el.hasAttribute('data-date') && val !== '') {
+      var dt = parseDate(val);
+      if (!dt) return t('gform.err.date');
+      var lo = parseDate(el.dataset.min), hi = parseDate(el.dataset.max);
+      if (lo && dt < lo) return t('gform.err.date_min', fmtDate(lo));
+      if (hi && dt > hi) return t('gform.err.date_max', fmtDate(hi));
+      return '';
+    }
+    if (el.type === 'email' && val !== '' &&
+        (v.typeMismatch || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val))) return t('gform.err.email');
+    if (v.badInput) return t('gform.err.number');
+    if (v.rangeUnderflow) return t('gform.err.min', el.min);
+    if (v.rangeOverflow) return t('gform.err.max', el.max);
+    if (v.stepMismatch) {
+      var step = Number(el.step);
+      if (!step || step === 1) return t('gform.err.step');
+      // krok z definicji pola (np. co 50): podpowiedz dwie najbliższe wartości
+      var base = Number(el.min) || 0;
+      var low = base + Math.floor((Number(el.value) - base) / step) * step;
+      return t('gform.err.step_n', [step, low, low + step]);
+    }
+    if (v.tooLong) return t('gform.err.too_long', el.maxLength);
+    return '';
+  }
+
+  // noNativeTips: Firefox pokazuje po najechaniu na błędne pole własny dymek
+  // w języku przeglądarki; pusty title go wyłącza.
+  function noNativeTips(form) {
+    form.querySelectorAll('input, select, textarea').forEach(function (el) {
+      if (!el.hasAttribute('title')) el.setAttribute('title', '');
+    });
+  }
+
   // katalog wczytujemy od razu, żeby teksty w JS działały na każdej stronie
   // (strony, które same wołają loadLocale, dostaną go z pamięci przeglądarki)
   var ready = loadLocale(document.documentElement.lang || 'pl');
@@ -620,6 +685,10 @@
     loadLocale: loadLocale,
     toast: toast,
     postJSON: postJSON,
+    parseDate: parseDate,
+    fmtDate: fmtDate,
+    inputError: inputError,
+    noNativeTips: noNativeTips,
     accordion: accordion,
     draft: draft,
     applyValues: applyValues,

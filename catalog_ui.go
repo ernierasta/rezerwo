@@ -64,6 +64,7 @@ func MailPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *h
 			Vars:        mailEditorVars(db, user),
 		}
 		vars.Back, vars.BackLabel = backLink(r, lang, "catalog.mails")
+		vars.UpURL, vars.UpLabel = upLink(r, db, user, lang)
 		nRender(w, lang, vars, "tmpl/n_mail.html")
 	}
 }
@@ -90,6 +91,28 @@ func backLink(r *http.Request, lang, catalogLabel string) (string, string) {
 		return back, T(lang, "common.back")
 	}
 	return "/admin/catalogs", T(lang, catalogLabel)
+}
+
+// upLink - strona nadrzędna maila i konta: impreza/formularz, z którego
+// przyszedł admin (?back=), a jeśli nie - lista katalogów.
+func upLink(r *http.Request, db *DB, user User, lang string) (string, string) {
+	back, label := backLink(r, lang, "catalog.title")
+	path, _, _ := strings.Cut(strings.TrimPrefix(back, "/admin/"), "#")
+	path, _, _ = strings.Cut(path, "?")
+	kind, ids, _ := strings.Cut(path, "/")
+	if id, err := strconv.ParseInt(ids, 10, 64); err == nil {
+		switch kind {
+		case "events":
+			if e, err := db.EventGetByID(id); err == nil && e.UserID == user.ID {
+				label = e.Name
+			}
+		case "forms":
+			if t, err := db.FormTemplateGetByID(id, user.ID); err == nil {
+				label = t.Name
+			}
+		}
+	}
+	return back, label
 }
 
 func adminMail(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore, htmlErrors bool) (User, Notification, bool) {
@@ -288,6 +311,7 @@ func AccountPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 			UsedBy:    accountUsedBy(db, user, acc.ID),
 		}
 		vars.Back, vars.BackLabel = backLink(r, lang, "catalog.accounts")
+		vars.UpURL, vars.UpLabel = upLink(r, db, user, lang)
 		nRender(w, lang, vars, "tmpl/n_account.html")
 	}
 }

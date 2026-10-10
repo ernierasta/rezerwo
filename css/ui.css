@@ -493,6 +493,17 @@ body.n :focus-visible {
 .topbar .crumb {
   color: var(--muted);
 }
+.topbar .crumb-sep {
+  color: var(--line-strong, var(--muted));
+  margin: 0 -8px;
+}
+.topbar a.crumb {
+  text-decoration: none;
+}
+.topbar a.crumb:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
 .topbar .r {
   margin-left: auto;
   display: flex;
@@ -525,6 +536,28 @@ body.n :focus-visible {
   max-width: 900px;
   margin: 0 auto;
   padding: 28px 24px 80px;
+}
+
+.up {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -8px 0 14px;
+  padding: 5px 12px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--blue-deep);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.up:hover {
+  border-color: var(--blue-deep);
 }
 
 .dh {
@@ -1094,6 +1127,19 @@ textarea.inp {
   font-size: 14.5px;
 }
 
+.chk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.chk input {
+  margin: 0;
+  accent-color: var(--blue-deep);
+}
+
 .wide-doc {
   max-width: 1240px;
 }
@@ -1129,6 +1175,28 @@ textarea.inp {
 .detail-pane h4 {
   font-size: 17px;
   margin-bottom: 10px;
+}
+.detail-pane .pane-h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.detail-pane .pane-h h4 {
+  margin: 0;
+}
+.detail-pane .pane-x {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 21px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.detail-pane .pane-x:hover {
+  color: var(--ink);
 }
 .detail-pane .kv-row {
   display: flex;
@@ -1522,6 +1590,10 @@ h5.subhead a {
   font-size: 30px;
   letter-spacing: -0.01em;
 }
+.guest img {
+  max-width: 100%;
+  height: auto;
+}
 .guest .when {
   color: var(--muted);
   margin-top: 4px;
@@ -1891,6 +1963,16 @@ h5.subhead a {
 }
 .order-step .order-form .grid2 {
   gap: 14px 18px;
+}
+.order-step .order-form .ff-err {
+  display: block;
+  color: var(--danger-ink);
+  font-size: 13.5px;
+  margin-top: 6px;
+}
+.order-step .order-form .f.bad .inp {
+  border-color: var(--danger-ink);
+  background: var(--danger-soft);
 }
 .order-step .sec-f {
   margin-top: 20px;
@@ -2390,7 +2472,7 @@ h5.subhead a {
   min-height: 32px;
   padding: 4px 9px;
 }
-.opts .opt .other-text:disabled {
+.opts .opt .other-text.off {
   background: var(--pane);
 }
 

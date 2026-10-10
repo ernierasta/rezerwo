@@ -146,6 +146,8 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 			Title:   templ.Name,
 			Crumb:   templ.Name,
 			OrgName: orgName(user),
+			UpURL:   "/admin",
+			UpLabel: T(lang, "nav.home"),
 		},
 		ID:                  templ.ID,
 		Name:                templ.Name,
@@ -618,8 +620,10 @@ func AnswersPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 		}{
 			NPage: NPage{
 				Title:   templ.Name + " — " + T(lang, "form.answers"),
-				Crumb:   templ.Name,
+				Crumb:   T(lang, "form.answers"),
 				OrgName: orgName(user),
+				UpURL:   fmt.Sprintf("/admin/forms/%d", templ.ID),
+				UpLabel: templ.Name,
 			},
 			ID:   templ.ID,
 			Name: templ.Name,

@@ -419,7 +419,7 @@
         h += '<input class="inp num" type="number" tabindex="-1" value="' + esc(f.value || '') + '" placeholder="' + esc(f.placeholder || '') + '">';
         break;
       case 'date':
-        h += '<input class="inp" type="date" tabindex="-1">';
+        h += '<input class="inp" type="text" tabindex="-1" placeholder="' + esc(t('gform.date_ph')) + '">';
         break;
       case 'multiplierField':
         h += '<div class="mult"><input class="inp num" type="number" tabindex="-1" value="1"><span class="mult-x">× ' + esc(f.multipl) +

@@ -141,7 +141,7 @@
       {key: 'phone', label: 'tel.'},
       {key: 'ordered_date', label: RZ.t('status.ordered'), type: 'date', render: function (r) { return dateS(r.ordered_date); }},
       {key: 'payed_date', label: RZ.t('status.payed'), type: 'date', render: function (r) { return dateS(r.payed_date); }},
-      {key: 'notes', label: 'uwagi'}
+      {key: 'notes', label: RZ.t('order.notes')}
     ];
   }
 
@@ -213,9 +213,22 @@
     el.detail.hidden = false;
     el.detail.innerHTML = '';
 
+    var head = document.createElement('div');
+    head.className = 'pane-h';
+
     var h = document.createElement('h4');
     h.textContent = row.person || ((row.name || '') + ' ' + (row.surname || '')).trim();
-    el.detail.appendChild(h);
+    head.appendChild(h);
+
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'pane-x';
+    x.textContent = '×';
+    x.title = RZ.t('common.close');
+    x.setAttribute('aria-label', RZ.t('common.close'));
+    x.addEventListener('click', function () { el.detail.hidden = true; });
+    head.appendChild(x);
+    el.detail.appendChild(head);
 
     var lines = [
       [RZ.t('res.seats'), row.seatsText || (row.room + ': ' + row.chair)],
@@ -237,8 +250,12 @@
     var orderID = row.orderID || row.order_id || 0;
     if (orderID) showAddons(orderID, row);
 
+    var notesH = document.createElement('h5');
+    notesH.textContent = RZ.t('order.notes');
+    el.detail.appendChild(notesH);
     var notes = document.createElement('textarea');
     notes.className = 'inp';
+    notes.setAttribute('aria-label', RZ.t('order.notes'));
     notes.value = row.notes || '';
     el.detail.appendChild(notes);
 
@@ -251,12 +268,6 @@
         .catch(function (e) { RZ.toast(RZ.t('common.save_error') + ': ' + e.message); });
     });
     el.detail.appendChild(save);
-
-    var close = document.createElement('button');
-    close.className = 'btn quiet sm';
-    close.textContent = RZ.t('common.collapse');
-    close.addEventListener('click', function () { el.detail.hidden = true; });
-    el.detail.appendChild(close);
 
     showHistory(ids);
   }

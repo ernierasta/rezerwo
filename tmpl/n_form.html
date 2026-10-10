@@ -4,6 +4,7 @@
 {{end}}
 {{define "body"}}
 <div class="doc" id="form-page" data-form-id="{{.ID}}">
+  {{template "up" .}}
   <div class="dh">
     <h3>{{.Name}}</h3>
     <div class="r">
@@ -178,5 +179,5 @@
 </div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_form.js"></script>
+<script src="{{asset "/js/n_form.js"}}"></script>
 {{end}}

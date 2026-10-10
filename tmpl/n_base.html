@@ -4,13 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}}</title>
-  <link href="/css/ui.css" rel="stylesheet" type="text/css">
+  <link href="{{asset "/css/ui.css"}}" rel="stylesheet" type="text/css">
   {{block "head" .}}{{end}}
 </head>
 <body class="n">
   <div class="topbar">
     <a class="brand" href="/admin">{{T "app.name"}}</a>
-    {{if .Crumb}}<span class="crumb">{{.Crumb}}</span>{{end}}
+    {{if .UpURL}}<span class="crumb-sep">›</span><a class="crumb up-crumb" href="{{.UpURL}}">{{.UpLabel}}</a>{{end}}
+    {{if .Crumb}}<span class="crumb-sep">›</span><span class="crumb">{{.Crumb}}</span>{{end}}
     <div class="r">
       <a href="/admin">{{T "nav.events"}}</a>
       <a href="/admin/catalogs">{{T "nav.catalogs"}}</a>
@@ -24,10 +25,13 @@
     </div>
   </div>
   {{template "body" .}}
-  <script src="/js/n_ui.js"></script>
+  <script src="{{asset "/js/n_ui.js"}}"></script>
   {{block "scripts" .}}{{end}}
 </body>
 </html>{{end}}
+
+{{/* Link do strony nadrzędnej nad tytułem strony (NPage.UpURL). */}}
+{{define "up"}}{{if .UpURL}}<a class="up" href="{{.UpURL}}">← {{.UpLabel}}</a>{{end}}{{end}}
 
 {{/* Wybór tematu strony gościa (themes.go). Wymaga .Theme i .Themes;
      próbki malują zmienne CSS tematu (data-theme), obsługa w js/n_ui.js. */}}

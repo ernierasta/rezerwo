@@ -3,7 +3,8 @@
      data-event-id="{{.EventID}}"
      data-currency="{{.DefaultCurrency}}"
      data-price="{{.DefaultPrice}}"
-     data-hidecosts="{{.HideCosts}}">
+     data-hidecosts="{{.HideCosts}}"{{if .SoldOut}}
+     data-soldout="true"{{end}}>
 
   {{if .Banner}}<div class="banner">{{.Banner}}</div>{{end}}
   <h1>{{.EventName}}</h1>
@@ -86,15 +87,15 @@
 
     <aside class="basket" id="basket">
       <h4>{{T "guest.your_seats"}}</h4>
-      <div id="basket-list"><p class="empty">{{T "guest.nothing_selected"}}</p></div>
-      <button class="btn" id="order">{{T "guest.order"}}</button>
-      <button class="link" id="clear" style="margin-top:10px">{{T "guest.clear"}}</button>
+      <div id="basket-list"><p class="empty">{{if .SoldOut}}{{T "guest.sold_out"}}{{else}}{{T "guest.nothing_selected"}}{{end}}</p></div>
+      <button class="btn" id="order" {{if .SoldOut}}hidden{{end}}>{{T "guest.order"}}</button>
+      <button class="link" id="clear" style="margin-top:10px" {{if .SoldOut}}hidden{{end}}>{{T "guest.clear"}}</button>
     </aside>
   </div>
 
   <div class="bar-mobile" id="barmobile">
-    <span class="sum" id="bar-sum">{{T "guest.nothing_selected"}}</span>
-    <button class="btn" id="order-mobile">{{T "guest.order"}}</button>
+    <span class="sum" id="bar-sum">{{if .SoldOut}}{{T "guest.sold_out"}}{{else}}{{T "guest.nothing_selected"}}{{end}}</span>
+    <button class="btn" id="order-mobile" {{if .SoldOut}}hidden{{end}}>{{T "guest.order"}}</button>
   </div>
 
   <!-- tekst organizatora pokazywany przy próbie zamówienia bez miejsc -->
@@ -108,5 +109,5 @@
 </div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_room.js"></script>
+<script src="{{asset "/js/n_room.js"}}"></script>
 {{end}}

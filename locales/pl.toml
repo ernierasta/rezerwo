@@ -6,6 +6,7 @@
 name = "Rezerwo"
 
 [nav]
+home = "Imprezy i formularze"
 events = "Imprezy"
 forms = "Formularze"
 catalogs = "Katalogi"
@@ -92,6 +93,13 @@ selling = "sprzedaż trwa"
 finished = "zakończona"
 reservation_open = "rezerwacja %s – %s"
 
+[event.forms]
+hint = "Zaznaczone formularze należą do tej imprezy."
+other = "teraz przy imprezie: %s"
+none = "Nie masz jeszcze żadnego formularza."
+new = "Nowy formularz tworzysz na stronie głównej."
+open = "otwórz"
+
 [event.sec]
 basic = "Podstawowe"
 dates = "Terminy"
@@ -107,6 +115,7 @@ reports = "Raporty"
 settings = "Ustawienia"
 
 [order]
+page_title = "Zamówiono bilety!"
 countdown = "Miejsca są zablokowane jeszcze przez"
 expired = "Czas minął, wybierz miejsca jeszcze raz."
 email = "E-mail"
@@ -120,11 +129,15 @@ submit = "Zamawiam"
 cancel = "Anuluj zamówienie"
 seats_taken = "Te miejsca są już zajęte"
 seats_taken_text = "Ktoś był szybszy albo miejsca są zablokowane przez innego zamawiającego. Prosimy wybrać inne miejsca lub spróbować za 5 minut."
+done_title = "Dziękujemy za zamówienie!"
+done_text = "Potwierdzenie wysłaliśmy na podany adres e-mail."
+done_pay = "Prosimy o wpłatę:"
 
 [guest]
 free_seats = "wolne miejsca"
 your_seats = "Twoje miejsca"
 nothing_selected = "Wybierz miejsca na planie sali."
+sold_out = "Wszystkie miejsca są już zajęte."
 total = "Razem"
 order = "Zamawiam"
 seat = "stół %d, miejsce %d"
@@ -141,6 +154,10 @@ legend = "Oznaczenia miejsc"
 no_seats_title = "Nie wybrano miejsc"
 draft_title = "Rezerwacja jeszcze nie ruszyła"
 draft_text = "Ta impreza nie jest jeszcze opublikowana. Prosimy zajrzeć później albo skontaktować się z organizatorem."
+no_event_title = "Nie ma teraz otwartej rezerwacji"
+no_event = "Organizator nie ma teraz otwartej żadnej imprezy. Prosimy zajrzeć później albo skontaktować się z organizatorem."
+no_rooms_title = "Brak sal dla tej imprezy"
+no_rooms = "Organizator nie przypisał jeszcze sali do tej imprezy. Prosimy zajrzeć później."
 
 [mail]
 subject = "Temat"
@@ -332,6 +349,8 @@ none_yet = "Nie ma jeszcze odpowiedzi."
 created = "Wysłano"
 fields_count = "%d pól"
 money_from = "kwota z pola „%s”"
+columns = "Kolumny"
+detail_panel = "Panel szczegółów"
 
 [form.sec]
 basic = "Podstawowe"
@@ -459,6 +478,7 @@ many = "%d tekstów"
 [gform]
 no_org_title = "Nie znaleziono organizacji"
 no_org = "Pod adresem „%s” nie ma organizacji. Sprawdź link albo napisz do nas: admin (at) zori.cz."
+date_ph = "dd.mm.rrrr"
 no_form_title = "Nie znaleziono formularza"
 no_form = "Formularz „%s” nie istnieje. Sprawdź link albo zapytaj organizatora."
 open_until = "Odpowiedzi przyjmujemy do %s."
@@ -487,6 +507,10 @@ number = "Wpisz liczbę."
 min = "Najmniej %s."
 max = "Najwięcej %s."
 step = "Wpisz liczbę całkowitą."
+step_n = "Wpisz wartość co %s, np. %s albo %s."
+date = "Wpisz datę jako dd.mm.rrrr, np. 18.12.2026."
+date_min = "Najwcześniej %s."
+date_max = "Najpóźniej %s."
 too_long = "Najwyżej %d znaków."
 fix = "Popraw zaznaczone pola."
 

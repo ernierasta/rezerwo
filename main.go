@@ -533,31 +533,13 @@ func ReservationOrderStatusHTML(db *DB, lang string, mailConf *MailConfig) func(
 		// now parse "OrderedNoteText" template to show qrcode
 		// after posting form
 		// we ignore embimg - it will be empty
-		stsText, _ := ParseOrderTmpl(event.OrderedNoteText, o, db, user)
-
-		pEN := ReservationOrderStatusVars{
-			LBLLang:       lng,
-			LBLTitle:      "Order status",
-			LBLStatus:     event.OrderedNoteTitle,
-			LBLStatusText: template.HTML(stsText),
-			BTNOk:         "OK",
-		}
-		_ = pEN
-
-		title := ""
-		switch lng {
-		case "pl":
-			title = "Zamówiono bilety!"
-		case "cs":
-			title = "Objednáno lístky!"
-		case "en":
-			title = "Order status"
-		}
+		statusTitle, statusText := orderedNoteOrDefault(db, event, user, o, lng)
+		stsText, _ := ParseOrderTmpl(statusText, o, db, user)
 
 		p := ReservationOrderStatusVars{
 			LBLLang:       lng,
-			LBLTitle:      title,
-			LBLStatus:     event.OrderedNoteTitle,
+			LBLTitle:      T(lng, "order.page_title"),
+			LBLStatus:     statusTitle,
 			LBLStatusText: template.HTML(stsText),
 			BTNOk:         "OK",
 			Theme:         themeAttr(event.Theme.String),
@@ -2022,6 +2004,32 @@ func ConvertMultiplicationToAmmountMultiplTotal(s string) (string, string, strin
 
 type ThankYou struct {
 	FormFuncs
+}
+
+// orderedNoteOrDefault - tytuł i treść strony po zamówieniu. Nowa impreza
+// ma je puste, a wtedy gość widziałby sam przycisk OK - podstawiamy więc
+// podziękowanie i, gdy jest konto i coś do zapłaty, dane do przelewu z QR.
+func orderedNoteOrDefault(db *DB, event Event, user User, o Order, lng string) (string, string) {
+	title, text := event.OrderedNoteTitle, event.OrderedNoteText
+	if strings.TrimSpace(title) == "" {
+		title = T(lng, "order.done_title")
+	}
+	if strings.TrimSpace(removeTrailingEmptyParagraphs(text)) != "" {
+		return title, text
+	}
+	text = ""
+	if event.ThankYouNotificationsID.Valid && event.ThankYouNotificationsID.Int64 > 0 {
+		text = "<p>" + template.HTMLEscapeString(T(lng, "order.done_text")) + "</p>"
+	}
+	total, _ := strconv.ParseInt(strings.TrimSpace(o.TotalPrice), 10, 64)
+	if event.BankAccountsID.Valid && total > 0 {
+		if ba, err := db.BankAccountGetByID(event.BankAccountsID.Int64, user.ID); err == nil && ba.IBAN != "" {
+			name := strconv.Quote(ba.Name)
+			text += "<p>" + template.HTMLEscapeString(T(lng, "order.done_pay")) + "</p>" +
+				"{{.PayInfo " + name + "}}<p>{{.QRPay " + name + "}}</p>"
+		}
+	}
+	return title, text
 }
 
 // TODO: add support for multiple active events

@@ -21,7 +21,7 @@
       <label class="opt other" for="{{.ID}}-other">
         <input type="{{if eq .Type "radio-group"}}radio{{else}}checkbox{{end}}" id="{{.ID}}-other" name="{{.Name}}" value="" data-other>
         <span>{{T "gform.other"}}</span>
-        <input class="inp other-text" type="text" aria-label="{{T "gform.other"}}" disabled>
+        <input class="inp other-text off" type="text" aria-label="{{T "gform.other"}}">
       </label>
       {{end}}
     </div>
@@ -40,7 +40,8 @@
     {{else if eq .Type "number"}}
     <input class="inp num" type="number" inputmode="decimal" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Min}}min="{{.Min}}"{{end}} {{if .Max}}max="{{.Max}}"{{end}} {{if .Step}}step="{{.Step}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}>
     {{else if eq .Type "date"}}
-    <input class="inp" type="date" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Min}}min="{{.Min}}"{{end}} {{if .Max}}max="{{.Max}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}}>
+    {{/* zwykłe pole tekstowe, nie type="date": kalendarz i format rysuje przeglądarka w swoim języku */}}
+    <input class="inp" type="text" inputmode="numeric" autocomplete="off" data-date id="{{.ID}}" name="{{.Name}}" placeholder="{{T "gform.date_ph"}}" {{if .Required}}required{{end}} {{if .Min}}data-min="{{.Min}}"{{end}} {{if .Max}}data-max="{{.Max}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}}>
     {{else if eq .Type "multiplierField"}}
     <div class="mult">
       <input class="inp num" type="number" inputmode="numeric" min="0" step="1" id="{{.ID}}" name="{{.Name}}" data-price="{{.Price}}" {{if .Required}}required{{end}} {{if .Value}}value="{{.Value}}"{{end}}>

@@ -144,11 +144,15 @@ func MailSend(n MailConfig) error {
 	}
 
 	// Deliver the mails via SMTP
-	client, err := mail.NewClient(n.Server,
-		mail.WithTimeout(2*time.Minute), // increased timeout, attached pdf tickets were problematic
+	opts := []mail.Option{
+		mail.WithTimeout(2 * time.Minute), // increased timeout, attached pdf tickets were problematic
 		mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover), mail.WithTLSPortPolicy(mail.TLSMandatory),
 		mail.WithUsername(n.User), mail.WithPassword(n.Pass), mail.WithTLSConfig(tlsConf),
-	)
+	}
+	if n.Port > 0 { // MailPort from config, go-mail default is 587
+		opts = append(opts, mail.WithPort(n.Port))
+	}
+	client, err := mail.NewClient(n.Server, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to create new mail delivery client: %s", err)
 	}

@@ -1,10 +1,8 @@
 {{define "body"}}
 <div class="doc" id="account-page" data-account-id="{{.ID}}" data-back="{{.Back}}">
+  {{template "up" .}}
   <div class="dh">
     <h3>{{.Name}}</h3>
-    <div class="r">
-      <a class="btn quiet" href="{{.Back}}">{{.BackLabel}}</a>
-    </div>
   </div>
   <p class="dsub">{{T "account.hint"}}</p>
 
@@ -42,5 +40,5 @@
 </div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_mail.js"></script>
+<script src="{{asset "/js/n_mail.js"}}"></script>
 {{end}}

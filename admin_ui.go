@@ -26,6 +26,9 @@ type NPage struct {
 	Title   string
 	Crumb   string
 	OrgName string
+	// UpURL, UpLabel - strona nadrzędna: link "← ..." nad tytułem (szablon
+	// "up" w n_base.html) i ogniwo ścieżki w górnym pasku
+	UpURL, UpLabel string
 }
 
 // --- pomoce ----------------------------------------------------------------
@@ -454,6 +457,17 @@ type nResRow struct {
 	Amount      string
 }
 
+// nEventFormChoice - formularz na liście w sekcji "Formularze" imprezy.
+// OtherEvent - nazwa innej imprezy, do której formularz jest już podpięty
+// (zaznaczenie go tutaj przepina go do tej imprezy).
+type nEventFormChoice struct {
+	ID           int64
+	Name         string
+	Checked      bool
+	OtherEventID int64
+	OtherEvent   string
+}
+
 type nEventVars struct {
 	NPage
 	ID       int64
@@ -494,6 +508,8 @@ type nEventVars struct {
 	PayMessage string
 
 	Forms []FormTemplate
+	// FormChoices - wszystkie formularze organizacji do podpięcia w sekcji
+	FormChoices []nEventFormChoice
 
 	Sharable  bool
 	HideCosts bool
@@ -612,13 +628,19 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		log.Printf("buildEventVars: form templates: %v", err)
 	}
 	var eventForms []FormTemplate
+	var formChoices []nEventFormChoice
 	for _, ft := range templs {
 		if isAddonsTemplate(ft) {
 			continue // dodatki mają własną sekcję
 		}
+		c := nEventFormChoice{ID: ft.ID, Name: ft.Name}
 		if ft.EventID.Valid && ft.EventID.Int64 == event.ID {
 			eventForms = append(eventForms, ft)
+			c.Checked = true
+		} else if ft.EventID.Valid && ft.EventID.Int64 != 0 {
+			c.OtherEventID = ft.EventID.Int64
 		}
+		formChoices = append(formChoices, c)
 	}
 
 	language := event.Language.String
@@ -631,6 +653,8 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 			Title:   event.Name,
 			Crumb:   event.Name,
 			OrgName: orgName(user),
+			UpURL:   "/admin",
+			UpLabel: T(lang, "nav.home"),
 		},
 		ID:       event.ID,
 		Name:     event.Name,
@@ -663,6 +687,7 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		BankAccountID:   event.BankAccountsID.Int64,
 		PayMessage:      event.PayMessage,
 		Forms:           eventForms,
+		FormChoices:     formChoices,
 		Sharable:        event.Sharable.Bool,
 		HideCosts:       event.HideCosts.Bool,
 		Draft:           event.Status.String == "draft",
@@ -677,10 +702,15 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		log.Printf("buildEventVars: events: %v", err)
 	}
 	sort.Slice(allEvents, func(i, j int) bool { return allEvents[i].Date > allEvents[j].Date })
+	eventNames := map[int64]string{}
 	for _, e := range allEvents {
+		eventNames[e.ID] = e.Name
 		if e.ID != event.ID {
 			v.OtherEvents = append(v.OtherEvents, e)
 		}
+	}
+	for i := range v.FormChoices {
+		v.FormChoices[i].OtherEvent = eventNames[v.FormChoices[i].OtherEventID]
 	}
 
 	// opisy i bannery sal - tyle pól, ile sal ma impreza (minimum jedno)
@@ -1052,7 +1082,8 @@ func fillReservationSummary(db *DB, user User, event Event, lang string, v *nEve
 
 	type group struct {
 		person string
-		seats  []string
+		rooms  []string           // sale w kolejności pojawienia się
+		seats  map[string][]int64 // numery miejsc per sala
 		amount int64
 		curr   string
 		payed  bool
@@ -1080,6 +1111,7 @@ func fillReservationSummary(db *DB, user User, event Event, lang string, v *nEve
 		if !ok {
 			g = &group{
 				person: strings.TrimSpace(r.CustName.String + " " + r.CustSurname.String),
+				seats:  map[string][]int64{},
 				payed:  true,
 			}
 			if g.person == "" {
@@ -1089,7 +1121,10 @@ func fillReservationSummary(db *DB, user User, event Event, lang string, v *nEve
 			order = append(order, key)
 		}
 		g.any = true
-		g.seats = append(g.seats, fmt.Sprintf("%s: %d", r.RoomName, r.ChairNumber))
+		if _, ok := g.seats[r.RoomName]; !ok {
+			g.rooms = append(g.rooms, r.RoomName)
+		}
+		g.seats[r.RoomName] = append(g.seats[r.RoomName], r.ChairNumber)
 		g.amount += r.Price.Int64
 		if r.Currency.Valid && r.Currency.String != "" {
 			g.curr = r.Currency.String
@@ -1119,7 +1154,7 @@ func fillReservationSummary(db *DB, user User, event Event, lang string, v *nEve
 		label, class := statusLabel(lang, g.payed)
 		v.ResRows = append(v.ResRows, nResRow{
 			Person:      g.person,
-			Seats:       strings.Join(g.seats, ", "),
+			Seats:       seatsText(g.rooms, g.seats),
 			StatusLabel: label,
 			StatusClass: class,
 			Amount:      FormatMoney(g.amount, currency),
@@ -1284,6 +1319,11 @@ func EventSectionSave(db *DB, loc *time.Location, dF string, cs *sessions.Cookie
 				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
 				return
 			}
+		case "forms":
+			if err := setEventForms(db, user.ID, event.ID, flag); err != nil {
+				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: T(lang, "common.save_error") + ": " + err.Error()})
+				return
+			}
 		case "settings":
 			event.Sharable = ToNB(flag("sharable"))
 			event.HideCosts = ToNB(flag("hidecosts"))
@@ -1342,11 +1382,40 @@ func EventSectionSave(db *DB, loc *time.Location, dF string, cs *sessions.Cookie
 			resp.Summary, resp.Missing = v.SumMailAdmin, v.MissMailAdmin
 		case "bank":
 			resp.Summary, resp.Missing = v.SumBank, v.MissBank
+		case "forms":
+			resp.Summary = v.SumForms
 		case "settings":
 			resp.Summary = v.SumSettings
 		}
 		jsonMsg(w, http.StatusOK, resp)
 	}
+}
+
+// setEventForms podpina do imprezy zaznaczone formularze (pola "form_<id>")
+// i odpina te, które były jej, a zostały odznaczone. Formularz zaznaczony
+// tutaj, a podpięty do innej imprezy, zostaje przepięty.
+func setEventForms(db *DB, userID, eventID int64, flag func(string) bool) error {
+	templs, err := db.FormTemplateGetAll(userID)
+	if err != nil {
+		return err
+	}
+	for _, ft := range templs {
+		if isAddonsTemplate(ft) {
+			continue
+		}
+		mine := ft.EventID.Valid && ft.EventID.Int64 == eventID
+		on := flag(fmt.Sprintf("form_%d", ft.ID))
+		switch {
+		case on && !mine:
+			err = db.FormTemplateSetEvent(ft.ID, userID, ToNI(eventID))
+		case !on && mine:
+			err = db.FormTemplateSetEvent(ft.ID, userID, ToNI(0))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // setEventRooms ustawia listę sal imprezy na dokładnie te z listy "1,2,3".
@@ -1423,4 +1492,29 @@ func EventCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		}
 		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "created", "id": id})
 	}
+}
+
+// seatsText: "Sala A: 1–4, 7; Sala B: 2" - nazwa sali raz, kolejne numery
+// jako zakres (jak w tabeli rezerwacji, js/n_reservations.js).
+func seatsText(rooms []string, seats map[string][]int64) string {
+	parts := make([]string, 0, len(rooms))
+	for _, room := range rooms {
+		nums := append([]int64(nil), seats[room]...)
+		sort.Slice(nums, func(i, j int) bool { return nums[i] < nums[j] })
+		var runs []string
+		for i := 0; i < len(nums); {
+			j := i
+			for j+1 < len(nums) && nums[j+1] == nums[j]+1 {
+				j++
+			}
+			if j > i {
+				runs = append(runs, fmt.Sprintf("%d–%d", nums[i], nums[j]))
+			} else {
+				runs = append(runs, strconv.FormatInt(nums[i], 10))
+			}
+			i = j + 1
+		}
+		parts = append(parts, room+": "+strings.Join(runs, ", "))
+	}
+	return strings.Join(parts, "; ")
 }

@@ -62,6 +62,14 @@
 {{end}}
 
 {{define "dialogs"}}
+<div class="dlg-back" id="ne-dlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="ne-title">
+    <h3 id="ne-title">{{T "home.new_event"}}</h3>
+    <div class="f" style="margin-top:14px"><label for="ne-name">{{T "field.name"}}</label>
+      <input class="inp" id="ne-name" autocomplete="off"></div>
+    <div class="sec-f"><button class="btn" id="ne-ok">{{T "newmail.create"}}</button><button class="btn quiet" id="ne-cancel">{{T "common.cancel"}}</button><small class="msg" id="ne-msg"></small></div>
+  </div>
+</div>
 <div class="dlg-back" id="nf-dlg" hidden>
   <div class="dlg nf" role="dialog" aria-modal="true" aria-labelledby="nf-title">
     <h3 id="nf-title">{{T "newform.title"}}</h3>
@@ -96,16 +104,42 @@
 
 {{define "scripts"}}
 {{template "dialogs" .}}
-<script src="/js/n_copy.js"></script>
-<script src="/js/n_newform.js"></script>
+<script src="{{asset "/js/n_copy.js"}}"></script>
+<script src="{{asset "/js/n_newform.js"}}"></script>
 <script>
-document.getElementById('new-event').addEventListener('click', async function () {
-  const name = prompt("{{T "field.name"}}");
-  if (!name) return;
-  const r = await fetch('/api/events', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: name})});
-  if (!r.ok) { alert("{{T "common.save_error"}}"); return; }
-  const d = await r.json();
-  location.href = '/admin/events/' + d.id;
-});
+(function () {
+  // własne okno zamiast prompt() - natywne okna wyglądają obco i blokują stronę
+  var dlg = document.getElementById('ne-dlg');
+  var name = document.getElementById('ne-name');
+  var msg = document.getElementById('ne-msg');
+  var ok = document.getElementById('ne-ok');
+  function close() { dlg.hidden = true; }
+  document.getElementById('new-event').addEventListener('click', function () {
+    name.value = '';
+    msg.textContent = '';
+    dlg.hidden = false;
+    name.focus();
+  });
+  document.getElementById('ne-cancel').addEventListener('click', close);
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) close(); });
+  dlg.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') close();
+    if (e.key === 'Enter') ok.click();
+  });
+  ok.addEventListener('click', async function () {
+    var n = name.value.trim();
+    if (!n) { name.focus(); return; }
+    ok.disabled = true;
+    try {
+      var r = await fetch('/api/events', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: n})});
+      if (!r.ok) throw new Error();
+      var d = await r.json();
+      location.href = '/admin/events/' + d.id;
+    } catch (err) {
+      msg.textContent = "{{T "common.save_error"}}";
+      ok.disabled = false;
+    }
+  });
+})();
 </script>
 {{end}}

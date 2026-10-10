@@ -4,6 +4,7 @@
 name = "Rezerwo"
 
 [nav]
+home = "Events and forms"
 events = "Events"
 forms = "Forms"
 catalogs = "Catalogues"
@@ -90,6 +91,13 @@ selling = "on sale"
 finished = "finished"
 reservation_open = "reservations %s – %s"
 
+[event.forms]
+hint = "Checked forms belong to this event."
+other = "now attached to: %s"
+none = "You have no forms yet."
+new = "Create a new form on the home page."
+open = "open"
+
 [event.sec]
 basic = "Basics"
 dates = "Dates"
@@ -105,6 +113,7 @@ reports = "Reports"
 settings = "Settings"
 
 [order]
+page_title = "Order status"
 countdown = "Your seats are held for"
 expired = "Time is up, please pick the seats again."
 email = "E-mail"
@@ -118,11 +127,15 @@ submit = "Order"
 cancel = "Cancel the order"
 seats_taken = "These seats are already taken"
 seats_taken_text = "Someone was faster, or the seats are held by another guest. Please pick other seats or try again in 5 minutes."
+done_title = "Thank you for your order!"
+done_text = "We have sent a confirmation to your e-mail address."
+done_pay = "Please pay to:"
 
 [guest]
 free_seats = "free seats"
 your_seats = "Your seats"
 nothing_selected = "Pick seats in the room plan."
+sold_out = "All seats are already taken."
 total = "Total"
 order = "Order"
 seat = "table %d, seat %d"
@@ -139,6 +152,10 @@ legend = "Seat colours"
 no_seats_title = "No seats selected"
 draft_title = "Reservations have not started yet"
 draft_text = "This event is not published yet. Please come back later or contact the organizer."
+no_event_title = "No reservations open right now"
+no_event = "The organizer has no open event at the moment. Please come back later or contact the organizer."
+no_rooms_title = "No rooms for this event"
+no_rooms = "The organizer has not assigned a room to this event yet. Please come back later."
 
 [mail]
 subject = "Subject"
@@ -328,6 +345,8 @@ none_yet = "No answers yet."
 created = "Sent"
 fields_count = "%d fields"
 money_from = "amount from the \"%s\" field"
+columns = "Columns"
+detail_panel = "Details panel"
 
 [form.sec]
 basic = "Basics"
@@ -450,6 +469,7 @@ other = "%d texts"
 [gform]
 no_org_title = "Organization not found"
 no_org = "There is no organization at “%s”. Please check the link or write to admin (at) zori.cz."
+date_ph = "dd.mm.yyyy"
 no_form_title = "Form not found"
 no_form = "The form “%s” does not exist. Please check the link or ask the organizer."
 open_until = "Answers are accepted until %s."
@@ -478,6 +498,10 @@ number = "Please enter a number."
 min = "At least %s."
 max = "At most %s."
 step = "Please enter a whole number."
+step_n = "Use steps of %s, e.g. %s or %s."
+date = "Enter the date as dd.mm.yyyy, e.g. 18.12.2026."
+date_min = "Not before %s."
+date_max = "Not after %s."
 too_long = "At most %d characters."
 fix = "Please correct the highlighted fields."
 

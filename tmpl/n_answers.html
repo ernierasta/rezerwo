@@ -1,9 +1,9 @@
 {{define "body"}}
 <div class="doc wide-doc" id="ans-page" data-form-id="{{.ID}}">
+  {{template "up" .}}
   <div class="dh">
     <h3>{{T "form.answers"}}</h3>
     <div class="r">
-      <a class="btn quiet" href="/admin/forms/{{.ID}}">{{.Name}}</a>
       <a class="btn quiet" href="/api/forms/{{.ID}}/answers.csv">CSV</a>
     </div>
   </div>
@@ -17,7 +17,8 @@
       <button data-quick="nomail">{{T "res.filter_nomail"}}</button>
     </div>
     <select class="inp" id="ans-notif" style="max-width:260px"><option value="0">{{T "field.select_hint"}}</option></select>
-    <details class="cols"><summary class="link">{{T "field.rooms"}}</summary><div id="ans-cols"></div></details>
+    <label class="chk"><input type="checkbox" id="ans-pane" checked> {{T "form.detail_panel"}}</label>
+    <details class="cols"><summary class="link">{{T "form.columns"}}</summary><div id="ans-cols"></div></details>
   </div>
 
   <div class="res-layout">
@@ -38,6 +39,6 @@
 </div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_table.js"></script>
-<script src="/js/n_answers.js"></script>
+<script src="{{asset "/js/n_table.js"}}"></script>
+<script src="{{asset "/js/n_answers.js"}}"></script>
 {{end}}

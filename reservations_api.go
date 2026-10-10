@@ -780,8 +780,10 @@ func ReservationsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		vars := nReservationsVars{
 			NPage: NPage{
 				Title:   event.Name + " — " + T(lang, "event.sec.reservations"),
-				Crumb:   event.Name,
+				Crumb:   T(lang, "event.sec.reservations"),
 				OrgName: orgName(user),
+				UpURL:   fmt.Sprintf("/admin/events/%d", event.ID),
+				UpLabel: event.Name,
 			},
 			ID:        event.ID,
 			EventName: event.Name,

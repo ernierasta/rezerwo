@@ -4,6 +4,7 @@
 {{end}}
 {{define "body"}}
 <div class="doc" id="event-page" data-event-id="{{.ID}}">
+  {{template "up" .}}
   <div class="dh">
     <h3>{{.Name}}</h3>
     <div class="r">
@@ -186,8 +187,19 @@
 
     <!-- Formularze -->
     <div class="sec" data-sec="formularze">
-      <div class="sec-h"><b>{{T "event.sec.forms"}}</b><span>{{.SumForms}}</span>
-        {{if .Forms}}<a class="act" href="/admin/forms/{{(index .Forms 0).ID}}">{{T "common.open"}}</a>{{else}}<a class="act" href="/admin">{{T "common.set"}}</a>{{end}}
+      <div class="sec-h"><b>{{T "event.sec.forms"}}</b><span>{{.SumForms}}</span><a class="act" href="#formularze">{{if .Forms}}{{T "common.change"}}{{else}}{{T "common.set"}}{{end}}</a></div>
+      <div class="sec-b" hidden>
+        {{if .FormChoices}}
+        <small class="grp-hint">{{T "event.forms.hint"}}</small>
+        {{range .FormChoices}}
+        <div class="check" style="margin-top:8px"><input type="checkbox" id="f-form-{{.ID}}" data-field="form_{{.ID}}" {{if .Checked}}checked{{end}}><label for="f-form-{{.ID}}">{{.Name}}{{if .OtherEvent}} <small class="shared">({{T "event.forms.other" .OtherEvent}})</small>{{end}}</label>
+          <a class="shared" style="margin:0" href="/admin/forms/{{.ID}}">{{T "event.forms.open"}} …</a></div>
+        {{end}}
+        {{else}}
+        <p class="shared">{{T "event.forms.none"}}</p>
+        {{end}}
+        <p class="shared"><a href="/admin">{{T "event.forms.new"}}</a></p>
+        <div class="sec-f"><button class="btn" data-save="forms">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>
 
@@ -339,7 +351,7 @@
 </div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_copy.js"></script>
-<script src="/js/n_vars.js"></script>
-<script src="/js/n_event.js"></script>
+<script src="{{asset "/js/n_copy.js"}}"></script>
+<script src="{{asset "/js/n_vars.js"}}"></script>
+<script src="{{asset "/js/n_event.js"}}"></script>
 {{end}}

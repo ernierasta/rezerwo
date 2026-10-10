@@ -9,7 +9,7 @@
 
   {{if .HowTo}}<div class="desc">{{.HowTo}}</div>{{end}}
 
-  <form action="/order/status" method="POST" class="order-form" id="order-form">
+  <form action="/order/status" method="POST" class="order-form" id="order-form" novalidate>
     <input name="prices" value="{{.Prices}}" hidden>
     <input name="rooms" id="rooms" value="{{.Rooms}}" hidden>
     <input name="event-id" value="{{.EventID}}" hidden>
@@ -85,5 +85,5 @@
 </div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_order.js"></script>
+<script src="{{asset "/js/n_order.js"}}"></script>
 {{end}}

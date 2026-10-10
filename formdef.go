@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/microcosm-cc/bluemonday"
 )
@@ -248,6 +249,20 @@ func BuildRenderRows(ff []FormDefField, moneyField string) []RenderRow {
 	return rows
 }
 
+// guestSubtypes to typy pola tekstowego, które przeglądarka pokazuje bez
+// własnych tekstów (podpowiedzi, kalendarzy).
+var guestSubtypes = map[string]bool{"text": true, "email": true, "tel": true}
+
+// displayDate zmienia zapis rrrr-mm-dd na dd.mm.rrrr, tak jak gość wpisuje
+// datę w polu daty; inne wartości zostają bez zmian.
+func displayDate(s string) string {
+	t, err := time.Parse("2006-01-02", strings.TrimSpace(s))
+	if err != nil {
+		return s
+	}
+	return t.Format("02.01.2006")
+}
+
 func renderField(d FormDefField, idx int) RenderField {
 	f := RenderField{
 		Type:        d.S("type"),
@@ -282,8 +297,13 @@ func renderField(d FormDefField, idx int) RenderField {
 			f.HeaderLevel = "h4"
 		}
 	}
-	if f.Type == "text" && f.Subtype == "" {
+	if f.Type == "text" && !guestSubtypes[f.Subtype] {
+		// inne typy z dawnego formBuildera (color, date, password...) rysuje
+		// przeglądarka w swoim języku, a strona gościa ma być w języku formularza
 		f.Subtype = "text"
+	}
+	if f.Type == "date" {
+		f.Value = displayDate(f.Value)
 	}
 	if f.Name == ROLEEMAIL {
 		f.Subtype = "email"

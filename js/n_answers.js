@@ -20,12 +20,17 @@
     bar: document.getElementById('ans-bar'),
     barInfo: document.getElementById('ans-bar-info'),
     sum: document.getElementById('ans-sum'),
-    detail: document.getElementById('ans-detail')
+    detail: document.getElementById('ans-detail'),
+    pane: document.getElementById('ans-pane')
   };
 
   var data = {rows: [], columns: [], moneyField: ''};
   var quick = 'all';
   var table;
+  var currentDetailID = null;   // id odpowiedzi pokazanej w panelu szczegółów
+  var paneKey = 'rezerwo.answers.pane.' + formID;
+  var paneOn = true;            // czy boczna kolumna ze szczegółami jest włączona
+  try { paneOn = localStorage.getItem(paneKey) !== '0'; } catch (e) { /* prywatne okno */ }
 
   function dateS(unix) {
     if (!unix || unix <= 0) return '';
@@ -97,7 +102,10 @@
     if (!data.moneyField) return '';
     var total = 0;
     rows.forEach(function (r) {
-      var v = parseInt(String(r.values[data.moneyField] || '').replace(/[^\d-]/g, ''), 10);
+      // pole "ilość × cena" zapisuje się jako "2 * 250 = 500" - liczy się kwota po "="
+      var s = String(r.values[data.moneyField] || '');
+      if (s.indexOf('=') >= 0) s = s.slice(s.lastIndexOf('=') + 1);
+      var v = parseInt(s.replace(/[^\d-]/g, ''), 10);
       if (!isNaN(v)) total += v;
     });
     if (!total) return '';
@@ -110,12 +118,27 @@
   }
 
   function showDetail(row) {
+    if (!paneOn) return;
+    currentDetailID = row.id;
     el.detail.hidden = false;
     el.detail.innerHTML = '';
 
+    var head = document.createElement('div');
+    head.className = 'pane-h';
+
     var h = document.createElement('h4');
     h.textContent = (row.name + ' ' + row.surname).trim() || row.email;
-    el.detail.appendChild(h);
+    head.appendChild(h);
+
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'pane-x';
+    x.textContent = '×';
+    x.title = RZ.t('common.close');
+    x.setAttribute('aria-label', RZ.t('common.close'));
+    x.addEventListener('click', hideDetail);
+    head.appendChild(x);
+    el.detail.appendChild(head);
 
     function line(k, v) {
       var d = document.createElement('div');
@@ -131,12 +154,21 @@
     line(RZ.t('form.created'), dateS(row.created));
     line('mail', dateS(row.last_mail) + (row.mail_count ? ' (' + row.mail_count + ')' : ''));
     data.columns.forEach(function (c) { line(c.label, row.values[c.key]); });
+  }
 
-    var close = document.createElement('button');
-    close.className = 'btn quiet sm';
-    close.textContent = RZ.t('common.collapse');
-    close.addEventListener('click', function () { el.detail.hidden = true; });
-    el.detail.appendChild(close);
+  function hideDetail() {
+    currentDetailID = null;
+    el.detail.hidden = true;
+  }
+
+  // refreshDetail odtwarza otwarty panel po zmianie danych (np. statusu), żeby
+  // nie trzeba było klikać wiersza ponownie.
+  function refreshDetail() {
+    if (currentDetailID === null || !paneOn) return;
+    var row = null;
+    data.rows.forEach(function (r) { if (r.id === currentDetailID) row = r; });
+    if (row) showDetail(row);
+    else hideDetail();
   }
 
   function ids() {
@@ -146,7 +178,13 @@
   function changeStatus(status) {
     if (!ids().length) return;
     RZ.postJSON(api + '/status', {ids: ids(), status: status})
-      .then(function (resp) { data.rows = resp.rows; table.setRows(resp.rows); table.clearSelection(); RZ.toast(RZ.t('common.saved')); })
+      .then(function (resp) {
+        data.rows = resp.rows;
+        table.setRows(resp.rows);
+        table.clearSelection();
+        refreshDetail();
+        RZ.toast(RZ.t('common.saved'));
+      })
       .catch(function (e) { RZ.toast(RZ.t('common.save_error') + ': ' + e.message); });
   }
 
@@ -155,7 +193,13 @@
     if (!list.length) return;
     if (!confirm(RZ.t('res.delete_confirm').replace('%d', list.length))) return;
     RZ.postJSON(api, {ids: list}, 'DELETE')
-      .then(function (resp) { data.rows = resp.rows; table.setRows(resp.rows); table.clearSelection(); RZ.toast(RZ.t('common.saved')); })
+      .then(function (resp) {
+        data.rows = resp.rows;
+        table.setRows(resp.rows);
+        table.clearSelection();
+        refreshDetail();
+        RZ.toast(RZ.t('common.saved'));
+      })
       .catch(function (e) { RZ.toast(RZ.t('common.save_error') + ': ' + e.message); });
   }
 
@@ -166,7 +210,13 @@
     if (!notifID) { RZ.toast(RZ.t('res.mail_no_template')); return; }
     if (!confirm(RZ.t('res.mail_confirm').replace('%d', list.length))) return;
     RZ.postJSON(api + '/mail', {ids: list, notification_id: notifID})
-      .then(function (resp) { data.rows = resp.rows; table.setRows(resp.rows); table.clearSelection(); RZ.toast(resp.msg); })
+      .then(function (resp) {
+        data.rows = resp.rows;
+        table.setRows(resp.rows);
+        table.clearSelection();
+        refreshDetail();
+        RZ.toast(resp.msg);
+      })
       .catch(function (e) { RZ.toast(RZ.t('common.save_error') + ': ' + e.message); });
   }
 
@@ -184,6 +234,15 @@
     document.getElementById('ans-mail').addEventListener('click', sendMail);
     document.getElementById('ans-delete').addEventListener('click', removeSelected);
     document.getElementById('ans-none').addEventListener('click', function () { table.clearSelection(); });
+    if (el.pane) {
+      el.pane.checked = paneOn;
+      el.pane.addEventListener('change', function () {
+        paneOn = el.pane.checked;
+        try { localStorage.setItem(paneKey, paneOn ? '1' : '0'); } catch (e) { /* ignorujemy */ }
+        if (!paneOn) hideDetail();
+        else refreshDetail();
+      });
+    }
     buildColumnChooser(cols);
   }
 

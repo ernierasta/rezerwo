@@ -12,6 +12,8 @@
   var currency = page.dataset.currency || '';
   var defaultPrice = Number(page.dataset.price || 0);
   var hideCosts = page.dataset.hidecosts === 'true';
+  // wszystkie miejsca zajęte: zamiast "wybierz miejsca" piszemy, że brak wolnych
+  var emptyText = page.dataset.soldout ? 'guest.sold_out' : 'guest.nothing_selected';
 
   var selected = []; // {number, room, price, el}
 
@@ -37,9 +39,9 @@
     if (!selected.length) {
       var p = document.createElement('p');
       p.className = 'empty';
-      p.textContent = RZ.t('guest.nothing_selected');
+      p.textContent = RZ.t(emptyText);
       list.appendChild(p);
-      barSum.textContent = RZ.t('guest.nothing_selected');
+      barSum.textContent = RZ.t(emptyText);
       return;
     }
 

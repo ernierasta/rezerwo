@@ -4,11 +4,9 @@
 {{end}}
 {{define "body"}}
 <div class="doc" id="mail-page" data-mail-id="{{.ID}}" data-back="{{.Back}}" data-vars="{{.Vars}}">
+  {{template "up" .}}
   <div class="dh">
     <h3>{{.Name}}</h3>
-    <div class="r">
-      <a class="btn quiet" href="{{.Back}}">{{.BackLabel}}</a>
-    </div>
   </div>
 
   <div class="grid2" style="margin-top:20px">
@@ -70,6 +68,6 @@
 </div>
 {{end}}
 {{define "scripts"}}
-<script src="/js/n_vars.js"></script>
-<script src="/js/n_mail.js"></script>
+<script src="{{asset "/js/n_vars.js"}}"></script>
+<script src="{{asset "/js/n_mail.js"}}"></script>
 {{end}}

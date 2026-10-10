@@ -50,6 +50,7 @@ type nGuestVars struct {
 	DefaultCurrency string
 	HideCosts       bool
 	UserURL         string
+	SoldOut         bool // żadnego wolnego miejsca we wszystkich salach
 
 	// tekst pokazywany, gdy gość klika "Zamawiam" bez wybranych miejsc
 	NoSitsTitle string
@@ -71,6 +72,25 @@ func isAdminSession(r *http.Request, cs *sessions.CookieStore) bool {
 	return role == "admin"
 }
 
+// orgLang to język strony organizacji, gdy nie ma otwartej imprezy:
+// język jej najnowszej imprezy, a bez imprez domyślny.
+func orgLang(db *DB, userID int64, fallback string) string {
+	events, err := db.EventGetAllByUserID(userID)
+	if err != nil {
+		return KnownLang(fallback)
+	}
+	var newest Event
+	for _, e := range events {
+		if e.ID > newest.ID {
+			newest = e
+		}
+	}
+	if newest.Language.String == "" {
+		return KnownLang(fallback)
+	}
+	return KnownLang(newest.Language.String)
+}
+
 // GuestReservationPage - /res/{user}
 func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -78,9 +98,8 @@ func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w 
 		user, err := db.UserGetByURL(userURL)
 		if err != nil {
 			log.Printf("GuestReservationPage: unknown organization %q: %v", userURL, err)
-			ErrorHTML("Nie znaleziono organizacji!",
-				fmt.Sprintf("W bazie nie istnieje organizacja: %q\nProszę sprawdzić poprawność linka.", userURL),
-				lang, w, r)
+			// bez organizacji nie ma imprezy, więc nie ma też jej języka
+			ErrorHTML(T(lang, "gform.no_org_title"), T(lang, "gform.no_org", userURL), lang, w, r)
 			return
 		}
 
@@ -103,9 +122,8 @@ func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w 
 		}
 		if err != nil {
 			log.Printf("GuestReservationPage: no event for user %d: %v", user.ID, err)
-			ErrorHTML("Nie ma obecnie aktywnych imprez!",
-				"Administrator nie ma obecnie żadnych otwartych imprez.\nProsimy o kontakt z organizatorem.",
-				lang, w, r)
+			ol := orgLang(db, user.ID, lang)
+			ErrorHTML(T(ol, "guest.no_event_title"), T(ol, "guest.no_event"), ol, w, r)
 			return
 		}
 
@@ -122,8 +140,7 @@ func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w 
 		rooms, err := db.EventGetRooms(event.ID)
 		if err != nil || len(rooms) == 0 {
 			log.Printf("GuestReservationPage: no rooms for event %d: %v", event.ID, err)
-			ErrorHTML("Brak sal dla tej imprezy!",
-				"Administrator nie powiązał żadnej sali z wydarzeniem.", lng, w, r)
+			ErrorHTML(T(lng, "guest.no_rooms_title"), T(lng, "guest.no_rooms"), lng, w, r)
 			return
 		}
 
@@ -161,6 +178,12 @@ func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w 
 			}
 			vars.Rooms = append(vars.Rooms, gr)
 		}
+		free, total := 0, 0
+		for _, gr := range vars.Rooms {
+			free += gr.SeatsFree
+			total += gr.SeatsTotal
+		}
+		vars.SoldOut = total > 0 && free == 0
 
 		t, err := template.New("n_reservation.html").Funcs(GuestFuncs(lng, event.Theme.String)).
 			ParseFiles("tmpl/n_reservation.html", "tmpl/n_guest_base.html")

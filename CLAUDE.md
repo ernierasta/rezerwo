@@ -36,6 +36,12 @@ The binary resolves everything relative to the working directory: `config.toml` 
 - Templates: `tmpl/n_*.html`, re-parsed on every request, so template edits need no rebuild. Admin pages use `n_base.html` (`nRender`), guest pages `n_guest_base.html` (`guestRender`).
 - User-authored templates stored in DB (event/form thank-you mails, info panels, notifications) are executed as Go templates with method receivers `FormFuncs` (`.Sum`, `.Field`, `.QRPay`, `.MTotal`, …) and `OrderFuncs` (`.QRPay`, `.PDF`) — changing these method signatures breaks existing templates in production data.
 - `mail.go`: SMTP sending via `MailConfig` (HTML + text alternative, attachments, CID-embedded images). `qrcode.go`: Czech QR payment (SPAYD) codes. `pdf-tickets.go`: gopdf ticket generation (A4 sheet or single tickets).
+- **Guest pages are always in the event/form language, without exception** (`events.language` / `formtemplates.language`; `KnownLang(event.Language.String)`, `formLang(templ)`). Many guests have Czech browsers while events are Polish, so neither `Accept-Language`, the panel-language cookie nor the browser may affect what a guest sees:
+  - every guest text comes from `locales/*.toml` in all three languages; no hard-coded strings in handlers;
+  - no browser-drawn UI: guest `<form>`s have `novalidate` and validate in JS with `RZ.inputError` (`js/n_ui.js`, `gform.err.*` texts); no `type="date|time|color|file|…"` inputs (date fields are text inputs with `data-date`, stored as `dd.mm.yyyy`); no `alert/confirm/prompt`, no `beforeunload`, no `toLocaleString()` without a language;
+  - only pages with no event/form at all (unknown organization) fall back to `DEFAULTLANG`; an organization without an open event uses its newest event's language (`orgLang`).
+  `guest_lang_test.go` enforces this; extend it when adding a guest page or script.
+- Own scripts are included via `{{asset "/js/n_….js"}}` (mtime version) so a deploy never pairs new HTML with a cached old script.
 - Styles: edit `scss/*.scss`, never `css/` output for those files. Vendored JS/CSS libraries in `js/`/`css/` (sources/versions in `tools/download.sh`, `tools/src/`).
 
 ## Deployment

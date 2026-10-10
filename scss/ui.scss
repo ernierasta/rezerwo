@@ -1913,6 +1913,44 @@ h5.subhead {
   .done > b { color: var(--ok-ink); }
 }
 
+// stan pola pokazany przy polu zamiast w panelu (panel_place, szablon "ffstat")
+.ff-stat {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  max-width: 320px;
+  font-size: 13.5px;
+  color: var(--muted);
+
+  &.done { color: var(--ok-ink); }
+  .ip-bar {
+    display: block;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--taken);
+    overflow: hidden;
+
+    i { display: block; height: 100%; background: var(--seat-line); border-radius: 3px; }
+    &.done i { background: var(--bar-done); }
+  }
+}
+.ff-stat + .ff-d { margin-top: 6px; }
+
+.opts .opt .opt-stat {
+  margin-left: auto;
+  padding: 0 7px;
+  border-radius: 8px;
+  background: var(--pane);
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+
+  &.done { color: var(--ok-ink); }
+}
+.opts.inline .opt .opt-stat { margin-left: 4px; }
+
+.fd .fd-place-all { font-size: 13px; margin: 2px 0 12px; }
+
 // podgląd panelu na stronie formularza w panelu admina
 .panel-set {
   .seg { margin: 2px 0 6px; flex-wrap: wrap; }

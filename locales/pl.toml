@@ -508,6 +508,10 @@ save_error = "Nie udało się wysłać formularza. Spróbuj ponownie za chwilę.
 thanks = "Dziękujemy!"
 thanks_text = "Formularz został wysłany."
 again = "Wypełnij formularz jeszcze raz"
+stat = "Dotąd: %s"
+stat_goal = "Jest %s z %d potrzebnych"
+remembered = "Część pól uzupełniliśmy danymi z Twojego poprzedniego formularza na tym urządzeniu."
+remembered_clear = "Wyczyść"
 
 [gform.err]
 missing = "Uzupełnij pole „%s”."
@@ -637,6 +641,12 @@ panel_goal_hint = "Ile potrzebujecie, np. 10 osób do szatni. Panel pokaże pase
 panel_all = "wszystkie opcje"
 panel_only = "Licz tylko opcję"
 panel_only_hint = "Np. tylko odpowiedzi „Tak”."
+panel_place = "Gdzie pokazać stan"
+panel_place_panel = "W panelu"
+panel_place_field = "Przy polu"
+panel_place_hint = "Przy polu gość widzi stan od razu podczas wypełniania, np. „Jest 3 z 10 potrzebnych”; przy opcjach liczby stoją obok każdej opcji."
+panel_place_all = "Wszystkie pola:"
+panel_badge_field = "przy polu"
 panel_hint_auto = "Panel formularza jest automatyczny: pola z liczbami i opcjami są w nim domyślnie."
 panel_hint_fields = "Panel pokazuje tylko pola z tym przełącznikiem."
 panel_hint_text = "Panel ma teraz własny tekst – te ustawienia zadziałają w trybie „Automatycznie” lub „Wybrane pola” (strona formularza, sekcja „Strona”)."

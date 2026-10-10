@@ -34,6 +34,35 @@ type nFieldsVars struct {
 	MoneyField string
 	Counts     template.JS // {"nazwa pola": liczba odpowiedzi}
 	PanelMode  string      // tryb panelu informacyjnego (form_stats.go)
+	Stats      template.JS // {"nazwa pola": {v: "12", o: {"opcja": 3}}} - podgląd stanu przy polu
+}
+
+// fieldStatsJSON - zestawienia pól dla podglądu "stan przy polu" w designerze.
+func fieldStatsJSON(db *DB, templ FormTemplate, defs []FormDefField) template.JS {
+	type stat struct {
+		V string           `json:"v"`
+		O map[string]int64 `json:"o,omitempty"`
+	}
+	answers := loadFormAnswers(db, templ.ID)
+	out := map[string]stat{}
+	for _, d := range defs {
+		if !isInputType(d.S("type")) || d.S("name") == "" {
+			continue
+		}
+		st := fieldStat(d, answers[d.S("name")])
+		s := stat{V: st.Value()}
+		if st.Kind == "options" {
+			s.O = map[string]int64{}
+			for _, o := range st.Options {
+				if !o.Other {
+					s.O[o.Label] = o.Count
+				}
+			}
+		}
+		out[st.Name] = s
+	}
+	b, _ := json.Marshal(out)
+	return template.JS(b)
 }
 
 // FormFieldsPage - /admin/forms/{id}/fields
@@ -75,6 +104,7 @@ func FormFieldsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			Counts:     template.JS(countsJSON),
 			BackURL:    fmt.Sprintf("/admin/forms/%d#pola", templ.ID),
 			PanelMode:  panelMode(templ),
+			Stats:      fieldStatsJSON(db, templ, defs),
 		}
 		if v.IsAddons && templ.EventID.Valid {
 			v.BackURL = fmt.Sprintf("/admin/events/%d#dodatki", templ.EventID.Int64)

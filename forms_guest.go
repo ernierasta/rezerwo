@@ -179,8 +179,15 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			}
 		}
 
-		// panel informacyjny: automatyczny, z wybranych pól albo własny tekst
-		v.Info = RenderInfoPanel(db, user, templ, panelMode(templ))
+		// panel informacyjny: automatyczny, z wybranych pól albo własny tekst;
+		// część pól może mieć stan pokazany przy polu zamiast w panelu
+		if mode := panelMode(templ); mode == PANELAUTO || mode == PANELFIELDS {
+			pv := BuildPanel(db, user, templ, mode)
+			v.Info = renderPanelVars(lang, pv)
+			AttachFieldStats(v.Rows, pv.Fields)
+		} else {
+			v.Info = RenderInfoPanel(db, user, templ, mode)
+		}
 
 		// formularz bez nazwiska jest anonimowy: dostaje unikatowy numer
 		if !strings.Contains(templ.Content.String, ROLESURNAME) {

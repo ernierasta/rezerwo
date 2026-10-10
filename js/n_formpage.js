@@ -173,37 +173,113 @@
     try { localStorage.removeItem(draftKey); } catch (e) { /* nic */ }
   }
 
+  // setField wpisuje zapisaną wartość {v: [...], o: "tekst Inne"} do pola
+  function setField(ff, saved) {
+    var vals = saved.v || [];
+    var type = ff.dataset.type;
+    var other = ff.querySelector('.other-text');
+    if (other && saved.o !== undefined) other.value = saved.o;
+    if (type === 'checkbox-group' || type === 'radio-group') {
+      inputs(ff).forEach(function (i) {
+        i.checked = i.hasAttribute('data-other') ? (saved.o && vals.indexOf(saved.o) >= 0) : vals.indexOf(i.value) >= 0;
+      });
+      syncOther(ff);
+      return;
+    }
+    var el = ff.querySelector('input, select, textarea');
+    if (!el) return;
+    if (type === 'multiplierField') {
+      var m = /^(\S+) \*/.exec(vals[0] || '');
+      el.value = m ? m[1] : '';
+      updateMult(ff);
+      return;
+    }
+    if (el.multiple) {
+      Array.prototype.forEach.call(el.options, function (o) { o.selected = vals.indexOf(o.value) >= 0; });
+      return;
+    }
+    if (vals[0] !== undefined) el.value = vals[0];
+  }
+
+  // restoreDraft oddaje true, jeśli był szkic tego formularza
   function restoreDraft() {
     var d;
     try { d = JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch (e) { d = null; }
-    if (!d) return;
+    if (!d) return false;
     fields.forEach(function (ff) {
-      var saved = d[ff.dataset.name];
-      if (!saved) return;
-      var vals = saved.v || [];
-      var type = ff.dataset.type;
-      var other = ff.querySelector('.other-text');
-      if (other && saved.o !== undefined) other.value = saved.o;
-      if (type === 'checkbox-group' || type === 'radio-group') {
-        inputs(ff).forEach(function (i) {
-          i.checked = i.hasAttribute('data-other') ? (saved.o && vals.indexOf(saved.o) >= 0) : vals.indexOf(i.value) >= 0;
-        });
-        syncOther(ff);
+      if (d[ff.dataset.name]) setField(ff, d[ff.dataset.name]);
+    });
+    return true;
+  }
+
+  // --- zapamiętane dane gościa ---------------------------------------------
+  // Formularz idzie fetch-em, więc przeglądarka nie zapamiętuje wpisów sama.
+  // Po wysłaniu zapisujemy powtarzające się pola (imię, nazwisko, e-mail,
+  // telefon, najstarsze dziecko, klasa) i wpisujemy je w następny formularz
+  // tej samej organizacji. Pola rozpoznajemy po nazwie i etykiecie, bo
+  // w różnych formularzach nazywają się różnie ("dziecko", "imieucznia", ...).
+
+  var rememberKey = 'rezerwo.gform.remember.' + (location.pathname.split('/')[2] || '');
+
+  function fieldKind(ff) {
+    var name = ff.dataset.name, type = ff.dataset.type;
+    if (name === 'name-REQUIRED') return 'name';
+    if (name === 'surname-REQUIRED') return 'surname';
+    if (name === 'email-REQUIRED') return 'email';
+    var l = ff.querySelector('.ff-l');
+    var label = l ? l.textContent.replace('*', '').trim().toLowerCase() : '';
+    if (/^klas/.test(label)) return 'class';
+    if (type !== 'text') return '';
+    var el = ff.querySelector('input');
+    if (el && el.type === 'tel' || /telefon/.test(label)) return 'phone';
+    if (el && el.type === 'email') return 'email';
+    if (/najst(arsz|\.)/.test(label) && /(dzieck|ucznia)/.test(label)) return 'child';
+    return '';
+  }
+
+  function remember() {
+    var m;
+    try { m = JSON.parse(localStorage.getItem(rememberKey) || '{}') || {}; } catch (e) { return; }
+    fields.forEach(function (ff) {
+      var k = fieldKind(ff);
+      if (!k) return;
+      var v = valueOf(ff);
+      if (v.length === 0 || v[0] === '') return;
+      var o = ff.querySelector('.other-text');
+      m[k] = {v: v, o: o ? o.value : undefined};
+    });
+    try { localStorage.setItem(rememberKey, JSON.stringify(m)); } catch (e) { /* prywatne okno */ }
+  }
+
+  function recall() {
+    var m;
+    try { m = JSON.parse(localStorage.getItem(rememberKey) || 'null'); } catch (e) { m = null; }
+    if (!m) return;
+    var filled = [];
+    fields.forEach(function (ff) {
+      var k = fieldKind(ff);
+      if (!k || !m[k]) return;
+      var sel = ff.querySelector('select');
+      if (sel) {
+        // lista często ma wybraną z góry opcję "--Wybierz--", więc nie pytamy
+        // o pustość, tylko czy zapamiętana wartość jest wśród opcji
+        var vals = m[k].v || [];
+        var has = Array.prototype.some.call(sel.options, function (o) { return o.value !== '' && vals.indexOf(o.value) >= 0; });
+        if (!has) return;
+      } else if (valueOf(ff).some(function (v) { return v !== ''; })) {
         return;
       }
-      var el = ff.querySelector('input, select, textarea');
-      if (!el) return;
-      if (type === 'multiplierField') {
-        var m = /^(\S+) \*/.exec(vals[0] || '');
-        el.value = m ? m[1] : '';
-        updateMult(ff);
-        return;
-      }
-      if (el.multiple) {
-        Array.prototype.forEach.call(el.options, function (o) { o.selected = vals.indexOf(o.value) >= 0; });
-        return;
-      }
-      if (vals[0] !== undefined) el.value = vals[0];
+      setField(ff, m[k]);
+      if (valueOf(ff).some(function (v) { return v !== ''; })) filled.push(ff);
+    });
+    var note = document.getElementById('gform-remembered');
+    if (!filled.length || !note) return;
+    note.hidden = false;
+    document.getElementById('gform-remembered-clear').addEventListener('click', function () {
+      filled.forEach(function (ff) { setField(ff, {v: [''], o: ''}); });
+      try { localStorage.removeItem(rememberKey); } catch (e) { /* nic */ }
+      note.hidden = true;
+      saveDraft();
     });
   }
 
@@ -261,6 +337,7 @@
       .then(function (resp) {
         sent = true;
         clearDraft();
+        remember();
         location.href = resp.done;
       })
       .catch(function (err) {
@@ -280,7 +357,7 @@
   if (info && window.matchMedia('(max-width: 860px)').matches) info.open = false;
 
   RZ.loadLocale(root.dataset.lang || 'pl').then(function () {
-    restoreDraft();
+    if (!restoreDraft()) recall();
     fields.forEach(function (ff) {
       if (ff.dataset.type === 'multiplierField') updateMult(ff);
     });

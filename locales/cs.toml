@@ -506,6 +506,10 @@ save_error = "Formulář se nepodařilo odeslat. Zkuste to prosím za chvíli zn
 thanks = "Děkujeme!"
 thanks_text = "Formulář byl odeslán."
 again = "Vyplnit formulář znovu"
+stat = "Zatím: %s"
+stat_goal = "Zatím %s z %d potřebných"
+remembered = "Některá pole jsme vyplnili údaji z vašeho předchozího formuláře na tomto zařízení."
+remembered_clear = "Vymazat"
 
 [gform.err]
 missing = "Vyplňte pole „%s“."
@@ -635,6 +639,12 @@ panel_goal_hint = "Kolik potřebujete, např. 10 lidí do šatny. Panel ukáže 
 panel_all = "všechny možnosti"
 panel_only = "Počítat jen možnost"
 panel_only_hint = "Např. jen odpovědi „Ano“."
+panel_place = "Kde zobrazit stav"
+panel_place_panel = "V panelu"
+panel_place_field = "U pole"
+panel_place_hint = "U pole vidí host stav hned při vyplňování, např. „Zatím 3 z 10 potřebných“; u možností jsou čísla vedle každé možnosti."
+panel_place_all = "Všechna pole:"
+panel_badge_field = "u pole"
 panel_hint_auto = "Panel formuláře je automatický: pole s čísly a možnostmi v něm jsou ve výchozím stavu."
 panel_hint_fields = "Panel ukazuje jen pole s tímto přepínačem."
 panel_hint_text = "Panel má teď vlastní text – tato nastavení platí v režimu „Automaticky“ nebo „Vybraná pole“ (stránka formuláře, sekce „Stránka“)."

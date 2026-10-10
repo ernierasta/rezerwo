@@ -28,6 +28,10 @@
 
     <form class="gform-form" id="gform-form" novalidate>
       <p class="req-note muted"><i class="req">*</i> {{T "gform.required_note"}}</p>
+      <div class="draft-notice" id="gform-remembered" hidden>
+        <span>{{T "gform.remembered"}}</span>
+        <button class="link" type="button" id="gform-remembered-clear">{{T "gform.remembered_clear"}}</button>
+      </div>
       {{if .UniqID}}<p class="uniq">{{T "gform.uniq_id"}} <b class="num" id="uniqid">{{.UniqID}}</b></p>{{end}}
 
       {{range .Rows}}

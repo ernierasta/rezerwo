@@ -19,6 +19,8 @@ package main
 //   panel       true/false - pokaż/ukryj w panelu (brak = domyślnie dla trybu)
 //   panel_goal  cel, np. 10 osób do szatni - rysujemy pasek postępu
 //   panel_only  licz tylko tę opcję (dawne .SumOnly "pole" "Tak")
+//   panel_place "field" - pokaż stan przy samym polu zamiast w panelu
+//               (brak = w panelu)
 
 import (
 	"bytes"
@@ -34,6 +36,9 @@ const (
 	PANELAUTO   = "auto"
 	PANELFIELDS = "fields"
 	PANELTEXT   = "text"
+
+	// PLACEFIELD - panel_place pola: stan pokazany przy polu, nie w panelu
+	PLACEFIELD = "field"
 )
 
 // panelMode zwraca tryb panelu (stare formularze: tekst).
@@ -53,6 +58,9 @@ type OptionStat struct {
 	Goal  int64
 	Pct   int
 }
+
+// Done mówi, czy opcja osiągnęła cel.
+func (o OptionStat) Done() bool { return o.Goal > 0 && o.Count >= o.Goal }
 
 // FieldStat - zestawienie odpowiedzi jednego pola.
 type FieldStat struct {
@@ -255,12 +263,16 @@ type PanelItem struct {
 	Options []OptionStat
 	// Compact - krótkie opcje (klasy "1A", "2B") jako kafelki, a nie lista
 	Compact bool
+	// Only - "licz tylko opcję": stan tej jednej opcji (przy polu)
+	Only *OptionStat
 }
 
 type PanelVars struct {
 	Submissions int64
 	Items       []PanelItem
-	Empty       bool // tryb "wybrane pola", ale nic nie wybrano
+	// Fields - pola ze stanem pokazanym przy polu (panel_place), wg nazwy
+	Fields map[string]PanelItem
+	Empty  bool // tryb "wybrane pola", ale nic nie wybrano
 }
 
 // fieldInPanel mówi, czy pole trafia do panelu w danym trybie.
@@ -305,7 +317,7 @@ func BuildPanel(db *DB, user User, templ FormTemplate, mode string) PanelVars {
 	if err != nil {
 		log.Printf("BuildPanel %d: count: %v", templ.ID, err)
 	}
-	v := PanelVars{Submissions: n}
+	v := PanelVars{Submissions: n, Fields: map[string]PanelItem{}}
 	currency := currencySign(formCurrency(db, user, templ))
 
 	var pendingHeader template.HTML
@@ -317,7 +329,8 @@ func BuildPanel(db *DB, user User, templ FormTemplate, mode string) PanelVars {
 		if !fieldInPanel(d, mode) {
 			continue
 		}
-		if pendingHeader != "" {
+		atField := d.S("panel_place") == PLACEFIELD
+		if pendingHeader != "" && !atField {
 			v.Items = append(v.Items, PanelItem{Header: pendingHeader})
 			pendingHeader = ""
 		}
@@ -330,6 +343,7 @@ func BuildPanel(db *DB, user User, templ FormTemplate, mode string) PanelVars {
 			it.Label = st.Label + ": " + only
 			it.Value = strconv.FormatInt(c, 10)
 			it.Pct, it.Done = pct(c, goal), goal > 0 && c >= goal
+			it.Only = &OptionStat{Label: only, Count: c, Goal: goal, Pct: it.Pct}
 		} else if st.Kind == "options" {
 			short := true
 			for _, o := range st.Options {
@@ -353,10 +367,48 @@ func BuildPanel(db *DB, user User, templ FormTemplate, mode string) PanelVars {
 				it.Money = formatNumber(st.Money) + " " + currency
 			}
 		}
+		if atField {
+			v.Fields[st.Name] = it
+			continue
+		}
 		v.Items = append(v.Items, it)
 	}
-	v.Empty = mode == PANELFIELDS && len(v.Items) == 0
+	v.Empty = mode == PANELFIELDS && len(v.Items) == 0 && len(v.Fields) == 0
 	return v
+}
+
+// AttachFieldStats dopisuje do pól formularza gościa stan pokazywany przy
+// polu: przy polach z opcjami liczby przy opcjach, przy pozostałych wiersz
+// pod polem.
+func AttachFieldStats(rows []RenderRow, items map[string]PanelItem) {
+	for r := range rows {
+		for i := range rows[r].Fields {
+			f := &rows[r].Fields[i]
+			it, ok := items[f.Name]
+			if !ok {
+				continue
+			}
+			if it.Only == nil && len(f.Options) == 0 {
+				f.Stat = &it
+				continue
+			}
+			for j := range f.Options {
+				o := &f.Options[j]
+				if it.Only != nil {
+					if o.Label == it.Only.Label {
+						o.Stat = it.Only
+					}
+					continue
+				}
+				for k := range it.Options {
+					if it.Options[k].Label == o.Label && !it.Options[k].Other {
+						o.Stat = &it.Options[k]
+						break
+					}
+				}
+			}
+		}
+	}
 }
 
 func currencySign(c string) string {
@@ -380,16 +432,7 @@ func RenderInfoPanel(db *DB, user User, templ FormTemplate, mode string) templat
 	case PANELNONE:
 		return ""
 	case PANELAUTO, PANELFIELDS:
-		t, err := template.New("n_infopanel.html").Funcs(TmplFuncs(lang)).ParseFiles("tmpl/n_infopanel.html")
-		if err != nil {
-			log.Printf("RenderInfoPanel: %v", err)
-			return ""
-		}
-		var buf bytes.Buffer
-		if err := t.ExecuteTemplate(&buf, "infopanel", BuildPanel(db, user, templ, mode)); err != nil {
-			log.Printf("RenderInfoPanel: %v", err)
-		}
-		return template.HTML(buf.String())
+		return renderPanelVars(lang, BuildPanel(db, user, templ, mode))
 	}
 
 	if strings.TrimSpace(reallyEmpty(templ.InfoPanel.String)) == "" {
@@ -403,6 +446,20 @@ func RenderInfoPanel(db *DB, user User, templ FormTemplate, mode string) templat
 		log.Printf("RenderInfoPanel: exec: %v", err)
 	}
 	return template.HTML(reallyEmpty(buf.String()))
+}
+
+// renderPanelVars rysuje panel zbudowany przez BuildPanel.
+func renderPanelVars(lang string, pv PanelVars) template.HTML {
+	t, err := template.New("n_infopanel.html").Funcs(TmplFuncs(lang)).ParseFiles("tmpl/n_infopanel.html")
+	if err != nil {
+		log.Printf("RenderInfoPanel: %v", err)
+		return ""
+	}
+	var buf bytes.Buffer
+	if err := t.ExecuteTemplate(&buf, "infopanel", pv); err != nil {
+		log.Printf("RenderInfoPanel: %v", err)
+	}
+	return template.HTML(buf.String())
 }
 
 // --- nowe funkcje szablonów (tryb "własny tekst") --------------------------

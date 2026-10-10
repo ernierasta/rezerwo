@@ -15,6 +15,7 @@
       <label class="opt" for="{{.ID}}">
         <input type="{{if eq $f.Type "radio-group"}}radio{{else}}checkbox{{end}}" id="{{.ID}}" name="{{$f.Name}}" value="{{.Value}}" {{if .Selected}}checked{{end}}{{if and (eq $f.Type "radio-group") $f.Required}} required{{end}}>
         <span>{{.Label}}</span>
+        {{with .Stat}}<small class="opt-stat{{if .Done}} done{{end}}">{{.Count}}{{if .Goal}} / {{.Goal}}{{end}}</small>{{end}}
       </label>
       {{end}}
       {{if .Other}}
@@ -25,6 +26,7 @@
       </label>
       {{end}}
     </div>
+    {{with .Stat}}{{template "ffstat" .}}{{end}}
     <small class="ff-err" role="alert" hidden></small>
   </fieldset>
 {{else}}
@@ -35,7 +37,7 @@
     {{else if eq .Type "select"}}
     <select class="inp" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Multiple}}multiple{{end}}>
       {{if not .Multiple}}<option value="">{{T "field.select_hint"}}</option>{{end}}
-      {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
+      {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Label}}{{with .Stat}} ({{.Count}}{{if .Goal}} / {{.Goal}}{{end}}){{end}}</option>{{end}}
     </select>
     {{else if eq .Type "number"}}
     <input class="inp num" type="number" inputmode="decimal" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Min}}min="{{.Min}}"{{end}} {{if .Max}}max="{{.Max}}"{{end}} {{if .Step}}step="{{.Step}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}>
@@ -51,10 +53,20 @@
     {{else}}
     <input class="inp" type="{{.Subtype}}" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}}
       {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}}
-      {{if eq .Name "name-REQUIRED"}}autocomplete="given-name"{{else if eq .Name "surname-REQUIRED"}}autocomplete="family-name"{{else if eq .Subtype "email"}}autocomplete="email"{{else if eq .Subtype "tel"}}autocomplete="tel"{{end}}>
+      {{if eq .Name "name-REQUIRED"}}autocomplete="given-name"{{else if eq .Name "surname-REQUIRED"}}autocomplete="family-name"{{else if or (eq .Subtype "email") (eq .Name "email-REQUIRED")}}autocomplete="email"{{else if eq .Subtype "tel"}}autocomplete="tel"{{end}}>
     {{end}}
+    {{with .Stat}}{{template "ffstat" .}}{{end}}
     {{if .Desc}}<small class="ff-d">{{.Desc}}</small>{{end}}
     <small class="ff-err" role="alert" hidden></small>
   </div>
 {{end}}
+{{end}}
+
+{{/* Stan pola pokazany przy polu zamiast w panelu (PanelItem, panel_place).
+     Ten sam wiersz rysuje podgląd w designerze pól. */}}
+{{define "ffstat"}}
+<div class="ff-stat{{if .Done}} done{{end}}">
+  <span>{{if .Goal}}{{T "gform.stat_goal" .Value .Goal}}{{else}}{{T "gform.stat" .Value}}{{end}}</span>
+  {{if .Goal}}<i class="ip-bar{{if .Done}} done{{end}}"><i style="width:{{.Pct}}%"></i></i>{{end}}
+</div>
 {{end}}

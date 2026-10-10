@@ -152,6 +152,7 @@ type RenderOption struct {
 	Value    string
 	Selected bool
 	ID       string
+	Stat     *OptionStat // stan opcji przy polu (panel_place), patrz form_stats.go
 }
 
 // RenderField to pole gotowe dla szablonu tmpl/n_formfield.html.
@@ -185,6 +186,7 @@ type RenderField struct {
 	IsMoney     bool // to pole jest kwotą do zapłaty (formtemplates.moneyfield)
 	Width       int  // 1-12 (col-md-N), 12 = cały wiersz
 	HeaderLevel string
+	Stat        *PanelItem // stan pola przy polu (panel_place), patrz form_stats.go
 }
 
 // IsInput mówi, czy pole zbiera odpowiedź.

@@ -46,4 +46,4 @@ The binary resolves everything relative to the working directory: `config.toml` 
 
 ## Deployment
 
-Push to `master` triggers `.github/workflows/go.yml`: builds, scp's binary to the server, backs up `db.sql`, restarts the `rezerwo` systemd service and runs `git pull` there (so templates/static files deploy via git). Every push to master goes to production.
+Production is upgraded by hand on the server (`ssh web`, app in `/var/www/zori.cz/rezerwo`, Alpine with OpenRC, no systemd) after pushing to `master`: back up `db.sql` into `backup/`, `git pull --ff-only`, `CGO_ENABLED=0 go build`, then `rc-service rezerwo restart`. Do not rely on pushing alone: `.github/workflows/go.yml` still has scp/ssh deploy steps, but production is not upgraded by them in practice. Schema changes need their `tools/migration-*.sql` run on the production `db.sql` before the restart.

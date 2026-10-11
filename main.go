@@ -36,6 +36,7 @@ func main() {
 	HashPlainPasswords(db)
 
 	StartMarkedCleanup(db)
+	StartGeneratedCleanup(MEDIAROOT)
 
 	if err := LoadLocales(); err != nil {
 		log.Fatalf("can not load interface translations: %v", err)

@@ -14,7 +14,7 @@ CGO_ENABLED=0 go build -v .   # build (as CI does); pure-Go sqlite (modernc.org/
 tools/watch.sh                 # dev: sass watcher (scss -> css) + air hot reload (.air.conf)
 tools/sass scss:css --no-source-map   # compile styles once
 go run tools/securecookie.go   # generate AuthenticationKey / EncryptionKey for config.toml
-tools/backup-db                # copy db.sql into backup/
+tools/backup-db                # consistent copy of db.sql into backup/ (sqlite3 .backup + integrity check; daily on the server)
 ```
 
 Tests: `go test .` runs the unit tests (`TestSendMail` skips itself without its env vars, `TestGenerateTicketsPDF` without `media/fonts`). `database_test.go` runs DB methods on a fresh temp DB built from `testdata/schema.sql` (production schema dump) — refresh it after every schema migration: `sqlite3 db.sql .schema | grep -v sqlite_sequence > testdata/schema.sql` (keep the header comment).
@@ -25,7 +25,7 @@ Tests: `go test .` runs the unit tests (`TestSendMail` skips itself without its 
 
 The binary resolves everything relative to the working directory: `config.toml` (gitignored; cookie keys, SMTP settings — see `settings.go`; old keys like `Location`, `DBFile`, `MailHostname` are ignored), `db.sql` (gitignored SQLite DB, hardcoded in `initDB`), `tmpl/`, `js/`, `css/`, `img/`, `media/`.
 
-`media/<user-url>/` holds per-organization user data (subdirs `email/` for embedded mail images/attachments, `qrcode/` generated payment QR codes, `pdf/` tickets); `media/fonts/` has NotoSans used for PDF tickets; the UI webfonts (Red Hat) are in git under `css/fonts/` (`tools/download-fonts.sh`). `media/` is gitignored.
+`media/<user-url>/` holds per-organization user data (subdirs `email/` for embedded mail images/attachments, `qrcode/` generated payment QR codes, `pdf/` tickets - both are regenerated on every use and deleted after 7 days by `StartGeneratedCleanup` in `ticker.go`); `media/fonts/` has NotoSans used for PDF tickets; the UI webfonts (Red Hat) are in git under `css/fonts/` (`tools/download-fonts.sh`). `media/` is gitignored.
 
 ## Architecture
 
@@ -46,4 +46,4 @@ The binary resolves everything relative to the working directory: `config.toml` 
 
 ## Deployment
 
-Production is upgraded by hand on the server (`ssh edge`, container 172.17.1.9, app in `/var/www/zori.cz/rezerwo`, Alpine edge with OpenRC, no systemd) after pushing to `master`: back up `db.sql` into `backup/`, `git pull --ff-only`, `GOTOOLCHAIN=auto CGO_ENABLED=0 go build` (Alpine's Go is pinned to `local`; `auto` fetches the `toolchain` from `go.mod` when the system Go is older), then `rc-service rezerwo restart`. The public proxy is nginx on `ssh vps` (`/etc/nginx/conf.d/backend.conf`, `upstream rezerwo` → `172.17.1.9:3002`). Until 2026-10-11 the app ran on `ssh web` (172.17.1.3, Go 1.24 only); its copy there is stopped and kept, along with older backups in its `backup/`. Pushing alone does not upgrade production: `.github/workflows/go.yml` only builds and runs the tests (Go version from `go.mod`). Schema changes need their `tools/migration-*.sql` run on the production `db.sql` before the restart.
+Production is upgraded by hand on the server (`ssh edge`, container 172.17.1.9, app in `/var/www/zori.cz/rezerwo`, Alpine edge with OpenRC, no systemd) after pushing to `master`: back up `db.sql` (`tools/backup-db`), `git pull --ff-only`, `GOTOOLCHAIN=auto CGO_ENABLED=0 go build` (Alpine's Go is pinned to `local`; `auto` fetches the `toolchain` from `go.mod` when the system Go is older), then `rc-service rezerwo restart`. The public proxy is nginx on `ssh vps` (`/etc/nginx/conf.d/backend.conf`, `upstream rezerwo` → `172.17.1.9:3002`). Until 2026-10-11 the app ran on `ssh web` (172.17.1.3, Go 1.24 only); its copy there is stopped and kept, along with older backups in its `backup/`. Pushing alone does not upgrade production: `.github/workflows/go.yml` only builds and runs the tests (Go version from `go.mod`). Schema changes need their `tools/migration-*.sql` run on the production `db.sql` before the restart.

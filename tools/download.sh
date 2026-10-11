@@ -9,11 +9,11 @@ curl -fLo air \
 chmod +x air
 
 # jquery
-wget https://code.jquery.com/jquery-3.4.1.min.js -O ../js/jquery.min.js
-wget https://code.jquery.com/jquery-3.4.1.min.map -O ../js/jquery.min.map
+wget https://code.jquery.com/jquery-3.7.1.min.js -O ../js/jquery.min.js
+wget https://code.jquery.com/jquery-3.7.1.min.map -O ../js/jquery.min.map
 
 # jquery-ui (tylko designer sali: draggable, resizable, selectable)
-wget https://jqueryui.com/resources/download/jquery-ui-1.12.1.zip
+wget https://code.jquery.com/ui/1.14.1/jquery-ui.min.js -O ../js/jquery-ui.min.js
 
 #quill - text editor
 wget https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js -O ../js/quill2.min.js

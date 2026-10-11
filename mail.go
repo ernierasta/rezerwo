@@ -114,6 +114,10 @@ func mailMedia(list, userURL string) []string {
 	}
 	var paths []string
 	for _, f := range strings.Split(list, ";") {
+		// tylko pliki z media/<org>/email/ (jak cleanFileList przy zapisie)
+		if f = strings.TrimSpace(f); f == "" || strings.ContainsAny(f, "/\\") || strings.HasPrefix(f, ".") {
+			continue
+		}
 		paths = append(paths, path.Join(MEDIAROOT, userURL, MEDIAEMAILSUBDIR, f))
 	}
 	return paths

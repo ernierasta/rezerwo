@@ -6,7 +6,6 @@ package main
 // formularza, teksty strony, maile, konto i odpowiedzi.
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -14,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -431,14 +431,23 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 				return
 			}
 		case "mail_guest":
+			if !refOwned(w, db, user.ID, "mail", id64("notifications_id_fk")) {
+				return
+			}
 			templ.NotificationID = ToNI(id64("notifications_id_fk"))
 		case "mail_admin":
+			if !refOwned(w, db, user.ID, "mail", id64("admin_notifications_id_fk")) {
+				return
+			}
 			templ.AdminNotificationID = ToNI(id64("admin_notifications_id_fk"))
 			if err := db.FormTemplateSetAdminNotification(templ.ID, user.ID, templ.AdminNotificationID); err != nil {
 				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 				return
 			}
 		case "bank":
+			if !refOwned(w, db, user.ID, "account", id64("bankaccounts_id_fk")) {
+				return
+			}
 			templ.BankAccountID = ToNI(id64("bankaccounts_id_fk"))
 			templ.MoneyAmountFieldName = ToNS(val("moneyfield"))
 			templ.PayMessage = strings.TrimSpace(val("pay_message"))
@@ -447,6 +456,9 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 				return
 			}
 		case "event":
+			if !refOwned(w, db, user.ID, "event", id64("events_id_fk")) {
+				return
+			}
 			templ.EventID = ToNI(id64("events_id_fk"))
 			if err := db.FormTemplateSetEvent(templ.ID, user.ID, templ.EventID); err != nil {
 				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
@@ -521,8 +533,13 @@ type nAnswersResp struct {
 // z <b> czy <i> (formBuilder pozwala je wkleić), a w panelu chcemy czysty tekst.
 // Same dane w bazie zostają nietknięte - czyszczenie treści to osobny krok
 // migracji (rozdz. 7.2 HARMONIJKA.md).
+var brTag = regexp.MustCompile(`(?i)<br\s*/?>`)
+
+// plainLabel - etykieta pola bez HTML; <br> staje się spacją, żeby
+// "Koreczki<br>(ilość)" nie zlewało się w "Koreczki(ilość)"
 func plainLabel(s string) string {
-	return strings.TrimSpace(html.UnescapeString(bluemonday.StripTagsPolicy().Sanitize(s)))
+	s = brTag.ReplaceAllString(s, " ")
+	return strings.Join(strings.Fields(html.UnescapeString(bluemonday.StripTagsPolicy().Sanitize(s))), " ")
 }
 
 func answerRows(db *DB, user User, templ FormTemplate, sch answerSchema) []nAnswerRow {
@@ -804,7 +821,7 @@ func AnswersCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q",
 			strings.ReplaceAll(templ.Name, "\"", "")+".csv"))
 
-		cw := csv.NewWriter(w)
+		cw := newSafeCSV(w)
 		defer cw.Flush()
 
 		head := []string{"id", T(lang, "field.name"), "e-mail", T(lang, "res.status"), T(lang, "form.created")}

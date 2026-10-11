@@ -562,15 +562,9 @@ func (db *DB) FurnitureGetAllByRoomIDOfType(roomID int64, ftype string) ([]Furni
 	return furnitures, err
 }
 
-func (db *DB) FurnitureGetAllByRoomNameOfType(name, ftype string) ([]Furniture, error) {
-	furnitures := []Furniture{}
-	err := db.DB.Select(&furnitures, `SELECT * FROM furnitures WHERE type=$1 AND rooms_id_fk=(SELECT id FROM rooms WHERE name=$2) ORDER BY number`, ftype, name)
-	return furnitures, err
-}
-
-func (db *DB) FurnitureFullGetChairs(eventID int64, name string) ([]FurnitureFull, error) {
+func (db *DB) FurnitureFullGetChairs(eventID, roomID int64) ([]FurnitureFull, error) {
 	furnitures := []FurnitureFull{}
-	err := db.DB.Select(&furnitures, `SELECT f.*, p.price admin_price,p.currency admin_currency, p.disabled admin_disabled, r.price bought_price, r.status status, r.ordered_date ordered_date, r.payed_date payed_date, r.customers_id_fk reservation_customers_id_fk FROM furnitures f LEFT JOIN prices p ON f.id = p.furnitures_id_fk AND p.events_id_fk=$1 LEFT JOIN reservations r ON f.id = r.furnitures_id_fk AND r.events_id_fk=$1 WHERE f.type="chair" AND f.rooms_id_fk=(SELECT id FROM rooms WHERE name=$2) ORDER BY f.number`, eventID, name)
+	err := db.DB.Select(&furnitures, `SELECT f.*, p.price admin_price,p.currency admin_currency, p.disabled admin_disabled, r.price bought_price, r.status status, r.ordered_date ordered_date, r.payed_date payed_date, r.customers_id_fk reservation_customers_id_fk FROM furnitures f LEFT JOIN prices p ON f.id = p.furnitures_id_fk AND p.events_id_fk=$1 LEFT JOIN reservations r ON f.id = r.furnitures_id_fk AND r.events_id_fk=$1 WHERE f.type="chair" AND f.rooms_id_fk=$2 ORDER BY f.number`, eventID, roomID)
 	return furnitures, err
 }
 
@@ -1442,6 +1436,22 @@ func (db *DB) FormTemplateDelete(tmplID, userID int64) error {
 	return tx.Commit()
 }
 
+// FormGetAllByEmail - zgłoszenia formularza z tego adresu (bez względu na
+// wielkość liter). Zwykle jedno; kilka zostało z czasów, gdy rodzina mogła
+// wysyłać z jednego adresu.
+func (db *DB) FormGetAllByEmail(email string, FormTemplateID, UserID int64) ([]Form, error) {
+	ff := []Form{}
+	err := db.DB.Select(&ff, `SELECT * FROM forms WHERE lower(trim(email))=lower(trim($1)) AND users_id_fk=$2 AND formtemplates_id_fk=$3 ORDER BY id`,
+		email, UserID, FormTemplateID)
+	return ff, err
+}
+
+// FormModNames - nowe imię i nazwisko przy poprawieniu własnego zgłoszenia
+func (db *DB) FormModNames(f *Form) error {
+	_, err := db.DB.NamedExec(`UPDATE forms SET name=:name, surname=:surname WHERE id=:id AND users_id_fk=:users_id_fk AND formtemplates_id_fk=:formtemplates_id_fk`, f)
+	return err
+}
+
 func (db *DB) FormAdd(f *Form) (int64, error) {
 	ret, err := db.DB.NamedExec(`INSERT INTO forms (name, surname, notes, email, created_date, status, users_id_fk, formtemplates_id_fk)
 	VALUES(:name, :surname, :notes, :email, :created_date, :status, :users_id_fk, :formtemplates_id_fk)`, f)
@@ -1463,15 +1473,6 @@ func (db *DB) FormGetAmmount(UserID, FormTemplateID int64) (int64, error) {
 	return f, err
 }
 
-func (db *DB) FormGetIDByEmail(email string, FormTemplateID, UserID int64) (int64, error) {
-	var id int64
-	if email == "" || FormTemplateID == 0 || UserID == 0 {
-		return id, fmt.Errorf("FormGetIDByEmail: empty email %q or formtemplates_id_fk %d or users_id_fk %d", email, FormTemplateID, UserID)
-	}
-	err := db.DB.Get(&id, `SELECT id FROM forms WHERE email=$1 AND users_id_fk=$2 AND formtemplates_id_fk=$3`, email, UserID, FormTemplateID)
-	return id, err
-}
-
 func (db *DB) FormGet(FormID, FormTemplateID int64) (Form, error) {
 	var f Form
 	if FormID == 0 || FormTemplateID == 0 {
@@ -1485,13 +1486,6 @@ func (db *DB) FormGet(FormID, FormTemplateID int64) (Form, error) {
 // Osobna metoda, bo FormAdd wypisuje kolumny wprost i nie zna orders_id_fk.
 func (db *DB) FormSetOrder(formID, orderID int64) error {
 	_, err := db.DB.Exec(`UPDATE forms SET orders_id_fk=$1 WHERE id=$2`, orderID, formID)
-	return err
-}
-
-// FormAnswerSetRepeat zapisuje numer powtórzenia odpowiedzi (pola dodatków
-// powtarzane wg liczby miejsc). 0 = pole niepowtarzane.
-func (db *DB) FormAnswerSetRepeat(answerID, repeatIndex int64) error {
-	_, err := db.DB.Exec(`UPDATE formanswers SET repeat_index=$1 WHERE id=$2`, repeatIndex, answerID)
 	return err
 }
 
@@ -1513,14 +1507,6 @@ func (db *DB) FormSetStatus(formID, templateID int64, status string) error {
 	return nil
 }
 
-func (db *DB) FormModByEmail(f *Form) error {
-	if f.Email.String == "" || f.FormTemplateID == 0 || f.UserID == 0 {
-		return fmt.Errorf("FormModByEmail: empty email %q or formtemplates_id_fk %d or users_id_fk %d", f.Email.String, f.FormTemplateID, f.UserID)
-	}
-	_, err := db.DB.NamedExec(`UPDATE forms SET name=:name, surname=:surname, notes=:notes WHERE email=:email AND users_id_fk=:users_id_fk AND  formtemplates_id_fk=:formtemplates_id_fk`, f)
-	return err
-}
-
 func (db *DB) FormDel(FormID, TemplateID int64) error {
 	ret, err := db.DB.Exec(`DELETE FROM forms WHERE id=$1 AND formtemplates_id_fk=$2`, FormID, TemplateID)
 	if err != nil {
@@ -1537,8 +1523,8 @@ func (db *DB) FormDel(FormID, TemplateID int64) error {
 }
 
 func (db *DB) FormAnswerAdd(fa *FormAnswer) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO formanswers (value, formfields_id_fk, forms_id_fk)
-	VALUES(:value, :formfields_id_fk, :forms_id_fk)`, fa)
+	ret, err := db.DB.NamedExec(`INSERT INTO formanswers (value, formfields_id_fk, forms_id_fk, repeat_index)
+	VALUES(:value, :formfields_id_fk, :forms_id_fk, COALESCE(:repeat_index, 0))`, fa)
 	if err != nil {
 		return -1, err
 	}

@@ -270,20 +270,14 @@ func SaveOrderWithAddons(db *DB, event Event, user User, customerID int64, reser
 				log.Printf("SaveOrderWithAddons: field %q: %v", a.Field.Name, err)
 				continue
 			}
-			answerID, err := db.FormAnswerAdd(&FormAnswer{
+			// numer powtórzenia ("Kolacja 2"), 0 dla zwykłych pól
+			if _, err := db.FormAnswerAdd(&FormAnswer{
 				Value:       ToNS(a.Value),
 				FormFieldID: fieldID,
 				FormID:      formID,
-			})
-			if err != nil {
+				RepeatIndex: ToNI(a.Repeat),
+			}); err != nil {
 				log.Printf("SaveOrderWithAddons: answer %q: %v", a.Field.Name, err)
-				continue
-			}
-			// numer powtórzenia ("Kolacja 2") - FormAnswerAdd go nie zna
-			if a.Repeat > 0 {
-				if err := db.FormAnswerSetRepeat(answerID, a.Repeat); err != nil {
-					log.Printf("SaveOrderWithAddons: repeat index: %v", err)
-				}
 			}
 		}
 	}

@@ -56,6 +56,10 @@ func newGuestFixture(t *testing.T) *guestFixture {
 	if err := db.EventAddRoom(f.eventID, f.roomID); err != nil {
 		t.Fatal(err)
 	}
+	// sprzedaż otwarta, inaczej /order odmawia gościom
+	if _, err := db.DB.Exec(`UPDATE events SET to_date=4102444800 WHERE id=$1`, f.eventID); err != nil {
+		t.Fatal(err)
+	}
 	content := `[
 	 {"type":"text","subtype":"email","name":"email-REQUIRED","label":"E-mail"},
 	 {"type":"text","subtype":"text","name":"name-REQUIRED","label":"Imię"},
@@ -69,7 +73,7 @@ func newGuestFixture(t *testing.T) *guestFixture {
 	cs := sessions.NewCookieStore([]byte("0123456789abcdef0123456789abcdef"))
 	f.router = mux.NewRouter()
 	f.router.HandleFunc("/res/{user}", GuestReservationPage(db, cs))
-	f.router.HandleFunc("/order", GuestOrderPage(db))
+	f.router.HandleFunc("/order", GuestOrderPage(db, cs))
 	f.router.HandleFunc("/form/{userurl}/{formurl}", GuestFormPage(db, cs))
 	return f
 }

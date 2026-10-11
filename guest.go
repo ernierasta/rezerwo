@@ -295,7 +295,7 @@ func EventGetCurrent(db *DB, userID int64) (Event, error) {
 			continue
 		}
 		// return first active user event
-		if events[i].FromDate < now && events[i].ToDate > now {
+		if eventOnSale(events[i], now) {
 			return events[i], nil
 		}
 	}

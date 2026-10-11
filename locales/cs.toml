@@ -467,6 +467,7 @@ person = "Osoba"
 seats = "Místa"
 status = "Stav"
 amount = "Částka"
+ordered_date = "Datum objednávky"
 awaiting = "čeká na platbu"
 mark_payed = "Označit jako zaplacené"
 mark_ordered = "Označit jako objednané"
@@ -508,6 +509,17 @@ many = "%d textů"
 
 # --- formulář pro hosta (tmpl/n_formpage.html) ---
 [gform]
+resubmit_title = "Změnit odeslané odpovědi?"
+resubmit_text = "Z této e-mailové adresy už byl formulář odeslán. Vaše odpovědi se změní takto:"
+resubmit_field = "Pole"
+resubmit_old = "Bylo"
+resubmit_new = "Bude"
+resubmit_empty = "(prázdné)"
+resubmit_save = "Uložit změny"
+resubmit_back = "Zpět k formuláři"
+same_title = "Tyto odpovědi už máme"
+same_text = "Z této e-mailové adresy už byl odeslán formulář s přesně stejnými odpověďmi."
+same_show = "Zobrazit potvrzení"
 no_org_title = "Organizace nenalezena"
 no_org = "Na adrese „%s“ není žádná organizace. Zkontrolujte odkaz nebo nám napište: admin (at) zori.cz."
 date_ph = "dd.mm.rrrr"
@@ -534,6 +546,7 @@ remembered = "Některá pole jsme vyplnili údaji z vašeho předchozího formul
 remembered_clear = "Vymazat"
 
 [gform.err]
+email_used = "Z této e-mailové adresy už někdo tento formulář odeslal. Použijte jinou adresu."
 missing = "Vyplňte pole „%s“."
 required = "Toto pole je povinné."
 choose = "Vyberte jednu z možností."

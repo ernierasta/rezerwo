@@ -70,7 +70,7 @@ func RoomDesignerPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		if err != nil {
 			log.Printf("RoomDesignerPage: room %d: %v", roomID, err)
 		}
-		p := roomFurnitures(db, room.Name, eventID)
+		p := roomFurnitures(db, roomID, eventID)
 		v := nDesignerVars{
 			NPage:     NPage{Title: room.Name, Crumb: room.Name, OrgName: orgName(user)},
 			Room:      room,

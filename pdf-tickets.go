@@ -37,6 +37,17 @@ type TicketParams struct {
 
 // GenerateTicketsPDF tworzy bilety w media/<organizacja>/pdf: wszystkie na
 // arkuszach A4 (pdf/all) i każdy osobno (pdf/one); zwraca ścieżki plików.
+//
+// TODO(bezpieczeństwo, na później - przegląd 2026-10-11):
+//   - nazwy plików da się zgadnąć (<Impreza>_<miejsce>.pdf, publiczne pod
+//     /media/), więc każdy może pobrać bilet na dowolne miejsce;
+//   - kod QR na bilecie to "<Impreza>|<miejsce>" bez sekretu - bilet można
+//     podrobić bez pobierania czegokolwiek, kontrola przy wejściu nic nie
+//     sprawdzi.
+//
+// Gdy bilety mają coś znaczyć: losowa część nazwy pliku (albo wydawanie przez
+// handler z tokenem) i podpis HMAC w kodzie QR (impreza, miejsce, rezerwacja),
+// sprawdzany przy wejściu.
 func GenerateTicketsPDF(p *TicketParams) ([]string, error) {
 	if len(p.SeatNrs) == 0 {
 		return nil, fmt.Errorf("SeatNrs cannot be empty")

@@ -465,6 +465,7 @@ person = "Person"
 seats = "Seats"
 status = "Status"
 amount = "Amount"
+ordered_date = "Order date"
 awaiting = "awaiting payment"
 mark_payed = "Mark as paid"
 mark_ordered = "Mark as ordered"
@@ -501,6 +502,17 @@ other = "%d texts"
 
 # --- guest form (tmpl/n_formpage.html) ---
 [gform]
+resubmit_title = "Change your submitted answers?"
+resubmit_text = "This form has already been sent from this e-mail address. Your answers will change like this:"
+resubmit_field = "Field"
+resubmit_old = "Before"
+resubmit_new = "After"
+resubmit_empty = "(empty)"
+resubmit_save = "Save changes"
+resubmit_back = "Back to the form"
+same_title = "We already have these answers"
+same_text = "A form with exactly these answers has already been sent from this e-mail address."
+same_show = "Show confirmation"
 no_org_title = "Organization not found"
 no_org = "There is no organization at “%s”. Please check the link or write to admin (at) zori.cz."
 date_ph = "dd.mm.yyyy"
@@ -527,6 +539,7 @@ remembered = "Some fields were filled in from your previous form on this device.
 remembered_clear = "Clear"
 
 [gform.err]
+email_used = "Someone has already sent this form from this e-mail address. Please use another address."
 missing = "Please fill in “%s”."
 required = "This field is required."
 choose = "Please choose one of the options."

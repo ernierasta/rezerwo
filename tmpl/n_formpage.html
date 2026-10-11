@@ -49,6 +49,32 @@
       </div>
     </form>
   </div>
+
+  <!-- ten sam e-mail, imię i nazwisko: zmiany względem wysłanych odpowiedzi -->
+  <div class="dlg-back" id="gform-resubmit" hidden>
+    <div class="dlg dlg-wide" role="dialog" aria-labelledby="gform-resubmit-h">
+      <h3 id="gform-resubmit-h">{{T "gform.resubmit_title"}}</h3>
+      <p>{{T "gform.resubmit_text"}}</p>
+      <table class="gform-diff">
+        <thead><tr><th>{{T "gform.resubmit_field"}}</th><th>{{T "gform.resubmit_old"}}</th><th>{{T "gform.resubmit_new"}}</th></tr></thead>
+        <tbody id="gform-diff-rows"></tbody>
+      </table>
+      <div class="sec-f">
+        <button class="btn" type="button" id="gform-resubmit-save">{{T "gform.resubmit_save"}}</button>
+        <button class="btn quiet" type="button" id="gform-resubmit-back">{{T "gform.resubmit_back"}}</button>
+      </div>
+    </div>
+  </div>
+  <div class="dlg-back" id="gform-same" hidden>
+    <div class="dlg" role="dialog" aria-labelledby="gform-same-h">
+      <h3 id="gform-same-h">{{T "gform.same_title"}}</h3>
+      <p>{{T "gform.same_text"}}</p>
+      <div class="sec-f">
+        <a class="btn" id="gform-same-show" href="#">{{T "gform.same_show"}}</a>
+        <button class="btn quiet" type="button" id="gform-same-back">{{T "gform.resubmit_back"}}</button>
+      </div>
+    </div>
+  </div>
   {{end}}
 </div>
 {{end}}

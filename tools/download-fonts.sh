@@ -1,41 +1,30 @@
 #!/bin/sh
-# Pobiera fonty Red Hat Text / Red Hat Display do media/fonts/.
+# Odtwarza fonty Red Hat Text / Red Hat Display w css/fonts/ (są w repozytorium,
+# skrypt potrzebny tylko przy aktualizacji fontów).
 #
-# Nowy interfejs (scss/ui.scss) używa ich przez @font-face z lokalnych plików,
-# a nie z Google Fonts (RODO + działanie bez zewnętrznych zasobów). Bez tych
-# plików strony działają dalej, tylko w foncie systemowym.
+# Interfejs (scss/ui.scss) używa ich przez @font-face z lokalnych plików,
+# a nie z Google Fonts (RODO + działanie bez zewnętrznych zasobów).
+# Z plików zmiennej grubości (google/fonts, licencja SIL OFL 1.1) robimy
+# statyczne grubości z @font-face: Text 400/500/600, Display 500.
 #
+# wymaga: curl, fonttools z brotli (pacman -S python-fonttools python-brotli)
 # usage (z katalogu repozytorium): tools/download-fonts.sh
 
 set -e
 
-DIR=media/fonts
-mkdir -p "$DIR"
-
-# Pliki woff2 z repozytorium google/fonts (licencja SIL OFL 1.1).
+OUT=css/fonts
 BASE=https://raw.githubusercontent.com/google/fonts/main/ofl
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+mkdir -p "$OUT"
 
-fetch() {
-	url="$1"
-	out="$2"
-	if [ -f "$out" ]; then
-		echo "jest już: $out"
-		return
-	fi
-	echo "pobieram: $out"
-	curl -fsSL "$url" -o "$out"
-}
+curl -fsSL "$BASE/redhattext/RedHatText%5Bwght%5D.ttf" -o "$TMP/RedHatText.ttf"
+curl -fsSL "$BASE/redhatdisplay/RedHatDisplay%5Bwght%5D.ttf" -o "$TMP/RedHatDisplay.ttf"
+curl -fsSL "$BASE/redhattext/OFL.txt" -o "$OUT/OFL.txt"
 
-# Red Hat Text i Display są w google/fonts jako pliki zmiennej grubości (ttf).
-# Zamieniamy je na woff2 narzędziem woff2_compress, jeżeli jest dostępne;
-# inaczej zostawiamy ttf i trzeba poprawić rozszerzenia w scss/ui.scss.
-fetch "$BASE/redhattext/RedHatText%5Bwght%5D.ttf" "$DIR/RedHatText.ttf"
-fetch "$BASE/redhatdisplay/RedHatDisplay%5Bwght%5D.ttf" "$DIR/RedHatDisplay.ttf"
-
-if command -v woff2_compress >/dev/null 2>&1; then
-	woff2_compress "$DIR/RedHatText.ttf"
-	woff2_compress "$DIR/RedHatDisplay.ttf"
-	echo "gotowe: $DIR/*.woff2 (zmienna grubość - popraw @font-face w scss/ui.scss na jeden plik z font-weight 400 500 600)"
-else
-	echo "uwaga: brak woff2_compress (pakiet woff2), zostały pliki .ttf"
-fi
+for spec in "RedHatText 400 Regular" "RedHatText 500 Medium" "RedHatText 600 SemiBold" "RedHatDisplay 500 Medium"; do
+	set -- $spec
+	fonttools varLib.instancer -q "$TMP/$1.ttf" wght="$2" -o "$TMP/$1-$3.ttf"
+	fonttools ttLib --flavor woff2 -o "$OUT/$1-$3.woff2" "$TMP/$1-$3.ttf"
+	echo "gotowe: $OUT/$1-$3.woff2"
+done

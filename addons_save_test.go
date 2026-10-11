@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -170,5 +171,42 @@ func TestSaveOrderWithAddons(t *testing.T) {
 	}
 	if answers != 2 {
 		t.Errorf("oczekiwano 2 odpowiedzi (obiad + porcja), jest %d", answers)
+	}
+}
+
+// Pole powtarzane wg miejsc ("Kolacja 1", "Kolacja 2") daje kilka odpowiedzi
+// tego samego pola w jednym zgłoszeniu - schemat produkcji musi to przyjąć.
+func TestSaveOrderPerSeatAddons(t *testing.T) {
+	db := newTestDB(t)
+	userID := addUser(t, db, "org@example.com", "org")
+	user, err := db.UserGetByID(userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventID := addEvent(t, db, userID, "Bal")
+	templID := must(t)(db.FormTemplateAdd(&FormTemplate{Name: "Dodatki", URL: "dodatki",
+		Content: ToNS(addonsContent), CreatedDate: 1, UserID: userID, EventID: ToNI(eventID)}))
+	if err := db.FormTemplateSetKind(templID, userID, ADDONSKIND); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.EventSetAddonsTemplate(eventID, userID, ToNI(templID)); err != nil {
+		t.Fatal(err)
+	}
+	must(t)(db.FormFieldAdd(&FormField{Name: "kolacja-perseat", Display: "Kolacja", Type: "select", FormTemplateID: templID}))
+	event, err := db.EventGetByID(eventID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	orderID, _ := SaveOrderWithAddons(db, event, user, 1, []int64{1, 2}, "", map[string][]string{
+		"addon-kolacja-perseat-1": {"miesna"},
+		"addon-kolacja-perseat-2": {"wege"},
+	})
+	var got []string
+	if err := db.DB.Select(&got, `SELECT fa.value || ':' || fa.repeat_index FROM formanswers fa
+		JOIN forms f ON fa.forms_id_fk = f.id WHERE f.orders_id_fk = $1 ORDER BY fa.repeat_index`, orderID); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(got, ",") != "miesna:1,wege:2" {
+		t.Errorf("per-seat answers: %v, want [miesna:1 wege:2]", got)
 	}
 }

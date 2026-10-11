@@ -57,7 +57,11 @@
       return r.text().then(function (txt) {
         var body = {};
         try { body = txt ? JSON.parse(txt) : {}; } catch (e) { body = {msg: txt}; }
-        if (!r.ok) throw new Error(body.msg || ('HTTP ' + r.status));
+        if (!r.ok) {
+          var err = new Error(body.msg || ('HTTP ' + r.status));
+          err.field = body.field; // pole, którego dotyczy błąd (np. formularz gościa)
+          throw err;
+        }
         return body;
       });
     });
@@ -268,7 +272,11 @@
     fetch('/api/media/banners', {method: 'POST', body: fd})
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (body) {
-          if (!r.ok) throw new Error(body.msg || ('HTTP ' + r.status));
+          if (!r.ok) {
+          var err = new Error(body.msg || ('HTTP ' + r.status));
+          err.field = body.field; // pole, którego dotyczy błąd (np. formularz gościa)
+          throw err;
+        }
           return body;
         });
       })

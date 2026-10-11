@@ -1281,7 +1281,7 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		case "room":
 			event.DefaultPrice = id64("price")
 			event.DefaultCurrency = val("currency")
-			if err := setEventRooms(db, event.ID, val("rooms")); err != nil {
+			if err := setEventRooms(db, user.ID, event.ID, val("rooms")); err != nil {
 				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
 				return
 			}
@@ -1315,10 +1315,19 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 				return
 			}
 		case "mail_guest":
+			if !refOwned(w, db, user.ID, "mail", id64("thankyou_notifications_id_fk")) {
+				return
+			}
 			event.ThankYouNotificationsID = ToNI(id64("thankyou_notifications_id_fk"))
 		case "mail_admin":
+			if !refOwned(w, db, user.ID, "mail", id64("admin_notifications_id_fk")) {
+				return
+			}
 			event.AdminNotificationsID = ToNI(id64("admin_notifications_id_fk"))
 		case "bank":
+			if !refOwned(w, db, user.ID, "account", id64("bank_account_id")) {
+				return
+			}
 			event.BankAccountsID = ToNI(id64("bank_account_id"))
 			event.PayMessage = strings.TrimSpace(val("pay_message"))
 			if err := db.EventSetPayMessage(event.ID, user.ID, event.PayMessage); err != nil {
@@ -1347,6 +1356,9 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 				log.Printf("EventSectionSave: status: %v", err)
 			}
 
+			if !refOwned(w, db, user.ID, "event", id64("previous_event_id")) {
+				return
+			}
 			prev := ToNI(id64("previous_event_id"))
 			event.PreviousEventID = prev
 			if err := db.EventSetPreviousEdition(event.ID, user.ID, prev); err != nil {
@@ -1425,10 +1437,9 @@ func setEventForms(db *DB, userID, eventID int64, flag func(string) bool) error 
 }
 
 // setEventRooms ustawia listę sal imprezy na dokładnie te z listy "1,2,3".
-func setEventRooms(db *DB, eventID int64, csv string) error {
-	if err := db.EventClearRooms(eventID); err != nil {
-		return err
-	}
+// Sale spoza organizacji (i "0") są błędem, zanim cokolwiek zmienimy.
+func setEventRooms(db *DB, userID, eventID int64, csv string) error {
+	var ids []int64
 	for _, s := range strings.Split(csv, ",") {
 		s = strings.TrimSpace(s)
 		if s == "" {
@@ -1438,11 +1449,48 @@ func setEventRooms(db *DB, eventID int64, csv string) error {
 		if err != nil {
 			return fmt.Errorf("room id %q: %w", s, err)
 		}
+		if !roomOfUser(db, userID, roomID) {
+			return fmt.Errorf("room %d not found", roomID)
+		}
+		ids = append(ids, roomID)
+	}
+	if err := db.EventClearRooms(eventID); err != nil {
+		return err
+	}
+	for _, roomID := range ids {
 		if err := db.RoomAddToEventUnsafe(roomID, eventID); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// refOwned sprawdza obiekt wskazany w zapisie sekcji (mail, konto, impreza)
+// - musi należeć do organizacji, inaczej odpowiada 404. 0 = nic nie wybrano.
+func refOwned(w http.ResponseWriter, db *DB, userID int64, kind string, id int64) bool {
+	if id == 0 {
+		return true
+	}
+	var err error
+	switch kind {
+	case "mail":
+		_, err = db.NotificationGetByID(id, userID)
+	case "account":
+		_, err = db.BankAccountGetByID(id, userID)
+	case "event":
+		var e Event
+		if e, err = db.EventGetByID(id); err == nil && e.UserID != userID {
+			err = fmt.Errorf("event %d of user %d", id, e.UserID)
+		}
+	default:
+		err = fmt.Errorf("unknown kind %q", kind)
+	}
+	if err != nil {
+		log.Printf("refOwned: %s %d for user %d: %v", kind, id, userID, err)
+		jsonMsg(w, http.StatusNotFound, nSectionResp{Msg: kind + " not found"})
+		return false
+	}
+	return true
 }
 
 // --- API: nowa impreza (szkic) ---------------------------------------------

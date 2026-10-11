@@ -13,15 +13,15 @@ type roomPlan struct {
 	Labels  []Furniture
 }
 
-func roomFurnitures(db *DB, roomName string, eventID int64) roomPlan {
+func roomFurnitures(db *DB, roomID, eventID int64) roomPlan {
 	var p roomPlan
 	var err error
-	if p.Chairs, err = db.FurnitureFullGetChairs(eventID, roomName); err != nil {
-		log.Printf("roomFurnitures: chairs of room %q, event %d: %v", roomName, eventID, err)
+	if p.Chairs, err = db.FurnitureFullGetChairs(eventID, roomID); err != nil {
+		log.Printf("roomFurnitures: chairs of room %d, event %d: %v", roomID, eventID, err)
 	}
 	for typ, dst := range map[string]*[]Furniture{"table": &p.Tables, "object": &p.Objects, "label": &p.Labels} {
-		if *dst, err = db.FurnitureGetAllByRoomNameOfType(roomName, typ); err != nil {
-			log.Printf("roomFurnitures: %ss of room %q: %v", typ, roomName, err)
+		if *dst, err = db.FurnitureGetAllByRoomIDOfType(roomID, typ); err != nil {
+			log.Printf("roomFurnitures: %ss of room %d: %v", typ, roomID, err)
 		}
 	}
 	return p

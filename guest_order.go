@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/sessions"
 )
 
 // MARKEDMINUTES musi zgadzać się z czasem kasowania blokad w ticker.go.
@@ -36,7 +38,9 @@ type nOrderVars struct {
 	Prices          string
 	TotalPrice      string
 	TotalPriceLabel string
-	HideCosts       bool
+	// Lock - podpisane numery zablokowanych rezerwacji (orderLock)
+	Lock      string
+	HideCosts bool
 
 	HowTo     template.HTML
 	NotesHelp string
@@ -80,7 +84,7 @@ func orderAddonFields(fields []AddonField, seats int64) []nOrderAddon {
 }
 
 // GuestOrderPage - POST /order
-func GuestOrderPage(db *DB) func(w http.ResponseWriter, r *http.Request) {
+func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -97,11 +101,9 @@ func GuestOrderPage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// ceny i suma z formularza są tylko do porównania - liczymy je z bazy
 		sits := r.FormValue("sits")
 		rooms := r.FormValue("rooms")
-		prices := r.FormValue("prices")
-		totalPrice := r.FormValue("total-price")
-		currency := r.FormValue("default-currency")
 
 		event, err := db.EventGetByID(eventID)
 		if err != nil {
@@ -111,64 +113,92 @@ func GuestOrderPage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 		}
 		lng := KnownLang(event.Language.String)
 
+		// szkic albo sprzedaż zamknięta: tylko admin (np. sprzedaż przy wejściu)
+		if !eventOnSale(event, nowUnix()) && !isAdminSession(r, cs) {
+			log.Printf("GuestOrderPage: event %d not on sale", eventID)
+			ErrorHTML(T(lng, "guest.no_event_title"), T(lng, "guest.no_event"), lng, w, r)
+			return
+		}
+
 		user, err := db.UserGetByID(event.UserID)
 		if err != nil {
 			log.Printf("GuestOrderPage: user of event %d: %v", eventID, err)
 		}
 
-		ss, rr, pp, err := SplitSitsRoomsPrices(sits, rooms, prices)
-		if err != nil {
-			log.Printf("GuestOrderPage: %v", err)
+		ss, rr, err := SplitSitsRooms(sits, rooms)
+		if err != nil || len(ss) == 0 {
+			log.Printf("GuestOrderPage: sits %q rooms %q: %v", sits, rooms, err)
 			ErrorHTML(T(lng, "guest.no_seats_title"), T(lng, "guest.nothing_selected"), lng, w, r)
 			return
 		}
 
-		// blokada miejsc: status "marked" do czasu potwierdzenia zamówienia
-		var labels []string
+		// miejsca muszą być w salach tej imprezy i wolne
+		chairs := eventChairs(db, event)
+		var picked []FurnitureFull
+		seen := map[seatKey]bool{}
 		for i := range ss {
-			chair, err := db.FurnitureGetByTypeNumberRoom("chair", ss[i], rr[i])
-			if err != nil {
-				log.Printf("GuestOrderPage: chair %d in room %d: %v", ss[i], rr[i], err)
+			k := seatKey{rr[i], ss[i]}
+			c, ok := chairs[k]
+			if !ok || seen[k] || chairStatus(c) != "free" {
+				log.Printf("GuestOrderPage: seat %d in room %d not available for event %d (known %v)", ss[i], rr[i], eventID, ok)
+				ErrorHTML(T(lng, "order.seats_taken"), T(lng, "order.seats_taken_text"), lng, w, r)
+				return
 			}
-			_, err = db.ReservationAdd(&Reservation{
+			seen[k] = true
+			picked = append(picked, c)
+		}
+
+		// blokada miejsc: status "marked" do czasu potwierdzenia zamówienia
+		var labels, prices []string
+		var resIDs []int64
+		var total int64
+		for i, c := range picked {
+			price, currency := chairPrice(c, event)
+			id, err := db.ReservationAdd(&Reservation{
 				OrderedDate: ToNI(time.Now().Unix()),
-				Price:       ToNI(pp[i]),
+				Price:       ToNI(price),
 				Currency:    ToNS(currency),
 				Status:      "marked",
-				FurnitureID: chair.ID,
+				FurnitureID: c.ID,
 				EventID:     eventID,
 				CustomerID:  -1, // uzupełniane przy tworzeniu klienta
 			})
 			if err != nil {
 				log.Printf("GuestOrderPage: seat %d already taken (event %d): %v", ss[i], eventID, err)
+				// zdejmujemy blokady założone przed chwilą, żeby nie wisiały 5 minut
+				for _, id := range resIDs {
+					if err := db.ReservationDel(id); err != nil {
+						log.Printf("GuestOrderPage: release reservation %d: %v", id, err)
+					}
+				}
 				ErrorHTML(T(lng, "order.seats_taken"), T(lng, "order.seats_taken_text"), lng, w, r)
 				return
 			}
+			resIDs = append(resIDs, id)
+			total += price
+			prices = append(prices, strconv.FormatInt(price, 10))
 			labels = append(labels, strconv.FormatInt(ss[i], 10))
 		}
+		totalPrice := strconv.FormatInt(total, 10)
 
 		vars := nOrderVars{
-			Title:      event.Name,
-			EventID:    event.ID,
-			EventName:  event.Name,
-			UserURL:    user.URL,
-			Minutes:    MARKEDMINUTES,
-			Sits:       sits,
-			SitsLabel:  strings.Join(labels, ", "),
-			Rooms:      rooms,
-			Prices:     prices,
-			TotalPrice: totalPrice,
-			HideCosts:  event.HideCosts.Bool,
-			HowTo:      template.HTML(event.OrderHowto),
-			NotesHelp:  event.OrderNotesDescription,
-			Addons:     orderAddonFields(EventAddonFields(db, event), int64(len(ss))),
-			Currency:   currency,
-		}
-
-		if n, err := strconv.ParseInt(totalPrice, 10, 64); err == nil {
-			vars.TotalPriceLabel = FormatMoney(n, currency)
-		} else {
-			vars.TotalPriceLabel = fmt.Sprintf("%s %s", totalPrice, currency)
+			Title:           event.Name,
+			EventID:         event.ID,
+			EventName:       event.Name,
+			UserURL:         user.URL,
+			Minutes:         MARKEDMINUTES,
+			Sits:            sits,
+			SitsLabel:       strings.Join(labels, ", "),
+			Rooms:           rooms,
+			Prices:          strings.Join(prices, ","),
+			TotalPrice:      totalPrice,
+			TotalPriceLabel: FormatMoney(total, event.DefaultCurrency),
+			Lock:            orderLock(event.ID, resIDs),
+			HideCosts:       event.HideCosts.Bool,
+			HowTo:           template.HTML(event.OrderHowto),
+			NotesHelp:       event.OrderNotesDescription,
+			Addons:          orderAddonFields(EventAddonFields(db, event), int64(len(ss))),
+			Currency:        event.DefaultCurrency,
 		}
 
 		guestRenderTheme(w, lng, event.Theme.String, vars, "tmpl/n_order.html")
@@ -228,6 +258,44 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 		fail := func(key string) {
 			ErrorHTML(T(lng, key+"_title"), T(lng, key), lng, w, r)
 		}
+		if err != nil {
+			fail("order.err_expired")
+			return
+		}
+
+		// tylko blokady założone przez tego gościa w kroku /order (ticker.go
+		// kasuje je po 5 minutach)
+		lock, ok := parseOrderLock(o.EventID, r.FormValue("lock"))
+		if !ok {
+			log.Printf("ReservationOrderStatusHTML: bad lock %q for event %d", r.FormValue("lock"), o.EventID)
+			fail("order.err_expired")
+			return
+		}
+		ss, rr, err := SplitSitsRooms(o.Sits, o.Rooms)
+		if err != nil {
+			log.Printf("ReservationOrderStatusHTML: %v", err)
+			fail("order.err_expired")
+			return
+		}
+		var marked []Reservation
+		var seatsTotal int64
+		var prices []string
+		for i := range ss {
+			chair, err := db.FurnitureGetByTypeNumberRoom("chair", ss[i], rr[i])
+			if err != nil {
+				log.Printf("ReservationOrderStatusHTML: chair %d in room %d: %v", ss[i], rr[i], err)
+			}
+			res, err := db.ReservationGet(chair.ID, o.EventID)
+			if err != nil || res.Status != "marked" || !lock[res.ID] {
+				log.Printf("ReservationOrderStatusHTML: no marked reservation of this guest for chair %d, event %d (status %q): %v", chair.ID, o.EventID, res.Status, err)
+				fail("order.err_expired")
+				return
+			}
+			marked = append(marked, res)
+			seatsTotal += res.Price.Int64
+			prices = append(prices, strconv.FormatInt(res.Price.Int64, 10))
+		}
+		o.Prices = strings.Join(prices, ",")
 
 		cID, err := db.CustomerAdd(&Customer{
 			Email:   o.Email,
@@ -248,12 +316,6 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 			log.Printf("ReservationOrderStatusHTML: append customer to user (returning customer?): %v", err)
 		}
 
-		ss, rr, err := SplitSitsRooms(o.Sits, o.Rooms)
-		if err != nil {
-			log.Printf("ReservationOrderStatusHTML: %v", err)
-			fail("order.err_expired")
-			return
-		}
 		var noteID int64
 		if o.Notes != "" {
 			if noteID, err = db.NoteAdd(o.Notes); err != nil {
@@ -263,25 +325,14 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 
 		// zebrane po drodze, żeby po pętli spiąć je w jedno zamówienie
 		var reservationIDs []int64
-		for i := range ss {
-			chair, err := db.FurnitureGetByTypeNumberRoom("chair", ss[i], rr[i])
-			if err != nil {
-				log.Printf("ReservationOrderStatusHTML: chair %d in room %d: %v", ss[i], rr[i], err)
-			}
-			// tylko blokada z kroku /order - po 5 minutach ticker.go ją kasuje
-			res, err := db.ReservationGet(chair.ID, o.EventID)
-			if err != nil || res.Status != "marked" {
-				log.Printf("ReservationOrderStatusHTML: no marked reservation for chair %d, event %d (status %q): %v", chair.ID, o.EventID, res.Status, err)
-				fail("order.err_expired")
-				return
-			}
+		for _, res := range marked {
 			res.Status = "ordered"
 			res.CustomerID = cID
 			if noteID != 0 {
 				res.NoteID = ToNI(noteID)
 			}
 			if err := db.ReservationMod(&res); err != nil {
-				log.Printf("ReservationOrderStatusHTML: reservation of chair %d, event %d: %v", chair.ID, o.EventID, err)
+				log.Printf("ReservationOrderStatusHTML: reservation %d, event %d: %v", res.ID, o.EventID, err)
 				fail("order.err_status")
 				return
 			}
@@ -289,9 +340,13 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 		}
 
 		// Zamówienie jako byt: spina rezerwacje z klientem, a przy okazji
-		// zapisuje dodatki (odpowiedzi i dopłaty). Kwota w o.TotalPrice
-		// przychodzi z formularza już z dopłatami, więc jej nie zmieniamy.
-		SaveOrderWithAddons(db, event, user, cID, reservationIDs, o.Notes, r.Form)
+		// zapisuje dodatki (odpowiedzi i dopłaty). Suma = ceny miejsc z bazy
+		// + dopłaty policzone na serwerze; przy ukrytych cenach formularz
+		// sumy nie wysyła i zostaje pusta, jak dotąd.
+		_, addonsTotal := SaveOrderWithAddons(db, event, user, cID, reservationIDs, o.Notes, r.Form)
+		if o.TotalPrice != "" {
+			o.TotalPrice = strconv.FormatInt(seatsTotal+addonsTotal, 10)
+		}
 
 		sendOrderMails(db, mailConf, event, user, o)
 
@@ -382,10 +437,11 @@ type OrderCancelMsg struct {
 	Sits    string `json:"sits"`
 	Rooms   string `json:"rooms"`
 	EventID int64  `json:"event-id"`
+	Lock    string `json:"lock"`
 }
 
 // OrderCancel - POST /api/ordercancel: gość rezygnuje w kroku /order,
-// zdejmujemy jego blokady miejsc (tylko te ze statusem "marked")
+// zdejmujemy jego blokady miejsc (tylko "marked" i tylko z jego orderLock)
 func OrderCancel(db *DB) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -394,6 +450,11 @@ func OrderCancel(db *DB) func(w http.ResponseWriter, r *http.Request) {
 		var m OrderCancelMsg
 		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 			log.Printf("OrderCancel: %v", err)
+			return
+		}
+		lock, ok := parseOrderLock(m.EventID, m.Lock)
+		if !ok {
+			log.Printf("OrderCancel: bad lock %q for event %d", m.Lock, m.EventID)
 			return
 		}
 		ss, rr, err := SplitSitsRooms(m.Sits, m.Rooms)
@@ -408,7 +469,7 @@ func OrderCancel(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			res, err := db.ReservationGet(chair.ID, m.EventID)
-			if err != nil || res.Status != "marked" {
+			if err != nil || res.Status != "marked" || !lock[res.ID] {
 				continue
 			}
 			if err := db.ReservationDel(res.ID); err != nil {
@@ -471,20 +532,4 @@ func SplitSitsRooms(sits, rooms string) ([]int64, []int64, error) {
 		return nil, nil, fmt.Errorf("sits %q and rooms %q differ in length", sits, rooms)
 	}
 	return ss, rr, nil
-}
-
-// SplitSitsRoomsPrices - jak SplitSitsRooms, do tego ceny miejsc
-func SplitSitsRoomsPrices(sits, rooms, prices string) ([]int64, []int64, []int64, error) {
-	ss, rr, err := SplitSitsRooms(sits, rooms)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	pp, err := parseIDs(prices)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("prices: %v", err)
-	}
-	if len(pp) != len(ss) {
-		return nil, nil, nil, fmt.Errorf("sits %q and prices %q differ in length", sits, prices)
-	}
-	return ss, rr, pp, nil
 }

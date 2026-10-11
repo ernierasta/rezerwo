@@ -469,6 +469,7 @@ person = "Osoba"
 seats = "Miejsca"
 status = "Status"
 amount = "Kwota"
+ordered_date = "Data zamówienia"
 awaiting = "czeka na wpłatę"
 mark_payed = "Oznacz jako zapłacone"
 mark_ordered = "Oznacz jako zamówione"
@@ -510,6 +511,17 @@ many = "%d tekstów"
 
 # --- formularz dla gościa (tmpl/n_formpage.html) ---
 [gform]
+resubmit_title = "Zmienić wysłane odpowiedzi?"
+resubmit_text = "Z tego adresu e-mail ten formularz już wysłano. Tak zmienią się Twoje odpowiedzi:"
+resubmit_field = "Pole"
+resubmit_old = "Było"
+resubmit_new = "Będzie"
+resubmit_empty = "(puste)"
+resubmit_save = "Zapisz zmiany"
+resubmit_back = "Wróć do formularza"
+same_title = "Te odpowiedzi już mamy"
+same_text = "Z tego adresu e-mail wysłano już formularz z dokładnie takimi odpowiedziami."
+same_show = "Pokaż potwierdzenie"
 no_org_title = "Nie znaleziono organizacji"
 no_org = "Pod adresem „%s” nie ma organizacji. Sprawdź link albo napisz do nas: admin (at) zori.cz."
 date_ph = "dd.mm.rrrr"
@@ -536,6 +548,7 @@ remembered = "Część pól uzupełniliśmy danymi z Twojego poprzedniego formul
 remembered_clear = "Wyczyść"
 
 [gform.err]
+email_used = "Z tego adresu e-mail ktoś już wysłał ten formularz. Użyj innego adresu."
 missing = "Uzupełnij pole „%s”."
 required = "To pole jest wymagane."
 choose = "Wybierz jedną z możliwości."

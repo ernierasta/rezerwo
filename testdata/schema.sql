@@ -20,15 +20,6 @@ CREATE TABLE "customers" (
 	"notes"	TEXT,
 	PRIMARY KEY("id")
 );
-CREATE TABLE "formanswers" (
-	"id"	INTEGER NOT NULL UNIQUE,
-	"value"	TEXT,
-	"formfields_id_fk"	INTEGER NOT NULL,
-	"forms_id_fk"	INTEGER NOT NULL, repeat_index INTEGER NOT NULL DEFAULT 0,
-	FOREIGN KEY("forms_id_fk") REFERENCES "forms"("id"),
-	PRIMARY KEY("id" AUTOINCREMENT),
-	UNIQUE("formfields_id_fk","forms_id_fk")
-);
 CREATE TABLE "forms" (
 	"id"	INTEGER NOT NULL UNIQUE,
 	"name"	TEXT,
@@ -183,3 +174,13 @@ CREATE TABLE order_items (
 );
 CREATE INDEX order_items_order ON order_items (orders_id_fk);
 CREATE INDEX reservations_order ON reservations (orders_id_fk);
+CREATE TABLE "formanswers" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"value"	TEXT,
+	"formfields_id_fk"	INTEGER NOT NULL,
+	"forms_id_fk"	INTEGER NOT NULL,
+	repeat_index INTEGER NOT NULL DEFAULT 0,
+	FOREIGN KEY("forms_id_fk") REFERENCES "forms"("id"),
+	PRIMARY KEY("id" AUTOINCREMENT),
+	UNIQUE("formfields_id_fk","forms_id_fk",repeat_index)
+);

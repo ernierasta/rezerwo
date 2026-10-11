@@ -237,7 +237,7 @@ func reservedUnder(db *DB, m DeleteMsg) (int64, string, error) {
 
 // buildSVGRoom przelicza meble sali na elementy SVG.
 func buildSVGRoom(db *DB, room Room, event Event) svgRoom {
-	rv := roomFurnitures(db, room.Name, event.ID)
+	rv := roomFurnitures(db, room.ID, event.ID)
 
 	out := svgRoom{
 		RoomID: room.ID,
@@ -267,14 +267,7 @@ func buildSVGRoom(db *DB, room Room, event Event) svgRoom {
 
 	for _, c := range rv.Chairs {
 		status := chairStatus(c)
-		price := c.AdminPrice.Int64
-		currency := c.AdminCurrency.String
-		if price == 0 {
-			price = event.DefaultPrice
-		}
-		if currency == "" {
-			currency = event.DefaultCurrency
-		}
+		price, currency := chairPrice(c, event)
 
 		out.Chairs = append(out.Chairs, svgFurniture{
 			ID:       c.ID,

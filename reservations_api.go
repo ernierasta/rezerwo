@@ -9,7 +9,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -440,14 +439,14 @@ func ReservationsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q",
 			strings.ReplaceAll(event.Name, "\"", "")+".csv"))
 
-		cw := csv.NewWriter(w)
+		cw := newSafeCSV(w)
 		defer cw.Flush()
 
 		cw.Write([]string{
 			T(lang, "res.person"), T(lang, "field.rooms"), T(lang, "res.seats"),
-			"e-mail", "telefon", T(lang, "res.status"), T(lang, "res.amount"),
-			T(lang, "field.currency"), T(lang, "field.date"), T(lang, "status.payed"),
-			"notes",
+			"e-mail", T(lang, "order.phone"), T(lang, "res.status"), T(lang, "res.amount"),
+			T(lang, "field.currency"), T(lang, "res.ordered_date"), T(lang, "status.payed"),
+			T(lang, "order.notes"),
 		})
 		for _, row := range rows {
 			cw.Write([]string{
@@ -689,7 +688,7 @@ func EventAddonsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWri
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q",
 			strings.ReplaceAll(event.Name, "\"", "")+"-dodatki.csv"))
 
-		cw := csv.NewWriter(w)
+		cw := newSafeCSV(w)
 		defer cw.Flush()
 
 		priced := pricedAddonLabels(db, event)
@@ -740,7 +739,7 @@ func EventReportCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWri
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q",
 			strings.ReplaceAll(event.Name, "\"", "")+"-rozliczenie.csv"))
 
-		cw := csv.NewWriter(w)
+		cw := newSafeCSV(w)
 		defer cw.Flush()
 
 		cw.Write([]string{T(lang, "report.price"), T(lang, "report.seats"),

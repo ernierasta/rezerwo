@@ -10,29 +10,29 @@
   --display: "Red Hat Display", "Red Hat Text", system-ui, sans-serif;
 }
 
-// Fonty lokalnie (RODO: bez Google Fonts). Pliki wgrywa tools/download-fonts.sh.
-// Jeżeli ich nie ma, przeglądarka użyje system-ui z listy wyżej.
+// Fonty lokalnie (RODO: bez Google Fonts), w repozytorium: css/fonts/ (tools/download-fonts.sh).
+// Bez nich przeglądarka użyje system-ui z listy wyżej.
 @font-face {
   font-family: "Red Hat Text";
-  src: url("/media/fonts/RedHatText-Regular.woff2") format("woff2");
+  src: url("/css/fonts/RedHatText-Regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: "Red Hat Text";
-  src: url("/media/fonts/RedHatText-Medium.woff2") format("woff2");
+  src: url("/css/fonts/RedHatText-Medium.woff2") format("woff2");
   font-weight: 500;
   font-display: swap;
 }
 @font-face {
   font-family: "Red Hat Text";
-  src: url("/media/fonts/RedHatText-SemiBold.woff2") format("woff2");
+  src: url("/css/fonts/RedHatText-SemiBold.woff2") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: "Red Hat Display";
-  src: url("/media/fonts/RedHatDisplay-Medium.woff2") format("woff2");
+  src: url("/css/fonts/RedHatDisplay-Medium.woff2") format("woff2");
   font-weight: 500;
   font-display: swap;
 }
@@ -1548,6 +1548,26 @@ h5.subhead {
 }
 
 .gform .req-note { font-size: 13px; margin: -10px 0 14px; text-align: right; }
+
+// okno "Zmienić wysłane odpowiedzi?": było -> będzie
+.gform-diff {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 8px 10px 8px 0;
+    border-bottom: 1px solid var(--line);
+    overflow-wrap: anywhere;
+  }
+  th { color: var(--muted); font-weight: 500; font-size: 13px; }
+  td:first-child { width: 34%; }
+  .old { color: var(--danger-ink); text-decoration: line-through; }
+  .new { color: var(--ok-ink); font-weight: 600; }
+  .empty { color: var(--muted); font-style: italic; font-weight: 400; text-decoration: none; }
+}
 .ff.w1, .ff.w2, .ff.w3 {
   .opt { padding: 7px 8px; gap: 7px; font-size: 14.5px; }
 }

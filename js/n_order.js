@@ -107,6 +107,7 @@
     var data = {
       rooms: document.getElementById('rooms').value,
       sits: document.getElementById('sits').value,
+      lock: document.getElementById('lock').value,
       'event-id': Number(page.dataset.eventId)
     };
     fetch('/api/ordercancel', {

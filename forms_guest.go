@@ -21,7 +21,9 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"math"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -199,6 +201,9 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 type gformSendMsg struct {
 	UniqID string            `json:"uniqid"`
 	Data   []FormAnswersJson `json:"data"`
+	// Confirm - gość zobaczył zmiany względem swojego wcześniejszego
+	// zgłoszenia (resubmitDiff) i chce je zapisać
+	Confirm bool `json:"confirm"`
 }
 
 // GuestFormSendAPI - POST /form/{userurl}/{formurl}/send
@@ -236,7 +241,34 @@ func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r
 			return
 		}
 
-		formID, name, surname, err := SaveFormAnswers(db, user, templ, msg.Data, msg.UniqID)
+		if bad, why := checkValues(defs, vis, msg.Data, templ.MoneyAmountFieldName.String, lang); bad != "" {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": bad + ": " + why, "field": bad})
+			return
+		}
+
+		// ten sam adres e-mail: ta sama osoba poprawia odpowiedzi (najpierw
+		// pokazujemy jej zmiany), inna osoba musi użyć innego adresu
+		prev, other, err := ownSubmission(db, user, templ, msg.Data, msg.UniqID)
+		if err != nil {
+			log.Printf("GuestFormSendAPI: earlier submissions: %v", err)
+			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": T(lang, "gform.save_error")})
+			return
+		}
+		if other {
+			jsonMsg(w, http.StatusConflict, map[string]string{"msg": T(lang, "gform.err.email_used"), "field": ROLEEMAIL})
+			return
+		}
+		if prev != nil && !msg.Confirm {
+			changes := resubmitDiff(db, defs, *prev, msg.Data)
+			if len(changes) == 0 {
+				jsonMsg(w, http.StatusOK, map[string]interface{}{"same": true, "done": doneURL(user, templ, prev.ID)})
+				return
+			}
+			jsonMsg(w, http.StatusOK, map[string]interface{}{"confirm": true, "changes": changes})
+			return
+		}
+
+		formID, name, surname, err := SaveFormAnswers(db, user, templ, msg.Data, msg.UniqID, prev)
 		if err != nil {
 			log.Printf("GuestFormSendAPI: %v", err)
 			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": T(lang, "gform.save_error")})
@@ -245,10 +277,7 @@ func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r
 
 		SendFormMails(db, mailConf, user, templ, formID, name, surname)
 
-		jsonMsg(w, http.StatusOK, map[string]interface{}{
-			"id":   formID,
-			"done": fmt.Sprintf("/form/%s/%s/done?id=%d&t=%s", user.URL, templ.URL, formID, doneToken(formID)),
-		})
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"id": formID, "done": doneURL(user, templ, formID)})
 	}
 }
 
@@ -291,10 +320,200 @@ func checkRequired(defs []FormDefField, vis []bool, data []FormAnswersJson) stri
 	return ""
 }
 
-// SaveFormAnswers zapisuje zgłoszenie i odpowiedzi. Ta sama osoba (e-mail +
-// nazwisko) wysyłająca formularz drugi raz nadpisuje swoje odpowiedzi - tak
-// jak działało to w starym rendererze.
-func SaveFormAnswers(db *DB, user User, templ FormTemplate, data []FormAnswersJson, uniqID string) (int64, string, string, error) {
+var emailRe = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
+
+// checkValues sprawdza na serwerze to, co strona sprawdza w JS (RZ.inputError):
+// e-mail, liczby z min/max/krokiem; kwota do zapłaty nie może być ujemna.
+// Bez tego jedna wpisana ręcznie wartość ("abc", "-500") psuła sumy na
+// stronie formularza i dawała kod QR z ujemną kwotą. Zwraca etykietę pola
+// i powód albo dwa puste napisy.
+func checkValues(defs []FormDefField, vis []bool, data []FormAnswersJson, moneyField, lang string) (string, string) {
+	vals := map[string][]string{}
+	for _, d := range data {
+		vals[d.Name] = append(vals[d.Name], d.UserData...)
+	}
+	num := func(s string) (float64, bool) {
+		f, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+		return f, err == nil && !math.IsInf(f, 0) && !math.IsNaN(f)
+	}
+	fmtNum := func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+	for i, d := range defs {
+		name := d.S("name")
+		if name == "" || !vis[i] {
+			continue
+		}
+		label := plainLabel(d.S("label"))
+		for _, v := range vals[name] {
+			v = strings.TrimSpace(v)
+			if v == "" {
+				continue
+			}
+			if name == ROLEEMAIL || (d.S("type") == "text" && d.S("subtype") == "email") {
+				if !emailRe.MatchString(v) {
+					return label, T(lang, "gform.err.email")
+				}
+				continue
+			}
+			if d.S("type") != "number" {
+				continue
+			}
+			f, ok := num(v)
+			if !ok {
+				return label, T(lang, "gform.err.number")
+			}
+			min, hasMin := num(d.S("min"))
+			if !hasMin && name == moneyField {
+				min, hasMin = 0, true
+			}
+			if hasMin && f < min {
+				return label, T(lang, "gform.err.min", fmtNum(min))
+			}
+			if max, ok := num(d.S("max")); ok && f > max {
+				return label, T(lang, "gform.err.max", fmtNum(max))
+			}
+			// krok jak w przeglądarce: domyślnie 1, liczony od min albo wartości domyślnej
+			if d.S("step") == "any" {
+				continue
+			}
+			step, ok := num(d.S("step"))
+			if !ok || step <= 0 {
+				step = 1
+			}
+			base := 0.0
+			if hasMin {
+				base = min
+			} else if dv, ok := num(d.S("value")); ok {
+				base = dv
+			}
+			n := (f - base) / step
+			if math.Abs(n-math.Round(n)) > 1e-9 {
+				if step == 1 {
+					return label, T(lang, "gform.err.step")
+				}
+				low := base + math.Floor(n)*step
+				return label, T(lang, "gform.err.step_n", fmtNum(step), fmtNum(low), fmtNum(low+step))
+			}
+		}
+	}
+	return "", ""
+}
+
+func doneURL(user User, templ FormTemplate, formID int64) string {
+	return fmt.Sprintf("/form/%s/%s/done?id=%d&t=%s", user.URL, templ.URL, formID, doneToken(formID))
+}
+
+// ownSubmission szuka wcześniejszego zgłoszenia z tego samego adresu e-mail.
+// Pasuje, gdy zgadza się też imię i nazwisko (bez względu na wielkość liter
+// i spacje) albo formularz nie ma pól imienia/nazwiska. other=true: adres
+// jest już użyty przez kogoś innego.
+func ownSubmission(db *DB, user User, templ FormTemplate, data []FormAnswersJson, uniqID string) (prev *Form, other bool, err error) {
+	name, surname, email := getBasicFields(data, uniqID)
+	if strings.TrimSpace(email) == "" {
+		return nil, false, nil
+	}
+	ff, err := db.FormGetAllByEmail(email, templ.ID, user.ID)
+	if err != nil || len(ff) == 0 {
+		return nil, false, err
+	}
+	norm := func(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
+	anon := !hasNameFields(data)
+	for i := range ff {
+		if anon || (norm(ff[i].Name.String) == norm(name) && norm(ff[i].Surname.String) == norm(surname)) {
+			return &ff[i], false, nil
+		}
+	}
+	return nil, true, nil
+}
+
+func hasNameFields(data []FormAnswersJson) bool {
+	for _, d := range data {
+		if d.Name == ROLESURNAME {
+			return true
+		}
+	}
+	return false
+}
+
+// answerChange - jedna zmieniona odpowiedź (okno potwierdzenia w n_formpage.js)
+type answerChange struct {
+	Label string `json:"label"`
+	Old   string `json:"old"`
+	New   string `json:"new"`
+}
+
+// resubmitDiff porównuje nowe odpowiedzi z zapisanymi w prev, w kolejności
+// pól formularza; wartości opcji zamienia na ich etykiety.
+func resubmitDiff(db *DB, defs []FormDefField, prev Form, data []FormAnswersJson) []answerChange {
+	fields, err := db.FormFieldGetAllForTmpl(prev.FormTemplateID)
+	if err != nil {
+		log.Printf("resubmitDiff: fields of %d: %v", prev.FormTemplateID, err)
+	}
+	fieldName := map[int64]string{}
+	for _, f := range fields {
+		fieldName[f.ID] = f.Name
+	}
+	old := map[string]string{}
+	answers, err := db.FormAnswerGetAll(prev.ID)
+	if err != nil {
+		log.Printf("resubmitDiff: answers of %d: %v", prev.ID, err)
+	}
+	for _, a := range answers {
+		if n, ok := fieldName[a.FormFieldID]; ok {
+			old[n] = a.Value.String
+		}
+	}
+	cur := map[string]string{}
+	sent := map[string]bool{}
+	for _, d := range data {
+		cur[d.Name] = strings.Join(d.UserData, ", ")
+		sent[d.Name] = true
+	}
+
+	var out []answerChange
+	for _, d := range defs {
+		name := d.S("name")
+		if name == "" || !isInputType(d.S("type")) || !sent[name] {
+			continue
+		}
+		o, n := strings.TrimSpace(old[name]), strings.TrimSpace(cur[name])
+		if o == n {
+			continue
+		}
+		labels := optionLabels(d)
+		out = append(out, answerChange{Label: plainLabel(d.S("label")), Old: labels(o), New: labels(n)})
+	}
+	return out
+}
+
+// optionLabels - zamiana zapisanych wartości opcji ("bufet, nic") na etykiety
+// ("Pomoc w bufecie, Nic"); wartości spoza opcji (tekst "Inne") zostają.
+func optionLabels(d FormDefField) func(string) string {
+	m := map[string]string{}
+	vals, _ := d["values"].([]interface{})
+	for _, v := range vals {
+		if vm, ok := v.(map[string]interface{}); ok {
+			if l := plainLabel(str(vm["label"])); l != "" {
+				m[str(vm["value"])] = l
+			}
+		}
+	}
+	return func(s string) string {
+		if len(m) == 0 || s == "" {
+			return s
+		}
+		parts := strings.Split(s, ", ")
+		for i, p := range parts {
+			if l, ok := m[p]; ok {
+				parts[i] = l
+			}
+		}
+		return strings.Join(parts, ", ")
+	}
+}
+
+// SaveFormAnswers zapisuje zgłoszenie i odpowiedzi; prev - wcześniejsze
+// zgłoszenie tej samej osoby (ownSubmission), które nadpisujemy.
+func SaveFormAnswers(db *DB, user User, templ FormTemplate, data []FormAnswersJson, uniqID string, prev *Form) (int64, string, string, error) {
 	name, surname, email := getBasicFields(data, uniqID)
 
 	f := &Form{
@@ -305,16 +524,17 @@ func SaveFormAnswers(db *DB, user User, templ FormTemplate, data []FormAnswersJs
 		UserID:         user.ID,
 		FormTemplateID: templ.ID,
 	}
-	formID, err := db.FormAdd(f)
-	if err != nil {
-		// już jest - ta sama osoba wysyła drugi raz
-		if err := db.FormModByEmail(f); err != nil {
-			return 0, "", "", fmt.Errorf("form insert and update failed: %v", err)
+	var formID int64
+	var err error
+	if prev != nil {
+		formID, f.ID = prev.ID, prev.ID
+		if hasNameFields(data) {
+			if err := db.FormModNames(f); err != nil {
+				return 0, "", "", fmt.Errorf("form %d names: %v", formID, err)
+			}
 		}
-		formID, err = db.FormGetIDByEmail(f.Email.String, templ.ID, user.ID)
-		if err != nil {
-			return 0, "", "", fmt.Errorf("form id by email %q: %v", f.Email.String, err)
-		}
+	} else if formID, err = db.FormAdd(f); err != nil {
+		return 0, "", "", fmt.Errorf("form insert: %v", err)
 	}
 
 	fields, err := db.FormFieldGetAllForTmpl(templ.ID)

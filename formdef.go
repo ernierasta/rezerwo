@@ -245,6 +245,9 @@ func BuildRenderRows(ff []FormDefField, moneyField string) []RenderRow {
 			continue
 		}
 		f.IsMoney = moneyField != "" && f.Name == moneyField
+		if f.IsMoney && f.Type == "number" && f.Min == "" {
+			f.Min = "0" // kwota do zapłaty nie może być ujemna (checkValues)
+		}
 
 		row, width := FieldLayout(d.S("className"))
 		f.Width = width

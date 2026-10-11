@@ -96,7 +96,7 @@ func main() {
 
 	// strony dla gości
 	rtr.HandleFunc("/res/{user}", GuestReservationPage(db, cookieStore))
-	rtr.HandleFunc("/order", GuestOrderPage(db))
+	rtr.HandleFunc("/order", GuestOrderPage(db, cookieStore))
 	rtr.HandleFunc("/form/{userurl}/{formurl}", GuestFormPage(db, cookieStore))
 	rtr.HandleFunc("/form/{userurl}/{formurl}/send", GuestFormSendAPI(db, mailConf)).Methods("POST")
 	rtr.HandleFunc("/form/{userurl}/{formurl}/done", GuestFormDonePage(db))
@@ -137,8 +137,24 @@ func initDB() *DB {
 }
 
 func handleStatic(dir string) {
-	fs := http.FileServer(http.Dir(dir))
+	fs := http.FileServer(noDirFS{http.Dir(dir)})
 	http.Handle("/"+dir+"/", http.StripPrefix("/"+dir+"/", fs))
+}
+
+// noDirFS ukrywa katalogi: bez tego /media/<org>/qrcode/ i .../pdf/ pokazywały
+// każdemu listę plików z nazwiskami gości (kody QR, bilety).
+type noDirFS struct{ fs http.FileSystem }
+
+func (n noDirFS) Open(name string) (http.File, error) {
+	f, err := n.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	if st, err := f.Stat(); err != nil || st.IsDir() {
+		f.Close()
+		return nil, os.ErrNotExist
+	}
+	return f, nil
 }
 
 func AboutHTML() func(w http.ResponseWriter, r *http.Request) {

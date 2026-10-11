@@ -398,25 +398,25 @@
 
 @font-face {
   font-family: "Red Hat Text";
-  src: url("/media/fonts/RedHatText-Regular.woff2") format("woff2");
+  src: url("/css/fonts/RedHatText-Regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: "Red Hat Text";
-  src: url("/media/fonts/RedHatText-Medium.woff2") format("woff2");
+  src: url("/css/fonts/RedHatText-Medium.woff2") format("woff2");
   font-weight: 500;
   font-display: swap;
 }
 @font-face {
   font-family: "Red Hat Text";
-  src: url("/media/fonts/RedHatText-SemiBold.woff2") format("woff2");
+  src: url("/css/fonts/RedHatText-SemiBold.woff2") format("woff2");
   font-weight: 600;
   font-display: swap;
 }
 @font-face {
   font-family: "Red Hat Display";
-  src: url("/media/fonts/RedHatDisplay-Medium.woff2") format("woff2");
+  src: url("/css/fonts/RedHatDisplay-Medium.woff2") format("woff2");
   font-weight: 500;
   font-display: swap;
 }
@@ -2727,6 +2727,41 @@ h5.subhead a {
   font-size: 13px;
   margin: -10px 0 14px;
   text-align: right;
+}
+
+.gform-diff {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+.gform-diff th, .gform-diff td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.gform-diff th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 13px;
+}
+.gform-diff td:first-child {
+  width: 34%;
+}
+.gform-diff .old {
+  color: var(--danger-ink);
+  text-decoration: line-through;
+}
+.gform-diff .new {
+  color: var(--ok-ink);
+  font-weight: 600;
+}
+.gform-diff .empty {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 400;
+  text-decoration: none;
 }
 
 .ff.w1 .opt, .ff.w2 .opt, .ff.w3 .opt {

@@ -353,25 +353,91 @@
       return;
     }
 
+    send(false);
+  });
+
+  // --- wysyłka; ten sam e-mail = poprawka własnego zgłoszenia ---------------
+
+  var dlgDiff = document.getElementById('gform-resubmit');
+  var dlgSame = document.getElementById('gform-same');
+
+  function send(confirm) {
     var uniq = document.getElementById('uniqid');
     submit.disabled = true;
     var label = submit.textContent;
     submit.textContent = t('gform.sending');
+    var done = function () {
+      submit.disabled = false;
+      submit.textContent = label;
+    };
 
-    RZ.postJSON(root.dataset.send, {uniqid: uniq ? uniq.textContent : '', data: collect()})
+    RZ.postJSON(root.dataset.send, {uniqid: uniq ? uniq.textContent : '', data: collect(), confirm: confirm})
       .then(function (resp) {
+        if (resp.confirm) {
+          done();
+          showDiff(resp.changes || []);
+          return;
+        }
+        if (resp.same) {
+          done();
+          document.getElementById('gform-same-show').href = resp.done;
+          dlgSame.hidden = false;
+          return;
+        }
         sent = true;
         clearDraft();
         remember();
         location.href = resp.done;
       })
       .catch(function (err) {
+        done();
+        var ff = err.field && form.querySelector('.ff[data-name="' + err.field + '"]');
+        if (ff) {
+          showError(ff, err.message);
+          ff.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
         msgEl.textContent = err.message || t('gform.save_error');
         msgEl.hidden = false;
-        submit.disabled = false;
-        submit.textContent = label;
       });
-  });
+  }
+
+  function cell(text, cls) {
+    var td = document.createElement('td');
+    if (text === '') {
+      td.textContent = t('gform.resubmit_empty');
+      td.className = 'empty';
+    } else {
+      td.textContent = text;
+      if (cls) td.className = cls;
+    }
+    return td;
+  }
+
+  function showDiff(changes) {
+    var body = document.getElementById('gform-diff-rows');
+    body.textContent = '';
+    changes.forEach(function (c) {
+      var tr = document.createElement('tr');
+      tr.appendChild(cell(c.label));
+      tr.appendChild(cell(c.old, 'old'));
+      tr.appendChild(cell(c.new, 'new'));
+      body.appendChild(tr);
+    });
+    dlgDiff.hidden = false;
+    document.getElementById('gform-resubmit-save').focus();
+  }
+
+  if (dlgDiff) {
+    document.getElementById('gform-resubmit-save').addEventListener('click', function () {
+      dlgDiff.hidden = true;
+      send(true);
+    });
+    document.getElementById('gform-resubmit-back').addEventListener('click', function () { dlgDiff.hidden = true; });
+    document.getElementById('gform-same-back').addEventListener('click', function () { dlgSame.hidden = true; });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { dlgDiff.hidden = true; dlgSame.hidden = true; }
+    });
+  }
 
   // pola warunkowe: od razu, żeby ukryte pola nie mignęły przed wczytaniem tekstów
   conds = RZ.formConds(form, valueOf);

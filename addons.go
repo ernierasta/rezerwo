@@ -212,15 +212,6 @@ func CollectAddonAnswers(fields []AddonField, form map[string][]string, seats in
 	return out
 }
 
-// AddonsTotal to suma dopłat z odpowiedzi.
-func AddonsTotal(answers []AddonAnswer) int64 {
-	var total int64
-	for _, a := range answers {
-		total += a.Sum()
-	}
-	return total
-}
-
 // SaveOrderWithAddons zakłada zamówienie dla złożonej rezerwacji: spina
 // rezerwacje miejsc z klientem (tabela orders) i zapisuje dodatki - odpowiedzi
 // jako zwykły formularz (forms + formanswers), a dopłaty jako pozycje

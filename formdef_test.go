@@ -75,11 +75,9 @@ func TestSlugify(t *testing.T) {
 	}
 }
 
+// Odpowiedź pola "Wielokrotność" ma postać "2 * 85 = 170".
 func TestMultiplierValue(t *testing.T) {
-	if got := MultiplierValue(3, 590); got != "3 * 590 = 1770" {
-		t.Errorf("got %q", got)
-	}
-	a, m, tot := ConvertMultiplicationToAmmountMultiplTotal(MultiplierValue(2, 85))
+	a, m, tot := ConvertMultiplicationToAmmountMultiplTotal("2 * 85 = 170")
 	if a != "2" || m != "85" || tot != "170" {
 		t.Errorf("round trip: %q %q %q", a, m, tot)
 	}

@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	htmltemplate "html/template"
 	"io"
 	"log"
 	"net/http"
@@ -209,7 +208,7 @@ func checkMailTemplate(subject, text string) error {
 	if _, err := texttemplate.New("subject").Parse(subject); err != nil {
 		return err
 	}
-	if _, err := htmltemplate.New("text").Parse(text); err != nil {
+	if _, err := template.New("text").Parse(text); err != nil {
 		return err
 	}
 	return nil
@@ -282,7 +281,7 @@ func renderSampleMail(of *OrderFuncs, m nMailPreviewMsg) (string, string, error)
 	if err := checkMailTemplate(m.Subject, m.Text); err != nil {
 		return "", "", err
 	}
-	t, _ := htmltemplate.New("mail").Parse(m.Text)
+	t, _ := template.New("mail").Parse(m.Text)
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, of); err != nil {
 		return "", "", err

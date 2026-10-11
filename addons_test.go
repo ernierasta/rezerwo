@@ -67,9 +67,6 @@ func TestCollectAddonAnswers(t *testing.T) {
 	if got, want := aa[1].Description(), "Dodatkowa porcja: 2 × 85"; got != want {
 		t.Errorf("opis pozycji: %q, oczekiwano %q", got, want)
 	}
-	if got := AddonsTotal(aa); got != 170 {
-		t.Errorf("suma dopłat: %d, oczekiwano 170", got)
-	}
 }
 
 // Pole "tyle razy, ile miejsc" wypełnia się osobno dla każdego miejsca.
@@ -107,9 +104,6 @@ func TestCollectAddonAnswersEmpty(t *testing.T) {
 	aa := CollectAddonAnswers(ff, map[string][]string{"addon-porcja-amount": {"0"}}, 2)
 	if len(aa) != 0 {
 		t.Errorf("oczekiwano braku odpowiedzi, jest %+v", aa)
-	}
-	if got := AddonsTotal(aa); got != 0 {
-		t.Errorf("suma dopłat bez dodatków: %d", got)
 	}
 }
 

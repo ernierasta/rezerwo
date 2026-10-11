@@ -350,12 +350,6 @@ func renderField(d FormDefField, idx int) RenderField {
 	return f
 }
 
-// MultiplierValue zapisuje odpowiedź pola "Wielokrotność" tak jak stary
-// renderer: "3 * 590 = 1770" (czyta to ConvertMultiplicationToAmmountMultiplTotal).
-func MultiplierValue(amount, price int64) string {
-	return fmt.Sprintf("%d * %d = %d", amount, price, amount*price)
-}
-
 type FormFieldDef struct {
 	Type    string `json:"type"`
 	Display string `json:"label"`

@@ -2,6 +2,8 @@ module github.com/ernierasta/rezerwo
 
 go 1.26.0
 
+toolchain go1.27.2
+
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/Necoro/html2text v0.0.0-20250804200300-7bf1ce1c7347

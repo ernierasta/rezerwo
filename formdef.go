@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -352,4 +353,151 @@ func renderField(d FormDefField, idx int) RenderField {
 // renderer: "3 * 590 = 1770" (czyta to ConvertMultiplicationToAmmountMultiplTotal).
 func MultiplierValue(amount, price int64) string {
 	return fmt.Sprintf("%d * %d = %d", amount, price, amount*price)
+}
+
+type FormFieldDef struct {
+	Type    string `json:"type"`
+	Display string `json:"label"`
+	Name    string `json:"name"`
+}
+
+func (f FormFieldDef) GetType() string {
+	return f.Type
+}
+
+func (f FormFieldDef) GetName() string {
+	return f.Name
+}
+
+func updateFormFieldsInDB(templateID int64, current []FormFieldDef, db *DB) {
+	current = filterFormFields(current)
+	previous, err := db.FormFieldGetAllForTmpl(templateID)
+	if err != nil {
+		log.Printf("updateFormFieldsInDB: error getting FormFields for template %d, %v", templateID, err)
+	}
+	previous = filterFormFields(previous)
+
+	found := make([]bool, len(previous))
+
+	for i := range current {
+		f := &FormField{
+			Name:           current[i].Name,
+			Display:        current[i].Display,
+			Type:           current[i].Type,
+			FormTemplateID: templateID,
+		}
+		if n := isFieldIn(current[i].Name, previous); n >= 0 {
+			found[n] = true
+			err := db.FormFieldModByName(f)
+			if err != nil {
+				log.Printf("updateFormFieldsInDB: error updating field %q, %v", f.Name, err)
+			}
+		} else { // this is new field
+			lastid, err := db.FormFieldAdd(f)
+			if err != nil {
+				log.Printf("updateFormFieldsInDB: error adding field %q, %v", f.Name, err)
+			}
+			_ = lastid
+		}
+	}
+
+	// remove old fields, which are not in the template anymore
+	for i := range found {
+		if !found[i] {
+			err := db.FormFieldDelByName(previous[i].Name, templateID)
+			if err != nil {
+				log.Printf("updateFormFieldsInDB: error deleting old formfield %q, templateID %d, %v", previous[i].Name, templateID, err)
+			}
+		}
+	}
+
+}
+
+// isFieldIn returns possition in given list if found
+// or -1 if not in list
+func isFieldIn(name string, l []FormField) int {
+	for i := range l {
+		if name == l[i].Name {
+			return i
+		}
+	}
+	return -1
+}
+
+type FormFieldType interface {
+	FormField | FormFieldDef
+	GetName() string
+	GetType() string
+}
+
+// filterFormFields is generic function which works
+// for both formfield types
+func filterFormFields[L FormFieldType](l []L) []L {
+	var ret []L
+	for i := range l {
+		if l[i].GetName() == "" {
+			continue
+		}
+		if !isTypeIgnored(l[i].GetType()) {
+			ret = append(ret, l[i])
+		}
+	}
+	return ret
+}
+
+func isTypeIgnored(t string) bool {
+	var ignored = []string{"header", "paragraph", "button", "hidden"}
+	for i := range ignored {
+		if ignored[i] == t {
+			return true
+		}
+	}
+	return false
+}
+
+type FormAnswersJson struct {
+	Name     string   `json:"name"`
+	UserData []string `json:"userData"`
+}
+
+func makeSureIsHTML(s string) string {
+	if strings.Contains(s, "<html") {
+		return s
+	}
+	return "<html>" + s + "</html>"
+}
+
+func getBasicFields(j []FormAnswersJson, uniqID string) (string, string, string) {
+	var name, surname, email string
+	log.Println("json:", j)
+	for i := range j {
+		if j[i].Name == "name-REQUIRED" {
+			if !isEmpty(j[i].UserData) {
+				name = j[i].UserData[0]
+			}
+		}
+		if j[i].Name == "surname-REQUIRED" {
+			if !isEmpty(j[i].UserData) {
+				surname = j[i].UserData[0]
+			}
+		}
+		if j[i].Name == "email-REQUIRED" {
+			if !isEmpty(j[i].UserData) {
+				email = j[i].UserData[0]
+			}
+		}
+	}
+	if surname == "" {
+		name = "- Anon -"
+		surname = uniqID
+	}
+	log.Println(name, surname, email)
+	return name, surname, email
+}
+
+func isEmpty[T comparable](t []T) bool {
+	if len(t) > 0 {
+		return false
+	}
+	return true
 }

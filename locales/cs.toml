@@ -129,6 +129,12 @@ seats_taken_text = "Někdo byl rychlejší, nebo jsou místa blokovaná jiným z
 done_title = "Děkujeme za objednávku!"
 done_text = "Potvrzení jsme poslali na zadaný e-mail."
 done_pay = "Prosíme o platbu:"
+err_save_title = "Nepovedlo se uložit objednávku!"
+err_save = "Chyba na serveru neumožňuje uložení Vašich údajů. Tím pádem nejde uložit objednávku. Kontaktujte: admin (at) zori.cz."
+err_expired_title = "Čas na objednání vypršel!"
+err_expired = "Čas na odeslání vypršel (po 5 minutách). Vyberte židle znova a objednejte ještě jednou."
+err_status_title = "Nepovedlo se změnit stav objednávky!"
+err_status = "Nepovedlo se změnit stav objednávky, prosíme o informaci na mail: admin (at) zori.cz. Pošlete Váš e-mail, čísla objednaných míst, název místnosti/akce."
 
 [guest]
 free_seats = "volná místa"
@@ -865,3 +871,6 @@ money = "částka"
 nobody = "Nikdo ze zobrazených odpovědí toto pole neviděl."
 empty_view = "V tomto zobrazení nejsou žádné odpovědi."
 common_opts = "při každé volbě"
+
+[pdf]
+seat = "MÍSTO %d"

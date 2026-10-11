@@ -401,21 +401,14 @@ func sendEventMailToOrder(db *DB, mailConf MailConfig, user User, event Event, m
 		total += rf.Price.Int64
 	}
 
-	mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
-
 	first := frs[0]
-	parsedText, embImgs, attachedFiles := parseEventMailTemplate(
-		first.CustName.String, first.CustSurname.String, mail.Text,
-		first.CustPhone.String, first.CustEmail.String, first.Notes.String,
-		event.Name, sits, prices, rooms, event.ID, total, user, db)
-
-	mailConf.Files = attachedFiles
-	subject := OrderSubject(mail.Title.String, newEventOrderFuncs(
+	of := newEventOrderFuncs(
 		first.CustName.String, first.CustSurname.String, first.CustPhone.String,
 		first.CustEmail.String, first.Notes.String, event.Name, sits, prices, rooms,
-		event.ID, total, user, db))
-
-	if err := prepMailConfSendMail(first.CustEmail.String, subject, parsedText, user, embImgs, mailConf); err != nil {
+		event.ID, total, user, db)
+	text := renderOrderTmpl(mail.Text, of)
+	if err := mailConf.SendAsOrg(user, first.CustEmail.String, OrderSubject(mail.Title.String, of), text,
+		append(mail.Files(user), of.AttachedFiles...), append(mail.Images(user), of.EmbeddedImgs...)); err != nil {
 		return err
 	}
 

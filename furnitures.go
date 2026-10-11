@@ -1,143 +1,51 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"sort"
 )
 
-func TableNr(ff []Furniture) int64 {
-	i := int64(0)
-	for _, f := range ff {
-		if f.Type == "table" && f.Number > i {
-			i = f.Number
-		}
-	}
-	return i
+// roomPlan - meble sali; krzesła z ceną i stanem rezerwacji dla imprezy
+type roomPlan struct {
+	Tables  []Furniture
+	Chairs  []FurnitureFull
+	Objects []Furniture
+	Labels  []Furniture
 }
 
-func ChairNr(ff []Furniture) int64 {
-	i := int64(0)
-	for _, f := range ff {
-		if f.Type == "chair" && f.Number > i {
-			i = f.Number
+func roomFurnitures(db *DB, roomName string, eventID int64) roomPlan {
+	var p roomPlan
+	var err error
+	if p.Chairs, err = db.FurnitureFullGetChairs(eventID, roomName); err != nil {
+		log.Printf("roomFurnitures: chairs of room %q, event %d: %v", roomName, eventID, err)
+	}
+	for typ, dst := range map[string]*[]Furniture{"table": &p.Tables, "object": &p.Objects, "label": &p.Labels} {
+		if *dst, err = db.FurnitureGetAllByRoomNameOfType(roomName, typ); err != nil {
+			log.Printf("roomFurnitures: %ss of room %q: %v", typ, roomName, err)
 		}
 	}
-	return i
+	return p
 }
 
-func ObjectNr(ff []Furniture) int64 {
-	i := int64(0)
+func (f Furniture) nr() int64 { return f.Number }
+
+// maxNr - najwyższy numer mebla na liście (nowy mebel dostaje kolejny)
+func maxNr[F interface{ nr() int64 }](ff []F) int64 {
+	m := int64(0)
 	for _, f := range ff {
-		if f.Type == "object" && f.Number > i {
-			i = f.Number
-		}
+		m = max(m, f.nr())
 	}
-	return i
+	return m
 }
 
-func LabelNr(ff []Furniture) int64 {
-	i := int64(0)
-	for _, f := range ff {
-		if f.Type == "label" && f.Number > i {
-			i = f.Number
-		}
-	}
-	return i
-}
-
-// FurnitureRenumber works only for filtered Furnitures, f.e. only
-// chairs for given room
-func FurnitureRenumber(ff []Furniture) ([]Furniture, error) {
-	roomID := int64(-2)
-	ftype := "init"
-
-	// sort numbers, than assign numbers from 1:len(ff) to it
+// FurnitureRenumber numeruje meble od 1 bez dziur, zachowując kolejność.
+// Lista musi zawierać meble jednego typu z jednej sali.
+func FurnitureRenumber(ff []Furniture) []Furniture {
 	sort.Slice(ff, func(i, j int) bool {
 		return ff[i].Number < ff[j].Number
 	})
 	for i := range ff {
 		ff[i].Number = int64(i + 1)
-		err := protectFurnitureTypeRoom(ftype, ff[i].Type, roomID, ff[i].RoomID)
-		if err != nil {
-			return ff, err
-		}
-
 	}
-	return ff, nil
-}
-
-// FurnitureFull
-
-func TableNrFull(ff []FurnitureFull) int64 {
-	i := int64(0)
-	for _, f := range ff {
-		if f.Type == "table" && f.Number > i {
-			i = f.Number
-		}
-	}
-	return i
-}
-
-func ChairNrFull(ff []FurnitureFull) int64 {
-	i := int64(0)
-	for _, f := range ff {
-		if f.Type == "chair" && f.Number > i {
-			i = f.Number
-		}
-	}
-	return i
-}
-
-func ObjectNrFull(ff []FurnitureFull) int64 {
-	i := int64(0)
-	for _, f := range ff {
-		if f.Type == "object" && f.Number > i {
-			i = f.Number
-		}
-	}
-	return i
-}
-
-func LabelNrFull(ff []FurnitureFull) int64 {
-	i := int64(0)
-	for _, f := range ff {
-		if f.Type == "label" && f.Number > i {
-			i = f.Number
-		}
-	}
-	return i
-}
-
-// FurnitureRenumber works only for filtered Furnitures, f.e. only
-// chairs for given room
-func FurnitureRenumberFull(ff []Furniture) ([]Furniture, error) {
-	roomID := int64(-2)
-	ftype := "init"
-
-	// sort numbers, than assign numbers from 1:len(ff) to it
-	sort.Slice(ff, func(i, j int) bool {
-		return ff[i].Number < ff[j].Number
-	})
-	for i := range ff {
-		ff[i].Number = int64(i + 1)
-		err := protectFurnitureTypeRoom(ftype, ff[i].Type, roomID, ff[i].RoomID)
-		if err != nil {
-			return ff, err
-		}
-	}
-	return ff, nil
-}
-
-func protectFurnitureTypeRoom(newType, oldType string, newRoom, oldRoom int64) error {
-	if oldRoom != newRoom && oldRoom != -2 && newRoom != -2 {
-		return fmt.Errorf("FurnitureRenumberFull: mixed rooms given, previous: %d, current: %d",
-			oldRoom, newRoom)
-	}
-	oldRoom = newRoom
-	if oldType != newType && oldType != "init" && newType != "init" {
-		return fmt.Errorf("FurnitureRenumberFull: mixed furniture types given, previous: %s, current: %s",
-			oldType, newType)
-	}
-	oldType = newType
-	return nil
+	return ff
 }

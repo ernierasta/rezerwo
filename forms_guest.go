@@ -112,14 +112,10 @@ func guestRenderTheme(w http.ResponseWriter, lang, theme string, vars interface{
 
 // isFormOwnerSession mówi, czy żądanie przyszło od admina tej organizacji.
 func isFormOwnerSession(r *http.Request, db *DB, cs *sessions.CookieStore, user User) bool {
-	if !isAdminSession(r, cs) {
+	email := sessionAdmin(r, cs)
+	if email == "" {
 		return false
 	}
-	session, err := cs.Get(r, AUTHCOOKIE)
-	if err != nil {
-		return false
-	}
-	email, _ := session.Values["email"].(string)
 	u, err := db.UserGetByEmail(email)
 	return err == nil && u.ID == user.ID
 }
@@ -357,10 +353,8 @@ func SendFormMails(db *DB, mailConf MailConfig, user User, templ FormTemplate, f
 		if err != nil {
 			log.Printf("SendFormMails: guest mail %d: %v", templ.NotificationID.Int64, err)
 		} else {
-			conf := mailConf
-			conf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
 			text, imgs := parseFormMailTemplate(name, surname, mail.Text, formID, user, templ, db)
-			if err := prepMailConfSendMail(form.Email.String, mail.Title.String, text, user, imgs, conf); err != nil {
+			if err := mailConf.SendAsOrg(user, form.Email.String, mail.Title.String, text, mail.Files(user), append(mail.Images(user), imgs...)); err != nil {
 				log.Printf("SendFormMails: guest mail: %v", err)
 			}
 		}
@@ -372,10 +366,8 @@ func SendFormMails(db *DB, mailConf MailConfig, user User, templ FormTemplate, f
 			log.Printf("SendFormMails: admin mail %d: %v", templ.AdminNotificationID.Int64, err)
 			return
 		}
-		conf := mailConf
-		conf.EmbededHTMLImgs = []EmbImg{}
 		text, imgs := parseFormMailTemplate(name, surname, makeSureIsHTML(mail.Text), formID, user, templ, db)
-		if err := prepMailConfSendMail(chooseEmail(user.Email, user.AltEmail.String), mail.Title.String, text, user, imgs, conf); err != nil {
+		if err := mailConf.SendAsOrg(user, chooseEmail(user.Email, user.AltEmail.String), mail.Title.String, text, mail.Files(user), append(mail.Images(user), imgs...)); err != nil {
 			log.Printf("SendFormMails: admin mail: %v", err)
 		}
 	}

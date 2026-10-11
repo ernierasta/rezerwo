@@ -5,81 +5,52 @@ import (
 	"testing"
 )
 
-// not unit test, this is integration test
-// to run it: invoke it like that:
-// MSERVER= MUSER= MPASS= MTO= go test
-
-var (
-	server                = os.ExpandEnv("$MSERVER")
-	user                  = os.ExpandEnv("$MUSER")
-	pass                  = os.ExpandEnv("$MPASS")
-	to                    = []string{os.ExpandEnv("$MTO")}
-	n, n2, n3, n4, n5, n6 MailConfig
-)
-
-func Init() {
-	t := testing.T{}
+// Integration test, sends real mails:
+// MSERVER= MUSER= MPASS= MTO= go test -run TestSendMail
+func TestSendMail(t *testing.T) {
+	server, user, pass, to := os.Getenv("MSERVER"), os.Getenv("MUSER"), os.Getenv("MPASS"), os.Getenv("MTO")
 	if server == "" {
-		t.Fatalf("you have to set enviroment vars, invoke it like this:\nMSERVER= MUSER= MPASS= MTO= go test\n")
+		t.Skip("set MSERVER, MUSER, MPASS and MTO to send test mails")
 	}
+	conf := MailConfig{Server: server, User: user, Pass: pass, Port: 587}
+	tls := conf
+	tls.Port = 465
 
-	n = MailConfig{
-		Server:  server,
-		User:    user,
-		Pass:    pass,
-		Port:    587,
-		To:      to,
+	plain := Mail{
 		From:    user,
+		To:      []string{to},
 		Subject: "GoTests: Test mail subject",
 		Text:    "Nice plain text body here.\n\nHave nice day!\nYours golang testing library",
 	}
-	n2 = n
-	n2.Port = 465
+	html := plain
+	html.Text = "<html><body><h1>Hi!</h1><p>This is HTML mail!<br></p><div>See You!<br>golang testing library</div></body></html>"
+	other := plain
+	other.From = "someone@difdom.com"
+	att := html
+	att.Files = []string{"mail_test.go"}
+	emb := att
+	emb.Text = `<html><body><img width=100 height=100 id="1" src="cid:logo.png"><b>Hi!</b><p>This is HTML mail with attachment and embed!<br></p></body></html>`
+	emb.Embedded = []string{"img/logo.png"}
 
-	n3 = n
-	n3.From = "someone@difdom.com"
-	n3.Sender = user
-	n3.ReplyTo = "someone@difdom.com"
-
-	n4 = n
-	n4.Text = "<html><body><h1>Hi!</h1><p>This is HTML mail!<br></p><div>See You!<br>golang testing library</div></body></html>"
-
-	n5 = n
-	n5.Text = "<html><body><b>Hi!</b><p>This is HTML mail with attachments!<br></p><div>See You!<br>golang testing library</div></body></html>"
-	n5.Files = []string{"mail_test.go"}
-
-	n6 = n
-	n6.Text = `<html><body><img width=100 height=100 id="1" src="cid:logo.png"><b>Hi!</b><p>This is HTML mail with attachment and embed!<br></p><div>See You!<br>golang testing library</div></body></html>`
-	n6.Files = []string{"mail_test.go"}
-	n6.EmbededHTMLImgs = []EmbImg{EmbImg{NamePath: "img/logo.png"}}
-}
-
-func TestSendMail(t *testing.T) {
-	Init()
-	type args struct {
-		n MailConfig
-	}
 	tests := []struct {
 		name    string
-		args    args
+		conf    MailConfig
+		mail    Mail
 		wantErr bool
 	}{
-		{"timeouting send", args{MailConfig{Server: "server.com", User: "a", Pass: "b", From: "a@a.a", To: []string{"to@a.a"}}}, true},
-		{"not existing srv", args{MailConfig{Server: "rntuylmj320n290n03k093km43209d2.com", User: "a", From: "a@a.a", Pass: "b", To: []string{"to"}}}, true},
-		{"simple submission send", args{n}, false},
-		{"simple tls send", args{n2}, false},
-		{"html mail", args{n4}, false},
-		{"send as someone else", args{n3}, false},
-		{"html mail with attachments", args{n5}, false},
-		{"html mail with attachment and embedded img", args{n6}, false},
+		{"timeouting send", MailConfig{Server: "server.com", User: "a", Pass: "b"}, Mail{From: "a@a.a", To: []string{"to@a.a"}}, true},
+		{"not existing srv", MailConfig{Server: "rntuylmj320n290n03k093km43209d2.com", User: "a", Pass: "b"}, Mail{From: "a@a.a", To: []string{"to"}}, true},
+		{"simple submission send", conf, plain, false},
+		{"simple tls send", tls, plain, false},
+		{"html mail", conf, html, false},
+		{"send as someone else", conf, other, false},
+		{"html mail with attachments", conf, att, false},
+		{"html mail with attachment and embedded img", conf, emb, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Log(tt.args.n)
-			if err := MailSend(tt.args.n); (err != nil) != tt.wantErr {
-				t.Errorf("MailSend() error = %v, wantErr %v", err, tt.wantErr)
-			} else {
-				t.Log(err)
+			if err := tt.conf.Send(tt.mail); (err != nil) != tt.wantErr {
+				t.Errorf("Send() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

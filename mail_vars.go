@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	htmltemplate "html/template"
 	"io"
 	"log"
@@ -171,7 +172,6 @@ func orderFuncsFromOrder(o Order, db *DB, user User) *OrderFuncs {
 		Prices:      o.Prices,
 		Rooms:       o.Rooms,
 		Email:       o.Email,
-		Password:    o.Password,
 		Name:        o.Name,
 		Surname:     o.Surname,
 		Phone:       o.Phone,
@@ -384,14 +384,95 @@ func MailTestAPI(db *DB, mailConf MailConfig, cs *sessions.CookieStore) func(w h
 			return
 		}
 
-		mailConf.Files = append(getAttachments(mail.AttachedFilesDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT), of.AttachedFiles...)
-		mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
-		html := "<html><head><style>p {margin:0;}</style></head>" + text + "</html>"
-		if err := prepMailConfSendMail(user.Email, fmt.Sprintf("[%s] %s", T(lang, "mail.test_tag"), subject), html, user, of.EmbeddedImgs, mailConf); err != nil {
+		if err := mailConf.SendAsOrg(user, user.Email, fmt.Sprintf("[%s] %s", T(lang, "mail.test_tag"), subject),
+			mailHTMLHead+text+"</html>", append(mail.Files(user), of.AttachedFiles...),
+			append(mail.Images(user), of.EmbeddedImgs...)); err != nil {
 			log.Printf("MailTestAPI: %v", err)
 			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 			return
 		}
 		jsonMsg(w, http.StatusOK, map[string]string{"msg": "sent", "to": user.Email})
 	}
+}
+
+type OrderFuncs struct {
+	EventID             int64
+	EventName           string
+	EventDate           string
+	TotalPrice          string
+	Sits, Rooms, Prices string
+	SitsL, PricesL      []int
+	RoomsL              []string
+	Email               string
+	Password            string
+	Name, Surname       string
+	Phone, Notes        string
+
+	DB            *DB
+	User          User
+	NameSurname   string
+	EmbeddedImgs  []string // obrazki cid: (QR) do dołączenia
+	AttachedFiles []string // bilety PDF
+
+	// Preview - podgląd w edytorze maila: kod QR jako zwykły obrazek,
+	// bez generowania biletów PDF (zaznaczamy tylko, że byłyby w załączniku)
+	Preview     bool
+	PDFAttached bool
+
+	// Lang - język etykiet w danych do przelewu (.PayInfo), język imprezy
+	Lang string
+
+	// payPrefix - początek wiadomości dla odbiorcy z imprezy (complete)
+	payPrefix string
+}
+
+// qr generuje kod QR płatności za zamówienie
+func (o *OrderFuncs) qr(accountName string) (string, string) {
+	am := o.TotalPrice
+	if ss := strings.Split(am, " "); len(ss) == 2 { // "500 Kč"
+		am = ss[0]
+	}
+	return qrPayImage(o.DB, o.User, accountName, "_"+o.NameSurname, am, payMessage(o.payPrefix, o.NameSurname))
+}
+
+func (o *OrderFuncs) QRPay(accountName string) template.HTML {
+	_, p := o.qr(accountName)
+	return qrImgHTML(p)
+}
+
+func (o *OrderFuncs) QRPayMail(accountName string) template.HTML {
+	if o.Preview {
+		// w podglądzie szablonu konto może być jeszcze niewybrane
+		if _, err := o.DB.BankAccountGetByName(accountName, o.User.ID); err != nil {
+			return template.HTML(`<span style="display:inline-block;width:150px;height:150px;border:2px dashed #b9c3cf;color:#6e7885;text-align:center;line-height:150px">QR</span>`)
+		}
+		return o.QRPay(accountName)
+	}
+	name, p := o.qr(accountName)
+	return embedImg(&o.EmbeddedImgs, name, p)
+}
+
+// PDF generates and attaches generated pdf files
+func (o *OrderFuncs) PDF(info string) template.HTML {
+	o.PDFAttached = true
+	if o.Preview {
+		return template.HTML("")
+	}
+	p := &TicketParams{
+		UserName:         o.User.Organization.String,
+		UserURL:          o.User.URL,
+		EventName:        o.EventName,
+		EventDescription: info,
+		SeatNrs:          o.SitsL,
+		Rooms:            o.RoomsL,
+		Lang:             KnownLang(o.Lang),
+	}
+
+	attFiles, err := GenerateTicketsPDF(p)
+	if err != nil {
+		log.Printf("OrderFuncs-PDF: problem generating pdf ticket, %v", err)
+	}
+
+	o.AttachedFiles = append(o.AttachedFiles, attFiles...)
+	return template.HTML("")
 }

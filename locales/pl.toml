@@ -131,6 +131,12 @@ seats_taken_text = "Ktoś był szybszy albo miejsca są zablokowane przez innego
 done_title = "Dziękujemy za zamówienie!"
 done_text = "Potwierdzenie wysłaliśmy na podany adres e-mail."
 done_pay = "Prosimy o wpłatę:"
+err_save_title = "Nie można zapisać zamówienia!"
+err_save = "Wystąpił błąd, nie można zapisać danych zamawiającego, tym samym również zamówienia. Kontakt: admin (at) zori.cz."
+err_expired_title = "Zamówienie wygasło!"
+err_expired = "Zamówienie wygasło (wygasa po 5 minutach od kliknięcia na \"Zamów\"). Należy na nowo wybrać krzesła i ponowić zamówienie."
+err_status_title = "Nie można zmienić statusu zamówienia!"
+err_status = "Wystąpił problem ze zmianą statusu zamówienia, przepraszamy za kłopot i prosimy o informację na mail: admin (at) zori.cz. Prosimy o przesłanie info: email zamawiającego, numery zamawianych siedzeń, nazwa sali/imprezy."
 
 [guest]
 free_seats = "wolne miejsca"
@@ -867,3 +873,6 @@ money = "kwota"
 nobody = "Nikt z pokazanych odpowiedzi nie widział tego pola."
 empty_view = "Brak odpowiedzi w tym widoku."
 common_opts = "przy każdym wyborze"
+
+[pdf]
+seat = "MIEJSCE %d"

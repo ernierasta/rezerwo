@@ -10,7 +10,6 @@ import (
 
 	"github.com/yeqown/go-qrcode/v2"
 	"github.com/yeqown/go-qrcode/writer/standard"
-	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -147,13 +146,4 @@ func RemoveDiacritics(s string) string {
 	result = strings.Replace(result, "ł", "l", -1)
 	result = strings.Replace(result, "Ł", "L", -1)
 	return result
-}
-
-func EncodeToISO8859_1(s string) ([]byte, error) {
-	encoder := charmap.ISO8859_1.NewEncoder()
-	out, err := encoder.Bytes([]byte(s))
-	if err != nil {
-		return out, err
-	}
-	return out, nil
 }

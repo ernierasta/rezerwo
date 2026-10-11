@@ -20,10 +20,7 @@ type nDesignerVars struct {
 	NPage
 	Room    Room
 	EventID int64
-	Tables  []Furniture
-	Chairs  []FurnitureFull
-	Objects []Furniture
-	Labels  []Furniture
+	roomPlan
 
 	// kolejne wolne numery dla nowych mebli
 	TableNr, ChairNr, ObjectNr, LabelNr int64
@@ -44,7 +41,7 @@ func RoomDesignerPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		vars := mux.Vars(r)
 
 		roomID, err := strconv.ParseInt(vars["roomid"], 10, 64)
-		if err != nil || !userOwnsRoom(db, user.Email, roomID) {
+		if err != nil || !userOwnsRoom(db, user.ID, roomID) {
 			log.Printf("RoomDesignerPage: user %q, room %q: not found or not owned", user.Email, vars["roomid"])
 			http.NotFound(w, r)
 			return
@@ -69,19 +66,20 @@ func RoomDesignerPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			eventID = nearestEventID(db, user.ID)
 		}
 
-		p := GetPageVarsFromDB(db, roomID, eventID)
+		room, err := db.RoomGetByID(roomID)
+		if err != nil {
+			log.Printf("RoomDesignerPage: room %d: %v", roomID, err)
+		}
+		p := roomFurnitures(db, room.Name, eventID)
 		v := nDesignerVars{
-			NPage:     NPage{Title: p.Room.Name, Crumb: p.Room.Name, OrgName: orgName(user)},
-			Room:      p.Room,
+			NPage:     NPage{Title: room.Name, Crumb: room.Name, OrgName: orgName(user)},
+			Room:      room,
 			EventID:   eventID,
-			Tables:    p.Tables,
-			Chairs:    p.Chairs,
-			Objects:   p.Objects,
-			Labels:    p.Labels,
-			TableNr:   TableNr(p.Tables) + 1,
-			ChairNr:   ChairNrFull(p.Chairs) + 1,
-			ObjectNr:  ObjectNr(p.Objects) + 1,
-			LabelNr:   LabelNr(p.Labels) + 1,
+			roomPlan:  p,
+			TableNr:   maxNr(p.Tables) + 1,
+			ChairNr:   maxNr(p.Chairs) + 1,
+			ObjectNr:  maxNr(p.Objects) + 1,
+			LabelNr:   maxNr(p.Labels) + 1,
 			Seats:     len(p.Chairs),
 			Back:      back,
 			BackLabel: backLabel,

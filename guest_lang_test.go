@@ -68,8 +68,8 @@ func newGuestFixture(t *testing.T) *guestFixture {
 
 	cs := sessions.NewCookieStore([]byte("0123456789abcdef0123456789abcdef"))
 	f.router = mux.NewRouter()
-	f.router.HandleFunc("/res/{user}", GuestReservationPage(db, DEFAULTLANG, cs))
-	f.router.HandleFunc("/order", GuestOrderPage(db, DEFAULTLANG))
+	f.router.HandleFunc("/res/{user}", GuestReservationPage(db, cs))
+	f.router.HandleFunc("/order", GuestOrderPage(db))
 	f.router.HandleFunc("/form/{userurl}/{formurl}", GuestFormPage(db, cs))
 	return f
 }

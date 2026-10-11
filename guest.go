@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -61,15 +62,7 @@ type nGuestVars struct {
 // przekierowań, bo na stronie gościa nie chcemy nikogo nigdzie wysyłać.
 // Służy tylko do podglądu szkiców imprez z panelu.
 func isAdminSession(r *http.Request, cs *sessions.CookieStore) bool {
-	if cs == nil {
-		return false
-	}
-	session, err := cs.Get(r, AUTHCOOKIE)
-	if err != nil {
-		return false
-	}
-	role, _ := session.Values["role"].(string)
-	return role == "admin"
+	return sessionAdmin(r, cs) != ""
 }
 
 // orgLang to język strony organizacji, gdy nie ma otwartej imprezy:
@@ -92,8 +85,9 @@ func orgLang(db *DB, userID int64, fallback string) string {
 }
 
 // GuestReservationPage - /res/{user}
-func GuestReservationPage(db *DB, lang string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+func GuestReservationPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		lang := DEFAULTLANG // organizacja nieznana albo bez imprez
 		userURL := mux.Vars(r)["user"]
 		user, err := db.UserGetByURL(userURL)
 		if err != nil {
@@ -295,4 +289,24 @@ func tableOfChair(chair svgFurniture, tables []svgFurniture) int64 {
 		}
 	}
 	return best
+}
+
+// TODO: add support for multiple active events
+func EventGetCurrent(db *DB, userID int64) (Event, error) {
+	events, err := db.EventGetAllByUserID(userID)
+	if err != nil {
+		return Event{}, err
+	}
+	now := time.Now().Unix()
+	for i := range events {
+		// szkice nie są widoczne dla gości
+		if events[i].Status.String == "draft" {
+			continue
+		}
+		// return first active user event
+		if events[i].FromDate < now && events[i].ToDate > now {
+			return events[i], nil
+		}
+	}
+	return Event{}, fmt.Errorf("no active event found for userID: %d", userID)
 }

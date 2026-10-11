@@ -7,11 +7,11 @@ import (
 
 func TestCleanLabel(t *testing.T) {
 	cases := map[string]string{
-		`Klasa (<b>zaznacz</b>) `:                                  `Klasa (<b>zaznacz</b>)`,
+		`Klasa (<b>zaznacz</b>) `:                                   `Klasa (<b>zaznacz</b>)`,
 		`<span style="font-weight: bolder;">godz. 17:00</span><br>`: `godz. 17:00`,
-		`&lt;b&gt;Większość&lt;/b&gt;`:                             `<b>Większość</b>`,
-		`Dar<br>(Kč)&nbsp;`:                                        `Dar<br>(Kč)`,
-		`<script>alert(1)</script>Tekst`:                           `Tekst`,
+		`&lt;b&gt;Większość&lt;/b&gt;`:                              `<b>Większość</b>`,
+		`Dar<br>(Kč)&nbsp;`:                                         `Dar<br>(Kč)`,
+		`<script>alert(1)</script>Tekst`:                            `Tekst`,
 	}
 	for in, want := range cases {
 		if got := CleanLabel(in); got != want {

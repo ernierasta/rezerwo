@@ -237,7 +237,7 @@ func reservedUnder(db *DB, m DeleteMsg) (int64, string, error) {
 
 // buildSVGRoom przelicza meble sali na elementy SVG.
 func buildSVGRoom(db *DB, room Room, event Event) svgRoom {
-	rv := GetFurnituresFromDB(db, room.Name, event.ID)
+	rv := roomFurnitures(db, room.Name, event.ID)
 
 	out := svgRoom{
 		RoomID: room.ID,

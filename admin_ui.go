@@ -35,9 +35,9 @@ type NPage struct {
 
 // adminUser sprawdza sesję i zwraca organizację zalogowanego admina.
 func adminUser(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore) (User, bool) {
-	_, _, email, err := InitSession(w, r, cs, "/admin/login", true)
-	if err != nil {
-		log.Printf("admin_ui: session: %v", err)
+	email := sessionAdmin(r, cs)
+	if email == "" {
+		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 		return User{}, false
 	}
 	user, err := db.UserGetByEmail(email)
@@ -1195,7 +1195,7 @@ type nSectionResp struct {
 }
 
 // EventSectionSave zapisuje jedną sekcję strony imprezy: POST /api/events/{id}/section
-func EventSectionSave(db *DB, loc *time.Location, dF string, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			jsonMsg(w, http.StatusMethodNotAllowed, nSectionResp{Msg: "POST only"})
@@ -1250,7 +1250,7 @@ func EventSectionSave(db *DB, loc *time.Location, dF string, cs *sessions.Cookie
 			if s == "" {
 				return 0
 			}
-			u, err := ToUnix(s, loc, dF)
+			u, err := ToUnix(s)
 			if err != nil {
 				log.Printf("EventSectionSave: date %q: %v", s, err)
 				return 0
@@ -1517,4 +1517,15 @@ func seatsText(rooms []string, seats map[string][]int64) string {
 		parts = append(parts, room+": "+strings.Join(runs, ", "))
 	}
 	return strings.Join(parts, "; ")
+}
+
+func getRoomsString(rr []Room) string {
+	if len(rr) == 0 {
+		return ""
+	}
+	var s string
+	for i := range rr {
+		s += fmt.Sprintf("%d,", rr[i].ID)
+	}
+	return s[:len(s)-1]
 }

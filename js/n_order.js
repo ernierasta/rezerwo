@@ -94,6 +94,10 @@
     if (first) {
       e.preventDefault();
       first.focus();
+    } else if (form.dataset.sent) {
+      e.preventDefault(); // drugie kliknięcie: miejsca są już zamawiane
+    } else {
+      form.dataset.sent = '1';
     }
   });
 

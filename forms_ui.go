@@ -770,11 +770,9 @@ func sendFormAnswerMail(db *DB, mailConf MailConfig, user User, templ FormTempla
 		return fmt.Errorf("answer %d has no e-mail", form.ID)
 	}
 
-	mailConf.EmbededHTMLImgs = getEmbeddedImgs(mail.EmbeddedImgsDelimited.String, user.URL, MEDIAEMAILSUBDIR, MEDIAROOT)
 	parsedText, embImgs := parseFormMailTemplate(form.Name.String, form.Surname.String,
 		makeSureIsHTML(mail.Text), form.ID, user, templ, db)
-
-	if err := prepMailConfSendMail(form.Email.String, mail.Title.String, parsedText, user, embImgs, mailConf); err != nil {
+	if err := mailConf.SendAsOrg(user, form.Email.String, mail.Title.String, parsedText, mail.Files(user), append(mail.Images(user), embImgs...)); err != nil {
 		return err
 	}
 

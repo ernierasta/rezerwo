@@ -129,6 +129,12 @@ seats_taken_text = "Someone was faster, or the seats are held by another guest. 
 done_title = "Thank you for your order!"
 done_text = "We have sent a confirmation to your e-mail address."
 done_pay = "Please pay to:"
+err_save_title = "Error saving order"
+err_save = "Can not save customer data. Contact: admin (at) zori.cz."
+err_expired_title = "Order time ended."
+err_expired = "Order timed out. Please select chairs again and make new order."
+err_status_title = "Error changing order status."
+err_status = "Order status can not be changed. Contact: admin (at) zori.cz"
 
 [guest]
 free_seats = "free seats"
@@ -858,3 +864,6 @@ money = "amount"
 nobody = "None of the shown answers saw this field."
 empty_view = "No answers in this view."
 common_opts = "for any choice"
+
+[pdf]
+seat = "SEAT %d"

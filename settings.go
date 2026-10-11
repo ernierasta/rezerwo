@@ -8,19 +8,16 @@ import (
 )
 
 type Settings struct {
-	Location                string
 	AuthenticationKeyBase64 string `toml:"AuthenticationKey"`
 	AuthenticationKey       []byte
 	EncryptionKeyBase64     string `toml:"EncryptionKey"`
 	EncryptionKey           []byte
-	DBFile                  string
 	MailFrom                string
 	MailUser                string
 	MailPass                string
 	MailServer              string
 	MailPort                int64
 	MailIgnoreCert          bool
-	MailHostname            string
 }
 
 func SettingsNew() *Settings {
@@ -47,7 +44,7 @@ func (s *Settings) Read(f string) {
 	if s.AuthenticationKey, err = base64.StdEncoding.DecodeString(s.AuthenticationKeyBase64); err != nil {
 		log.Fatal(err)
 	}
-	if s.AuthenticationKey, err = base64.StdEncoding.DecodeString(s.AuthenticationKeyBase64); err != nil {
+	if s.EncryptionKey, err = base64.StdEncoding.DecodeString(s.EncryptionKeyBase64); err != nil {
 		log.Fatal(err)
 	}
 }

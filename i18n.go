@@ -230,20 +230,6 @@ func LocalesJSONHandler() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// PanelLangFor zwraca język panelu dla zalogowanego admina: najpierw ciasteczko
-// (ustawione przy wyborze języka), potem ustawienie z konta, na końcu przeglądarka.
-func PanelLangFor(db *DB, r *http.Request, email string) string {
-	if c, err := r.Cookie(PANELLANGCOOKIE); err == nil && c.Value != "" {
-		return KnownLang(c.Value)
-	}
-	if db != nil && email != "" {
-		if lang, err := db.AdminGetLanguage(email); err == nil && lang != "" {
-			return KnownLang(lang)
-		}
-	}
-	return PanelLang(r)
-}
-
 // PanelLang zwraca język panelu admina: ciasteczko, potem Accept-Language, potem pl.
 func PanelLang(r *http.Request) string {
 	if c, err := r.Cookie(PANELLANGCOOKIE); err == nil && c.Value != "" {
@@ -298,13 +284,9 @@ func SetPanelLangHandler(db *DB, cs *sessions.CookieStore) func(w http.ResponseW
 	return func(w http.ResponseWriter, r *http.Request) {
 		lang := KnownLang(r.URL.Query().Get("l"))
 
-		if cs != nil && db != nil {
-			if session, err := cs.Get(r, AUTHCOOKIE); err == nil {
-				if email, ok := session.Values["email"].(string); ok && email != "" {
-					if err := db.AdminSetLanguage(email, lang); err != nil {
-						log.Printf("SetPanelLangHandler: saving language for %q: %v", email, err)
-					}
-				}
+		if email := sessionAdmin(r, cs); email != "" && db != nil {
+			if err := db.AdminSetLanguage(email, lang); err != nil {
+				log.Printf("SetPanelLangHandler: saving language for %q: %v", email, err)
 			}
 		}
 		SetPanelLangCookie(w, lang)
@@ -315,10 +297,4 @@ func SetPanelLangHandler(db *DB, cs *sessions.CookieStore) func(w http.ResponseW
 		}
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	}
-}
-
-// localeFileExists - drobna pomoc przy starcie (jasny komunikat zamiast pustych stron).
-func localesDirExists() bool {
-	st, err := os.Stat(LOCALESDIR)
-	return err == nil && st.IsDir()
 }

@@ -144,3 +144,44 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 		jsonMsg(w, http.StatusOK, map[string]string{"resp": "OK"})
 	}
 }
+
+func AdminLoginHTML() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		lng := PanelLang(r)
+		guestRender(w, lng, struct{ Title string }{T(lng, "login.title")}, "tmpl/n_login.html")
+	}
+}
+
+// AdminLogout removes admin session cookie and redirects to login page
+func AdminLogout(cookieStore *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := cookieStore.Get(r, AUTHCOOKIE)
+		if err != nil {
+			// invalid cookie, new session is returned, we still overwrite the cookie
+			log.Printf("AdminLogout: session error: %v", err)
+		}
+		session.Values = map[interface{}]interface{}{}
+		session.Options.MaxAge = -1
+		if err := session.Save(r, w); err != nil {
+			log.Printf("AdminLogout: can not remove session, err: %v", err)
+		}
+		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+	}
+}
+
+// sessionAdmin zwraca e-mail admina z ważnej sesji albo "" - bez
+// przekierowań (stare albo zepsute ciasteczko to po prostu brak sesji).
+func sessionAdmin(r *http.Request, cs *sessions.CookieStore) string {
+	if cs == nil {
+		return ""
+	}
+	session, err := cs.Get(r, AUTHCOOKIE)
+	if err != nil {
+		return ""
+	}
+	if role, _ := session.Values["role"].(string); role != "admin" {
+		return ""
+	}
+	email, _ := session.Values["email"].(string)
+	return email
+}

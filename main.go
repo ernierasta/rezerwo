@@ -34,9 +34,7 @@ func main() {
 	defer db.Close()
 	HashPlainPasswords(db)
 
-	stop := make(chan bool)
-	Ticker5min(db, stop)
-	defer TickerStop(stop)
+	StartMarkedCleanup(db)
 
 	if err := LoadLocales(); err != nil {
 		log.Fatalf("can not load interface translations: %v", err)

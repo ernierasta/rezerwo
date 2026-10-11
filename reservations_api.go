@@ -94,21 +94,23 @@ type nResNotifOpt struct {
 
 // adminEvent sprawdza sesję i to, że impreza {id} należy do organizacji admina.
 func adminEvent(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore) (User, Event, bool) {
-	user, ok := adminUser(w, r, db, cs)
-	if !ok {
-		return User{}, Event{}, false
+	return adminOwned(w, r, db, cs, false, "event", ownEvent(db))
+}
+
+// adminEventHTML to adminEvent dla stron HTML (błędy jako strona, nie JSON).
+func adminEventHTML(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore) (User, Event, bool) {
+	return adminOwned(w, r, db, cs, true, "event", ownEvent(db))
+}
+
+// ownEvent - impreza organizacji (cudza = błąd)
+func ownEvent(db *DB) func(id int64, u User) (Event, error) {
+	return func(id int64, u User) (Event, error) {
+		e, err := db.EventGetByID(id)
+		if err == nil && e.UserID != u.ID {
+			err = fmt.Errorf("event %d belongs to user %d", id, e.UserID)
+		}
+		return e, err
 	}
-	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
-	if err != nil {
-		jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": "bad event id"})
-		return User{}, Event{}, false
-	}
-	event, err := db.EventGetByID(id)
-	if err != nil || event.UserID != user.ID {
-		jsonMsg(w, http.StatusNotFound, map[string]string{"msg": "event not found"})
-		return User{}, Event{}, false
-	}
-	return user, event, true
 }
 
 func reservationRows(db *DB, user User, event Event) []nResJSON {
@@ -784,23 +786,4 @@ func ReservationsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		}
 		nRender(w, lang, vars, "tmpl/n_reservations.html")
 	}
-}
-
-// adminEventHTML to adminEvent dla stron HTML (błędy jako strona, nie JSON).
-func adminEventHTML(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore) (User, Event, bool) {
-	user, ok := adminUser(w, r, db, cs)
-	if !ok {
-		return User{}, Event{}, false
-	}
-	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
-	if err != nil {
-		http.NotFound(w, r)
-		return User{}, Event{}, false
-	}
-	event, err := db.EventGetByID(id)
-	if err != nil || event.UserID != user.ID {
-		http.NotFound(w, r)
-		return User{}, Event{}, false
-	}
-	return user, event, true
 }

@@ -701,7 +701,6 @@
     noNativeTips: noNativeTips,
     accordion: accordion,
     draft: draft,
-    applyValues: applyValues,
     draftNotice: draftNotice,
     editorDOM: editorDOM,
     quillModules: quillModules,

@@ -179,16 +179,7 @@ func GuestReservationPage(db *DB, cs *sessions.CookieStore) func(w http.Response
 		}
 		vars.SoldOut = total > 0 && free == 0
 
-		t, err := template.New("n_reservation.html").Funcs(GuestFuncs(lng, event.Theme.String)).
-			ParseFiles("tmpl/n_reservation.html", "tmpl/n_guest_base.html")
-		if err != nil {
-			log.Printf("GuestReservationPage: template parse: %v", err)
-			http.Error(w, "template error", http.StatusInternalServerError)
-			return
-		}
-		if err := t.ExecuteTemplate(w, "base", vars); err != nil {
-			log.Printf("GuestReservationPage: template exec: %v", err)
-		}
+		guestRenderTheme(w, lng, event.Theme.String, vars, "tmpl/n_reservation.html")
 	}
 }
 

@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )
 
@@ -117,29 +116,9 @@ func upLink(r *http.Request, db *DB, user User, lang string) (string, string) {
 }
 
 func adminMail(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore, htmlErrors bool) (User, Notification, bool) {
-	user, ok := adminUser(w, r, db, cs)
-	if !ok {
-		return User{}, Notification{}, false
-	}
-	fail := func(status int, msg string) {
-		if htmlErrors {
-			http.NotFound(w, r)
-			return
-		}
-		jsonMsg(w, status, map[string]string{"msg": msg})
-	}
-
-	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
-	if err != nil {
-		fail(http.StatusBadRequest, "bad mail id")
-		return User{}, Notification{}, false
-	}
-	mail, err := db.NotificationGetByID(id, user.ID)
-	if err != nil {
-		fail(http.StatusNotFound, "mail not found")
-		return User{}, Notification{}, false
-	}
-	return user, mail, true
+	return adminOwned(w, r, db, cs, htmlErrors, "mail", func(id int64, u User) (Notification, error) {
+		return db.NotificationGetByID(id, u.ID)
+	})
 }
 
 // mailUsedBy mówi, które imprezy i formularze używają tego maila.
@@ -320,29 +299,9 @@ func AccountPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 }
 
 func adminAccount(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore, htmlErrors bool) (User, BankAccount, bool) {
-	user, ok := adminUser(w, r, db, cs)
-	if !ok {
-		return User{}, BankAccount{}, false
-	}
-	fail := func(status int, msg string) {
-		if htmlErrors {
-			http.NotFound(w, r)
-			return
-		}
-		jsonMsg(w, status, map[string]string{"msg": msg})
-	}
-
-	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
-	if err != nil {
-		fail(http.StatusBadRequest, "bad account id")
-		return User{}, BankAccount{}, false
-	}
-	acc, err := db.BankAccountGetByID(id, user.ID)
-	if err != nil {
-		fail(http.StatusNotFound, "account not found")
-		return User{}, BankAccount{}, false
-	}
-	return user, acc, true
+	return adminOwned(w, r, db, cs, htmlErrors, "account", func(id int64, u User) (BankAccount, error) {
+		return db.BankAccountGetByID(id, u.ID)
+	})
 }
 
 func accountUsedBy(db *DB, user User, accID int64) []string {

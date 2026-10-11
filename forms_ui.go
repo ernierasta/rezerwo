@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/microcosm-cc/bluemonday"
 )
@@ -26,29 +25,9 @@ import (
 // --- dostęp ----------------------------------------------------------------
 
 func adminFormTemplate(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore, htmlErrors bool) (User, FormTemplate, bool) {
-	fail := func(status int, msg string) {
-		if htmlErrors {
-			http.NotFound(w, r)
-			return
-		}
-		jsonMsg(w, status, map[string]string{"msg": msg})
-	}
-
-	user, ok := adminUser(w, r, db, cs)
-	if !ok {
-		return User{}, FormTemplate{}, false
-	}
-	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
-	if err != nil {
-		fail(http.StatusBadRequest, "bad form id")
-		return User{}, FormTemplate{}, false
-	}
-	templ, err := db.FormTemplateGetByID(id, user.ID)
-	if err != nil {
-		fail(http.StatusNotFound, "form not found")
-		return User{}, FormTemplate{}, false
-	}
-	return user, templ, true
+	return adminOwned(w, r, db, cs, htmlErrors, "form", func(id int64, u User) (FormTemplate, error) {
+		return db.FormTemplateGetByID(id, u.ID)
+	})
 }
 
 // --- strona formularza -----------------------------------------------------

@@ -49,6 +49,36 @@ func adminUser(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.Cook
 	return user, true
 }
 
+// adminOwned sprawdza sesję i wczytuje obiekt {id} z adresu, o ile należy do
+// organizacji admina (get zwraca błąd dla cudzego albo nieistniejącego).
+// Błędy: html - strona 404, inaczej JSON {"msg": ...}.
+func adminOwned[T any](w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore, html bool, what string, get func(id int64, user User) (T, error)) (User, T, bool) {
+	var zero T
+	user, ok := adminUser(w, r, db, cs)
+	if !ok {
+		return User{}, zero, false
+	}
+	fail := func(status int, msg string) {
+		if html {
+			http.NotFound(w, r)
+			return
+		}
+		jsonMsg(w, status, map[string]string{"msg": msg})
+	}
+	id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	if err != nil {
+		fail(http.StatusBadRequest, "bad "+what+" id")
+		return User{}, zero, false
+	}
+	v, err := get(id, user)
+	if err != nil {
+		log.Printf("%s %d of user %d: %v", what, id, user.ID, err)
+		fail(http.StatusNotFound, what+" not found")
+		return User{}, zero, false
+	}
+	return user, v, true
+}
+
 // nTemplate parsuje szablon strony razem z nowym layoutem i funkcjami języka.
 func nTemplate(lang string, files ...string) (*template.Template, error) {
 	all := append([]string{}, files...)
@@ -583,24 +613,11 @@ type nReportRow struct {
 // EventPage - strona jednej imprezy: /admin/events/{id}
 func EventPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user, ok := adminUser(w, r, db, cs)
+		user, event, ok := adminEventHTML(w, r, db, cs)
 		if !ok {
 			return
 		}
 		lang := PanelLang(r)
-
-		id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		event, err := db.EventGetByID(id)
-		if err != nil || event.UserID != user.ID {
-			log.Printf("EventPage: event %d not found for user %d: %v", id, user.ID, err)
-			http.NotFound(w, r)
-			return
-		}
-
 		vars := buildEventVars(db, user, event, lang)
 		nRender(w, lang, vars, "tmpl/n_event.html")
 	}
@@ -1201,22 +1218,11 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			jsonMsg(w, http.StatusMethodNotAllowed, nSectionResp{Msg: "POST only"})
 			return
 		}
-		user, ok := adminUser(w, r, db, cs)
+		user, event, ok := adminEvent(w, r, db, cs)
 		if !ok {
 			return
 		}
 		lang := PanelLang(r)
-
-		id, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
-		if err != nil {
-			jsonMsg(w, http.StatusBadRequest, nSectionResp{Msg: "bad event id"})
-			return
-		}
-		event, err := db.EventGetByID(id)
-		if err != nil || event.UserID != user.ID {
-			jsonMsg(w, http.StatusNotFound, nSectionResp{Msg: "event not found"})
-			return
-		}
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {

@@ -5,37 +5,28 @@ import (
 	"time"
 )
 
-func Ticker5min(db *DB, stop chan bool) {
-	ticker := time.NewTicker(1 * time.Minute)
-
+// StartMarkedCleanup co minutę zdejmuje blokady miejsc z kroku /order
+// (status "marked"), których gość nie potwierdził w ciągu MARKEDMINUTES.
+func StartMarkedCleanup(db *DB) {
 	go func() {
-		for {
-			select {
-			case <-stop:
-				return
-			case t := <-ticker.C:
-				_ = t
-				RemoveStalledOrders(db)
-			}
+		for range time.Tick(time.Minute) {
+			RemoveStalledOrders(db)
 		}
 	}()
-}
-
-func TickerStop(stop chan bool) {
-	stop <- true
 }
 
 func RemoveStalledOrders(db *DB) {
 	rr, err := db.ReservationGetAllInStatus("marked")
 	if err != nil {
-		log.Println(err)
+		log.Printf("RemoveStalledOrders: %v", err)
+		return
 	}
-
-	now := time.Now().Unix()
-	fiveM := int64((5 * time.Minute).Seconds())
-	for i := range rr {
-		if rr[i].CustomerID == -1 && now > rr[i].OrderedDate.Int64+fiveM {
-			db.ReservationDel(rr[i].ID)
+	limit := time.Now().Add(-MARKEDMINUTES * time.Minute).Unix()
+	for _, r := range rr {
+		if r.CustomerID == -1 && r.OrderedDate.Int64 < limit {
+			if err := db.ReservationDel(r.ID); err != nil {
+				log.Printf("RemoveStalledOrders: reservation %d: %v", r.ID, err)
+			}
 		}
 	}
 }

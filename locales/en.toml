@@ -85,6 +85,22 @@ thankyou_name = "Name of the guest mail copy"
 admin_name = "Name of the board mail copy"
 submit = "Copy"
 
+[copy.err]
+pick = "Choose the event to copy."
+source = "The event to copy was not found."
+bad_data = "Invalid data."
+name = "Enter the name of the new event."
+date = "Enter a valid event date."
+from_date = "Enter a valid reservation start date."
+from_after = "Reservation must start before the event date."
+exists = "An event named “%s” already exists, choose another name."
+room = "Room %d not found."
+room_twice = "Room %d is assigned twice."
+mail_names = "Enter names of the copied e-mails."
+mail = "Could not copy e-mail “%s”."
+save = "Could not save the event."
+partial = "Event “%s” was created, but there were errors:\n%s"
+
 [event]
 draft = "draft"
 selling = "on sale"

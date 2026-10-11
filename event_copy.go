@@ -39,10 +39,10 @@ type EventCopyInfo struct {
 func eventCopyGetSource(db *DB, eventID int64, user User) (Event, error) {
 	ev, err := db.EventGetByID(eventID)
 	if err != nil {
-		return ev, fmt.Errorf("nie znaleziono imprezy %d: %v", eventID, err)
+		return ev, fmt.Errorf("event %d: %v", eventID, err)
 	}
 	if ev.UserID != user.ID && !(ev.Sharable.Valid && ev.Sharable.Bool) {
-		return ev, fmt.Errorf("impreza %d nie należy do użytkownika", eventID)
+		return ev, fmt.Errorf("event %d belongs to user %d", eventID, ev.UserID)
 	}
 	return ev, nil
 }
@@ -54,15 +54,16 @@ func EventCopyInfoAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		if !ok {
 			return
 		}
+		lang := PanelLang(r)
 		eventID, err := strconv.ParseInt(r.FormValue("event_id"), 10, 64)
 		if err != nil || eventID == 0 {
-			jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": "Wybierz imprezę do skopiowania."})
+			jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": T(lang, "copy.err.pick")})
 			return
 		}
 		ev, err := eventCopyGetSource(db, eventID, user)
 		if err != nil {
 			log.Printf("EventCopyInfoAPI: %v", err)
-			jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": err.Error()})
+			jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": T(lang, "copy.err.source")})
 			return
 		}
 
@@ -130,20 +131,21 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		if !ok {
 			return
 		}
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-
-		fail := func(format string, a ...interface{}) {
-			msg := fmt.Sprintf(format, a...)
-			log.Printf("EventCopyAPI: %s", msg)
+		lang := PanelLang(r)
+		// fail - komunikat dla admina (key z locales), why - szczegóły do logu
+		fail := func(why error, key string, a ...interface{}) {
+			msg := T(lang, key, a...)
+			log.Printf("EventCopyAPI: %s (%v)", msg, why)
 			jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": msg})
 		}
 
 		var m EventCopyMsg
 		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-			fail("Błędne dane: %v", err)
+			fail(err, "copy.err.bad_data")
 			return
 		}
 		m.Name = strings.TrimSpace(m.Name)
@@ -152,39 +154,39 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 
 		src, err := eventCopyGetSource(db, m.EventID, user)
 		if err != nil {
-			fail("%v", err)
+			fail(err, "copy.err.source")
 			return
 		}
 		if m.Name == "" {
-			fail("Podaj nazwę nowej imprezy.")
+			fail(nil, "copy.err.name")
 			return
 		}
 		date, err := ToUnix(m.Date)
 		if err != nil {
-			fail("Podaj poprawną datę imprezy.")
+			fail(err, "copy.err.date")
 			return
 		}
 		fromDate, err := ToUnix(m.FromDate)
 		if err != nil {
-			fail("Podaj poprawną datę początku rezerwacji.")
+			fail(err, "copy.err.from_date")
 			return
 		}
 		if fromDate > date {
-			fail("Początek rezerwacji musi być przed datą imprezy.")
+			fail(nil, "copy.err.from_after")
 			return
 		}
 		exists, err := db.EventNameExists(m.Name, user.ID)
 		if err != nil {
-			fail("Błąd bazy danych: %v", err)
+			fail(err, "copy.err.save")
 			return
 		}
 		if exists {
-			fail("Impreza o nazwie %q już istnieje, wybierz inną nazwę.", m.Name)
+			fail(nil, "copy.err.exists", m.Name)
 			return
 		}
 		srcRooms, err := db.EventGetRooms(src.ID)
 		if err != nil {
-			fail("Nie udało się pobrać pomieszczeń imprezy: %v", err)
+			fail(err, "copy.err.save")
 			return
 		}
 		srcRoomIDs := map[int64]bool{}
@@ -194,12 +196,12 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		seen := map[int64]bool{}
 		for _, rm := range m.Rooms {
 			if _, err := db.RoomGetByID(rm.RoomID); err != nil {
-				fail("Nie znaleziono pomieszczenia %d.", rm.RoomID)
+				fail(err, "copy.err.room", rm.RoomID)
 				return
 			}
 			if !rm.Copy {
 				if seen[rm.RoomID] {
-					fail("Pomieszczenie %d jest przypisane dwa razy.", rm.RoomID)
+					fail(nil, "copy.err.room_twice", rm.RoomID)
 					return
 				}
 				seen[rm.RoomID] = true
@@ -210,13 +212,10 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		copyNotif := func(id sql.NullInt64, name string) (sql.NullInt64, error) {
 			n, err := db.NotificationGetByIDUnsafe(id.Int64)
 			if err != nil {
-				return id, fmt.Errorf("nie znaleziono notyfikacji %d: %v", id.Int64, err)
+				return id, fmt.Errorf("notification %d: %v", id.Int64, err)
 			}
 			if n.UserID != user.ID && !n.Sharable {
-				return id, fmt.Errorf("notyfikacja %d nie należy do użytkownika", n.ID)
-			}
-			if name == "" {
-				return id, fmt.Errorf("podaj nazwę kopii notyfikacji %q", n.Name)
+				return id, fmt.Errorf("notification %d belongs to user %d", n.ID, n.UserID)
 			}
 			n.ID = 0
 			n.Name = name
@@ -226,7 +225,7 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 			n.UpdatedDate = sql.NullInt64{}
 			newID, err := db.NotificationAdd(&n)
 			if err != nil {
-				return id, fmt.Errorf("nie udało się skopiować notyfikacji %q: %v", name, err)
+				return id, fmt.Errorf("copy notification %q: %v", name, err)
 			}
 			return ToNI(newID), nil
 		}
@@ -246,13 +245,13 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		hasAdmin := src.AdminNotificationsID.Valid && src.AdminNotificationsID.Int64 != 0
 		if m.CopyNotifications {
 			if hasThankYou && m.ThankYouName == "" || hasAdmin && m.AdminName == "" {
-				fail("Podaj nazwy kopiowanych notyfikacji.")
+				fail(nil, "copy.err.mail_names")
 				return
 			}
 			if hasThankYou {
 				ev.ThankYouNotificationsID, err = copyNotif(src.ThankYouNotificationsID, m.ThankYouName)
 				if err != nil {
-					fail("%v", err)
+					fail(err, "copy.err.mail", m.ThankYouName)
 					return
 				}
 			}
@@ -262,7 +261,7 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 				} else {
 					ev.AdminNotificationsID, err = copyNotif(src.AdminNotificationsID, m.AdminName)
 					if err != nil {
-						fail("%v", err)
+						fail(err, "copy.err.mail", m.AdminName)
 						return
 					}
 				}
@@ -270,18 +269,16 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		}
 
 		newEventID, err := db.EventAdd(&ev)
-		if err == nil {
-			// kopia wie, z czego powstała - stąd porównanie sprzedaży edycji
-			if perr := db.EventSetPreviousEdition(newEventID, user.ID, ToNI(src.ID)); perr != nil {
-				log.Printf("EventCopyAPI: previous edition: %v", perr)
-			}
-			if terr := db.EventSetTheme(newEventID, user.ID, ThemeKey(src.Theme.String)); terr != nil {
-				log.Printf("EventCopyAPI: theme: %v", terr)
-			}
-		}
 		if err != nil {
-			fail("Nie udało się zapisać imprezy: %v", err)
+			fail(err, "copy.err.save")
 			return
+		}
+		// kopia wie, z czego powstała - stąd porównanie sprzedaży edycji
+		if err := db.EventSetPreviousEdition(newEventID, user.ID, ToNI(src.ID)); err != nil {
+			log.Printf("EventCopyAPI: previous edition: %v", err)
+		}
+		if err := db.EventSetTheme(newEventID, user.ID, ThemeKey(src.Theme.String)); err != nil {
+			log.Printf("EventCopyAPI: theme: %v", err)
 		}
 
 		// rooms + prices
@@ -313,7 +310,7 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		}
 
 		if len(problems) > 0 {
-			fail("Impreza %q została utworzona, ale wystąpiły błędy:\n%s", m.Name, strings.Join(problems, "\n"))
+			fail(nil, "copy.err.partial", m.Name, strings.Join(problems, "\n"))
 			return
 		}
 		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": fmt.Sprintf("copied event %d to %d", src.ID, newEventID), "event_id": newEventID})

@@ -85,6 +85,22 @@ thankyou_name = "Název kopie mailu pro hosta"
 admin_name = "Název kopie mailu pro výbor"
 submit = "Kopírovat"
 
+[copy.err]
+pick = "Vyberte akci ke zkopírování."
+source = "Akce ke zkopírování nebyla nalezena."
+bad_data = "Chybná data."
+name = "Zadejte název nové akce."
+date = "Zadejte správné datum akce."
+from_date = "Zadejte správné datum začátku rezervace."
+from_after = "Začátek rezervace musí být před datem akce."
+exists = "Akce s názvem „%s“ už existuje, zvolte jiný název."
+room = "Sál %d nebyl nalezen."
+room_twice = "Sál %d je přiřazen dvakrát."
+mail_names = "Zadejte názvy kopírovaných e-mailů."
+mail = "E-mail „%s“ se nepodařilo zkopírovat."
+save = "Akci se nepodařilo uložit."
+partial = "Akce „%s“ byla vytvořena, ale došlo k chybám:\n%s"
+
 [event]
 draft = "koncept"
 selling = "prodej běží"

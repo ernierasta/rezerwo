@@ -321,16 +321,18 @@ func SaveFormAnswers(db *DB, user User, templ FormTemplate, data []FormAnswersJs
 	if err != nil {
 		log.Printf("SaveFormAnswers: fields of %d: %v", templ.ID, err)
 	}
+	fieldIDs := map[string]int64{}
+	for _, f := range fields {
+		if _, dup := fieldIDs[f.Name]; !dup {
+			fieldIDs[f.Name] = f.ID
+		}
+	}
 	for _, d := range data {
-		n := isFieldIn(d.Name, fields)
-		if n < 0 {
+		id, ok := fieldIDs[d.Name]
+		if !ok {
 			continue
 		}
-		v := ToNS("")
-		if !isEmpty(d.UserData) {
-			v = ToNS(strings.Join(d.UserData, ", "))
-		}
-		a := &FormAnswer{Value: v, FormFieldID: fields[n].ID, FormID: formID}
+		a := &FormAnswer{Value: ToNS(strings.Join(d.UserData, ", ")), FormFieldID: id, FormID: formID}
 		if _, err := db.FormAnswerAdd(a); err != nil {
 			if err := db.FormAnswerMod(a); err != nil {
 				log.Printf("SaveFormAnswers: answer %q form %d: %v", d.Name, formID, err)

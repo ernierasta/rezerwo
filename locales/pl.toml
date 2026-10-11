@@ -87,6 +87,22 @@ thankyou_name = "Nazwa kopii maila dla gościa"
 admin_name = "Nazwa kopii maila dla zarządu"
 submit = "Kopiuj"
 
+[copy.err]
+pick = "Wybierz imprezę do skopiowania."
+source = "Nie znaleziono imprezy do skopiowania."
+bad_data = "Błędne dane."
+name = "Podaj nazwę nowej imprezy."
+date = "Podaj poprawną datę imprezy."
+from_date = "Podaj poprawną datę początku rezerwacji."
+from_after = "Początek rezerwacji musi być przed datą imprezy."
+exists = "Impreza o nazwie „%s” już istnieje, wybierz inną nazwę."
+room = "Nie znaleziono sali %d."
+room_twice = "Sala %d jest przypisana dwa razy."
+mail_names = "Podaj nazwy kopiowanych maili."
+mail = "Nie udało się skopiować maila „%s”."
+save = "Nie udało się zapisać imprezy."
+partial = "Impreza „%s” została utworzona, ale wystąpiły błędy:\n%s"
+
 [event]
 draft = "szkic"
 selling = "sprzedaż trwa"

@@ -16,6 +16,7 @@ import (
 	"html/template"
 	"log"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -369,59 +370,36 @@ func (f FormFieldDef) GetName() string {
 	return f.Name
 }
 
+// updateFormFieldsInDB synchronizuje tabelę formfields z definicją formularza:
+// nowe pola dodaje, istniejące (po nazwie) zmienia, usunięte kasuje
 func updateFormFieldsInDB(templateID int64, current []FormFieldDef, db *DB) {
-	current = filterFormFields(current)
 	previous, err := db.FormFieldGetAllForTmpl(templateID)
 	if err != nil {
 		log.Printf("updateFormFieldsInDB: error getting FormFields for template %d, %v", templateID, err)
 	}
-	previous = filterFormFields(previous)
+	old := map[string]bool{}
+	for _, f := range filterFormFields(previous) {
+		old[f.Name] = true
+	}
 
-	found := make([]bool, len(previous))
-
-	for i := range current {
-		f := &FormField{
-			Name:           current[i].Name,
-			Display:        current[i].Display,
-			Type:           current[i].Type,
-			FormTemplateID: templateID,
-		}
-		if n := isFieldIn(current[i].Name, previous); n >= 0 {
-			found[n] = true
-			err := db.FormFieldModByName(f)
-			if err != nil {
+	for _, c := range filterFormFields(current) {
+		f := &FormField{Name: c.Name, Display: c.Display, Type: c.Type, FormTemplateID: templateID}
+		if old[c.Name] {
+			delete(old, c.Name)
+			if err := db.FormFieldModByName(f); err != nil {
 				log.Printf("updateFormFieldsInDB: error updating field %q, %v", f.Name, err)
 			}
-		} else { // this is new field
-			lastid, err := db.FormFieldAdd(f)
-			if err != nil {
-				log.Printf("updateFormFieldsInDB: error adding field %q, %v", f.Name, err)
-			}
-			_ = lastid
+		} else if _, err := db.FormFieldAdd(f); err != nil {
+			log.Printf("updateFormFieldsInDB: error adding field %q, %v", f.Name, err)
 		}
 	}
 
-	// remove old fields, which are not in the template anymore
-	for i := range found {
-		if !found[i] {
-			err := db.FormFieldDelByName(previous[i].Name, templateID)
-			if err != nil {
-				log.Printf("updateFormFieldsInDB: error deleting old formfield %q, templateID %d, %v", previous[i].Name, templateID, err)
-			}
+	// pola, których nie ma już w definicji
+	for name := range old {
+		if err := db.FormFieldDelByName(name, templateID); err != nil {
+			log.Printf("updateFormFieldsInDB: error deleting old formfield %q, templateID %d, %v", name, templateID, err)
 		}
 	}
-
-}
-
-// isFieldIn returns possition in given list if found
-// or -1 if not in list
-func isFieldIn(name string, l []FormField) int {
-	for i := range l {
-		if name == l[i].Name {
-			return i
-		}
-	}
-	return -1
 }
 
 type FormFieldType interface {
@@ -446,13 +424,7 @@ func filterFormFields[L FormFieldType](l []L) []L {
 }
 
 func isTypeIgnored(t string) bool {
-	var ignored = []string{"header", "paragraph", "button", "hidden"}
-	for i := range ignored {
-		if ignored[i] == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains([]string{"header", "paragraph", "button", "hidden"}, t)
 }
 
 type FormAnswersJson struct {
@@ -467,37 +439,18 @@ func makeSureIsHTML(s string) string {
 	return "<html>" + s + "</html>"
 }
 
+// getBasicFields - imię, nazwisko i e-mail z odpowiedzi (pola o stałych
+// nazwach); formularz anonimowy dostaje "- Anon -" i numer zgłoszenia
 func getBasicFields(j []FormAnswersJson, uniqID string) (string, string, string) {
-	var name, surname, email string
-	log.Println("json:", j)
-	for i := range j {
-		if j[i].Name == "name-REQUIRED" {
-			if !isEmpty(j[i].UserData) {
-				name = j[i].UserData[0]
-			}
-		}
-		if j[i].Name == "surname-REQUIRED" {
-			if !isEmpty(j[i].UserData) {
-				surname = j[i].UserData[0]
-			}
-		}
-		if j[i].Name == "email-REQUIRED" {
-			if !isEmpty(j[i].UserData) {
-				email = j[i].UserData[0]
-			}
+	v := map[string]string{}
+	for _, a := range j {
+		if len(a.UserData) > 0 {
+			v[a.Name] = a.UserData[0]
 		}
 	}
+	name, surname, email := v["name-REQUIRED"], v["surname-REQUIRED"], v["email-REQUIRED"]
 	if surname == "" {
-		name = "- Anon -"
-		surname = uniqID
+		name, surname = "- Anon -", uniqID
 	}
-	log.Println(name, surname, email)
 	return name, surname, email
-}
-
-func isEmpty[T comparable](t []T) bool {
-	if len(t) > 0 {
-		return false
-	}
-	return true
 }

@@ -588,19 +588,25 @@ func (db *DB) FurnitureModByNumberTypeRoom(furniture *Furniture) error {
 	return err
 }
 
+// FurnitureDelByNumberTypeRoom kasuje mebel razem z jego cenami we wszystkich imprezach
 func (db *DB) FurnitureDelByNumberTypeRoom(number int64, ftype string, roomID int64) error {
-	ret, err := db.DB.Exec(`DELETE FROM furnitures WHERE number=$1 AND type=$2 AND rooms_id_fk=$3`, number, ftype, roomID)
+	tx, err := db.DB.Beginx()
 	if err != nil {
 		return err
 	}
-	affected, err := ret.RowsAffected()
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM prices WHERE furnitures_id_fk IN
+(SELECT id FROM furnitures WHERE number=$1 AND type=$2 AND rooms_id_fk=$3)`, number, ftype, roomID); err != nil {
+		return err
+	}
+	ret, err := tx.Exec(`DELETE FROM furnitures WHERE number=$1 AND type=$2 AND rooms_id_fk=$3`, number, ftype, roomID)
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
-		return fmt.Errorf("furniture with number: %d and type: %q not found", number, ftype)
+	if affected, err := ret.RowsAffected(); err != nil || affected == 0 {
+		return fmt.Errorf("furniture with number: %d and type: %q not found (%v)", number, ftype, err)
 	}
-	return err
+	return tx.Commit()
 }
 
 func (db *DB) PriceAdd(p *Price) (int64, error) {
@@ -626,21 +632,6 @@ func (db *DB) PriceModByEventIDFurnID(price *Price) error {
 	}
 
 	_, err = db.DB.NamedExec(`UPDATE prices SET price=:price, currency=:currency, disabled=:disabled WHERE events_id_fk=:events_id_fk and furnitures_id_fk=:furnitures_id_fk`, price)
-	return err
-}
-
-func (db *DB) PriceDelByEventIDFurn(eventID int64, fnumber int64, ftype string) error {
-	ret, err := db.DB.Exec(`DELETE FROM prices WHERE events_id_fk=$1 AND number=$2 AND type=$3`, eventID, fnumber, ftype)
-	if err != nil {
-		return err
-	}
-	affected, err := ret.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if affected == 0 {
-		return fmt.Errorf("price with number and type: %q and %q not found", fnumber, ftype)
-	}
 	return err
 }
 

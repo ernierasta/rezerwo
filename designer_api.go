@@ -175,7 +175,6 @@ func DesignerDeleteObject(db *DB, cs *sessions.CookieStore) func(w http.Response
 			jsonMsg(w, http.StatusTeapot, map[string]interface{}{"msg": err.Error()})
 			return
 		}
-		db.PriceDelByEventIDFurn(m.EventID, m.Number, m.Type)
 		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "deleted"})
 	}
 }

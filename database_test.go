@@ -162,6 +162,16 @@ func TestRoomAndFurniture(t *testing.T) {
 	if err := db.FurnitureDelByNumberTypeRoom(99, "chair", roomID); err == nil {
 		t.Error("deleting a missing chair returned no error")
 	}
+	// mebel znika razem ze swoimi cenami
+	evID := must(t)(db.EventAdd(&Event{Name: "bal", UserID: u1, DefaultCurrency: "Kč"}))
+	must(t)(db.PriceAdd(&Price{Price: 100, Currency: "Kč", EventID: evID, FurnitureID: chair(t, db, roomID, 4)}))
+	if err := db.FurnitureDelByNumberTypeRoom(4, "chair", roomID); err != nil {
+		t.Fatal(err)
+	}
+	var prices int
+	if err := db.DB.Get(&prices, `SELECT COUNT(*) FROM prices WHERE events_id_fk=$1`, evID); err != nil || prices != 0 {
+		t.Errorf("prices of deleted chair = %d, %v", prices, err)
+	}
 
 	// sala ma najwyżej jednego właściciela
 	if err := db.RoomAssignToUser(u1, roomID); err != nil {

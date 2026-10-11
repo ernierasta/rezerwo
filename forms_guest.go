@@ -14,7 +14,6 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -31,9 +30,10 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-// doneKey podpisuje adres strony podziękowania, żeby nie dało się podejrzeć
-// cudzej odpowiedzi, zgadując jej numer. Klucz żyje do restartu serwera -
-// po restarcie stary link pokaże samo podziękowanie, bez danych.
+// doneKey podpisuje adres strony podziękowania (żeby nie dało się podejrzeć
+// cudzej odpowiedzi, zgadując jej numer), link do poprawiania i ciasteczko
+// zgłoszenia (form_edit.go). main ustawia go z config.toml (SetSignKey), żeby
+// podpisy przeżyły restart; losowy zostaje tylko w testach.
 var doneKey = func() []byte {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -43,12 +43,16 @@ var doneKey = func() []byte {
 }()
 
 func doneToken(formID int64) string {
-	m := hmac.New(sha256.New, doneKey)
-	fmt.Fprintf(m, "form:%d", formID)
-	return hex.EncodeToString(m.Sum(nil))[:24]
+	return formSig("form", formID)
 }
 
 type nFormPageVars struct {
+	// tryb poprawiania z linku w mailu: token, zapisane odpowiedzi (JSON)
+	// i informacja nad formularzem
+	EditToken string
+	Prefill   string
+	EditNote  string
+
 	Title    string
 	Lang     string
 	FormName string
@@ -169,6 +173,21 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 		if !v.Open && isFormOwnerSession(r, db, cs, user) {
 			v.Preview = true
 		}
+
+		// link z maila: poprawianie własnego zgłoszenia (form_edit.go)
+		if tok := r.URL.Query().Get("edit"); tok != "" && v.Open {
+			f, err := db.FormGet(parseEditToken(tok), templ.ID)
+			switch {
+			case err != nil:
+				v.EditNote = T(lang, "gform.edit_bad")
+			case !editable(f, nowUnix()):
+				v.EditNote = T(lang, "gform.err.edit_expired", EDITDAYS, chooseEmail(user.Email, user.AltEmail.String))
+			default:
+				v.EditToken = tok
+				v.Prefill = prefillJSON(db, defs, f.ID, templ.ID)
+				v.EditNote = T(lang, "gform.edit_note", FormatDate(lang, f.CreatedDate), FormatDate(lang, editUntil(f)))
+			}
+		}
 		for _, row := range v.Rows {
 			for _, f := range row.Fields {
 				if f.IsMoney {
@@ -204,6 +223,8 @@ type gformSendMsg struct {
 	// Confirm - gość zobaczył zmiany względem swojego wcześniejszego
 	// zgłoszenia (resubmitDiff) i chce je zapisać
 	Confirm bool `json:"confirm"`
+	// Edit - token z linku do poprawiania (form_edit.go)
+	Edit string `json:"edit"`
 }
 
 // GuestFormSendAPI - POST /form/{userurl}/{formurl}/send
@@ -246,16 +267,16 @@ func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r
 			return
 		}
 
-		// ten sam adres e-mail: ta sama osoba poprawia odpowiedzi (najpierw
-		// pokazujemy jej zmiany), inna osoba musi użyć innego adresu
-		prev, other, err := ownSubmission(db, user, templ, msg.Data, msg.UniqID)
+		// poprawka własnego zgłoszenia tylko z dowodem (ciasteczko, link z maila);
+		// sam znany adres e-mail nie wystarczy do zobaczenia odpowiedzi
+		prev, refuse, err := ownSubmission(db, user, templ, msg, cookieFormID(r, templ), nowUnix())
 		if err != nil {
 			log.Printf("GuestFormSendAPI: earlier submissions: %v", err)
 			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": T(lang, "gform.save_error")})
 			return
 		}
-		if other {
-			jsonMsg(w, http.StatusConflict, map[string]string{"msg": T(lang, "gform.err.email_used"), "field": ROLEEMAIL})
+		if refuse != "" {
+			jsonMsg(w, http.StatusConflict, map[string]string{"msg": refuseText(lang, refuse, user), "field": ROLEEMAIL})
 			return
 		}
 		if prev != nil && !msg.Confirm {
@@ -275,7 +296,10 @@ func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r
 			return
 		}
 
-		SendFormMails(db, mailConf, user, templ, formID, name, surname)
+		if f, err := db.FormGet(formID, templ.ID); err == nil {
+			setFormCookie(w, r, user, templ, f)
+		}
+		SendFormMails(db, mailConf, user, templ, formID, name, surname, requestBase(r))
 
 		jsonMsg(w, http.StatusOK, map[string]interface{}{"id": formID, "done": doneURL(user, templ, formID)})
 	}
@@ -402,27 +426,65 @@ func doneURL(user User, templ FormTemplate, formID int64) string {
 	return fmt.Sprintf("/form/%s/%s/done?id=%d&t=%s", user.URL, templ.URL, formID, doneToken(formID))
 }
 
-// ownSubmission szuka wcześniejszego zgłoszenia z tego samego adresu e-mail.
-// Pasuje, gdy zgadza się też imię i nazwisko (bez względu na wielkość liter
-// i spacje) albo formularz nie ma pól imienia/nazwiska. other=true: adres
-// jest już użyty przez kogoś innego.
-func ownSubmission(db *DB, user User, templ FormTemplate, data []FormAnswersJson, uniqID string) (prev *Form, other bool, err error) {
-	name, surname, email := getBasicFields(data, uniqID)
+// ownSubmission rozstrzyga, czy to poprawka wcześniejszego zgłoszenia:
+//   - link z maila (msg.Edit) wskazuje zgłoszenie wprost;
+//   - adres e-mail już użyty w tym formularzu: poprawka tylko wtedy, gdy ta
+//     przeglądarka wysłała to zgłoszenie (ciasteczko), inaczej odmowa;
+//   - poprawiać można przez EDITDAYS dni od pierwszego wysłania.
+//
+// refuse: "" (można zapisać), "edit_expired" (link po terminie), "email_used"
+// (adres zajęty, można poprawić linkiem z maila), "email_used_late" (adres
+// zajęty, poprawki już niemożliwe).
+func ownSubmission(db *DB, user User, templ FormTemplate, msg gformSendMsg, cookieID, now int64) (prev *Form, refuse string, err error) {
+	_, _, email := getBasicFields(msg.Data, msg.UniqID)
+	var target *Form
+	if id := parseEditToken(msg.Edit); id != 0 {
+		f, err := db.FormGet(id, templ.ID)
+		if err != nil {
+			return nil, "edit_expired", nil
+		}
+		if !editable(f, now) {
+			return nil, "edit_expired", nil
+		}
+		target = &f
+	}
 	if strings.TrimSpace(email) == "" {
-		return nil, false, nil
+		return target, "", nil
 	}
 	ff, err := db.FormGetAllByEmail(email, templ.ID, user.ID)
-	if err != nil || len(ff) == 0 {
-		return nil, false, err
+	if err != nil {
+		return nil, "", err
 	}
-	norm := func(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
-	anon := !hasNameFields(data)
 	for i := range ff {
-		if anon || (norm(ff[i].Name.String) == norm(name) && norm(ff[i].Surname.String) == norm(surname)) {
-			return &ff[i], false, nil
+		switch {
+		case target != nil && ff[i].ID == target.ID:
+			// ten sam adres co w poprawianym zgłoszeniu
+		case target != nil:
+			return nil, "email_used", nil // adres innego zgłoszenia
+		case ff[i].ID == cookieID && editable(ff[i], now):
+			target = &ff[i]
 		}
 	}
-	return nil, true, nil
+	if target == nil && len(ff) > 0 {
+		for _, f := range ff {
+			if editable(f, now) {
+				return nil, "email_used", nil
+			}
+		}
+		return nil, "email_used_late", nil
+	}
+	return target, "", nil
+}
+
+// refuseText - komunikat odmowy dla gościa (ownSubmission)
+func refuseText(lang, refuse string, user User) string {
+	switch refuse {
+	case "email_used_late":
+		return T(lang, "gform.err.email_used_late", chooseEmail(user.Email, user.AltEmail.String))
+	case "edit_expired":
+		return T(lang, "gform.err.edit_expired", EDITDAYS, chooseEmail(user.Email, user.AltEmail.String))
+	}
+	return T(lang, "gform.err.email_used", EDITDAYS)
 }
 
 func hasNameFields(data []FormAnswersJson) bool {
@@ -563,7 +625,7 @@ func SaveFormAnswers(db *DB, user User, templ FormTemplate, data []FormAnswersJs
 }
 
 // SendFormMails wysyła mail do gościa i do zarządu (jeśli są ustawione).
-func SendFormMails(db *DB, mailConf MailConfig, user User, templ FormTemplate, formID int64, name, surname string) {
+func SendFormMails(db *DB, mailConf MailConfig, user User, templ FormTemplate, formID int64, name, surname, base string) {
 	form, err := db.FormGet(formID, templ.ID)
 	if err != nil {
 		log.Printf("SendFormMails: form %d: %v", formID, err)
@@ -576,6 +638,7 @@ func SendFormMails(db *DB, mailConf MailConfig, user User, templ FormTemplate, f
 			log.Printf("SendFormMails: guest mail %d: %v", templ.NotificationID.Int64, err)
 		} else {
 			text, imgs := parseFormMailTemplate(name, surname, mail.Text, formID, user, templ, db)
+			text = addEditLink(text, formLang(templ), editURL(base, user, templ, formID), editUntil(form))
 			if err := mailConf.SendAsOrg(user, form.Email.String, mail.Title.String, text, mail.Files(user), append(mail.Images(user), imgs...)); err != nil {
 				log.Printf("SendFormMails: guest mail: %v", err)
 			}

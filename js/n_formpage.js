@@ -371,7 +371,7 @@
       submit.textContent = label;
     };
 
-    RZ.postJSON(root.dataset.send, {uniqid: uniq ? uniq.textContent : '', data: collect(), confirm: confirm})
+    RZ.postJSON(root.dataset.send, {uniqid: uniq ? uniq.textContent : '', data: collect(), confirm: confirm, edit: root.dataset.edit || ''})
       .then(function (resp) {
         if (resp.confirm) {
           done();
@@ -451,7 +451,10 @@
   if (info && window.matchMedia('(max-width: 860px)').matches) info.open = false;
 
   RZ.loadLocale(root.dataset.lang || 'pl').then(function () {
-    if (!restoreDraft()) recall();
+    // link z maila: zapisane odpowiedzi zamiast szkicu i zapamiętanych danych
+    if (root.dataset.prefill) {
+      try { fillAll(JSON.parse(root.dataset.prefill)); } catch (e) { /* nic */ }
+    } else if (!restoreDraft()) recall();
     fields.forEach(function (ff) {
       if (ff.dataset.type === 'multiplierField') updateMult(ff);
     });

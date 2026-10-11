@@ -26,6 +26,7 @@ func main() {
 	conf.Read("config.toml")
 
 	cookieStore := sessions.NewCookieStore(conf.AuthenticationKey, conf.EncryptionKey)
+	SetSignKey(conf.AuthenticationKey)          // linki podziękowania/poprawiania przeżyją restart
 	cookieStore.Options = sessionOptions(false) // 2 godziny, patrz auth.go
 
 	mailConf := MailConfig{Server: conf.MailServer, Port: int(conf.MailPort), From: conf.MailFrom, User: conf.MailUser, Pass: conf.MailPass, IgnoreCert: conf.MailIgnoreCert}

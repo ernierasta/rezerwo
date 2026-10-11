@@ -509,6 +509,10 @@ many = "%d textů"
 
 # --- formulář pro hosta (tmpl/n_formpage.html) ---
 [gform]
+edit_note = "Opravujete odpovědi odeslané %s. Změny můžete uložit do %s."
+edit_bad = "Tento odkaz pro opravu odpovědí je neplatný. Formulář můžete vyplnit znovu."
+mail_edit = "Odpovědi můžete opravit do %s:"
+mail_edit_link = "opravit odpovědi"
 resubmit_title = "Změnit odeslané odpovědi?"
 resubmit_text = "Z této e-mailové adresy už byl formulář odeslán. Vaše odpovědi se změní takto:"
 resubmit_field = "Pole"
@@ -546,7 +550,9 @@ remembered = "Některá pole jsme vyplnili údaji z vašeho předchozího formul
 remembered_clear = "Vymazat"
 
 [gform.err]
-email_used = "Z této e-mailové adresy už někdo tento formulář odeslal. Použijte jinou adresu."
+email_used = "Z této e-mailové adresy už byl tento formulář odeslán. Pro změnu odpovědí použijte odkaz z potvrzovacího e-mailu (platí %d dní od odeslání). Pokud jde o jinou osobu, použijte jinou adresu."
+email_used_late = "Z této e-mailové adresy už byl tento formulář odeslán a odpovědi už nelze měnit přes internet. Se změnami se obraťte na organizátora: %s. Pokud jde o jinou osobu, použijte jinou adresu."
+edit_expired = "Odpovědi bylo možné opravit do %d dní od odeslání. Se změnami se obraťte na organizátora: %s."
 missing = "Vyplňte pole „%s“."
 required = "Toto pole je povinné."
 choose = "Vyberte jednu z možností."

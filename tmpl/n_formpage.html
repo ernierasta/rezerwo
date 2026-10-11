@@ -1,6 +1,7 @@
 {{define "body"}}
 <div class="guest gform{{if .Info}} has-info{{end}}" id="gform"
-     data-send="{{.SendURL}}" data-draft="{{.DraftKey}}" data-currency="{{.Currency}}" data-lang="{{.Lang}}">
+     data-send="{{.SendURL}}" data-draft="{{.DraftKey}}" data-currency="{{.Currency}}" data-lang="{{.Lang}}"{{if .EditToken}}
+     data-edit="{{.EditToken}}" data-prefill="{{.Prefill}}"{{end}}>
 
   <header class="gform-h">
     {{if .Banner}}<div class="banner">{{.Banner}}</div>{{end}}
@@ -17,6 +18,7 @@
   {{else}}
 
   {{if .Preview}}<div class="draft-notice">{{T "gform.preview_closed"}}</div>{{end}}
+  {{if .EditNote}}<div class="draft-notice" id="gform-edit-note">{{.EditNote}}</div>{{end}}
 
   <div class="gform-body">
     {{if .Info}}

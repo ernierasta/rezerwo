@@ -502,6 +502,10 @@ other = "%d texts"
 
 # --- guest form (tmpl/n_formpage.html) ---
 [gform]
+edit_note = "You are correcting answers sent on %s. You can save changes until %s."
+edit_bad = "This link for correcting answers is not valid. You can fill in the form again."
+mail_edit = "You can correct your answers until %s:"
+mail_edit_link = "correct answers"
 resubmit_title = "Change your submitted answers?"
 resubmit_text = "This form has already been sent from this e-mail address. Your answers will change like this:"
 resubmit_field = "Field"
@@ -539,7 +543,9 @@ remembered = "Some fields were filled in from your previous form on this device.
 remembered_clear = "Clear"
 
 [gform.err]
-email_used = "Someone has already sent this form from this e-mail address. Please use another address."
+email_used = "This form has already been sent from this e-mail address. To change your answers, use the link in the confirmation e-mail (valid for %d days after sending). If you are someone else, please use another address."
+email_used_late = "This form has already been sent from this e-mail address and the answers can no longer be changed online. For changes, please write to the organizer: %s. If you are someone else, please use another address."
+edit_expired = "Answers could be corrected for %d days after sending. For changes, please write to the organizer: %s."
 missing = "Please fill in “%s”."
 required = "This field is required."
 choose = "Please choose one of the options."

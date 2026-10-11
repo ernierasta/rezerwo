@@ -511,6 +511,10 @@ many = "%d tekstów"
 
 # --- formularz dla gościa (tmpl/n_formpage.html) ---
 [gform]
+edit_note = "Poprawiasz odpowiedzi wysłane %s. Zmiany możesz zapisać do %s."
+edit_bad = "Ten link do poprawienia odpowiedzi jest nieprawidłowy. Możesz wypełnić formularz od nowa."
+mail_edit = "Odpowiedzi możesz poprawić do %s:"
+mail_edit_link = "popraw odpowiedzi"
 resubmit_title = "Zmienić wysłane odpowiedzi?"
 resubmit_text = "Z tego adresu e-mail ten formularz już wysłano. Tak zmienią się Twoje odpowiedzi:"
 resubmit_field = "Pole"
@@ -548,7 +552,9 @@ remembered = "Część pól uzupełniliśmy danymi z Twojego poprzedniego formul
 remembered_clear = "Wyczyść"
 
 [gform.err]
-email_used = "Z tego adresu e-mail ktoś już wysłał ten formularz. Użyj innego adresu."
+email_used = "Z tego adresu e-mail wysłano już ten formularz. Aby zmienić odpowiedzi, użyj linku z maila z potwierdzeniem (działa %d dni od wysłania). Jeśli to inna osoba, użyj innego adresu."
+email_used_late = "Z tego adresu e-mail wysłano już ten formularz, a odpowiedzi nie można już zmienić przez internet. W sprawie zmian napisz do organizatora: %s. Jeśli to inna osoba, użyj innego adresu."
+edit_expired = "Odpowiedzi można było poprawiać przez %d dni od wysłania. W sprawie zmian napisz do organizatora: %s."
 missing = "Uzupełnij pole „%s”."
 required = "To pole jest wymagane."
 choose = "Wybierz jedną z możliwości."

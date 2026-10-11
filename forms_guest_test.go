@@ -3,10 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 // Wartości z formularza gościa sprawdzane na serwerze (checkValues), tak jak
@@ -71,8 +75,8 @@ func TestCSVCell(t *testing.T) {
 	}
 }
 
-// Ten sam e-mail drugi raz: ta sama osoba widzi zmiany i potwierdza,
-// ktoś inny dostaje prośbę o inny adres.
+// Wcześniejsze odpowiedzi widzi tylko ten, kto udowodni, że to jego
+// zgłoszenie: ciasteczko z przeglądarki albo link z maila, przez EDITDAYS dni.
 func TestGuestFormResubmit(t *testing.T) {
 	if err := LoadLocales(); err != nil {
 		t.Fatal(err)
@@ -83,25 +87,39 @@ func TestGuestFormResubmit(t *testing.T) {
 	 {"type":"text","name":"name-REQUIRED","label":"Imię"},
 	 {"type":"text","name":"surname-REQUIRED","label":"Nazwisko"},
 	 {"type":"text","subtype":"email","name":"email-REQUIRED","label":"E-mail"},
-	 {"type":"select","name":"pomoc","label":"Pomoc","values":[{"label":"Bufet","value":"bufet"},{"label":"Nic","value":"nic"}]},
+	 {"type":"checkbox-group","name":"pomoc","label":"Pomoc","other":true,"values":[{"label":"Bufet","value":"bufet"},{"label":"Nic","value":"nic"}]},
 	 {"type":"number","name":"ile","label":"Ile"}
 	]`
 	templID := must(t)(db.FormTemplateAdd(&FormTemplate{Name: "Deklaracja", URL: "dekl", Content: ToNS(content), UserID: userID, CreatedDate: 1}))
 	for _, f := range []string{"name-REQUIRED", "surname-REQUIRED", "email-REQUIRED", "pomoc", "ile"} {
 		must(t)(db.FormFieldAdd(&FormField{Name: f, Display: f, Type: "text", FormTemplateID: templID}))
 	}
+	cs := sessions.NewCookieStore([]byte("0123456789abcdef0123456789abcdef"))
 	router := mux.NewRouter()
 	router.HandleFunc("/form/{userurl}/{formurl}/send", GuestFormSendAPI(db, MailConfig{}))
+	router.HandleFunc("/form/{userurl}/{formurl}", GuestFormPage(db, cs))
 
-	send := func(name, surname, email, pomoc, ile string, confirm bool) (int, map[string]interface{}) {
+	var cookie *http.Cookie // ciasteczko przeglądarki gościa
+	type sub struct {
+		name, surname, email, pomoc, ile, edit string
+		confirm, withCookie                    bool
+	}
+	send := func(x sub) (int, map[string]interface{}) {
 		t.Helper()
-		body, _ := json.Marshal(gformSendMsg{Confirm: confirm, Data: []FormAnswersJson{
-			{Name: "name-REQUIRED", UserData: []string{name}}, {Name: "surname-REQUIRED", UserData: []string{surname}},
-			{Name: "email-REQUIRED", UserData: []string{email}}, {Name: "pomoc", UserData: []string{pomoc}},
-			{Name: "ile", UserData: []string{ile}},
+		body, _ := json.Marshal(gformSendMsg{Confirm: x.confirm, Edit: x.edit, Data: []FormAnswersJson{
+			{Name: "name-REQUIRED", UserData: []string{x.name}}, {Name: "surname-REQUIRED", UserData: []string{x.surname}},
+			{Name: "email-REQUIRED", UserData: []string{x.email}}, {Name: "pomoc", UserData: strings.Split(x.pomoc, ",")},
+			{Name: "ile", UserData: []string{x.ile}},
 		}})
+		r := httptest.NewRequest("POST", "/form/org/dekl/send", bytes.NewReader(body))
+		if x.withCookie && cookie != nil {
+			r.AddCookie(cookie)
+		}
 		w := httptest.NewRecorder()
-		router.ServeHTTP(w, httptest.NewRequest("POST", "/form/org/dekl/send", bytes.NewReader(body)))
+		router.ServeHTTP(w, r)
+		for _, c := range w.Result().Cookies() {
+			cookie = c
+		}
 		var resp map[string]interface{}
 		json.Unmarshal(w.Body.Bytes(), &resp)
 		return w.Code, resp
@@ -110,44 +128,95 @@ func TestGuestFormResubmit(t *testing.T) {
 		db.DB.Get(&n, `SELECT count(*) FROM forms`)
 		return
 	}
-	value := func(field string) (v string) {
-		db.DB.Get(&v, `SELECT fa.value FROM formanswers fa JOIN formfields ff ON ff.id=fa.formfields_id_fk WHERE ff.name=$1`, field)
+	value := func(formID int64, field string) (v string) {
+		db.DB.Get(&v, `SELECT fa.value FROM formanswers fa JOIN formfields ff ON ff.id=fa.formfields_id_fk WHERE ff.name=$1 AND fa.forms_id_fk=$2`, field, formID)
 		return
 	}
+	jan := sub{name: "Jan", surname: "Kowalski", email: "jan@example.com", pomoc: "bufet", ile: "2"}
 
-	if code, r := send("Jan", "Kowalski", "jan@example.com", "bufet", "2", false); code != 200 || r["id"] == nil {
-		t.Fatalf("first submit: %d %v", code, r)
+	code, r := send(jan)
+	if code != 200 || cookie == nil || !strings.HasPrefix(cookie.Path, "/form/org/dekl") {
+		t.Fatalf("first submit: %d %v cookie %v", code, r, cookie)
 	}
-	// te same odpowiedzi: nic nie zapisujemy, link do potwierdzenia
-	if _, r := send("Jan", "Kowalski", "jan@example.com", "bufet", "2", false); r["same"] != true || r["done"] == nil {
-		t.Fatalf("same answers: %v", r)
+	id := int64(r["id"].(float64))
+
+	// bez dowodu: odmowa, żadnych odpowiedzi w odpowiedzi serwera
+	x := jan
+	x.ile = "3"
+	if code, r := send(x); code != 409 || r["field"] != ROLEEMAIL || r["changes"] != nil {
+		t.Fatalf("same e-mail without proof: %d %v", code, r)
 	}
-	// wielkość liter i spacje nie zmieniają osoby (ale zmianę widać)
-	if code, r := send("jan", " Kowalski ", "JAN@example.com", "bufet", "2", false); code != 200 || r["confirm"] != true {
-		t.Fatalf("same person, other case: %d %v", code, r)
+	// ciasteczko: te same odpowiedzi
+	x = jan
+	x.withCookie = true
+	if _, r := send(x); r["same"] != true {
+		t.Fatalf("cookie, same answers: %v", r)
 	}
-	// zmiany: najpierw lista zmian z etykietami opcji, bez zapisu
-	_, r := send("Jan", "Kowalski", "jan@example.com", "nic", "3", false)
-	if r["confirm"] != true {
-		t.Fatalf("changed answers: %v", r)
-	}
+	// ciasteczko: zmiany do potwierdzenia, z etykietami opcji i "Inne"
+	x.pomoc, x.ile = "nic,Sprzątanie", "3"
+	_, r = send(x)
 	got, _ := json.Marshal(r["changes"])
-	if want := `[{"label":"Pomoc","new":"Nic","old":"Bufet"},{"label":"Ile","new":"3","old":"2"}]`; string(got) != want {
-		t.Errorf("changes: %s, want %s", got, want)
+	if want := `[{"label":"Pomoc","new":"Nic, Sprzątanie","old":"Bufet"},{"label":"Ile","new":"3","old":"2"}]`; r["confirm"] != true || string(got) != want {
+		t.Fatalf("cookie, changes: %v %s", r, got)
 	}
-	if value("ile") != "2" {
+	if value(id, "ile") != "2" {
 		t.Fatal("saved before confirmation")
 	}
-	// potwierdzone: to samo zgłoszenie nadpisane
-	if code, _ := send("Jan", "Kowalski", "jan@example.com", "nic", "3", true); code != 200 || count() != 1 || value("ile") != "3" {
-		t.Fatalf("confirmed resubmit: code %d, forms %d, ile %q", code, count(), value("ile"))
+	x.confirm = true
+	if code, _ := send(x); code != 200 || count() != 1 || value(id, "ile") != "3" {
+		t.Fatalf("confirmed: %d forms %d ile %q", code, count(), value(id, "ile"))
 	}
-	// ten sam adres, inna osoba
-	if code, r := send("Anna", "Nowak", "jan@example.com", "nic", "1", true); code != 409 || r["field"] != ROLEEMAIL || count() != 1 {
-		t.Fatalf("other person, same e-mail: %d %v (forms %d)", code, r, count())
+	// druga osoba w tej samej przeglądarce, z własnym adresem - nowe zgłoszenie
+	anna := sub{name: "Anna", surname: "Nowak", email: "anna@example.com", pomoc: "nic", ile: "1", withCookie: true}
+	if code, _ := send(anna); code != 200 || count() != 2 {
+		t.Fatalf("second person, own e-mail: %d forms %d", code, count())
 	}
-	// inny adres - nowe zgłoszenie
-	if code, _ := send("Anna", "Nowak", "anna@example.com", "nic", "1", false); code != 200 || count() != 2 {
-		t.Fatalf("new e-mail: %d, forms %d", code, count())
+	// link z maila (inne urządzenie, bez ciasteczka)
+	x = jan
+	x.edit, x.ile, x.pomoc, x.confirm = editToken(id), "4", "nic,Sprzątanie", true
+	if code, r := send(x); code != 200 || value(id, "ile") != "4" {
+		t.Fatalf("edit link: %d %v ile %q", code, r, value(id, "ile"))
+	}
+	// link z maila, ale adres innego zgłoszenia
+	x.email = "anna@example.com"
+	if code, _ := send(x); code != 409 {
+		t.Fatalf("edit link with other submission's e-mail: %d", code)
+	}
+	// podrobiony token = brak dowodu
+	x = jan
+	x.edit = fmt.Sprintf("%d.%s", id, strings.Repeat("0", 24))
+	if code, _ := send(x); code != 409 {
+		t.Fatalf("forged token: %d", code)
+	}
+	// strona z linku: zapisane odpowiedzi do wpisania w pola
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest("GET", "/form/org/dekl?edit="+editToken(id), nil))
+	if page := w.Body.String(); !strings.Contains(page, `data-edit=`) || !strings.Contains(page, `&#34;ile&#34;:{&#34;v&#34;:[&#34;4&#34;]}`) ||
+		!strings.Contains(page, `&#34;o&#34;:&#34;Sprzątanie&#34;`) {
+		t.Fatalf("edit page without prefill: %s", page[strings.Index(page, `id="gform"`):][:600])
+	}
+
+	// po EDITDAYS dniach: koniec poprawek
+	if _, err := db.DB.Exec(`UPDATE forms SET created_date=$1`, nowUnix()-(EDITDAYS+1)*24*3600); err != nil {
+		t.Fatal(err)
+	}
+	x = jan
+	x.withCookie, x.confirm = true, true
+	if code, r := send(x); code != 409 || !strings.Contains(fmt.Sprint(r["msg"]), "org@example.com") {
+		t.Fatalf("late, cookie: %d %v", code, r)
+	}
+	x.edit = editToken(id)
+	if code, _ := send(x); code != 409 || value(id, "ile") != "4" {
+		t.Fatalf("late, edit link: %d", code)
+	}
+}
+
+func TestAddEditLink(t *testing.T) {
+	if err := LoadLocales(); err != nil {
+		t.Fatal(err)
+	}
+	got := addEditLink("<html><body><p>Dzięki</p></body></html>", "pl", "https://x/form/a/b?edit=1.ab&x=1", 0)
+	if !strings.Contains(got, `<a href="https://x/form/a/b?edit=1.ab&amp;x=1">`) || !strings.HasSuffix(got, "</p></body></html>") {
+		t.Errorf("addEditLink: %s", got)
 	}
 }

@@ -1,12 +1,40 @@
 #!/bin/sh
+# Kopia bazy do backup/db-RRRRMMDD-GGMMSS.sql (codziennie z
+# /etc/periodic/daily/backup-rezerwo-db na serwerze).
+#
+# sqlite3 .backup robi spójną kopię także wtedy, gdy serwer akurat zapisuje
+# (zwykłe cp mogło złapać plik w połowie zapisu). Kopia jest sprawdzana
+# (integrity_check); zła albo nieudana kończy skrypt błędem i zostaje usunięta.
+#
+# usage: tools/backup-db  (z katalogu repozytorium albo z tools/)
 
-# backup db into backup directory
+set -e
 
 if [ ! -e "db.sql" ]; then
-    cd ..
+	cd ..
+fi
+if [ ! -e "db.sql" ]; then
+	echo "backup-db: no db.sql in $(pwd)" >&2
+	exit 1
 fi
 
-if [ -e "db.sql" ]; then
-    mkdir -p backup
-    cp db.sql backup/db-`date +"%Y%m%d-%H%M%S"`.sql
+mkdir -p backup
+out="backup/db-$(date +"%Y%m%d-%H%M%S").sql"
+n=1
+while [ -e "$out" ]; do # dwie kopie w tej samej sekundzie
+	n=$((n + 1))
+	out="backup/db-$(date +"%Y%m%d-%H%M%S")-$n.sql"
+done
+
+if ! sqlite3 db.sql ".timeout 10000" ".backup '$out'"; then
+	rm -f "$out"
+	echo "backup-db: sqlite3 .backup failed" >&2
+	exit 1
 fi
+check=$(sqlite3 "$out" "PRAGMA integrity_check;")
+if [ "$check" != "ok" ]; then
+	rm -f "$out"
+	echo "backup-db: integrity check of $out failed: $check" >&2
+	exit 1
+fi
+echo "$out"

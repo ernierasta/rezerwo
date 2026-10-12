@@ -925,6 +925,7 @@ money = "částka"
 nobody = "Nikdo ze zobrazených odpovědí toto pole neviděl."
 empty_view = "V tomto zobrazení nejsou žádné odpovědi."
 common_opts = "při každé volbě"
+delete_confirm = "Smazat označené odpovědi (%d)? Nelze vrátit zpět."
 
 [pdf]
 seat = "MÍSTO %d"

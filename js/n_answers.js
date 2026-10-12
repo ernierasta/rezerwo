@@ -509,7 +509,7 @@
   function removeSelected() {
     var list = ids();
     if (!list.length) return;
-    if (!confirm(RZ.t('res.delete_confirm').replace('%d', list.length))) return;
+    if (!confirm(RZ.t('answers.delete_confirm', list.length))) return;
     RZ.postJSON(api, {ids: list}, 'DELETE')
       .then(function (resp) {
         data.rows = prep(resp.rows || []);

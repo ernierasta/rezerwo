@@ -918,6 +918,7 @@ money = "amount"
 nobody = "None of the shown answers saw this field."
 empty_view = "No answers in this view."
 common_opts = "for any choice"
+delete_confirm = "Delete the selected responses (%d)? This cannot be undone."
 
 [pdf]
 seat = "SEAT %d"

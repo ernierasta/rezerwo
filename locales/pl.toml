@@ -927,6 +927,7 @@ money = "kwota"
 nobody = "Nikt z pokazanych odpowiedzi nie widział tego pola."
 empty_view = "Brak odpowiedzi w tym widoku."
 common_opts = "przy każdym wyborze"
+delete_confirm = "Skasować zaznaczone odpowiedzi (%d)? Tego nie da się cofnąć."
 
 [pdf]
 seat = "MIEJSCE %d"

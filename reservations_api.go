@@ -336,7 +336,7 @@ func ReservationsMailAPI(db *DB, mailConf MailConfig, cs *sessions.CookieStore) 
 			return
 		}
 		mail, err := db.NotificationGetByID(m.NotificationID, user.ID)
-		if err != nil {
+		if err != nil || mail.RelatedTo != "events" {
 			jsonMsg(w, http.StatusNotFound, map[string]string{"msg": "mail template not found"})
 			return
 		}

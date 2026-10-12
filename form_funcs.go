@@ -27,6 +27,12 @@ func parseFormMailTemplate(name, surname, mtext string, formID int64, user User,
 	return buf.String(), ff.EmbeddedImgs
 }
 
+// formMailSubject wypełnia zmienne w temacie maila formularza ({{.Name}},
+// {{.Field "pole"}}); temat bez zmiennych zostaje bez zmian.
+func formMailSubject(name, surname, subject string, formID int64, user User, formTempl FormTemplate, db *DB) string {
+	return fillSubject(subject, &FormFuncs{DB: db, User: user, Template: formTempl, FormID: formID, NameSurname: surname + "_" + name})
+}
+
 type FormFuncs struct {
 	DB          *DB
 	User        User
@@ -39,6 +45,56 @@ type FormFuncs struct {
 
 	// answers - odpowiedzi wczytane raz dla .Summary i .OptionCount (form_stats.go)
 	answers formAnswers
+	// form - wiersz odpowiedzi wczytany raz dla .Name, .Surname, .Email
+	form *Form
+}
+
+// row - odpowiedź (imię, nazwisko, e-mail gościa)
+func (i *FormFuncs) row() Form {
+	if i.form == nil {
+		f, err := i.DB.FormGet(i.FormID, i.Template.ID)
+		if err != nil {
+			log.Printf("FormFuncs.row: form %d: %v", i.FormID, err)
+		}
+		i.form = &f
+	}
+	return *i.form
+}
+
+// Name, Surname, Email - dane gościa, jak w mailach imprez
+func (i *FormFuncs) Name() string    { return i.row().Name.String }
+func (i *FormFuncs) Surname() string { return i.row().Surname.String }
+func (i *FormFuncs) Email() string   { return i.row().Email.String }
+
+// TotalPrice - kwota do zapłaty z pola kwoty formularza (jak w kodzie QR)
+func (i *FormFuncs) TotalPrice() string {
+	if i.Template.MoneyAmountFieldName.String == "" {
+		return ""
+	}
+	return i.MTotal(i.Template.MoneyAmountFieldName.String)
+}
+
+// orderFuncs - dane do przelewu liczone tak samo jak w mailach imprez (pay.go)
+func (i *FormFuncs) orderFuncs() *OrderFuncs {
+	f := i.row()
+	return &OrderFuncs{DB: i.DB, User: i.User, Lang: formLang(i.Template), TotalPrice: i.TotalPrice(),
+		Name: f.Name.String, Surname: f.Surname.String, payPrefix: i.Template.PayMessage}
+}
+
+func (i *FormFuncs) PayInfo(accountName string) template.HTML {
+	return i.orderFuncs().PayInfo(accountName)
+}
+func (i *FormFuncs) PayAccount(accountName string) template.HTML {
+	return i.orderFuncs().PayAccount(accountName)
+}
+func (i *FormFuncs) PayIBAN(accountName string) template.HTML {
+	return i.orderFuncs().PayIBAN(accountName)
+}
+func (i *FormFuncs) PayVS(accountName string) template.HTML {
+	return i.orderFuncs().PayVS(accountName)
+}
+func (i *FormFuncs) PayMessage(accountName string) template.HTML {
+	return i.orderFuncs().PayMessage(accountName)
 }
 
 // Sum returns sum of given form field.

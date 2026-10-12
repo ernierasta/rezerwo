@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -336,6 +337,9 @@ type Notification struct {
 	CreatedDate            int64          `db:"created_date"`
 	UpdatedDate            sql.NullInt64  `db:"updated_date"`
 	UserID                 int64          `db:"users_id_fk"`
+	// FormTemplateID - formularz, do którego należy mail formularza
+	// (jego pola podpowiada edytor maila)
+	FormTemplateID sql.NullInt64 `db:"formtemplates_id_fk"`
 }
 
 type FormNotificationLog struct {
@@ -1115,6 +1119,13 @@ func (db *DB) FormTemplateModByIDUser(t *FormTemplate) error {
 // FormTemplateSetAdminNotification i FormTemplateSetEvent zapisują pola, których
 // nie ma w FormTemplateModByID (stary edytor formularza ich nie zna, więc nie
 // dopisujemy ich tam - skasowałby ustawienie przy zwykłym zapisie).
+// FormTemplateSetNotification - mail dla gościa (notifications_id_fk).
+func (db *DB) FormTemplateSetNotification(tmplID, userID int64, notifID sql.NullInt64) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET notifications_id_fk=$1 WHERE id=$2 AND users_id_fk=$3`,
+		notifID, tmplID, userID)
+	return err
+}
+
 func (db *DB) FormTemplateSetAdminNotification(tmplID, userID int64, notifID sql.NullInt64) error {
 	_, err := db.DB.Exec(`UPDATE formtemplates SET admin_notifications_id_fk=$1 WHERE id=$2 AND users_id_fk=$3`,
 		notifID, tmplID, userID)
@@ -1419,19 +1430,185 @@ func (db *DB) FormTemplateDelete(tmplID, userID int64) error {
 	if n == 0 {
 		return fmt.Errorf("FormTemplateDelete: form %d not found", tmplID)
 	}
-	stmts := []string{
-		`DELETE FROM formnotificationslog WHERE forms_id_fk IN (SELECT id FROM forms WHERE formtemplates_id_fk=$1)`,
-		`DELETE FROM formtemplates_notifs WHERE formtemplates_id_fk=$1`,
-		`DELETE FROM formanswers WHERE forms_id_fk IN (SELECT id FROM forms WHERE formtemplates_id_fk=$1)`,
-		`DELETE FROM formanswers WHERE formfields_id_fk IN (SELECT id FROM formfields WHERE formtemplates_id_fk=$1)`,
-		`DELETE FROM forms WHERE formtemplates_id_fk=$1`,
-		`DELETE FROM formfields WHERE formtemplates_id_fk=$1`,
-		`DELETE FROM formtemplates WHERE id=$1`,
+	if err := execAll(tx, tmplID, formTemplateDeleteSQL); err != nil {
+		return err
 	}
+	return tx.Commit()
+}
+
+// formTemplateDeleteSQL - formularz ($1) z polami, zgłoszeniami i odpowiedziami
+var formTemplateDeleteSQL = []string{
+	`DELETE FROM formnotificationslog WHERE forms_id_fk IN (SELECT id FROM forms WHERE formtemplates_id_fk=$1)`,
+	`DELETE FROM formtemplates_notifs WHERE formtemplates_id_fk=$1`,
+	`UPDATE notifications SET formtemplates_id_fk=NULL WHERE formtemplates_id_fk=$1`,
+	`DELETE FROM formanswers WHERE forms_id_fk IN (SELECT id FROM forms WHERE formtemplates_id_fk=$1)`,
+	`DELETE FROM formanswers WHERE formfields_id_fk IN (SELECT id FROM formfields WHERE formtemplates_id_fk=$1)`,
+	`DELETE FROM forms WHERE formtemplates_id_fk=$1`,
+	`DELETE FROM formfields WHERE formtemplates_id_fk=$1`,
+	`DELETE FROM formtemplates WHERE id=$1`,
+}
+
+// execAll wykonuje po kolei zapytania z jednym parametrem ($1 = id).
+func execAll(tx *sqlx.Tx, id int64, stmts []string) error {
 	for _, s := range stmts {
-		if _, err := tx.Exec(s, tmplID); err != nil {
+		if _, err := tx.Exec(s, id); err != nil {
+			return fmt.Errorf("%s: %w", s, err)
+		}
+	}
+	return nil
+}
+
+// EventDelete kasuje imprezę organizacji razem z rezerwacjami, zamówieniami,
+// cenami, historią maili i formularzem dodatków. Sale, maile, konta, klienci
+// i podpięte zwykłe formularze zostają (formularze tracą tylko powiązanie).
+func (db *DB) EventDelete(eventID, userID int64) error {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var addons sql.NullInt64
+	if err := tx.Get(&addons, `SELECT addons_formtemplate_id FROM events WHERE id=$1 AND users_id_fk=$2`, eventID, userID); err != nil {
+		return fmt.Errorf("EventDelete: event %d: %w", eventID, err)
+	}
+	if addons.Valid && addons.Int64 > 0 {
+		var n int64
+		if err := tx.Get(&n, `SELECT COUNT(id) FROM formtemplates WHERE id=$1 AND users_id_fk=$2 AND kind='order_addons'`, addons.Int64, userID); err != nil {
 			return err
 		}
+		if n > 0 {
+			if err := execAll(tx, addons.Int64, formTemplateDeleteSQL); err != nil {
+				return err
+			}
+		}
+	}
+	err = execAll(tx, eventID, []string{
+		`DELETE FROM eventnotificationslog WHERE reservations_id_fk IN (SELECT id FROM reservations WHERE events_id_fk=$1)`,
+		`DELETE FROM reservation_status_log WHERE reservations_id_fk IN (SELECT id FROM reservations WHERE events_id_fk=$1)`,
+		`DELETE FROM notes WHERE id IN (SELECT notes_id_fk FROM reservations WHERE events_id_fk=$1)`,
+		`DELETE FROM reservations WHERE events_id_fk=$1`,
+		`DELETE FROM order_items WHERE orders_id_fk IN (SELECT id FROM orders WHERE events_id_fk=$1)`,
+		`DELETE FROM orders WHERE events_id_fk=$1`,
+		`DELETE FROM prices WHERE events_id_fk=$1`,
+		`DELETE FROM events_rooms WHERE events_id_fk=$1`,
+		`DELETE FROM events_notifs WHERE events_id_fk=$1`,
+		`DELETE FROM eventsaddons WHERE events_id_fk=$1`,
+		`UPDATE formtemplates SET events_id_fk=NULL WHERE events_id_fk=$1`,
+		`UPDATE events SET previous_event_id=NULL WHERE previous_event_id=$1`,
+		`DELETE FROM events WHERE id=$1`,
+	})
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// RoomReservations - ile rezerwacji (w dowolnej imprezie) jest na meblach sali.
+func (db *DB) RoomReservations(roomID int64) (int64, error) {
+	var n int64
+	err := db.DB.Get(&n, `SELECT COUNT(r.id) FROM reservations r JOIN furnitures f ON r.furnitures_id_fk=f.id WHERE f.rooms_id_fk=$1`, roomID)
+	return n, err
+}
+
+// RoomEventNames - imprezy (wszystkich organizacji), do których sala jest podpięta.
+func (db *DB) RoomEventNames(roomID int64) ([]string, error) {
+	names := []string{}
+	err := db.DB.Select(&names, `SELECT e.name FROM events e JOIN events_rooms er ON er.events_id_fk=e.id WHERE er.rooms_id_fk=$1 ORDER BY e.date DESC`, roomID)
+	return names, err
+}
+
+// RoomDelete kasuje salę organizacji z meblami i cenami. Sali z rezerwacjami
+// nie kasujemy - zniknęłyby miejsca z historii imprez. Z imprez bez
+// rezerwacji sala zostaje odpięta.
+func (db *DB) RoomDelete(roomID, userID int64) error {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var n int64
+	if err := tx.Get(&n, `SELECT COUNT(*) FROM users_rooms WHERE rooms_id_fk=$1 AND users_id_fk=$2`, roomID, userID); err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("RoomDelete: room %d not found", roomID)
+	}
+	if err := tx.Get(&n, `SELECT COUNT(r.id) FROM reservations r JOIN furnitures f ON r.furnitures_id_fk=f.id WHERE f.rooms_id_fk=$1`, roomID); err != nil {
+		return err
+	}
+	if n > 0 {
+		return ErrRoomHasReservations
+	}
+	err = execAll(tx, roomID, []string{
+		`DELETE FROM prices WHERE furnitures_id_fk IN (SELECT id FROM furnitures WHERE rooms_id_fk=$1)`,
+		`DELETE FROM furnitures WHERE rooms_id_fk=$1`,
+		`DELETE FROM events_rooms WHERE rooms_id_fk=$1`,
+		`DELETE FROM users_rooms WHERE rooms_id_fk=$1`,
+		`DELETE FROM rooms WHERE id=$1`,
+	})
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// ErrRoomHasReservations - sali z rezerwacjami nie da się skasować.
+var ErrRoomHasReservations = errors.New("room has reservations")
+
+// NotificationDelete kasuje mail organizacji. Imprezy i formularze, które go
+// wysyłały, zostają bez maila; historia wysłanych maili zostaje.
+func (db *DB) NotificationDelete(mailID, userID int64) error {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec(`DELETE FROM notifications WHERE id=$1 AND users_id_fk=$2`, mailID, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return fmt.Errorf("NotificationDelete: mail %d not found", mailID)
+	}
+	err = execAll(tx, mailID, []string{
+		`UPDATE events SET thankyou_notifications_id_fk=NULL WHERE thankyou_notifications_id_fk=$1`,
+		`UPDATE events SET admin_notifications_id_fk=NULL WHERE admin_notifications_id_fk=$1`,
+		`DELETE FROM events_notifs WHERE notifications_id_fk=$1`,
+		`UPDATE formtemplates SET notifications_id_fk=NULL WHERE notifications_id_fk=$1`,
+		`UPDATE formtemplates SET admin_notifications_id_fk=NULL WHERE admin_notifications_id_fk=$1`,
+		`DELETE FROM formtemplates_notifs WHERE notifications_id_fk=$1`,
+	})
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// BankAccountDelete kasuje konto organizacji; imprezy i formularze, które go
+// używały, zostają bez konta.
+func (db *DB) BankAccountDelete(accID, userID int64) error {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec(`DELETE FROM bankaccounts WHERE id=$1 AND users_id_fk=$2`, accID, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return fmt.Errorf("BankAccountDelete: account %d not found", accID)
+	}
+	err = execAll(tx, accID, []string{
+		`UPDATE events SET bankaccounts_id_fk=NULL WHERE bankaccounts_id_fk=$1`,
+		`UPDATE formtemplates SET bankaccounts_id_fk=NULL WHERE bankaccounts_id_fk=$1`,
+	})
+	if err != nil {
+		return err
 	}
 	return tx.Commit()
 }
@@ -1673,6 +1850,29 @@ func (db *DB) NotificationGetAllRelatedToEventsForUser(UserID int64) ([]Notifica
 	return nn, err
 }
 
+// NotificationGetAllRelatedToFormsForUser - maile do formularzy; stare
+// szablony bez related_to też liczą się jako formularzowe.
+func (db *DB) NotificationGetAllRelatedToFormsForUser(UserID int64) ([]Notification, error) {
+	nn := []Notification{}
+	err := db.DB.Select(&nn, `SELECT * FROM Notifications WHERE users_id_fk=$1 AND IFNULL(related_to, '')<>'events'`, UserID)
+	return nn, err
+}
+
+// NotificationGetAllForForm - maile formularza: przypisane do niego
+// i jeszcze nieprzypisane (stare, nieużywane).
+func (db *DB) NotificationGetAllForForm(userID, formID int64) ([]Notification, error) {
+	nn := []Notification{}
+	err := db.DB.Select(&nn, `SELECT * FROM notifications WHERE users_id_fk=$1 AND IFNULL(related_to, '')<>'events' AND (formtemplates_id_fk=$2 OR formtemplates_id_fk IS NULL) ORDER BY name`, userID, formID)
+	return nn, err
+}
+
+// NotificationClaimForForm przypisuje do formularza mail, który nie należy
+// jeszcze do żadnego (wybrany na stronie formularza).
+func (db *DB) NotificationClaimForForm(id, userID, formID int64) error {
+	_, err := db.DB.Exec(`UPDATE notifications SET formtemplates_id_fk=$1 WHERE id=$2 AND users_id_fk=$3 AND formtemplates_id_fk IS NULL AND IFNULL(related_to, '')<>'events'`, formID, id, userID)
+	return err
+}
+
 // userID is there just to doublecheck
 func (db *DB) NotificationGetByID(id int64, userID int64) (Notification, error) {
 	c := Notification{}
@@ -1692,8 +1892,8 @@ func (db *DB) NotificationAdd(not *Notification) (int64, error) {
 	if not.ID != 0 {
 		return -1, fmt.Errorf("NotificationAdd: ID is not 0, this is existing notification with ID:%d", not.ID)
 	}
-	ret, err := db.DB.NamedExec(`INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk)
-	VALUES (:name, :type, :related_to, :title, :text, :embedded_imgs, :attached_imgs, :sharable, :created_date, :users_id_fk)`, not)
+	ret, err := db.DB.NamedExec(`INSERT INTO notifications (name, type, related_to, title, text, embedded_imgs, attached_imgs, sharable, created_date, users_id_fk, formtemplates_id_fk)
+	VALUES (:name, :type, :related_to, :title, :text, :embedded_imgs, :attached_imgs, :sharable, :created_date, :users_id_fk, :formtemplates_id_fk)`, not)
 	if err != nil {
 		return -1, err
 	}
@@ -1709,7 +1909,7 @@ func (db *DB) NotificationModByID(not *Notification, UserID int64) error {
 		return fmt.Errorf("NotificationModByID: can not update notification %d, userID mismatch. not.User=%d vs UserID=%d", not.ID, not.UserID, UserID)
 	}
 
-	_, err := db.DB.NamedExec(`UPDATE notifications SET name=:name, type=:type, related_to=:related_to, title=:title, text=:text, embedded_imgs=:embedded_imgs, attached_imgs=:attached_imgs, sharable=:sharable, updated_date=:updated_date WHERE id=:id and users_id_fk=:users_id_fk`, not)
+	_, err := db.DB.NamedExec(`UPDATE notifications SET name=:name, type=:type, related_to=:related_to, title=:title, text=:text, embedded_imgs=:embedded_imgs, attached_imgs=:attached_imgs, sharable=:sharable, updated_date=:updated_date, formtemplates_id_fk=:formtemplates_id_fk WHERE id=:id and users_id_fk=:users_id_fk`, not)
 
 	return err
 }

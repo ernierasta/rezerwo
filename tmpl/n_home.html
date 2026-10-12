@@ -24,6 +24,7 @@
   <div class="rows">
     {{range .Finished}}{{template "eventrow" .}}{{end}}
   </div>
+  {{template "older" .OlderFinished}}
   {{end}}
 
   {{if and (not .Selling) (not .Soon) (not .Finished)}}
@@ -35,7 +36,7 @@
   </h4>
   <div class="rows">
     {{range .Forms}}
-    <a class="row{{if .Closed}} closed{{end}}" href="/admin/forms/{{.ID}}">
+    <a class="row{{if .Closed}} closed{{end}}{{if .Old}} old{{end}}" href="/admin/forms/{{.ID}}">
       <span class="{{if .Closed}}muted{{end}}">{{.DateS}}</span>
       <span>{{.Name}}</span>
       <small class="num">{{.Info}}</small>
@@ -44,11 +45,12 @@
     <div class="empty">{{T "home.no_forms"}}</div>
     {{end}}
   </div>
+  {{template "older" .OlderForms}}
 </div>
 {{end}}
 
 {{define "eventrow"}}
-<a class="row event" href="/admin/events/{{.ID}}">
+<a class="row event{{if .Old}} old{{end}}" href="/admin/events/{{.ID}}">
   <span class="num">{{.DateS}}</span>
   <span class="ename">{{.Name}}
     {{if .Missing}}<small class="miss">{{.Missing}}</small>{{end}}

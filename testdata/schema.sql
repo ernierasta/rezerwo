@@ -70,7 +70,7 @@ CREATE TABLE "notifications" (
 	"sharable"	TEXT,
 	"created_date"	INTEGER NOT NULL,
 	"updated_date"	INTEGER,
-	"users_id_fk"	INTEGER,
+	"users_id_fk"	INTEGER, formtemplates_id_fk INTEGER REFERENCES formtemplates(id),
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 CREATE TABLE "formfields" (

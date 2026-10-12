@@ -10,7 +10,9 @@
 // Lista zmiennych i kont przychodzi z serwera (mailEditorVars w catalog_ui.go):
 // {vars: [{code, label, subject, account}], accounts: ["Konto", ...]}.
 // account: akcja z nazwą konta, np. {{.PayInfo "Konto"}} (dane do przelewu,
-// pay.go) - wstawia się i zmienia jak kod QR.
+// pay.go) - wstawia się i zmienia jak kod QR. Maile formularzy mają też
+// zmienne ze stałym argumentem: {code: '.Field', arg: 'klasa', text: 'Klasa'}
+// - pole formularza, text to jego etykieta.
 
 (function (global) {
   'use strict';
@@ -29,14 +31,30 @@
   function findVar(code, account) {
     for (var i = 0; i < meta.vars.length; i++) {
       var v = meta.vars[i];
-      if (v.code === code && !v.account === !account) return v;
+      if (v.code === code && !v.account === !account && v.arg === undefined) return v;
     }
     return null;
   }
 
-  // simpleVar - zmienna bez argumentu ({{.Name}}), accountVar - z kontem
+  // simpleVar - zmienna bez argumentu ({{.Name}}), accountVar - z kontem,
+  // fieldVar - ze stałym argumentem ({{.Field "klasa"}})
   function simpleVar(code) { return findVar(code, false); }
   function accountVar(code) { return findVar(code, true); }
+  function fieldVar(code, arg) {
+    for (var i = 0; i < meta.vars.length; i++) {
+      var v = meta.vars[i];
+      if (v.code === code && v.arg !== undefined && v.arg === arg) return v;
+    }
+    return null;
+  }
+
+  // varLabel - etykieta zmiennej: pole formularza albo klucz tłumaczenia
+  function varLabel(v) { return v.text || RZ.t(v.label); }
+
+  // findAny - zmienna z argumentem albo bez (bez kont)
+  function findAny(code, arg) {
+    return arg !== undefined && arg !== null ? fieldVar(code, arg) : simpleVar(code);
+  }
 
   // pastylka z kontem: kod QR albo dane do przelewu
   function withAccount(code) { return isQR(code) || !!accountVar(code); }
@@ -48,8 +66,14 @@
       var name = isQR(code) ? RZ.t('mail.qr') : RZ.t(accountVar(code).label);
       return name + ': ' + (hasAccount(arg) ? arg : RZ.t('mail.qr_choose'));
     }
-    var v = simpleVar(code);
-    return v ? RZ.t(v.label) : code;
+    var v = findAny(code, arg);
+    return v ? varLabel(v) : code;
+  }
+
+  // shortLabel - etykieta pastylki; pola formularza bywają całymi zdaniami
+  function shortLabel(code, arg) {
+    var l = chipLabel(code, arg);
+    return l.length > 48 ? l.slice(0, 45).trim() + '…' : l;
   }
 
   function actionText(code, arg) {
@@ -72,7 +96,8 @@
         var node = super.create();
         node.dataset.code = value.code;
         if (value.arg !== undefined && value.arg !== null) node.dataset.arg = value.arg;
-        node.textContent = chipLabel(value.code, value.arg);
+        node.textContent = shortLabel(value.code, value.arg);
+        node.title = chipLabel(value.code, value.arg);
         if (withAccount(value.code)) {
           node.classList.add('acct');
           if (!hasAccount(value.arg)) node.classList.add('bad');
@@ -128,6 +153,8 @@
           chip = {code: code, arg: arg};
         } else if (arg === null && simpleVar(code)) {
           chip = {code: code};
+        } else if (arg !== null && fieldVar(code, arg)) {
+          chip = {code: code, arg: arg};
         }
         if (chip === null) continue;
 
@@ -137,7 +164,8 @@
           span.className = 'mvar';
           span.dataset.code = chip.code;
           if (chip.arg !== undefined) span.dataset.arg = chip.arg;
-          span.textContent = chipLabel(chip.code, chip.arg);
+          span.textContent = shortLabel(chip.code, chip.arg);
+          span.title = chipLabel(chip.code, chip.arg);
           frag.appendChild(span);
         }
         last = m.index + m[0].length;
@@ -228,14 +256,18 @@
     }));
   }
 
-  // openVarMenu: pick(code) albo pick(kod, konto) dla kodu QR i danych do
-  // przelewu. subjectOnly - tylko zmienne, które mają sens w temacie maila
-  // (bez tych z kontem).
+  // openVarMenu: pick(code) albo pick(kod, argument) dla pól formularza,
+  // kodu QR i danych do przelewu (argument to nazwa pola albo konta).
+  // subjectOnly - tylko zmienne, które mają sens w temacie maila (bez tych
+  // z kontem). Pola formularza oddziela kreska od danych gościa.
   function openVarMenu(anchor, pick, subjectOnly) {
-    var items = meta.vars
-      .filter(function (v) { return !v.account && (!subjectOnly || v.subject); })
-      .map(function (v) {
-        return {label: RZ.t(v.label), action: function () { pick(v.code); }};
+    var items = [], fields = false;
+    meta.vars
+      .filter(function (v) { return !v.account && !v.hidden && (!subjectOnly || v.subject); })
+      .forEach(function (v) {
+        if (v.arg !== undefined && !fields && items.length) items.push({sep: true});
+        if (v.arg !== undefined) fields = true;
+        items.push({label: varLabel(v), action: function () { pick(v.code, v.arg); }});
       });
     if (!subjectOnly) {
       var withAcc = function (label, code) {
@@ -288,6 +320,9 @@
   RZ.vars = {
     setup: setup,
     simpleVar: simpleVar,
+    findVar: findAny,
+    varLabel: varLabel,
+    vars: function () { return meta.vars; },
     toEditor: toEditor,
     fromEditor: fromEditor,
     actionText: actionText,

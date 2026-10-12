@@ -36,6 +36,9 @@
     <button class="btn" id="save">{{T "common.save"}}</button>
     <a class="btn quiet" href="{{.Back}}">{{T "common.cancel"}}</a>
     <small class="msg"></small>
+    <button class="btn danger" type="button" style="margin-left:auto" data-delete="/api/accounts/{{.ID}}" data-next="{{.Back}}"
+      data-title="{{T "del.account_title"}}" data-text="{{T "del.account_text" .Name}}"
+      {{if .UsedBy}}data-text2="{{T "del.account_used" (join .UsedBy ", ")}}"{{end}} data-draft-key="rezerwo.draft:/api/accounts/{{.ID}}">{{T "del.account"}}</button>
   </div>
 </div>
 {{end}}

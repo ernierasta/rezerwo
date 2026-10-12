@@ -17,10 +17,16 @@
         <option value="events" {{if eq .RelatedTo "events"}}selected{{end}}>{{T "catalog.for_events"}}</option>
         <option value="forms" {{if eq .RelatedTo "forms"}}selected{{end}}>{{T "catalog.for_forms"}}</option>
       </select></div>
+    <div class="f forms-only" style="grid-column:1/-1"><label for="f-form">{{T "mail.form"}}</label>
+      <select class="inp" id="f-form" data-field="form_id">
+        <option value="0">{{T "field.select_hint"}}</option>
+        {{range .Forms}}<option value="{{.ID}}" {{if eq $.FormID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+      </select>
+      <small>{{T "mail.form_hint"}}</small></div>
     <div class="f" style="grid-column:1/-1"><label for="f-subject">{{T "mail.subject"}}</label>
       <div class="inp-row">
         <input class="inp" id="f-subject" data-field="subject" value="{{.Subject}}">
-        <button type="button" class="btn quiet ev-only" id="subject-var">{{T "mail.insert_subject"}}</button>
+        <button type="button" class="btn quiet" id="subject-var">{{T "mail.insert_subject"}}</button>
       </div></div>
   </div>
 
@@ -61,9 +67,12 @@
 
   <div class="sec-f">
     <button class="btn" id="save">{{T "common.save"}}</button>
-    <button class="btn quiet ev-only" id="preview">{{T "mail.preview"}}</button>
+    <button class="btn quiet" id="preview">{{T "mail.preview"}}</button>
     <a class="btn quiet" href="{{.Back}}">{{T "common.cancel"}}</a>
     <small class="msg"></small>
+    <button class="btn danger" type="button" style="margin-left:auto" data-delete="/api/mails/{{.ID}}" data-next="{{.Back}}"
+      data-title="{{T "del.mail_title"}}" data-text="{{T "del.mail_text" .Name}}"
+      {{if .UsedBy}}data-text2="{{T "del.mail_used" (join .UsedBy ", ")}}"{{end}} data-draft-key="rezerwo.draft:/api/mails/{{.ID}}">{{T "del.mail"}}</button>
   </div>
 </div>
 {{end}}

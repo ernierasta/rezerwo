@@ -6,6 +6,10 @@
 // w temacie jako [Etykieta], a w bazie zostają akcje szablonu Go ({{.Name}},
 // {{.QRPayMail "Konto"}}, {{.PDF "opis"}}), więc stare maile działają dalej.
 // Zamiana w obie strony: toEditor() przy wczytaniu, fromEditor() przy zapisie.
+// Maile formularzy tak samo, tylko z danymi z formularza ({{.Field "pole"}},
+// formMailVars w mail_vars.go). Mail formularza należy do jednego formularza
+// (wybór "Formularz") i podpowiada jego pola; zestaw zmiennych zależy od
+// "Dotyczy" i formularza.
 
 (function () {
   'use strict';
@@ -19,7 +23,7 @@
     ? '/api/mails/' + mailPage.dataset.mailId
     : '/api/accounts/' + accountPage.dataset.accountId;
 
-  var meta = {vars: [], accounts: []};
+  var meta = {vars: [], forms: [], accounts: []};
   if (mailPage && mailPage.dataset.vars) {
     try { meta = JSON.parse(mailPage.dataset.vars); } catch (e) { /* zostaje puste */ }
   }
@@ -28,11 +32,30 @@
   var relatedEl = document.getElementById('f-related');
   function isEvents() { return !relatedEl || relatedEl.value === 'events'; }
 
+  var formEl = document.getElementById('f-form');
+  function formID() { return formEl ? Number(formEl.value) || 0 : 0; }
+
+  function formVars() {
+    var id = formID();
+    for (var i = 0; i < (meta.forms || []).length; i++) {
+      if (meta.forms[i].id === id) return meta.forms[i].vars || [];
+    }
+    return [];
+  }
+
+  // zmienne imprez albo wybranego formularza; evMode - zestaw ustawiony
+  // w edytorze (przy zmianie select ma już nową wartość)
+  var evMode = true;
+  function setupVars() {
+    evMode = isEvents();
+    V.setup({vars: (isEvents() ? meta.vars : formVars()) || [], accounts: meta.accounts}, '.QRPayMail');
+  }
+
   var editor = null;
   var editorEl = document.getElementById('mail-editor');
 
   if (editorEl && typeof Quill !== 'undefined') {
-    V.setup(meta, '.QRPayMail');
+    setupVars();
     editor = new Quill(editorEl, {
       modules: RZ.quillModules({
         container: [
@@ -59,17 +82,19 @@
   var subjectEl = document.getElementById('f-subject');
 
   function subjectToEditor(s) {
-    if (!isEvents()) return s;
-    return s.replace(/\{\{\s*(\.[A-Za-z]+)\s*\}\}/g, function (all, code) {
-      var v = V.simpleVar(code);
-      return v ? '[' + RZ.t(v.label) + ']' : all;
+    return s.replace(/\{\{\s*(\.[A-Za-z]+)(?:\s+("(?:[^"\\]|\\.)*"))?\s*\}\}/g, function (all, code, arg) {
+      if (arg) {
+        try { arg = JSON.parse(arg); } catch (e) { return all; }
+      }
+      var v = V.findVar(code, arg);
+      return v ? '[' + V.varLabel(v) + ']' : all;
     });
   }
 
   function subjectFromEditor(s) {
-    meta.vars.forEach(function (v) {
+    V.vars().forEach(function (v) {
       if (v.account) return;
-      s = s.split('[' + RZ.t(v.label) + ']').join('{{' + v.code + '}}');
+      s = s.split('[' + V.varLabel(v) + ']').join(V.actionText(v.code, v.arg));
     });
     return s;
   }
@@ -84,8 +109,8 @@
       var val0 = subjectEl.value;
       var start = subjectCaret ? subjectEl.selectionStart : val0.length;
       var end = subjectCaret ? subjectEl.selectionEnd : val0.length;
-      V.openVarMenu(subjectVar, function (code) {
-        var tag = '[' + RZ.t(V.simpleVar(code).label) + ']';
+      V.openVarMenu(subjectVar, function (code, arg) {
+        var tag = '[' + V.varLabel(V.findVar(code, arg)) + ']';
         var val = subjectEl.value;
         if (start > 0 && !/\s/.test(val.charAt(start - 1))) tag = ' ' + tag;
         if (end < val.length && !/\s/.test(val.charAt(end))) tag = tag + ' ';
@@ -111,13 +136,12 @@
   }
 
   function toEditor(html) {
-    if (!isEvents()) return {html: html || '', pdf: null};
-    return V.toEditor(html, true);
+    return V.toEditor(html, evMode);
   }
 
   function fromEditor() {
     var html = V.fromEditor(editor);
-    if (pdfBox && pdfBox.checked && isEvents()) {
+    if (pdfBox && pdfBox.checked && evMode) {
       html += V.actionText('.PDF', pdfInfo.value.trim());
     }
     return html;
@@ -133,7 +157,19 @@
 
   function setRelatedMode() {
     page.classList.toggle('mail-forms', !isEvents());
-    if (varButton) varButton.hidden = !isEvents();
+    if (varButton) varButton.textContent = RZ.t(isEvents() ? 'mail.insert' : 'mail.insert_form');
+  }
+
+  // zmiana "Dotyczy" albo formularza: treść i temat przechodzą na drugi
+  // zestaw zmiennych (pastylki, których tam nie ma, wracają do postaci akcji
+  // szablonu)
+  function switchRelated() {
+    var subject = subjectFromEditor(subjectEl.value);
+    var html = editor ? fromEditor() : '';
+    setupVars();
+    setRelatedMode();
+    subjectEl.value = subjectToEditor(subject);
+    if (editor) setText(html);
   }
 
   // --- wartości, szkic, zapis -----------------------------------------------
@@ -144,7 +180,8 @@
       out[el.dataset.field] = el.type === 'checkbox' ? el.checked : el.value;
     });
     if (editor) out.text = fromEditor();
-    if (mailPage && isEvents()) out.subject = subjectFromEditor(out.subject);
+    if (mailPage) out.subject = subjectFromEditor(out.subject);
+    if (mailPage) out.form_id = formID();
     return out;
   }
 
@@ -161,6 +198,7 @@
       if (el.type === 'checkbox') el.checked = !!v[el.dataset.field];
       else el.value = v[el.dataset.field];
     });
+    setupVars();
     setRelatedMode();
     if (subjectEl && mailPage) subjectEl.value = subjectToEditor(subjectEl.value);
     if (editor && v.text !== undefined) setText(v.text);
@@ -168,7 +206,7 @@
 
   page.addEventListener('input', stash);
   page.addEventListener('change', function (e) {
-    if (e.target === relatedEl) setRelatedMode();
+    if ((e.target === relatedEl || e.target === formEl) && mailPage) switchRelated();
     if (e.target === pdfBox) pdfInfoF.hidden = !pdfBox.checked;
     stash();
   });
@@ -178,7 +216,6 @@
     // etykiety pastylek i tematu są w tłumaczeniach, więc treść wczytujemy
     // dopiero po nich
     if (mailPage) {
-      if (varButton) varButton.textContent = RZ.t('mail.insert');
       applyValues({
         subject: subjectEl.value,
         text: document.getElementById('mail-text').innerHTML
@@ -229,7 +266,7 @@
   var previewBtn = document.getElementById('preview');
   if (previewBtn) previewBtn.addEventListener('click', function () {
     var v = values();
-    var body = {subject: v.subject, text: v.text};
+    var body = {subject: v.subject, text: v.text, related_to: v.related_to, form_id: v.form_id};
     var msg = page.querySelector('.sec-f .msg');
     RZ.postJSON(url + '/preview', body)
       .then(function (resp) { if (msg) msg.textContent = ''; showPreview(resp, body); })
@@ -253,7 +290,7 @@
     back.appendChild(dlg);
 
     dlg.appendChild(el('h3', '', RZ.t('mail.preview_title')));
-    dlg.appendChild(el('p', 'muted', RZ.t('mail.preview_hint')));
+    dlg.appendChild(el('p', 'muted', RZ.t(body.related_to === 'forms' ? 'mail.preview_hint_forms' : 'mail.preview_hint')));
 
     var head = el('dl', 'mp-head');
     function row(label, value) {

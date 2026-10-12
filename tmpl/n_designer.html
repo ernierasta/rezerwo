@@ -13,6 +13,10 @@
     </div>
     <div class="r">
       <a class="btn quiet" href="{{.Back}}">← {{.BackLabel}}</a>
+      <button class="btn danger" type="button" data-delete="/api/rooms/{{.Room.ID}}"
+        data-title="{{T "del.room_title"}}"
+        {{if .RoomRes}}data-blocked data-text="{{T "del.room_blocked" .Room.Name (TN "count.seat" .RoomRes)}}" data-text2="{{T "del.room_events" .RoomEvents}}"
+        {{else}}data-text="{{T "del.room_text" .Room.Name}}" {{if .RoomEvents}}data-text2="{{T "del.room_detach" .RoomEvents}}"{{end}}{{end}}>{{T "del.room"}}</button>
       <button class="btn" id="save" type="button">{{T "common.save"}}</button>
     </div>
   </div>

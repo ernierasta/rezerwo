@@ -142,6 +142,7 @@ type nMailSource struct {
 	RelatedTo string `json:"related_to"`
 	Subject   string `json:"subject"`
 	Text      string `json:"text"`
+	FormID    int64  `json:"form_id,omitempty"`
 }
 
 // MailSourcesAPI - GET /api/mails/sources: szablony i własne maile do okna
@@ -166,6 +167,7 @@ func MailSourcesAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 				RelatedTo: m.RelatedTo,
 				Subject:   m.Title.String,
 				Text:      m.Text,
+				FormID:    m.FormTemplateID.Int64,
 			})
 		}
 		// najnowsze na górze - zwykle kopiuje się zeszłoroczny mail
@@ -175,7 +177,7 @@ func MailSourcesAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		if templates == nil {
 			templates = []mailTemplate{}
 		}
-		jsonMsg(w, http.StatusOK, map[string]interface{}{"templates": templates, "mine": mine})
+		jsonMsg(w, http.StatusOK, map[string]interface{}{"templates": templates, "mine": mine, "forms": mailForms(db, user, false)})
 	}
 }
 
@@ -185,6 +187,9 @@ type nMailCreateMsg struct {
 	CopyOf   int64  `json:"copy_of"`
 	// RelatedTo - dla pustego maila (szablon i kopia mają własne)
 	RelatedTo string `json:"related_to"`
+	// FormID - formularz, do którego należy mail formularza (wymagany);
+	// Template "form:guest" / "form:admin" - mail z wszystkimi jego polami
+	FormID int64 `json:"form_id"`
 }
 
 // MailCreateAPI - POST /api/mails: pusty mail, z szablonu albo kopia własnego.
@@ -235,6 +240,17 @@ func MailCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			// pliki leżą w katalogu organizacji, więc kopia może ich używać
 			mail.EmbeddedImgsDelimited = src.EmbeddedImgsDelimited
 			mail.AttachedFilesDelimited = src.AttachedFilesDelimited
+		case m.Template == "form:guest" || m.Template == "form:admin":
+			templ, err := ownedForm(db, user, m.FormID)
+			if err != nil {
+				jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(PanelLang(r), "mail.form_needed")})
+				return
+			}
+			admin := m.Template == "form:admin"
+			subject, text := formMailDraft(db, user, templ, admin, draftLang(r, templ, admin))
+			mail.RelatedTo = "forms"
+			mail.Title = ToNS(subject)
+			mail.Text = text
 		case m.Template != "":
 			t, ok := findMailTemplate(m.Template)
 			if !ok {
@@ -244,6 +260,14 @@ func MailCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			mail.RelatedTo = t.RelatedTo
 			mail.Title = ToNS(t.Subject)
 			mail.Text = fillOnlyAccount(db, user, t.Text)
+		}
+
+		if mail.RelatedTo == "forms" {
+			if _, err := ownedForm(db, user, m.FormID); err != nil {
+				jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(PanelLang(r), "mail.form_needed")})
+				return
+			}
+			mail.FormTemplateID = ToNI(m.FormID)
 		}
 
 		id, err := db.NotificationAdd(&mail)

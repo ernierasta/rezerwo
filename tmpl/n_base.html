@@ -30,6 +30,10 @@
 </body>
 </html>{{end}}
 
+{{/* Przycisk "Starsze (N)" zaraz za listą .rows - rozwija rzędy .old
+     (n_ui.js). Argument: ile rzędów jest schowanych. */}}
+{{define "older"}}{{if .}}<button type="button" class="link older" data-older aria-expanded="false" data-more="{{T "common.older" .}}" data-less="{{T "common.collapse"}}">{{T "common.older" .}}</button>{{end}}{{end}}
+
 {{/* Link do strony nadrzędnej nad tytułem strony (NPage.UpURL). */}}
 {{define "up"}}{{if .UpURL}}<a class="up" href="{{.UpURL}}">← {{.UpLabel}}</a>{{end}}{{end}}
 

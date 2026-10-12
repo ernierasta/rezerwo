@@ -4,6 +4,7 @@ package main
 // (/admin/mails/{id}, /admin/accounts/{id}), zapis jednym żądaniem JSON.
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -31,8 +32,12 @@ type nMailVars struct {
 	// Attachments i Images - nazwy plików z media/<org>/email/ rozdzielone ";"
 	Attachments string
 	Images      string
-	// Vars - JSON dla edytora: zmienne zamówienia i nazwy kont do kodu QR
+	// Vars - JSON dla edytora: zmienne zamówienia i formularzy, nazwy kont
 	Vars string
+	// Forms i FormID - formularze do wyboru i ten, do którego należy mail
+	// (mail formularza musi go mieć)
+	Forms  []mailForm
+	FormID int64
 	// Back - dokąd wrócić po zapisie/anulowaniu (impreza, formularz, katalogi)
 	Back      string
 	BackLabel string
@@ -61,25 +66,58 @@ func MailPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *h
 			UsedBy:      mailUsedBy(db, user, mail.ID),
 			Attachments: mail.AttachedFilesDelimited.String,
 			Images:      mail.EmbeddedImgsDelimited.String,
-			Vars:        mailEditorVars(db, user),
 		}
 		vars.Back, vars.BackLabel = backLink(r, lang, "catalog.mails")
+		vars.FormID = mail.FormTemplateID.Int64
+		if vars.FormID == 0 {
+			vars.FormID = backFormID(vars.Back)
+		}
+		vars.Forms = mailForms(db, user, true)
+		vars.Vars = mailPageVars(db, user, vars.Forms)
 		vars.UpURL, vars.UpLabel = upLink(r, db, user, lang)
 		nRender(w, lang, vars, "tmpl/n_mail.html")
 	}
 }
 
 func mailEditorVars(db *DB, user User) string {
+	b, _ := json.Marshal(map[string]interface{}{"vars": eventMailVars, "accounts": accountNames(db, user)})
+	return string(b)
+}
+
+// mailPageVars - jak mailEditorVars, plus zmienne każdego formularza
+// (forms), bo admin może zmienić "Dotyczy" i formularz bez przeładowania.
+func mailPageVars(db *DB, user User, forms []mailForm) string {
+	b, _ := json.Marshal(map[string]interface{}{
+		"vars":     eventMailVars,
+		"forms":    forms,
+		"accounts": accountNames(db, user),
+	})
+	return string(b)
+}
+
+// backFormID - ID formularza z adresu powrotu (/admin/forms/12#mail), albo 0.
+func backFormID(back string) int64 {
+	rest, ok := strings.CutPrefix(back, "/admin/forms/")
+	if !ok {
+		return 0
+	}
+	ids, _, _ := strings.Cut(rest, "#")
+	ids, _, _ = strings.Cut(ids, "?")
+	ids, _, _ = strings.Cut(ids, "/")
+	id, _ := strconv.ParseInt(ids, 10, 64)
+	return id
+}
+
+func accountNames(db *DB, user User) []string {
 	accounts := []string{}
 	accs, err := db.BankAccountGetAll(user.ID)
 	if err != nil {
-		log.Printf("mailEditorVars: accounts: %v", err)
+		log.Printf("accountNames: %v", err)
 	}
 	for _, a := range accs {
 		accounts = append(accounts, a.Name)
 	}
-	b, _ := json.Marshal(map[string]interface{}{"vars": eventMailVars, "accounts": accounts})
-	return string(b)
+	return accounts
 }
 
 // backLink - adres powrotu z edytora maila albo konta. Imprezy i formularze
@@ -154,6 +192,8 @@ type nMailMsg struct {
 	Subject   string `json:"subject"`
 	Text      string `json:"text"`
 	RelatedTo string `json:"related_to"`
+	// FormID - formularz maila formularza (wymagany)
+	FormID int64 `json:"form_id"`
 	// nazwy plików z media/<org>/email/ rozdzielone ";" - nil, gdy strona ich nie wysyła
 	Attachments *string `json:"attachments"`
 	Images      *string `json:"images"`
@@ -204,6 +244,14 @@ func MailSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 		}
 		if m.RelatedTo == "events" || m.RelatedTo == "forms" {
 			mail.RelatedTo = m.RelatedTo
+		}
+		mail.FormTemplateID = sql.NullInt64{}
+		if mail.RelatedTo != "events" {
+			if _, err := ownedForm(db, user, m.FormID); err != nil {
+				jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "mail.form_needed")})
+				return
+			}
+			mail.FormTemplateID = ToNI(m.FormID)
 		}
 		if m.Attachments != nil {
 			mail.AttachedFilesDelimited = ToNS(cleanFileList(*m.Attachments))

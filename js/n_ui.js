@@ -530,6 +530,117 @@
   var ready = loadLocale(document.documentElement.lang || 'pl');
   ready.then(function () { syncBannerPicks(document); });
 
+  // Kasowanie z oknem potwierdzenia (delete_api.go). Przycisk:
+  //   <button data-delete="/api/x/1" data-title="Usunąć…?" data-text="…"
+  //     [data-text2="…"] [data-confirm-name="Nazwa" data-confirm-label="Wpisz…"]
+  //     [data-blocked] [data-next="/admin"]>Usuń…</button>
+  // data-confirm-name: przycisk działa dopiero po przepisaniu nazwy;
+  // data-blocked: tylko wyjaśnienie, czemu się nie da, bez kasowania.
+  // Po skasowaniu: data-next, a jak go nie ma - adres z odpowiedzi serwera.
+  function deleteDialog(btn) {
+    var d = btn.dataset;
+    var back = document.createElement('div');
+    back.className = 'dlg-back';
+    var dlg = document.createElement('div');
+    dlg.className = 'dlg';
+    dlg.setAttribute('role', 'dialog');
+    dlg.setAttribute('aria-modal', 'true');
+    back.appendChild(dlg);
+
+    function el(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text) e.textContent = text;
+      return e;
+    }
+    dlg.appendChild(el('h3', '', d.title));
+    if (d.text) dlg.appendChild(el('p', '', d.text));
+    if (d.text2) dlg.appendChild(el('p', 'muted', d.text2));
+
+    var input = null;
+    if (d.confirmName && d.blocked === undefined) {
+      var f = el('div', 'f');
+      var id = 'del-confirm-' + Date.now();
+      var lab = el('label', '', d.confirmLabel);
+      lab.htmlFor = id;
+      input = el('input', 'inp');
+      input.id = id;
+      input.autocomplete = 'off';
+      f.appendChild(lab);
+      f.appendChild(input);
+      dlg.appendChild(f);
+    }
+
+    var foot = el('div', 'sec-f');
+    var ok = null;
+    if (d.blocked === undefined) {
+      ok = el('button', 'btn danger', btn.textContent.trim());
+      ok.type = 'button';
+      foot.appendChild(ok);
+    }
+    var cancel = el('button', 'btn quiet', t(ok ? 'common.cancel' : 'common.close'));
+    cancel.type = 'button';
+    foot.appendChild(cancel);
+    var msg = el('small', 'msg');
+    foot.appendChild(msg);
+    dlg.appendChild(foot);
+
+    function close() { back.remove(); btn.focus(); }
+    cancel.addEventListener('click', close);
+    back.addEventListener('click', function (e) { if (e.target === back) close(); });
+    back.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+    if (ok) {
+      if (input) {
+        ok.disabled = true;
+        input.addEventListener('input', function () {
+          ok.disabled = input.value.trim() !== d.confirmName.trim();
+        });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && !ok.disabled) ok.click();
+        });
+      }
+      ok.addEventListener('click', function () {
+        ok.disabled = true;
+        msg.textContent = '';
+        postJSON(d.delete, {}, 'DELETE')
+          .then(function (resp) {
+            // szkice niezapisanych zmian skasowanej rzeczy są już do niczego
+            if (d.draftKey) {
+              try { localStorage.removeItem(d.draftKey); } catch (e) { /* nic */ }
+            }
+            location.href = d.next || resp.next || '/admin';
+          })
+          .catch(function (err) {
+            msg.textContent = err.message;
+            ok.disabled = !!input && input.value.trim() !== d.confirmName.trim();
+          });
+      });
+    }
+
+    document.body.appendChild(back);
+    (input || cancel).focus();
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('[data-delete]');
+    if (!btn) return;
+    e.preventDefault();
+    deleteDialog(btn);
+  });
+
+  // Długie listy (start, katalogi): rzędy .old są schowane, dopóki admin
+  // nie kliknie "Starsze" ([data-older] zaraz za listą).
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('[data-older]');
+    if (!btn) return;
+    var list = btn.previousElementSibling;
+    if (!list) return;
+    var open = list.classList.toggle('show-old');
+    btn.textContent = open ? btn.dataset.less : btn.dataset.more;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
   // Sekcje harmonijki z zapisem: edytory Quill tworzone przy rozwinięciu sekcji,
   // znacznik niezapisanych zmian, zapis jednej sekcji jednym żądaniem.
   // saveURL dostaje {section: "...", values: {...}} i oddaje {summary, missing}.

@@ -151,7 +151,13 @@ type nHomeRow struct {
 	Money      string
 	// Closed - formularz nie przyjmuje odpowiedzi
 	Closed bool
+	// Old - schowany pod "Starsze" (listFold)
+	Old bool
 }
+
+// listFold - ile ostatnich pozycji list (imprezy zakończone, formularze,
+// maile, konta) widać od razu; resztę rozwija przycisk "Starsze".
+const listFold = 3
 
 type nHomeVars struct {
 	NPage
@@ -159,6 +165,8 @@ type nHomeVars struct {
 	Soon     []nHomeRow
 	Finished []nHomeRow
 	Forms    []nHomeRow
+	// ile pozycji schowanych pod "Starsze"
+	OlderFinished, OlderForms int
 }
 
 // AdminStartPage - lista imprez i formularzy (nowy panel).
@@ -238,6 +246,10 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 
 			switch {
 			case e.Date > 0 && e.Date < now:
+				if len(vars.Finished) >= listFold {
+					row.Old = true
+					vars.OlderFinished++
+				}
 				vars.Finished = append(vars.Finished, row)
 			case e.FromDate > now: // sprzedaż jeszcze się nie zaczęła
 				vars.Soon = append(vars.Soon, row)
@@ -260,13 +272,19 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			if err != nil {
 				log.Printf("AdminStartPage: form answers count: %v", err)
 			}
-			vars.Forms = append(vars.Forms, nHomeRow{
+			row := nHomeRow{
 				ID:     ft.ID,
 				Name:   ft.Name,
 				DateS:  formStatusLabel(ft, lang),
 				Info:   TN(lang, "count.answer", n),
 				Closed: !ft.IsOpen(nowUnix()),
-			})
+			}
+			// otwarte formularze widać zawsze, zamknięte - tylko najnowsze
+			if row.Closed && len(vars.Forms) >= listFold {
+				row.Old = true
+				vars.OlderForms++
+			}
+			vars.Forms = append(vars.Forms, row)
 		}
 
 		nRender(w, lang, vars, "tmpl/n_home.html")
@@ -356,14 +374,20 @@ type nCatalogRoom struct {
 }
 
 type nCatalogMail struct {
+	Old       bool
 	ID        int64
 	Name      string
 	RelatedTo string
 	Title     string
 	Shared    bool
+	// Form - formularz maila formularza; NoForm - jeszcze nieprzypisany
+	Form   string
+	FormID int64
+	NoForm bool
 }
 
 type nCatalogAccount struct {
+	Old      bool
 	ID       int64
 	Name     string
 	IBAN     string
@@ -375,6 +399,8 @@ type nCatalogsVars struct {
 	Rooms    []nCatalogRoom
 	Mails    []nCatalogMail
 	Accounts []nCatalogAccount
+	// ile pozycji schowanych pod "Starsze"
+	OlderMails, OlderAccounts int
 }
 
 // CatalogsPage - /admin/catalogs: wspólne sale, maile i konta.
@@ -412,6 +438,12 @@ func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		if err != nil {
 			log.Printf("CatalogsPage: mails: %v", err)
 		}
+		// ostatnio zmieniane na górze
+		sort.SliceStable(mails, func(i, j int) bool { return mailTouched(mails[i]) > mailTouched(mails[j]) })
+		formNames := map[int64]string{}
+		for _, f := range userForms(db, user) {
+			formNames[f.ID] = f.Name
+		}
 		for _, m := range mails {
 			related := m.RelatedTo
 			switch m.RelatedTo {
@@ -421,11 +453,15 @@ func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 				related = T(lang, "catalog.for_forms")
 			}
 			vars.Mails = append(vars.Mails, nCatalogMail{
+				Old:       len(vars.Mails) >= listFold,
 				ID:        m.ID,
 				Name:      m.Name,
 				RelatedTo: related,
 				Title:     m.Title.String,
 				Shared:    m.Sharable,
+				Form:      formNames[m.FormTemplateID.Int64],
+				FormID:    m.FormTemplateID.Int64,
+				NoForm:    m.RelatedTo != "events" && formNames[m.FormTemplateID.Int64] == "",
 			})
 		}
 
@@ -433,8 +469,10 @@ func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		if err != nil {
 			log.Printf("CatalogsPage: bank accounts: %v", err)
 		}
+		sort.Slice(accounts, func(i, j int) bool { return accounts[i].ID > accounts[j].ID }) // najnowsze na górze
 		for _, a := range accounts {
 			vars.Accounts = append(vars.Accounts, nCatalogAccount{
+				Old:      len(vars.Accounts) >= listFold,
 				ID:       a.ID,
 				Name:     a.Name,
 				IBAN:     a.IBAN,
@@ -442,8 +480,19 @@ func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 			})
 		}
 
+		vars.OlderMails = max(len(vars.Mails)-listFold, 0)
+		vars.OlderAccounts = max(len(vars.Accounts)-listFold, 0)
+
 		nRender(w, lang, vars, "tmpl/n_catalogs.html")
 	}
+}
+
+// mailTouched - kiedy mail ostatnio zmieniono (albo utworzono).
+func mailTouched(m Notification) int64 {
+	if m.UpdatedDate.Valid && m.UpdatedDate.Int64 > m.CreatedDate {
+		return m.UpdatedDate.Int64
+	}
+	return m.CreatedDate
 }
 
 // nearestEventID zwraca imprezę najbliższą dziś (przyszłą, a jak nie ma, to
@@ -562,6 +611,8 @@ type nEventVars struct {
 	SeatsPayed, SeatsOrdered, SeatsFree int64
 	PctPayed, PctOrdered                int64
 	ResRows                             []nResRow
+	// ResCount - zamówione i zapłacone miejsca (ostrzeżenie przy kasowaniu)
+	ResCount int64
 
 	SumReport   string
 	Report      []nReportRow
@@ -1154,6 +1205,7 @@ func fillReservationSummary(db *DB, user User, event Event, lang string, v *nEve
 
 	seats := eventStats(db, user.ID, event.ID).Seats
 	v.SeatsFree = seats - v.SeatsPayed - v.SeatsOrdered
+	v.ResCount = v.SeatsPayed + v.SeatsOrdered
 	if v.SeatsFree < 0 {
 		v.SeatsFree = 0
 	}

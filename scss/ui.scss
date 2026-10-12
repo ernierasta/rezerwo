@@ -472,6 +472,10 @@ textarea.inp { min-height: 80px; }
 
   .empty { color: var(--muted); padding: 13px 4px; border-bottom: 1px solid var(--line); }
 
+  // starsze pozycje schowane, dopóki admin nie kliknie "Starsze" (n_ui.js)
+  .rows:not(.show-old) > .old { display: none; }
+  .older { margin-top: 8px; padding: 2px 4px; }
+
   // pierwsza kolumna bywa długa (numer konta, rozmiar sali) - ma się zawijać,
   // a nie nachodzić na nazwę
   .row > span:first-child { overflow-wrap: anywhere; }

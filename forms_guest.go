@@ -624,7 +624,7 @@ func SaveFormAnswers(db *DB, user User, templ FormTemplate, data []FormAnswersJs
 	return formID, name, surname, nil
 }
 
-// SendFormMails wysyła mail do gościa i do zarządu (jeśli są ustawione).
+// SendFormMails wysyła mail do gościa i do administratora (jeśli są ustawione).
 func SendFormMails(db *DB, mailConf MailConfig, user User, templ FormTemplate, formID int64, name, surname, base string) {
 	form, err := db.FormGet(formID, templ.ID)
 	if err != nil {
@@ -639,7 +639,8 @@ func SendFormMails(db *DB, mailConf MailConfig, user User, templ FormTemplate, f
 		} else {
 			text, imgs := parseFormMailTemplate(name, surname, mail.Text, formID, user, templ, db)
 			text = addEditLink(text, formLang(templ), editURL(base, user, templ, formID), editUntil(form))
-			if err := mailConf.SendAsOrg(user, form.Email.String, mail.Title.String, text, mail.Files(user), append(mail.Images(user), imgs...)); err != nil {
+			subject := formMailSubject(name, surname, mail.Title.String, formID, user, templ, db)
+			if err := mailConf.SendAsOrg(user, form.Email.String, subject, text, mail.Files(user), append(mail.Images(user), imgs...)); err != nil {
 				log.Printf("SendFormMails: guest mail: %v", err)
 			}
 		}
@@ -652,7 +653,8 @@ func SendFormMails(db *DB, mailConf MailConfig, user User, templ FormTemplate, f
 			return
 		}
 		text, imgs := parseFormMailTemplate(name, surname, makeSureIsHTML(mail.Text), formID, user, templ, db)
-		if err := mailConf.SendAsOrg(user, chooseEmail(user.Email, user.AltEmail.String), mail.Title.String, text, mail.Files(user), append(mail.Images(user), imgs...)); err != nil {
+		subject := formMailSubject(name, surname, mail.Title.String, formID, user, templ, db)
+		if err := mailConf.SendAsOrg(user, chooseEmail(user.Email, user.AltEmail.String), subject, text, mail.Files(user), append(mail.Images(user), imgs...)); err != nil {
 			log.Printf("SendFormMails: admin mail: %v", err)
 		}
 	}

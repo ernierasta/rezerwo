@@ -103,7 +103,7 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		fields[i].Display = plainLabel(fields[i].Display)
 	}
 
-	notifs, err := db.NotificationGetAllForUser(user.ID)
+	notifs, err := formNotifications(db, user, templ)
 	if err != nil {
 		log.Printf("buildFormVars: notifications: %v", err)
 	}
@@ -211,6 +211,38 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 
 	v.SumAnswers = TN(lang, "count.answer", answers)
 	return v
+}
+
+// formNotifications - maile do wyboru na stronie formularza: jego własne,
+// nieprzypisane i te, które formularz już ma (np. po skopiowaniu formularza
+// należą do oryginału).
+func formNotifications(db *DB, user User, templ FormTemplate) ([]Notification, error) {
+	nn, err := db.NotificationGetAllForForm(user.ID, templ.ID)
+	for _, id := range []int64{templ.NotificationID.Int64, templ.AdminNotificationID.Int64} {
+		if id == 0 {
+			continue
+		}
+		found := false
+		for _, n := range nn {
+			found = found || n.ID == id
+		}
+		if !found {
+			if n, err := db.NotificationGetByID(id, user.ID); err == nil {
+				nn = append(nn, n)
+			}
+		}
+	}
+	return nn, err
+}
+
+// claimMail - wybrany mail bez formularza od teraz należy do tego formularza.
+func claimMail(db *DB, user User, templ FormTemplate, mailID int64) {
+	if mailID == 0 {
+		return
+	}
+	if err := db.NotificationClaimForForm(mailID, user.ID, templ.ID); err != nil {
+		log.Printf("claimMail: mail %d form %d: %v", mailID, templ.ID, err)
+	}
 }
 
 // panelFieldsJSON - pola formularza dla menu "Wstaw zestawienie" w edytorze
@@ -435,11 +467,13 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 				return
 			}
 			templ.NotificationID = ToNI(id64("notifications_id_fk"))
+			claimMail(db, user, templ, templ.NotificationID.Int64)
 		case "mail_admin":
 			if !refOwned(w, db, user.ID, "mail", id64("admin_notifications_id_fk")) {
 				return
 			}
 			templ.AdminNotificationID = ToNI(id64("admin_notifications_id_fk"))
+			claimMail(db, user, templ, templ.AdminNotificationID.Int64)
 			if err := db.FormTemplateSetAdminNotification(templ.ID, user.ID, templ.AdminNotificationID); err != nil {
 				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 				return
@@ -621,7 +655,7 @@ func AnswersListAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			return
 		}
 		sch := loadAnswerSchema(db, templ, PanelLang(r))
-		notifs, err := db.NotificationGetAllForUser(user.ID)
+		notifs, err := formNotifications(db, user, templ)
 		if err != nil {
 			log.Printf("AnswersListAPI: notifications: %v", err)
 		}
@@ -724,7 +758,7 @@ func AnswersMailAPI(db *DB, mailConf MailConfig, cs *sessions.CookieStore) func(
 			return
 		}
 		mail, err := db.NotificationGetByID(m.NotificationID, user.ID)
-		if err != nil {
+		if err != nil || mail.RelatedTo == "events" {
 			jsonMsg(w, http.StatusNotFound, map[string]string{"msg": "mail template not found"})
 			return
 		}
@@ -768,7 +802,8 @@ func sendFormAnswerMail(db *DB, mailConf MailConfig, user User, templ FormTempla
 
 	parsedText, embImgs := parseFormMailTemplate(form.Name.String, form.Surname.String,
 		makeSureIsHTML(mail.Text), form.ID, user, templ, db)
-	if err := mailConf.SendAsOrg(user, form.Email.String, mail.Title.String, parsedText, mail.Files(user), append(mail.Images(user), embImgs...)); err != nil {
+	subject := formMailSubject(form.Name.String, form.Surname.String, mail.Title.String, form.ID, user, templ, db)
+	if err := mailConf.SendAsOrg(user, form.Email.String, subject, parsedText, mail.Files(user), append(mail.Images(user), embImgs...)); err != nil {
 		return err
 	}
 

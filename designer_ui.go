@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -25,9 +26,13 @@ type nDesignerVars struct {
 	// kolejne wolne numery dla nowych mebli
 	TableNr, ChairNr, ObjectNr, LabelNr int64
 
-	Seats     int
-	Back      string
-	BackLabel string
+	Seats int
+	// RoomEvents - imprezy z tą salą, RoomRes - rezerwacje na jej miejscach
+	// (z rezerwacjami sali nie da się skasować, RoomDeleteAPI)
+	RoomEvents string
+	RoomRes    int64
+	Back       string
+	BackLabel  string
 }
 
 // RoomDesignerPage - /admin/rooms/{roomid} i /admin/events/{id}/rooms/{roomid}
@@ -83,6 +88,14 @@ func RoomDesignerPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			Seats:     len(p.Chairs),
 			Back:      back,
 			BackLabel: backLabel,
+		}
+		names, err := db.RoomEventNames(roomID)
+		if err != nil {
+			log.Printf("RoomDesignerPage: room %d events: %v", roomID, err)
+		}
+		v.RoomEvents = strings.Join(names, ", ")
+		if v.RoomRes, err = db.RoomReservations(roomID); err != nil {
+			log.Printf("RoomDesignerPage: room %d reservations: %v", roomID, err)
 		}
 		nRender(w, lang, v, "tmpl/n_designer.html")
 	}

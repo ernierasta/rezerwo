@@ -31,7 +31,10 @@
             </select>
             <small>{{.GuestURL}}</small></div>
         </div>
-        <div class="sec-f"><button class="btn" data-save="basic">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+        <div class="sec-f"><button class="btn" data-save="basic">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small>
+          <button class="btn danger" type="button" style="margin-left:auto" data-delete="/api/events/{{.ID}}" data-next="/admin"
+            data-title="{{T "del.event_title"}}" data-text="{{if .ResCount}}{{T "del.event_text" .Name (TN "count.seat" .ResCount)}}{{else}}{{T "del.event_text_empty" .Name}}{{end}}" data-text2="{{T "del.event_keeps"}}"
+            data-confirm-name="{{.Name}}" data-confirm-label="{{T "del.event_confirm"}}" data-draft-key="rezerwo.event.{{.ID}}.draft">{{T "del.event"}}</button></div>
       </div>
     </div>
 
@@ -156,9 +159,9 @@
       </div>
     </div>
 
-    <!-- Mail dla zarządu -->
-    <div class="sec" data-sec="mail-zarzad">
-      <div class="sec-h"><b>{{T "event.sec.mail_admin"}}</b><span {{if .MissMailAdmin}}class="miss"{{end}}>{{.SumMailAdmin}}</span><a class="act" href="#mail-zarzad">{{if .MissMailAdmin}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
+    <!-- Mail do administratora -->
+    <div class="sec" data-sec="mail-admin">
+      <div class="sec-h"><b>{{T "event.sec.mail_admin"}}</b><span {{if .MissMailAdmin}}class="miss"{{end}}>{{.SumMailAdmin}}</span><a class="act" href="#mail-admin">{{if .MissMailAdmin}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-admin">{{T "field.admin_mail"}}</label>
           <div class="pick">
@@ -166,10 +169,10 @@
               <option value="0">{{T "field.select_hint"}}</option>
               {{range .Notifications}}<option value="{{.ID}}" {{if eq $.AdminMailID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
             </select>
-            <button type="button" class="btn quiet sm" data-new="mail" data-kind="events" data-select="f-mail-admin" data-edit="/admin/mails/" data-back="/admin/events/{{.ID}}#mail-zarzad">{{T "catalog.new_mail"}} …</button>
+            <button type="button" class="btn quiet sm" data-new="mail" data-kind="events" data-select="f-mail-admin" data-edit="/admin/mails/" data-back="/admin/events/{{.ID}}#mail-admin">{{T "catalog.new_mail"}} …</button>
           </div>
         </div>
-        {{if .AdminMailID}}<p class="shared"><a href="/admin/mails/{{.AdminMailID}}?back={{printf "/admin/events/%d#mail-zarzad" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
+        {{if .AdminMailID}}<p class="shared"><a href="/admin/mails/{{.AdminMailID}}?back={{printf "/admin/events/%d#mail-admin" .ID}}">{{T "mail.text"}} …</a></p>{{end}}
         <div class="sec-f"><button class="btn" data-save="mail_admin">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>

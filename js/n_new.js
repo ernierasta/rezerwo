@@ -38,7 +38,9 @@
   //   preview(p, box, current) - rysuje podgląd wybranego p,
   //   name(p) - podpowiedź nazwy, nameNeeded - komunikat bez nazwy,
   //   create(name, p, kind) -> obietnica {id},
-  //   done(id, name) - co dalej (może zwrócić obietnicę).
+  //   done(id, name) - co dalej (może zwrócić obietnicę),
+  //   extra(rerender) -> element nad listą (np. wybór formularza), widoczny
+  //   tylko dla rodzaju extraFor; check(kind) -> komunikat, gdy czegoś brak.
   function dialog(cfg) {
     var kind = cfg.kind;
     var picked = null;
@@ -66,9 +68,15 @@
         if (!b || b.dataset.kind === kind) return;
         kind = b.dataset.kind;
         seg.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
+        syncExtra();
         renderList();
       });
     }
+
+    var extra = cfg.extra ? cfg.extra(function () { renderList(); }) : null;
+    if (extra) dlg.appendChild(extra);
+    function syncExtra() { if (extra) extra.hidden = !!cfg.extraFor && cfg.extraFor !== kind; }
+    syncExtra();
 
     var body = el('div', 'nm-body');
     var list = el('div', 'nm-list');
@@ -134,6 +142,12 @@
 
     create.addEventListener('click', function () {
       var name = nameI.value.trim();
+      var missing = cfg.check ? cfg.check(kind) : '';
+      if (missing) {
+        msg.textContent = missing;
+        msg.classList.add('bad');
+        return;
+      }
       if (!name) {
         msg.textContent = cfg.nameNeeded;
         msg.classList.add('bad');
@@ -173,18 +187,72 @@
   // --- mail -------------------------------------------------------------------
 
   // mail(opts): opts.kind ('events' | 'forms'), opts.lockKind - bez
-  // przełącznika, opts.done(id, name), opts.back
+  // przełącznika, opts.done(id, name), opts.back, opts.formID - formularz,
+  // do którego należy nowy mail (strona formularza; z katalogów admin musi
+  // go wybrać), opts.audience ('guest' | 'admin') - który szkic z polami
+  // formularza pokazać pierwszy.
   function mail(opts) {
     opts = opts || {};
     getJSON('/api/mails/sources').then(function (src) {
       var previews = {};
+      var formID = Number(opts.formID) || 0;
+      var forms = src.forms || [];
+
+      function formName(id) {
+        for (var i = 0; i < forms.length; i++) if (forms[i].id === id) return forms[i].name;
+        return '';
+      }
+
+      // szkice z wszystkimi polami formularza (FormMailDraftAPI)
+      function drafts() {
+        if (!formID) return [];
+        var order = opts.audience === 'admin' ? ['admin', 'guest'] : ['guest', 'admin'];
+        return order.map(function (a) {
+          return {type: 'draft', item: {audience: a}, title: RZ.t('newmail.draft_' + a), sub: RZ.t('newmail.draft_hint')};
+        });
+      }
+
       dialog({
         title: RZ.t('newmail.title'),
         kind: opts.kind || 'events',
         kinds: opts.lockKind ? null : [['events', RZ.t('catalog.for_events')], ['forms', RZ.t('catalog.for_forms')]],
         nameNeeded: RZ.t('newmail.name_needed'),
+        extraFor: 'forms',
+        extra: formID ? null : function (rerender) {
+          var f = el('div', 'f');
+          f.style.marginTop = '14px';
+          var l = el('label', '', RZ.t('mail.form'));
+          var sel = el('select', 'inp');
+          sel.id = 'nm-form';
+          l.htmlFor = 'nm-form';
+          var o0 = el('option', '', RZ.t('field.select_hint'));
+          o0.value = '0';
+          sel.appendChild(o0);
+          forms.forEach(function (fm) {
+            var o = el('option', '', fm.name);
+            o.value = String(fm.id);
+            sel.appendChild(o);
+          });
+          sel.addEventListener('change', function () { formID = Number(sel.value) || 0; rerender(); });
+          f.appendChild(l);
+          f.appendChild(sel);
+          f.appendChild(el('small', '', RZ.t('newmail.form_hint')));
+          return f;
+        },
+        check: function (kind) {
+          return kind === 'forms' && !formID ? RZ.t('mail.form_needed') : '';
+        },
         items: function (kind) {
-          var out = [{type: 'blank', title: RZ.t('newmail.blank'), sub: RZ.t('newmail.blank_hint')}];
+          var out = [];
+          if (kind === 'forms') {
+            var d = drafts();
+            if (d.length) {
+              out.push({head: RZ.t('newmail.from_form', formName(formID) || '')});
+              out = out.concat(d);
+              out.push({head: RZ.t('newmail.other')});
+            }
+          }
+          out.push({type: 'blank', title: RZ.t('newmail.blank'), sub: RZ.t('newmail.blank_hint')});
           var tpls = src.templates.filter(function (t) { return t.related_to === kind; });
           if (tpls.length) {
             out.push({head: RZ.t('newmail.templates')});
@@ -199,6 +267,7 @@
           return out;
         },
         name: function (p) {
+          if (p.type === 'draft') return RZ.t('newmail.draft_name_' + p.item.audience, formName(formID));
           if (p.type === 'template') return p.item.name;
           if (p.type === 'mine') return nextName(p.item.name);
           return '';
@@ -208,7 +277,9 @@
             box.appendChild(el('p', 'muted', RZ.t('newmail.blank_preview')));
             return;
           }
-          var key = p.type + ':' + (p.item.key || p.item.id);
+          // mail formularza pokazujemy z etykietami pól swojego formularza
+          var fid = p.item.form_id || formID;
+          var key = p.type + ':' + (p.item.key || p.item.id || p.item.audience) + ':' + fid;
           var head = el('div', 'nm-subj');
           var frame = document.createElement('iframe');
           frame.setAttribute('sandbox', '');
@@ -216,11 +287,14 @@
           box.appendChild(head);
           box.appendChild(frame);
 
-          var req = previews[key] ? Promise.resolve(previews[key]) : RZ.postJSON('/api/mails/preview', {
-            subject: p.item.subject || '',
-            text: p.item.text || '',
-            related_to: p.item.related_to
-          }).then(function (r) { previews[key] = r; return r; });
+          var req = previews[key] ? Promise.resolve(previews[key]) : (p.type === 'draft'
+            ? getJSON('/api/forms/' + formID + '/maildraft?for=' + p.item.audience).then(function (r) { return r.preview; })
+            : RZ.postJSON('/api/mails/preview', {
+              subject: p.item.subject || '',
+              text: p.item.text || '',
+              related_to: p.item.related_to,
+              form_id: fid
+            })).then(function (r) { previews[key] = r; return r; });
 
           req.then(function (r) {
             if (!current()) return;
@@ -234,7 +308,8 @@
           });
         },
         create: function (name, p, kind) {
-          var data = {name: name, related_to: kind};
+          var data = {name: name, related_to: kind, form_id: kind === 'forms' ? formID : 0};
+          if (p.type === 'draft') data.template = 'form:' + p.item.audience;
           if (p.type === 'template') data.template = p.item.key;
           if (p.type === 'mine') data.copy_of = p.item.id;
           return RZ.postJSON('/api/mails', data);
@@ -366,6 +441,8 @@
       var sec = b.closest('.sec');
       open[b.dataset.new]({
         kind: b.dataset.kind,
+        formID: b.dataset.form,
+        audience: b.dataset.audience,
         lockKind: true,
         done: function (id, name) {
           if (b.dataset.list) {

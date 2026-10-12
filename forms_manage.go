@@ -5,6 +5,7 @@ package main
 // kopia z poprzedniego formularza jest pierwszą opcją, a nie dodatkiem.
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -137,7 +138,6 @@ func FormCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			t.Content = src.Content
 			t.MoneyAmountFieldName = src.MoneyAmountFieldName
 			t.BankAccountID = src.BankAccountID
-			t.NotificationID = src.NotificationID
 			if msg.Language == "" {
 				language = formLang(src)
 			}
@@ -176,9 +176,8 @@ func FormCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			}
 		}
 		if msg.FromID > 0 {
-			src, _ := db.FormTemplateGetByID(msg.FromID, user.ID)
-			if src.AdminNotificationID.Valid {
-				db.FormTemplateSetAdminNotification(id, user.ID, src.AdminNotificationID)
+			if src, err := db.FormTemplateGetByID(msg.FromID, user.ID); err == nil {
+				copyFormMails(db, user, src, id, msg.Name, lang)
 			}
 		}
 
@@ -252,5 +251,50 @@ func FormURLSuggestAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWri
 			"url":  uniqueFormURL(db, user.ID, slugify(r.URL.Query().Get("name"))),
 			"base": "/form/" + user.URL + "/",
 		})
+	}
+}
+
+// copyFormMails - kopia formularza dostaje własne kopie maili źródła,
+// przypisane do niej i nazwane od nowego formularza ("Bal 2027 –
+// potwierdzenie"). Ten sam mail dla gościa i administratora kopiujemy raz.
+func copyFormMails(db *DB, user User, src FormTemplate, formID int64, name, lang string) {
+	copyMail := func(mailID int64, nameKey string) int64 {
+		if mailID <= 0 {
+			return 0
+		}
+		m, err := db.NotificationGetByID(mailID, user.ID)
+		if err != nil {
+			log.Printf("copyFormMails: mail %d: %v", mailID, err)
+			return 0
+		}
+		m.ID = 0
+		m.Name = T(lang, nameKey, name)
+		m.RelatedTo = "forms"
+		m.FormTemplateID = ToNI(formID)
+		m.Sharable = false
+		m.CreatedDate = nowUnix()
+		m.UpdatedDate = sql.NullInt64{}
+		id, err := db.NotificationAdd(&m)
+		if err != nil {
+			log.Printf("copyFormMails: copy mail %d: %v", mailID, err)
+			return 0
+		}
+		return id
+	}
+
+	guest := copyMail(src.NotificationID.Int64, "newmail.draft_name_guest")
+	admin := guest
+	if src.AdminNotificationID.Int64 != src.NotificationID.Int64 {
+		admin = copyMail(src.AdminNotificationID.Int64, "newmail.draft_name_admin")
+	}
+	if guest > 0 {
+		if err := db.FormTemplateSetNotification(formID, user.ID, ToNI(guest)); err != nil {
+			log.Printf("copyFormMails: guest mail: %v", err)
+		}
+	}
+	if admin > 0 {
+		if err := db.FormTemplateSetAdminNotification(formID, user.ID, ToNI(admin)); err != nil {
+			log.Printf("copyFormMails: admin mail: %v", err)
+		}
 	}
 }

@@ -23,33 +23,66 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-// mailVar - zmienna do wstawienia w treść maila imprezy. Code to akcja bez
+// mailVar - zmienna do wstawienia w treść maila. Code to akcja bez
 // nawiasów, Label klucz tłumaczenia. InSubject: czy ma sens w temacie.
 // Account: akcja bierze nazwę konta bankowego ({{.PayInfo "Konto"}}).
+// Arg: stały argument akcji, np. nazwa pola ({{.Field "klasa"}}); Text to
+// wtedy etykieta pola zamiast klucza tłumaczenia.
 type mailVar struct {
 	Code      string `json:"code"`
 	Label     string `json:"label"`
 	InSubject bool   `json:"subject"`
 	Account   bool   `json:"account,omitempty"`
+	Arg       string `json:"arg,omitempty"`
+	Text      string `json:"text,omitempty"`
+	// Hidden - rozpoznawana w treści, ale bez pozycji w menu
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 var eventMailVars = []mailVar{
-	{".Name", "mail.var.name", true, false},
-	{".Surname", "mail.var.surname", true, false},
-	{".Email", "mail.var.email", false, false},
-	{".Phone", "mail.var.phone", false, false},
-	{".Notes", "mail.var.notes", false, false},
-	{".Sits", "mail.var.sits", true, false},
-	{".Rooms", "mail.var.rooms", true, false},
-	{".TotalPrice", "mail.var.total", true, false},
-	{".EventName", "mail.var.event", true, false},
-	{".EventDate", "mail.var.event_date", true, false},
+	{".Name", "mail.var.name", true, false, "", "", false},
+	{".Surname", "mail.var.surname", true, false, "", "", false},
+	{".Email", "mail.var.email", false, false, "", "", false},
+	{".Phone", "mail.var.phone", false, false, "", "", false},
+	{".Notes", "mail.var.notes", false, false, "", "", false},
+	{".Sits", "mail.var.sits", true, false, "", "", false},
+	{".Rooms", "mail.var.rooms", true, false, "", "", false},
+	{".TotalPrice", "mail.var.total", true, false, "", "", false},
+	{".EventName", "mail.var.event", true, false, "", "", false},
+	{".EventDate", "mail.var.event_date", true, false, "", "", false},
 	// dane do przelewu dla tych, którzy nie zapłacą kodem QR (pay.go)
-	{".PayInfo", "mail.var.pay_info", false, true},
-	{".PayAccount", "mail.var.pay_account", false, true},
-	{".PayIBAN", "mail.var.pay_iban", false, true},
-	{".PayVS", "mail.var.pay_vs", false, true},
-	{".PayMessage", "mail.var.pay_message", false, true},
+	{".PayInfo", "mail.var.pay_info", false, true, "", "", false},
+	{".PayAccount", "mail.var.pay_account", false, true, "", "", false},
+	{".PayIBAN", "mail.var.pay_iban", false, true, "", "", false},
+	{".PayVS", "mail.var.pay_vs", false, true, "", "", false},
+	{".PayMessage", "mail.var.pay_message", false, true, "", "", false},
+}
+
+// formMailVars - zmienne maili formularza templ: dane gościa, kwota, pola
+// formularza i dane do przelewu (FormFuncs, form_mails.go).
+func formMailVars(templ FormTemplate) []mailVar {
+	vars := []mailVar{
+		{Code: ".Name", Label: "mail.var.name", InSubject: true},
+		{Code: ".Surname", Label: "mail.var.surname", InSubject: true},
+		{Code: ".Email", Label: "mail.var.email"},
+		{Code: ".TotalPrice", Label: "mail.var.total", InSubject: true},
+		// stare maile biorą dane gościa z pól: {{.Field "name-REQUIRED"}}
+		{Code: ".Field", Arg: ROLENAME, Label: "mail.var.name", InSubject: true, Hidden: true},
+		{Code: ".Field", Arg: ROLESURNAME, Label: "mail.var.surname", InSubject: true, Hidden: true},
+		{Code: ".Field", Arg: ROLEEMAIL, Label: "mail.var.email", Hidden: true},
+	}
+	for _, d := range formMailFields(templ) {
+		if d.S("type") == "header" {
+			continue
+		}
+		vars = append(vars, mailVar{Code: ".Field", Arg: d.S("name"), Text: fieldLabel(d), InSubject: d.S("type") != "textarea"})
+	}
+	for _, v := range eventMailVars {
+		if v.Account {
+			vars = append(vars, v)
+		}
+	}
+	return vars
 }
 
 // complete uzupełnia OrderFuncs tak, żeby obie ścieżki wysyłki dawały te same
@@ -183,20 +216,26 @@ func orderFuncsFromOrder(o Order, db *DB, user User) *OrderFuncs {
 	return of
 }
 
-// OrderSubject wypełnia zmienne w temacie maila. Temat to zwykły tekst, więc
-// text/template (html/template zamieniłby "&" w nazwisku na "&amp;").
+// OrderSubject wypełnia zmienne w temacie maila imprezy.
 func OrderSubject(subject string, of *OrderFuncs) string {
+	return fillSubject(subject, of)
+}
+
+// fillSubject wypełnia zmienne w temacie maila (OrderFuncs albo FormFuncs).
+// Temat to zwykły tekst, więc text/template (html/template zamieniłby "&"
+// w nazwisku na "&amp;").
+func fillSubject(subject string, data interface{}) string {
 	if !strings.Contains(subject, "{{") {
 		return subject
 	}
 	t, err := texttemplate.New("subject").Parse(subject)
 	if err != nil {
-		log.Printf("OrderSubject: parse %q: %v", subject, err)
+		log.Printf("fillSubject: parse %q: %v", subject, err)
 		return subject
 	}
 	var buf bytes.Buffer
-	if err := t.Execute(&buf, of); err != nil {
-		log.Printf("OrderSubject: exec %q: %v", subject, err)
+	if err := t.Execute(&buf, data); err != nil {
+		log.Printf("fillSubject: exec %q: %v", subject, err)
 		return subject
 	}
 	return buf.String()
@@ -274,6 +313,8 @@ type nMailPreviewMsg struct {
 	Subject   string `json:"subject"`
 	Text      string `json:"text"`
 	RelatedTo string `json:"related_to"`
+	// FormID - formularz maila formularza (podgląd z etykietami jego pól)
+	FormID int64 `json:"form_id"`
 }
 
 // renderSampleMail wypełnia temat i treść przykładowym zamówieniem.
@@ -318,6 +359,10 @@ func MailPreviewAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		if mail.AttachedFilesDelimited.String != "" {
 			files = strings.Split(mail.AttachedFilesDelimited.String, ";")
 		}
+		if m.RelatedTo == "forms" {
+			writeFormPreview(w, db, user, PanelLang(r), m, files)
+			return
+		}
 		writePreview(w, db, user, PanelLang(r), mail.ID, m, files)
 	}
 }
@@ -336,12 +381,26 @@ func MailSourcePreviewAPI(db *DB, cs *sessions.CookieStore) func(w http.Response
 			return
 		}
 		if m.RelatedTo == "forms" {
-			jsonMsg(w, http.StatusOK, map[string]interface{}{"subject": m.Subject, "html": m.Text, "to": user.Email})
+			writeFormPreview(w, db, user, PanelLang(r), m, nil)
 			return
 		}
 		m.Text = fillOnlyAccount(db, user, m.Text)
 		writePreview(w, db, user, PanelLang(r), 0, m, nil)
 	}
+}
+
+// writeFormPreview - podgląd maila formularza: zmienne jako etykiety pól.
+// Bez formularza (stary, nieprzypisany mail) treść pokazujemy bez zmian.
+func writeFormPreview(w http.ResponseWriter, db *DB, user User, lang string, m nMailPreviewMsg, files []string) {
+	if err := checkMailTemplate(m.Subject, m.Text); err != nil {
+		jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "mail.template_error") + ": " + err.Error()})
+		return
+	}
+	subject, text := m.Subject, m.Text
+	if templ, err := ownedForm(db, user, m.FormID); err == nil {
+		subject, text = formMailPreview(templ, lang, subject, text)
+	}
+	jsonMsg(w, http.StatusOK, map[string]interface{}{"subject": subject, "html": text, "files": files, "to": user.Email})
 }
 
 func writePreview(w http.ResponseWriter, db *DB, user User, lang string, mailID int64, m nMailPreviewMsg, files []string) {
@@ -376,16 +435,32 @@ func MailTestAPI(db *DB, mailConf MailConfig, cs *sessions.CookieStore) func(w h
 		}
 		lang := PanelLang(r)
 
-		of := sampleOrderFuncs(db, user, lang, mail.ID, false)
-		subject, text, err := renderSampleMail(of, m)
-		if err != nil {
-			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "mail.template_error") + ": " + err.Error()})
-			return
+		var subject, text string
+		var files, imgs []string
+		if m.RelatedTo == "forms" {
+			// mail formularza: z etykietami pól zamiast odpowiedzi
+			if err := checkMailTemplate(m.Subject, m.Text); err != nil {
+				jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "mail.template_error") + ": " + err.Error()})
+				return
+			}
+			subject, text = m.Subject, m.Text
+			if templ, err := ownedForm(db, user, m.FormID); err == nil {
+				subject, text = formMailPreview(templ, lang, subject, text)
+			}
+		} else {
+			of := sampleOrderFuncs(db, user, lang, mail.ID, false)
+			var err error
+			subject, text, err = renderSampleMail(of, m)
+			if err != nil {
+				jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "mail.template_error") + ": " + err.Error()})
+				return
+			}
+			files, imgs = of.AttachedFiles, of.EmbeddedImgs
 		}
 
 		if err := mailConf.SendAsOrg(user, user.Email, fmt.Sprintf("[%s] %s", T(lang, "mail.test_tag"), subject),
-			mailHTMLHead+text+"</html>", append(mail.Files(user), of.AttachedFiles...),
-			append(mail.Images(user), of.EmbeddedImgs...)); err != nil {
+			mailHTMLHead+text+"</html>", append(mail.Files(user), files...),
+			append(mail.Images(user), imgs...)); err != nil {
 			log.Printf("MailTestAPI: %v", err)
 			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 			return

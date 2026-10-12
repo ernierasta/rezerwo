@@ -1055,6 +1055,13 @@ textarea.inp {
   padding: 13px 4px;
   border-bottom: 1px solid var(--line);
 }
+.start .rows:not(.show-old) > .old {
+  display: none;
+}
+.start .older {
+  margin-top: 8px;
+  padding: 2px 4px;
+}
 .start .row > span:first-child {
   overflow-wrap: anywhere;
 }

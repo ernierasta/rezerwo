@@ -18,6 +18,7 @@ tools/backup-db                # consistent copy of db.sql into backup/ (sqlite3
 ```
 
 Tests: `go test .` runs the unit tests (`TestSendMail` skips itself without its env vars, `TestGenerateTicketsPDF` without `media/fonts`). `database_test.go` runs DB methods on a fresh temp DB built from `testdata/schema.sql` (production schema dump) — refresh it after every schema migration: `sqlite3 db.sql .schema | grep -v sqlite_sequence > testdata/schema.sql` (keep the header comment).
+`mail_flow_test.go` drives every mail-sending path (guest form, panel mails, test mail, order) with SMTP replaced by `captureMails` and checks the resulting MIME (text/html part, tag-free text part); add new sending paths there.
 `mail_test.go` is an integration test that sends real mail:
 `MSERVER= MUSER= MPASS= MTO= go test -run TestSendMail`.
 

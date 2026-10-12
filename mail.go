@@ -6,6 +6,7 @@ import (
 	"log"
 	gomail "net/mail"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -22,7 +23,7 @@ type MailConfig struct {
 	From       string // nadawca maili systemowych (powiadomienia dla organizatorów)
 }
 
-// Mail - jedna wiadomość. Text zawierający "<html" idzie jako HTML
+// Mail - jedna wiadomość. Text z tagami HTML (z edytora maili) idzie jako HTML
 // z automatyczną wersją tekstową, inaczej jako zwykły tekst.
 type Mail struct {
 	From     string
@@ -38,27 +39,39 @@ func (c MailConfig) Send(m Mail) error {
 	if c.Server == "" || (c.User == "") != (c.Pass == "") {
 		return fmt.Errorf("MailSend: incomplete SMTP config (server %q, user %q), sending aborted", c.Server, c.User)
 	}
+	msg, err := m.message()
+	if err != nil {
+		return err
+	}
+	if err := mailDeliver(c, msg); err != nil {
+		return err
+	}
+	log.Printf("Mail successfully delivered.")
+	return nil
+}
 
+// message buduje wiadomość MIME (bez wysyłania).
+func (m Mail) message() (*mail.Msg, error) {
 	msg := mail.NewMsg(mail.WithEncoding(mail.EncodingB64))
 	if from, err := gomail.ParseAddress(m.From); err == nil {
 		msg.FromMailAddress(from)
 	} else if err := msg.From(m.From); err != nil {
-		return fmt.Errorf("MailSend: invalid FROM %q: %v", m.From, err)
+		return nil, fmt.Errorf("MailSend: invalid FROM %q: %v", m.From, err)
 	}
 	if err := msg.To(strings.Join(m.To, ", ")); err != nil {
-		return fmt.Errorf("MailSend: invalid TO %v: %v", m.To, err)
+		return nil, fmt.Errorf("MailSend: invalid TO %v: %v", m.To, err)
 	}
 	msg.Subject(m.Subject)
 	msg.SetMessageID()
 	msg.SetDate()
 
-	if strings.Contains(m.Text, "<html") {
-		plain, err := html2text.FromString(m.Text, html2text.Options{PrettyTables: true})
+	if text, ok := mailHTML(m.Text); ok {
+		plain, err := html2text.FromString(text, html2text.Options{PrettyTables: true})
 		if err != nil {
 			log.Printf("MailSend: HTML to text: %v", err)
 		}
 		msg.SetBodyString(mail.TypeTextPlain, plain)
-		msg.AddAlternativeString(mail.TypeTextHTML, m.Text)
+		msg.AddAlternativeString(mail.TypeTextHTML, text)
 	} else {
 		msg.SetBodyString(mail.TypeTextPlain, m.Text)
 	}
@@ -68,7 +81,12 @@ func (c MailConfig) Send(m Mail) error {
 	for _, f := range m.Embedded {
 		msg.EmbedFile(f)
 	}
+	return msg, nil
+}
 
+// mailDeliver wysyła gotową wiadomość; testy podmieniają ją na przechwytywanie
+// (captureMails w mail_test.go).
+var mailDeliver = func(c MailConfig, msg *mail.Msg) error {
 	opts := []mail.Option{
 		mail.WithTimeout(2 * time.Minute), // długo, bo bilety PDF w załącznikach
 		mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover), mail.WithTLSPortPolicy(mail.TLSMandatory),
@@ -86,8 +104,23 @@ func (c MailConfig) Send(m Mail) error {
 	if err := client.DialAndSend(msg); err != nil {
 		return fmt.Errorf("MailSend: deliver: %v", err)
 	}
-	log.Printf("Mail successfully delivered.")
 	return nil
+}
+
+// htmlTag - tag HTML, jakie wstawia edytor maili
+var htmlTag = regexp.MustCompile(`(?i)<(html|p|br|div|span|table|strong|b|i|em|u|a|img|h[1-6]|ul|ol|li)[\s>/]`)
+
+// mailHTML - treść maila jako dokument HTML; ok=false dla zwykłego tekstu.
+// Fragment z edytora (bez <html>) dostaje nagłówek mailHTMLHead, bez niego
+// programy pocztowe pokazują go dosłownie, z tagami.
+func mailHTML(s string) (string, bool) {
+	if strings.Contains(strings.ToLower(s), "<html") {
+		return s, true
+	}
+	if !htmlTag.MatchString(s) {
+		return s, false
+	}
+	return mailHTMLHead + s + "</html>", true
 }
 
 // SendAsOrg wysyła mail w imieniu organizacji (nadawca: alt_email, a gdy go

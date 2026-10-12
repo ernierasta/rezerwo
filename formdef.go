@@ -433,7 +433,7 @@ func makeSureIsHTML(s string) string {
 	if strings.Contains(s, "<html") {
 		return s
 	}
-	return "<html>" + s + "</html>"
+	return mailHTMLHead + s + "</html>"
 }
 
 // getBasicFields - imię, nazwisko i e-mail z odpowiedzi (pola o stałych

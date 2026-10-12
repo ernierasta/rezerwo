@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -53,5 +54,27 @@ func TestSendMail(t *testing.T) {
 				t.Errorf("Send() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestMailHTML(t *testing.T) {
+	for _, c := range []struct {
+		in      string
+		html    bool
+		wrapped bool
+	}{
+		{"<p>Dzień dobry</p><p><br></p>", true, true},
+		{"Do zapłaty:<img width=\"150\" src=\"cid:x.jpeg\" />", true, true},
+		{"<html><body><p>x</p></body></html>", true, false},
+		{"Cena < 100 Kč, a > 50", false, false},
+		{"zwykły tekst", false, false},
+	} {
+		out, ok := mailHTML(c.in)
+		if ok != c.html {
+			t.Errorf("mailHTML(%q) html=%v, want %v", c.in, ok, c.html)
+		}
+		if got := strings.HasPrefix(out, mailHTMLHead); got != c.wrapped {
+			t.Errorf("mailHTML(%q) wrapped=%v, want %v", c.in, got, c.wrapped)
+		}
 	}
 }

@@ -93,7 +93,7 @@ func GuestReservationPage(db *DB, cs *sessions.CookieStore) func(w http.Response
 		if err != nil {
 			log.Printf("GuestReservationPage: unknown organization %q: %v", userURL, err)
 			// bez organizacji nie ma imprezy, więc nie ma też jej języka
-			ErrorHTML(T(lang, "gform.no_org_title"), T(lang, "gform.no_org", userURL), lang, w, r)
+			ErrorHTMLNotFound(T(lang, "gform.no_org_title"), T(lang, "gform.no_org", userURL), lang, w, r)
 			return
 		}
 

@@ -2209,18 +2209,39 @@ h5.subhead a {
   max-width: 640px;
 }
 .order-step .summary {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  max-height: 45vh;
   background: var(--pane);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px 16px;
   margin: 18px 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+}
+.order-step .summary .sum-items {
+  min-height: 0;
+  overflow-y: auto;
 }
 .order-step .summary .seat {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
   gap: 12px;
   padding-block: 6px;
   border-bottom: 1px solid var(--line);
+}
+.order-step .summary .seat .num {
+  text-align: right;
+}
+.order-step .summary .seat .det {
+  color: var(--muted);
+}
+.order-step .summary .seat .qty {
+  color: var(--muted);
 }
 .order-step .summary .seat.sum {
   font-weight: 600;
@@ -2246,7 +2267,7 @@ h5.subhead a {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px 18px;
-  margin-bottom: 18px;
+  margin: 22px 0 18px;
 }
 .order-step .addons h4 {
   font-size: 16px;
@@ -2263,9 +2284,6 @@ h5.subhead a {
 }
 .order-step .addons .addon-amount .inp {
   width: 90px;
-}
-.order-step .addons .addons-total {
-  margin-top: 14px;
 }
 
 .free-text {

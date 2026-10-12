@@ -30,25 +30,45 @@
     timer = setInterval(tick, 1000);
   });
 
-  // dodatki: przeliczanie sumy na bieżąco i dopisanie dopłat do kwoty
-  // wysyłanej razem z zamówieniem (miejsca + dodatki)
-  var addons = document.getElementById('addons');
-  if (addons) {
-    var seatsTotal = Number(addons.dataset.seatsTotal || 0);
-    var totalOut = document.getElementById('addons-total');
+  // Podsumowanie kosztów: miejsca + po jednym wierszu na każdą wpisaną
+  // dopłatę. Gość widzi pełny rachunek w trakcie wypełniania formularza,
+  // a "Razem" na górze zawsze z walutą.
+  var summary = document.getElementById('summary');
+  if (summary) {
+    var seatsTotal = Number(summary.dataset.seatsTotal || 0);
+    var currency = summary.dataset.currency || '';
+    var totalOut = document.getElementById('order-total');
     var totalField = document.querySelector('input[name="total-price"]');
+
+    function money(n) {
+      var s = String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      return currency ? s + ' ' + currency : s;
+    }
 
     function recount() {
       var extra = 0;
-      addons.querySelectorAll('input[data-price]').forEach(function (el) {
-        extra += (Number(el.value) || 0) * (Number(el.dataset.price) || 0);
+      summary.querySelectorAll('.addon-line').forEach(function (line) {
+        var input = document.getElementById(line.dataset.input);
+        var amount = input ? (Number(input.value) || 0) : 0;
+        var price = Number(line.dataset.price) || 0;
+        if (amount <= 0) {
+          line.hidden = true;
+          return;
+        }
+        line.hidden = false;
+        var sum = amount * price;
+        extra += sum;
+        line.querySelector('.qty').textContent = RZ.t('order.qty', amount);
+        line.querySelectorAll('.num')[1].textContent = money(sum);
       });
+
       var sum = seatsTotal + extra;
-      if (totalOut) totalOut.textContent = String(sum).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      if (totalOut) totalOut.textContent = money(sum);
       if (totalField) totalField.value = sum;
     }
 
-    addons.addEventListener('input', recount);
+    var addons = document.getElementById('addons');
+    if (addons) addons.addEventListener('input', recount);
     recount();
   }
 

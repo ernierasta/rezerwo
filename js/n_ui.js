@@ -16,6 +16,34 @@
     return s.replace(/%[ds]/g, function () { return args[i++]; });
   }
 
+  // Końcówka liczby mnogiej wg CLDR - ta sama co pluralForm() w i18n.go.
+  // Bez niej JS musiałby zgadywać ".many", a takiego klucza nie ma w językach
+  // niesłowiańskich (po angielsku jest tylko one/other) i źle się liczy
+  // po polsku czy czesku dla 1 i 2-4 ("1 miejsc" zamiast "1 miejsce").
+  function pluralForm(lang, n) {
+    n = Math.abs(n);
+    switch (lang) {
+      case 'pl':
+        // few dla końcówek 2-4, ale nie dla 12-14 (2 miejsca, 22 miejsca,
+        // 12 miejsc); reszta many.
+        if (n === 1) return 'one';
+        if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) return 'few';
+        return 'many';
+      case 'cs': case 'sk':
+        // few tylko dla 2, 3, 4.
+        if (n === 1) return 'one';
+        if (n >= 2 && n <= 4) return 'few';
+        return 'many';
+      default:
+        return n === 1 ? 'one' : 'other';
+    }
+  }
+
+  // tN("count.seat", 3) - tekst z liczbą w poprawnej formie.
+  function tN(key, n) {
+    return t(key + '.' + pluralForm(document.documentElement.lang || '', n), n);
+  }
+
   function loadLocale(lang) {
     return fetch('/locales/' + lang + '.json')
       .then(function (r) { return r.ok ? r.json() : {}; })
@@ -809,6 +837,7 @@
 
   global.RZ = {
     t: t,
+    tN: tN,
     ready: ready,
     sections: sections,
     loadLocale: loadLocale,

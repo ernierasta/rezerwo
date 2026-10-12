@@ -18,6 +18,24 @@ Customer XP:
 * total/free chairs - no reservation page.
 * show from witch rooms are selected chairs.
 
+Accessibility (strona gościa):
+* plan sali bez obsługi klawiatury - wszystkie 98 krzeseł to `<g>` bez
+  `tabindex` i `role`, więc wybranie miejsca jest niemożliwe bez myszy
+  (nie ma alternatywy). Fix: `role="button"` + `tabindex` + `aria-pressed`,
+  etykieta z obecnego `<title>`.
+* dnożek planu to półprzezroczysta nakładka `position: fixed` (`#nosits`)
+  bez `role="dialog"`, `aria-modal`, przeniesienia fokusu i obsługi Escape -
+  Tab wychodzi do przycisków zakrytych pod nakładką. Własne okno zamiast
+  `alert()` jest dobre (język imprezy), brakuje tylko semantyki.
+* `#roomtabs` nie używa `role="tablist"`/`role="tab"`/`aria-selected`.
+* brak `aria-live` na koszyku (`#basket-list`, `#bar-sum`) i na `#order-total`,
+  więc wybór miejsca ani dopłata nie są komunikowane.
+* pola błędów nie mają `aria-describedby` wiążącego komunikat z inputem
+  (`showError` w js/n_order.js).
+* miejsca różnią się tylko kolorem (wolne #28A745 vs zajęte #FD7E14):
+  kontrast 1.22:1, przy protanopii 1.05:1 - dla daltonisty to ten sam kolor.
+  Fix: dodatkowy sygnał niekolorowy (kreskowanie, grubość obrysu, glif).
+
 Designer:
 * numeric input - current chair number and current table number, current object number.
 * possibility to change object color

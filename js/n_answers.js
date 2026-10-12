@@ -195,7 +195,7 @@
 
   function updateSum(rows) {
     var money = sumMoney(rows);
-    el.sum.textContent = RZ.t('count.answer.many', rows.length) + (money ? ' · ' + money : '');
+    el.sum.textContent = RZ.tN('count.answer', rows.length) + (money ? ' · ' + money : '');
   }
 
   // showDetail - panel z tym, co gość wpisał (puste pola pominięte);

@@ -18,39 +18,43 @@
     <input name="lock" id="lock" value="{{.Lock}}" hidden>
     {{if not .HideCosts}}<input name="total-price" value="{{.TotalPrice}}" hidden>{{end}}
 
-    <div class="summary">
-      <div class="seat"><span>{{T "res.seats"}}</span><span class="num">{{.SitsLabel}}</span></div>
-      {{if not .HideCosts}}<div class="seat sum"><span>{{T "guest.total"}}</span><span class="num">{{.TotalPriceLabel}}</span></div>{{end}}
-    </div>
-
-    {{if .Addons}}
-    <div class="addons" id="addons" data-seats-total="{{.TotalPrice}}">
-      <h4>{{T "addons.guest_title"}}</h4>
-      {{range .Addons}}
-      <div class="f">
-        <label for="{{.Input}}">{{.Title}}{{if .Required}} *{{end}}</label>
-        {{if .Options}}
-        <select class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>
-          <option value="">{{T "field.select_hint"}}</option>
-          {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
-        </select>
-        {{else if .IsPriced}}
-        <div class="addon-amount">
-          {{if .Before}}<span class="muted">{{.Before}}</span>{{end}}
-          <input class="inp num" type="number" min="0" step="1" value="0"
-                 id="{{.Input}}" name="{{.Input}}-amount" data-price="{{.Price}}">
-          <span class="muted">× {{.Price}}{{if .After}} {{.After}}{{end}}</span>
+    {{/* Podsumowanie kosztów: miejsca, potem każda dopłata, na końcu razem.
+         Wiersze dopłat wypełnia js/n_order.js w miarę wpisywania liczb, więc
+         gość widzi pełny rachunek bez domyślania się. Całość jest sticky
+         (scss/ui.scss), a "Razem" siedzi poza obszarem przewijanym, żeby
+         kwota była widoczna nawet przy dużej liczbie pozycji. */}}
+    <div class="summary" id="summary"
+         data-seats-total="{{.TotalPrice}}"
+         data-currency="{{.Currency}}">
+      <div class="sum-items">
+        <div class="seat">
+          <span>{{T "res.seats"}}</span>
+          {{if not .HideCosts}}
+          <span class="num det">{{.SitsLabel}}</span>
+          <span class="num">{{.TotalPriceLabel}}</span>
+          {{else}}
+          <span class="num det">{{.SitsLabel}}</span>
+          <span></span>
+          {{end}}
         </div>
-        {{else}}
-        <input class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>
+        {{if not .HideCosts}}
+          {{range .Addons}}{{if .IsPriced}}
+          <div class="seat addon-line" data-input="{{.Input}}" data-price="{{.Price}}" data-title="{{.Title}}" hidden>
+            <span>{{.Title}}</span>
+            <span class="num det qty"></span>
+            <span class="num"></span>
+          </div>
+          {{end}}{{end}}
         {{end}}
       </div>
-      {{end}}
       {{if not .HideCosts}}
-      <p class="addons-total muted">{{T "guest.total"}}: <b class="num" id="addons-total"></b></p>
+      <div class="seat sum">
+        <span>{{T "guest.total"}}</span>
+        <span></span>
+        <span class="num" id="order-total" aria-live="polite">{{.TotalPriceLabel}}</span>
+      </div>
       {{end}}
     </div>
-    {{end}}
 
     <div class="grid2">
       <div class="f" style="grid-column:1/-1">
@@ -77,6 +81,32 @@
         {{if .NotesHelp}}<small>{{.NotesHelp}}</small>{{end}}
       </div>
     </div>
+
+    {{if .Addons}}
+    <div class="addons" id="addons">
+      <h4>{{T "addons.guest_title"}}</h4>
+      {{range .Addons}}
+      <div class="f">
+        <label for="{{.Input}}">{{.Title}}{{if .Required}} *{{end}}</label>
+        {{if .Options}}
+        <select class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>
+          <option value="">{{T "field.select_hint"}}</option>
+          {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+        {{else if .IsPriced}}
+        <div class="addon-amount">
+          {{if .Before}}<span class="muted">{{.Before}}</span>{{end}}
+          <input class="inp num" type="number" min="0" step="1" value="0"
+                 id="{{.Input}}" name="{{.Input}}-amount" data-price="{{.Price}}">
+          <span class="muted">× {{.Price}}{{if .After}} {{.After}}{{end}}</span>
+        </div>
+        {{else}}
+        <input class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
 
     <div class="sec-f">
       <button class="btn" type="submit">{{T "order.submit"}}</button>

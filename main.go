@@ -185,6 +185,18 @@ func reallyEmpty(s string) string {
 }
 
 func ErrorHTML(errorTitle, errorText, lang string, w http.ResponseWriter, r *http.Request) {
+	errorHTML(w, http.StatusOK, errorTitle, errorText, lang)
+}
+
+// ErrorHTMLNotFound - ta sama strona błędu, ale z kodem 404. Dla adresów,
+// pod których nic nie ma (zepsuty link do organizacji), żeby były widoczne
+// w logach i w statystykach, a nie chodziły jako zwykłe 200.
+func ErrorHTMLNotFound(errorTitle, errorText, lang string, w http.ResponseWriter, r *http.Request) {
+	errorHTML(w, http.StatusNotFound, errorTitle, errorText, lang)
+}
+
+func errorHTML(w http.ResponseWriter, status int, errorTitle, errorText, lang string) {
+	w.WriteHeader(status)
 	guestRender(w, KnownLang(lang), nErrorVars{Title: errorTitle, Text: errorText, Back: true}, "tmpl/n_error.html")
 }
 

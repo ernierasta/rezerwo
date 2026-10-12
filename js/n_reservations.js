@@ -21,13 +21,18 @@
     barInfo: document.getElementById('res-bar-info'),
     sum: document.getElementById('res-sum'),
     notif: document.getElementById('res-notif'),
-    detail: document.getElementById('res-detail')
+    cols: document.getElementById('res-cols'),
+    detail: document.getElementById('res-detail'),
+    pane: document.getElementById('res-pane')
   };
 
   var data = {rows: [], currency: '', notifications: [], addons: {}};
   var view = 'orders';   // orders | seats
   var quick = 'all';     // all | ordered | payed | unpaid7 | nomail
   var table;
+  var paneKey = 'rezerwo.pane';   // wspólne z raportem odpowiedzi formularza
+  var paneOn = true;
+  try { paneOn = localStorage.getItem(paneKey) !== '0'; } catch (e) { /* prywatne okno */ }
 
   function money(n) {
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (data.currency ? ' ' + data.currency : '');
@@ -38,6 +43,10 @@
     var d = new Date(unix * 1000);
     return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear();
   }
+
+  // teksty komórek dla wyszukiwania i filtrów kolumn (to, co widać, a nie surowe wartości)
+  function statusText(r) { return RZ.t('status.' + r.status); }
+  function mailText(r) { return dateS(r.last_mail) + (r.mail_count ? ' (' + r.mail_count + ')' : ''); }
 
   function statusHTML(status) {
     var cls = status === 'payed' ? 'paid' : status === 'ordered' ? 'ord' : 'off';
@@ -117,15 +126,15 @@
   function orderColumns() {
     return [
       {key: 'person', label: RZ.t('res.person')},
-      {key: 'seatsText', label: RZ.t('res.seats')},
+      {key: 'seatsText', label: RZ.t('res.seats'), cellClass: function () { return 'wrap'; }},
       {key: 'seatCount', label: '#', type: 'num', align: 'right'},
-      {key: 'status', label: RZ.t('res.status'), render: function (r) { return statusHTML(r.status); }},
-      {key: 'price', label: RZ.t('res.amount'), type: 'num', align: 'right', render: function (r) { return money(r.price); }},
+      {key: 'status', label: RZ.t('res.status'), text: statusText, render: function (r) { return statusHTML(r.status); }},
+      {key: 'price', label: RZ.t('res.amount'), type: 'num', align: 'right', text: function (r) { return money(r.price); }, render: function (r) { return money(r.price); }},
       {key: 'email', label: 'e-mail'},
       {key: 'phone', label: 'tel.'},
-      {key: 'ordered_date', label: RZ.t('status.ordered'), type: 'date', render: function (r) { return dateS(r.ordered_date); }},
-      {key: 'payed_date', label: RZ.t('status.payed'), type: 'date', render: function (r) { return dateS(r.payed_date); }},
-      {key: 'last_mail', label: 'mail', type: 'date', render: function (r) { return dateS(r.last_mail) + (r.mail_count ? ' (' + r.mail_count + ')' : ''); }}
+      {key: 'ordered_date', label: RZ.t('status.ordered'), type: 'date', text: function (r) { return dateS(r.ordered_date); }, render: function (r) { return dateS(r.ordered_date); }},
+      {key: 'payed_date', label: RZ.t('status.payed'), type: 'date', text: function (r) { return dateS(r.payed_date); }, render: function (r) { return dateS(r.payed_date); }},
+      {key: 'last_mail', label: 'mail', type: 'date', text: mailText, render: mailText}
     ];
   }
 
@@ -135,12 +144,12 @@
       {key: 'room', label: RZ.t('field.rooms')},
       {key: 'name', label: RZ.t('res.person'), text: function (r) { return (r.name + ' ' + r.surname).trim(); },
         render: function (r) { return document.createTextNode((r.name + ' ' + r.surname).trim()); }},
-      {key: 'status', label: RZ.t('res.status'), render: function (r) { return statusHTML(r.status); }},
-      {key: 'price', label: RZ.t('res.amount'), type: 'num', align: 'right', render: function (r) { return money(r.price); }},
+      {key: 'status', label: RZ.t('res.status'), text: statusText, render: function (r) { return statusHTML(r.status); }},
+      {key: 'price', label: RZ.t('res.amount'), type: 'num', align: 'right', text: function (r) { return money(r.price); }, render: function (r) { return money(r.price); }},
       {key: 'email', label: 'e-mail'},
       {key: 'phone', label: 'tel.'},
-      {key: 'ordered_date', label: RZ.t('status.ordered'), type: 'date', render: function (r) { return dateS(r.ordered_date); }},
-      {key: 'payed_date', label: RZ.t('status.payed'), type: 'date', render: function (r) { return dateS(r.payed_date); }},
+      {key: 'ordered_date', label: RZ.t('status.ordered'), type: 'date', text: function (r) { return dateS(r.ordered_date); }, render: function (r) { return dateS(r.ordered_date); }},
+      {key: 'payed_date', label: RZ.t('status.payed'), type: 'date', text: function (r) { return dateS(r.payed_date); }, render: function (r) { return dateS(r.payed_date); }},
       {key: 'notes', label: RZ.t('order.notes')}
     ];
   }
@@ -182,6 +191,7 @@
       onRowClick: showDetail,
       onRender: updateSum
     });
+    table.chooser(el.cols);
   }
 
   function updateBar(rows) {
@@ -208,7 +218,10 @@
       RZ.t('status.payed') + ': ' + money(payed) + ' · ' + RZ.t('res.awaiting') + ': ' + money(waiting);
   }
 
+  // showDetail - panel szczegółów; false = panel wyłączony, kliknięcie
+  // wiersza go zaznacza (n_table.js)
   function showDetail(row) {
+    if (!paneOn) return false;
     var ids = row.ids || [row.id];
     el.detail.hidden = false;
     el.detail.innerHTML = '';
@@ -240,10 +253,14 @@
       [RZ.t('status.payed'), dateS(row.payed_date)],
       ['mail', dateS(row.last_mail) + (row.mail_count ? ' (' + row.mail_count + ')' : '')]
     ];
+    // puste pozycje pomijamy; wartości od gościa tylko jako tekst
     lines.forEach(function (l) {
+      if (!String(l[1] || '').trim()) return;
       var d = document.createElement('div');
       d.className = 'kv-row';
-      d.innerHTML = '<span class="muted">' + l[0] + '</span><span>' + (l[1] || '—') + '</span>';
+      d.innerHTML = '<span class="muted"></span><span></span>';
+      d.children[0].textContent = l[0];
+      d.children[1].textContent = l[1];
       el.detail.appendChild(d);
     });
 
@@ -481,6 +498,13 @@
     document.getElementById('act-mail').addEventListener('click', sendMail);
     document.getElementById('act-delete').addEventListener('click', removeSelected);
     document.getElementById('act-none').addEventListener('click', function () { table.clearSelection(); });
+
+    el.pane.checked = paneOn;
+    el.pane.addEventListener('change', function () {
+      paneOn = el.pane.checked;
+      try { localStorage.setItem(paneKey, paneOn ? '1' : '0'); } catch (e) { /* ignorujemy */ }
+      if (!paneOn) el.detail.hidden = true;
+    });
   }
 
   RZ.loadLocale(document.documentElement.lang || 'pl')

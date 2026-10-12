@@ -569,7 +569,7 @@ textarea.inp { min-height: 80px; }
   // pasek przewijania niż łamanie każdej komórki na kilka linii
   .tbl { min-width: 860px; }
   .tbl td, .tbl th { white-space: nowrap; }
-  .tbl td:nth-child(3) { white-space: normal; min-width: 170px; } // kolumna "Miejsca"
+  .tbl td.wrap { white-space: normal; min-width: 170px; } // kolumna "Miejsca"
 }
 
 .detail-pane {
@@ -665,13 +665,16 @@ textarea.inp { min-height: 80px; }
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 10px 14px;
-    max-height: 320px;
+    margin-top: 4px;
+    max-height: min(480px, 70vh);
     overflow-y: auto;
     min-width: 220px;
+    max-width: min(420px, 90vw);
     box-shadow: 0 2px 10px rgba(var(--shade), .08);
   }
 
-  .colopt { display: block; font-size: 14px; padding-block: 3px; white-space: nowrap; }
+  .colopt { display: block; font-size: 14px; padding-block: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .colreset { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); width: 100%; text-align: left; font-size: 14px; }
 }
 
 // tabela odpowiedzi formularza (js/n_answers.js): sekcje i pola warunkowe
@@ -688,7 +691,6 @@ textarea.inp { min-height: 80px; }
 
 .detail-pane {
   .sec-h { font-family: var(--display); font-weight: 500; font-size: 14px; color: var(--muted); margin: 14px 0 2px; text-transform: uppercase; letter-spacing: .03em; }
-  .sec-na { font-size: 13.5px; color: var(--muted); padding-block: 6px; border-bottom: 1px solid var(--line); }
   .kv-row .out { color: var(--warn-ink); font-style: italic; }
 }
 
@@ -736,6 +738,59 @@ textarea.inp { min-height: 80px; }
   .bar i { display: block; height: 100%; background: var(--blue); }
 }
 
+// nagłówki kolumn: sortowanie, przeciąganie (kolejność), uchwyt szerokości
+.tbl tr.hdr th {
+  position: relative;
+  cursor: grab;
+
+  .sort { cursor: pointer; }
+  .sort:hover { color: var(--ink); }
+  &.dragging { opacity: .45; }
+  &.drop-l { box-shadow: inset 3px 0 0 var(--blue-deep); }
+  &.drop-r { box-shadow: inset -3px 0 0 var(--blue-deep); }
+}
+.tbl .rsz {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+
+  &:hover { background: linear-gradient(var(--line-strong), var(--line-strong)) center / 2px 100% no-repeat; }
+}
+.tbl tr.hdr th:last-child .rsz { right: 0; }
+body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-select: none; }
+
+// zapamiętane szerokości: stały układ, za długa treść ucięta wielokropkiem
+.tbl.fixed {
+  table-layout: fixed;
+  min-width: 0 !important;
+
+  td, th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr.hdr th { overflow: visible; }   // uchwyt szerokości wystaje poza komórkę
+  td.wrap { min-width: 0; }
+  tr.hdr .sort { display: block; overflow: hidden; text-overflow: ellipsis; }
+  tr.flt .inp { min-width: 0; }
+}
+
+// wiersz filtrów pod nagłówkami (js/n_table.js)
+.tbl tr.flt th {
+  padding: 0 4px 6px;
+  .inp { width: 100%; min-width: 4em; min-height: 26px; padding: 2px 6px; font-size: 13px; font-weight: 400; }
+}
+.tbl .flt-x {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  &:hover { color: var(--ink); }
+}
+
 .tbl tr.sel td { background: var(--blue-soft); }
 .tbl tbody tr:hover td { background: var(--pane); }
 .tbl input[type="checkbox"] { margin: 0; }
@@ -754,7 +809,7 @@ textarea.inp { min-height: 80px; }
   margin-top: 12px;
   box-shadow: 0 2px 10px rgba(var(--shade), .06);
 
-  #res-bar-info { font-weight: 500; margin-right: auto; }
+  #res-bar-info, #ans-bar-info { font-weight: 500; margin-right: auto; }
 
   // wybór maila stoi przy przycisku wysyłki - to jedna czynność
   .mailpick {

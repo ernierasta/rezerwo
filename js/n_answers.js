@@ -47,7 +47,7 @@
   try { if (localStorage.getItem(viewKey) === 'summary') view = 'summary'; } catch (e) { /* prywatne okno */ }
   var table;
   var currentDetailID = null;   // id odpowiedzi pokazanej w panelu szczegółów
-  var paneKey = 'rezerwo.answers.pane.' + formID;
+  var paneKey = 'rezerwo.pane';  // wspólne z raportem rezerwacji
   var paneOn = true;            // czy boczna kolumna ze szczegółami jest włączona
   try { paneOn = localStorage.getItem(paneKey) !== '0'; } catch (e) { /* prywatne okno */ }
 
@@ -56,6 +56,8 @@
     var d = new Date(unix * 1000);
     return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear();
   }
+
+  function mailText(r) { return dateS(r.last_mail) + (r.mail_count ? ' (' + r.mail_count + ')' : ''); }
 
   function statusHTML(status) {
     if (!status) return '';
@@ -85,15 +87,18 @@
       {key: 'name', label: RZ.t('res.person'), text: function (r) { return (r.name + ' ' + r.surname).trim(); },
         render: function (r) { return document.createTextNode((r.name + ' ' + r.surname).trim()); }},
       {key: 'email', label: 'e-mail'},
-      {key: 'status', label: RZ.t('res.status'), render: function (r) { return statusHTML(r.status); }},
-      {key: 'created', label: RZ.t('form.created'), type: 'date', render: function (r) { return dateS(r.created); }},
-      {key: 'last_mail', label: 'mail', type: 'date',
-        render: function (r) { return dateS(r.last_mail) + (r.mail_count ? ' (' + r.mail_count + ')' : ''); }}
+      {key: 'status', label: RZ.t('res.status'), render: function (r) { return statusHTML(r.status); },
+        text: function (r) { return r.status ? RZ.t('status.' + r.status) : ''; }},
+      {key: 'created', label: RZ.t('form.created'), type: 'date', text: function (r) { return dateS(r.created); },
+        render: function (r) { return dateS(r.created); }},
+      {key: 'last_mail', label: 'mail', type: 'date', text: mailText, render: mailText}
     ];
     var base = RZ.t('answers.base');
     cols.forEach(function (c) { c.group = base; });
-    // kolumny z pól formularza, pogrupowane w sekcje
+    // kolumny z pól formularza, pogrupowane w sekcje; imię, nazwisko
+    // i e-mail są już w kolumnach zgłoszenia
     data.columns.forEach(function (c) {
+      if (c.role) return;
       cols.push({
         key: 'v_' + c.key,
         field: c,
@@ -136,61 +141,6 @@
       case 'nomail': return !row.last_mail;
       default: return true;
     }
-  }
-
-  // buildColumnChooser - kolumny w grupach (zgłoszenie, sekcje formularza);
-  // pole przy nazwie grupy włącza i wyłącza całą sekcję.
-  function buildColumnChooser(cols) {
-    el.cols.innerHTML = '';
-    var groups = [];
-    cols.forEach(function (c) {
-      var g = groups[groups.length - 1];
-      if (!g || g.label !== c.group) {
-        g = {label: c.group, cols: []};
-        groups.push(g);
-      }
-      g.cols.push(c);
-    });
-    var boxes = {};
-    function syncGroup(g) {
-      if (!g.box) return;
-      var on = g.cols.filter(function (c) { return !table.hiddenColumns()[c.key]; }).length;
-      g.box.checked = on === g.cols.length;
-      g.box.indeterminate = on > 0 && on < g.cols.length;
-    }
-    groups.forEach(function (g) {
-      if (groups.length > 1 && g.label.trim()) {
-        var gl = document.createElement('label');
-        gl.className = 'colsec';
-        g.box = document.createElement('input');
-        g.box.type = 'checkbox';
-        g.box.addEventListener('change', function () {
-          var hide = !g.box.checked;
-          table.setHidden(g.cols.map(function (c) { return c.key; }), hide);
-          g.cols.forEach(function (c) { boxes[c.key].checked = !hide; });
-          syncGroup(g);
-        });
-        gl.appendChild(g.box);
-        gl.appendChild(document.createTextNode(' ' + g.label));
-        el.cols.appendChild(gl);
-      }
-      g.cols.forEach(function (c) {
-        var lbl = document.createElement('label');
-        lbl.className = 'colopt';
-        var box = document.createElement('input');
-        box.type = 'checkbox';
-        box.checked = !table.hiddenColumns()[c.key];
-        box.addEventListener('change', function () {
-          table.toggleColumn(c.key, !box.checked);
-          syncGroup(g);
-        });
-        boxes[c.key] = box;
-        lbl.appendChild(box);
-        lbl.appendChild(document.createTextNode(' ' + c.label));
-        el.cols.appendChild(lbl);
-      });
-      syncGroup(g);
-    });
   }
 
   // buildBranches - filtr gałęzi: pola, od których zależy jakiś warunek albo
@@ -248,8 +198,10 @@
     el.sum.textContent = RZ.t('count.answer.many', rows.length) + (money ? ' · ' + money : '');
   }
 
+  // showDetail - panel z tym, co gość wpisał (puste pola pominięte);
+  // false = panel wyłączony, kliknięcie wiersza go zaznacza (n_table.js)
   function showDetail(row) {
-    if (!paneOn || view !== 'table') return;
+    if (!paneOn || view !== 'table') return false;
     currentDetailID = row.id;
     el.detail.hidden = false;
     el.detail.innerHTML = '';
@@ -276,19 +228,18 @@
       d.className = 'kv-row';
       d.innerHTML = '<span class="muted"></span><span></span>';
       d.children[0].textContent = k;
-      d.children[1].textContent = v || '—';
+      d.children[1].textContent = v;
       el.detail.appendChild(d);
     }
 
-    line('e-mail', row.email);
-    line(RZ.t('res.status'), row.status ? RZ.t('status.' + row.status) : '');
-    line(RZ.t('form.created'), dateS(row.created));
-    line('mail', dateS(row.last_mail) + (row.mail_count ? ' (' + row.mail_count + ')' : ''));
+    function filled(c) { return String(row.values[c.key] || '').trim() !== ''; }
 
-    // pola w sekcjach formularza, tylko te, które gość widział; sekcja bez
-    // widocznych pól to jedna szara linia "nie dotyczy"
+    if (row.email) line('e-mail', row.email);
+
+    // pola w sekcjach formularza, tylko wypełnione; sekcja bez nich znika
     var bySec = [];
     data.columns.forEach(function (c) {
+      if (c.role) return;   // imię, nazwisko i e-mail są w nagłówku panelu
       var last = bySec[bySec.length - 1];
       if (!last || last.section !== c.section) {
         last = {section: c.section, cols: []};
@@ -298,15 +249,8 @@
     });
     bySec.forEach(function (g) {
       var label = sectionLabel(g.section);
-      var shown = g.cols.filter(function (c) { return !row._na[c.key]; });
-      if (!shown.length) {
-        if (!label) return;
-        var na = document.createElement('div');
-        na.className = 'sec-na';
-        na.textContent = label + ': ' + RZ.t('answers.section_na');
-        el.detail.appendChild(na);
-        return;
-      }
+      var shown = g.cols.filter(filled);
+      if (!shown.length) return;
       if (label) {
         var h = document.createElement('h5');
         h.className = 'sec-h';
@@ -594,7 +538,7 @@
       .catch(function (e) { RZ.toast(RZ.t('common.save_error') + ': ' + e.message); });
   }
 
-  function wire(cols) {
+  function wire() {
     el.search.addEventListener('input', function () { table.setSearch(el.search.value); });
     el.quick.addEventListener('click', function (e) {
       var b = e.target.closest('button[data-quick]');
@@ -634,7 +578,7 @@
         else refreshDetail();
       });
     }
-    buildColumnChooser(cols);
+    table.chooser(el.cols);
   }
 
   RZ.loadLocale(document.documentElement.lang || 'pl')
@@ -663,7 +607,7 @@
         onRender: onRender
       });
       buildBranches();
-      wire(cols);
+      wire();
       setView(view);
     })
     .catch(function (e) { el.table.textContent = RZ.t('common.save_error') + ': ' + e.message; });

@@ -4,6 +4,7 @@
   <div class="dh">
     <h3>{{T "event.sec.reservations"}}</h3>
     <div class="r">
+      <details class="cols"><summary class="btn quiet">{{T "form.columns"}} ▾</summary><div id="res-cols"></div></details>
       <a class="btn quiet" href="/api/events/{{.ID}}/reservations.csv">CSV</a>
     </div>
   </div>
@@ -21,6 +22,7 @@
       <button data-quick="unpaid7">{{T "res.filter_unpaid7"}}</button>
       <button data-quick="nomail">{{T "res.filter_nomail"}}</button>
     </div>
+    <label class="chk"><input type="checkbox" id="res-pane" checked autocomplete="off"> {{T "form.detail_panel"}}</label>
   </div>
 
   <div class="res-layout">

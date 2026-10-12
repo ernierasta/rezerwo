@@ -4,6 +4,7 @@
   <div class="dh">
     <h3>{{T "form.answers"}}</h3>
     <div class="r">
+      <details class="cols"><summary class="btn quiet">{{T "form.columns"}} ▾</summary><div id="ans-cols"></div></details>
       <a class="btn quiet" href="/api/forms/{{.ID}}/answers.csv">CSV</a>
       <a class="btn quiet" id="ans-csv-view" href="/api/forms/{{.ID}}/answers.csv?na=1" title="{{T "answers.csv_view_title"}}">{{T "answers.csv_view"}}</a>
     </div>
@@ -22,9 +23,7 @@
       <button data-view="table" class="on">{{T "answers.view_table"}}</button>
       <button data-view="summary">{{T "answers.view_summary"}}</button>
     </div>
-    <select class="inp" id="ans-notif" style="max-width:260px"><option value="0">{{T "field.select_hint"}}</option></select>
-    <label class="chk"><input type="checkbox" id="ans-pane" checked> {{T "form.detail_panel"}}</label>
-    <details class="cols"><summary class="link">{{T "form.columns"}}</summary><div id="ans-cols"></div></details>
+    <label class="chk"><input type="checkbox" id="ans-pane" checked autocomplete="off"> {{T "form.detail_panel"}}</label>
   </div>
 
   <div class="res-layout">
@@ -39,7 +38,10 @@
     <span id="ans-bar-info"></span>
     <button class="btn sm" id="ans-payed">{{T "res.mark_payed"}}</button>
     <button class="btn quiet sm" id="ans-ordered">{{T "res.mark_ordered"}}</button>
-    <button class="btn quiet sm" id="ans-mail">{{T "res.send_mail"}}</button>
+    <span class="mailpick">
+      <select class="inp" id="ans-notif" aria-label="{{T "catalog.mails"}}"><option value="0">{{T "field.select_hint"}}</option></select>
+      <button class="btn quiet sm" id="ans-mail">{{T "res.send_mail"}}</button>
+    </span>
     <button class="btn danger sm" id="ans-delete">{{T "common.delete"}}</button>
     <button class="link" id="ans-none">{{T "common.cancel"}}</button>
   </div>

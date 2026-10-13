@@ -12,16 +12,17 @@ func TestParseBanner(t *testing.T) {
 		want Banner
 		out  string
 	}{
-		{"", Banner{"", 100}, ""},
-		{"banner.png", Banner{"banner.png", 100}, "banner.png"},
-		{"banner.png;50%", Banner{"banner.png", 50}, "banner.png;50%"},
-		{"banner.png;75", Banner{"banner.png", 75}, "banner.png;75%"},
-		{"banner.png;100%", Banner{"banner.png", 100}, "banner.png"},
-		{"banner.png;42%", Banner{"banner.png", 100}, "banner.png"},
+		{"", Banner{File: "", Width: 100}, ""},
+		{"banner.png", Banner{File: "banner.png", Width: 100}, "banner.png"},
+		{"banner.png;50%", Banner{File: "banner.png", Width: 50}, "banner.png;50%"},
+		{"banner.png;75", Banner{File: "banner.png", Width: 75}, "banner.png;75%"},
+		{"banner.png;100%", Banner{File: "banner.png", Width: 100}, "banner.png"},
+		{"banner.png;42%", Banner{File: "banner.png", Width: 100}, "banner.png"},
 		// stary zapis z wymiarami obrazka: wymiary nigdy nie działały
-		{"banner-test.png;1600;400", Banner{"banner-test.png", 100}, "banner-test.png"},
-		{"banner2026.jpeg;1;1", Banner{"banner2026.jpeg", 100}, "banner2026.jpeg"},
-		{" test/banner.png ", Banner{"test/banner.png", 100}, "test/banner.png"},
+		{"banner-test.png;1600;400", Banner{File: "banner-test.png", Width: 100}, "banner-test.png"},
+		{"banner2026.jpeg;1;1", Banner{File: "banner2026.jpeg", Width: 100}, "banner2026.jpeg"},
+		{" test/banner.png ", Banner{File: "test/banner.png", Width: 100}, "test/banner.png"},
+		{"banner.png;full", Banner{File: "banner.png", Width: 100, Full: true}, "banner.png;full"},
 	}
 	for _, c := range cases {
 		got := ParseBanner(c.in)

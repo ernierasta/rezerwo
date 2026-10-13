@@ -566,6 +566,7 @@ type nEventVars struct {
 
 	MainDesc       template.HTML
 	MainBanner     nBannerPick
+	Head           nHeadPick
 	RoomTexts      []nRoomText
 	OrderHowto     template.HTML
 	OrderNotesDesc string
@@ -739,7 +740,8 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		UserRooms:       userRooms,
 		EventRooms:      evRooms,
 		MainDesc:        template.HTML(event.MainDesc.String),
-		MainBanner:      bannerPick(T(lang, "field.main_banner"), "mainbanner", event.MainBanner.String, user),
+		MainBanner:      mainBannerPick(T(lang, "field.main_banner"), "mainbanner", event.MainBanner.String, user),
+		Head:            headPick(ParsePageHead(event.PageHead), event.Name, false),
 		OrderHowto:      template.HTML(event.OrderHowto),
 		OrderNotesDesc:  event.OrderNotesDescription,
 		NoSitsTitle:     event.NoSitsSelectedTitle,
@@ -1340,6 +1342,10 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		case "guest":
 			event.MainDesc = ToNS(html("maindesc"))
 			event.MainBanner = ToNS(cleanBanner(val("mainbanner")))
+			if err := db.EventSetPageHead(event.ID, user.ID, pageHeadFromPanel(val, flag, event.Name).String()); err != nil {
+				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
+				return
+			}
 			event.Room1Desc = ToNS(html("room1desc"))
 			event.Room1Banner = ToNS(cleanBanner(val("room1banner")))
 			event.Room2Desc = ToNS(html("room2desc"))

@@ -56,16 +56,15 @@ type nFormPageVars struct {
 	Title    string
 	Lang     string
 	FormName string
-	Banner   template.HTML
+	Head     GuestHead // banner, nazwa i termin (pagehead.go)
 	HowTo    template.HTML
 	Info     template.HTML
 	Rows     []RenderRow
 	UniqID   string
 	SendURL  string
 
-	Open      bool
-	Preview   bool   // admin ogląda zamknięty formularz
-	CloseNote string // "Odpowiedzi przyjmujemy do 12.1.2027"
+	Open    bool
+	Preview bool // admin ogląda zamknięty formularz
 
 	HasMoney bool
 	Currency string
@@ -156,7 +155,6 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 		}
 
 		v := nFormPageVars{
-			Title:    templ.Name,
 			Lang:     lang,
 			FormName: templ.Name,
 			HowTo:    template.HTML(templ.HowTo.String),
@@ -166,10 +164,12 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			Currency: formCurrency(db, user, templ),
 			DraftKey: fmt.Sprintf("rezerwo.gform.%d", templ.ID),
 		}
-		v.Banner = ParseBanner(templ.Banner.String).ImgHTML(user.URL)
+		closeNote := ""
 		if v.Open && templ.CloseDate.Valid && templ.CloseDate.Int64 > 0 {
-			v.CloseNote = T(lang, "gform.open_until", FormatDate(lang, templ.CloseDate.Int64))
+			closeNote = T(lang, "gform.open_until", FormatDate(lang, templ.CloseDate.Int64))
 		}
+		v.Head = guestHead(ParsePageHead(templ.PageHead), templ.Name, templ.Banner.String, user.URL, closeNote)
+		v.Title = v.Head.Name
 		if !v.Open && isFormOwnerSession(r, db, cs, user) {
 			v.Preview = true
 		}

@@ -73,12 +73,69 @@
           <button type="button" data-w="75">75%</button>
           <button type="button" data-w="50">50%</button>
           <button type="button" data-w="33">33%</button>
+          {{if .Full}}<button type="button" data-w="full">{{T "banner.full"}}</button>{{end}}
         </div>
       </div>
       <small class="bp-name"></small>
-      <small class="bp-hint">{{T "banner.hint"}}</small>
+      <small class="bp-hint">{{T "banner.hint"}}{{if .Full}} {{T "banner.full_hint"}}{{end}}</small>
     </div>
   </div>
   <input type="file" class="bp-file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+</div>
+{{end}}
+
+{{/* Nagłówek strony gościa (pagehead.go, nHeadPick): wyświetlana nazwa
+     z wyrównaniem i linijka nad nią z kolorem, wielkością i formatowaniem.
+     Wybrane wartości są w ukrytych polach / checkboxach sekcji, przyciski
+     i podgląd obsługuje n_ui.js (syncHeadPick). */}}
+{{define "hpalign"}}<div class="seg hp-seg" data-for="{{.}}" role="radiogroup" aria-label="{{T "head.align"}}">
+  <button type="button" data-v="" title="{{T "head.align_left"}}" aria-label="{{T "head.align_left"}}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8"/></svg></button>
+  <button type="button" data-v="center" title="{{T "head.align_center"}}" aria-label="{{T "head.align_center"}}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12M4 6.5h8M2 10h12M4 13.5h8"/></svg></button>
+  <button type="button" data-v="right" title="{{T "head.align_right"}}" aria-label="{{T "head.align_right"}}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12M6 6.5h8M2 10h12M6 13.5h8"/></svg></button>
+</div>{{end}}
+
+{{define "headpick"}}
+<div class="hpick">
+  <div class="f"><label for="f-head-over">{{T "head.over"}}</label>
+    <input class="inp" id="f-head-over" data-field="head_over" value="{{.Over}}" maxlength="200" placeholder="{{T "head.over_ph"}}">
+    <div class="hp-tools">
+      <input type="hidden" data-field="head_over_color" value="{{.OverColor}}">
+      <div class="hp-colors" data-for="head_over_color" role="radiogroup" aria-label="{{T "head.color"}}">
+        {{range .Colors}}<button type="button" data-v="{{.}}" class="gh-over c-{{if .}}{{.}}{{else}}def{{end}}" title="{{T (printf "head.color_%s" (or . "def"))}}" aria-label="{{T (printf "head.color_%s" (or . "def"))}}"><i></i></button>{{end}}
+      </div>
+      <input type="hidden" data-field="head_over_size" value="{{.OverSize}}">
+      <div class="seg hp-seg hp-sizes" data-for="head_over_size" role="radiogroup" aria-label="{{T "head.size"}}">
+        {{range .Sizes}}<button type="button" data-v="{{.}}" class="sz-{{or . "s"}}" title="{{T (printf "head.size_%s" (or . "s"))}}" aria-label="{{T (printf "head.size_%s" (or . "s"))}}">A</button>{{end}}
+      </div>
+      <div class="seg hp-tgs">
+        <label class="hp-tg" title="{{T "head.bold"}}"><input type="checkbox" data-field="head_over_bold"{{if .OverBold}} checked{{end}}><b>B</b></label>
+        <label class="hp-tg" title="{{T "head.italic"}}"><input type="checkbox" data-field="head_over_italic"{{if .OverItalic}} checked{{end}}><i>I</i></label>
+        <label class="hp-tg" title="{{T "head.upper"}}"><input type="checkbox" data-field="head_over_upper"{{if .OverUpper}} checked{{end}}><span>AA</span></label>
+      </div>
+      <input type="hidden" data-field="head_over_align" value="{{.OverAlign}}">
+      {{template "hpalign" "head_over_align"}}
+    </div>
+    <small>{{T "head.over_hint"}}</small>
+  </div>
+  <div class="f"><label for="f-head-name">{{T "head.name"}}</label>
+    <div class="hp-row">
+      <input class="inp" id="f-head-name" data-field="head_name" value="{{.Name}}" maxlength="200">
+      <input type="hidden" data-field="head_align" value="{{.Align}}">
+      {{template "hpalign" "head_align"}}
+      <label class="seg hp-tg hp-hide" title="{{T "head.hide_name_hint"}}"><input type="checkbox" data-field="head_hide_name"{{if .HideName}} checked{{end}}><span>{{T "head.hide_name"}}</span></label>
+    </div>
+    <small>{{T "head.name_hint"}}</small>
+  </div>
+  {{if .Form}}<div class="f"><label>{{T "head.width"}}</label>
+    <input type="hidden" data-field="head_width" value="{{.Width}}">
+    <div class="seg hp-seg" data-for="head_width" role="radiogroup" aria-label="{{T "head.width"}}">
+      <button type="button" data-v="">{{T "head.width_form"}}</button>
+      <button type="button" data-v="page">{{T "head.width_page"}}</button>
+    </div>
+    <small>{{T "head.width_hint"}}</small>
+  </div>{{end}}
+  <div class="hp-prev" aria-hidden="true"><small>{{T "head.preview"}}</small>
+    <p class="gh-over"></p><div class="hp-name"></div>
+  </div>
 </div>
 {{end}}

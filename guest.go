@@ -42,8 +42,7 @@ type nGuestVars struct {
 	Title           string
 	EventID         int64
 	EventName       string
-	When            string
-	Banner          template.HTML
+	Head            GuestHead // banner, nazwa i data (pagehead.go)
 	Desc            template.HTML
 	HowTo           template.HTML
 	Rooms           []nGuestRoom
@@ -139,11 +138,9 @@ func GuestReservationPage(db *DB, cs *sessions.CookieStore) func(w http.Response
 		}
 
 		vars := nGuestVars{
-			Title:           event.Name,
 			EventID:         event.ID,
 			EventName:       event.Name,
-			When:            FormatDate(lng, event.Date),
-			Banner:          ParseBanner(event.MainBanner.String).ImgHTML(user.URL),
+			Head:            guestHead(ParsePageHead(event.PageHead), event.Name, event.MainBanner.String, user.URL, FormatDate(lng, event.Date)),
 			Desc:            template.HTML(event.MainDesc.String),
 			HowTo:           template.HTML(event.HowTo),
 			DefaultPrice:    event.DefaultPrice,
@@ -153,6 +150,7 @@ func GuestReservationPage(db *DB, cs *sessions.CookieStore) func(w http.Response
 			NoSitsTitle:     event.NoSitsSelectedTitle,
 			NoSitsText:      template.HTML(event.NoSitsSelectedText),
 		}
+		vars.Title = vars.Head.Name
 		if vars.NoSitsTitle == "" {
 			vars.NoSitsTitle = T(lng, "guest.no_seats_title")
 		}

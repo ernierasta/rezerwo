@@ -69,6 +69,7 @@
       <div class="sec-b" hidden>
         {{template "themepick" .}}
         <div style="margin-top:18px">{{template "bannerpick" .Banner}}</div>
+        <div style="margin-top:16px">{{template "headpick" .Head}}</div>
         <div class="f" style="margin-top:16px"><label>{{T "field.howto_form"}}</label><div class="ed" data-editor="howto">{{.HowTo}}</div></div>
         <div class="f panel-set" style="margin-top:16px" id="panel-set" data-fields="{{.PanelFields}}"><label>{{T "field.info_panel"}}</label>
           <input type="hidden" data-field="infopanel_mode" id="f-panel-mode" value="{{.PanelMode}}">

@@ -205,6 +205,7 @@
     });
     syncThemePick(sec);
     syncBannerPicks(sec);
+    syncHeadPicks(sec);
   }
 
   // Wybór tematu strony gościa (szablon "themepick" w n_base.html): próbki
@@ -232,14 +233,14 @@
 
   // Wybór bannera (szablon "bannerpick" w n_base.html, banner.go). Ukryte
   // pole trzyma wartość do bazy: "plik.png" (auto = cała szerokość) albo
-  // "plik.png;50%". Zmiana wartości wysyła input, który oznacza sekcję jako
-  // zmienioną.
-  var BANNER_WIDTHS = [100, 75, 50, 33];
+  // "plik.png;50%" albo "plik.png;full" (cała strona, tylko główny banner).
+  // Zmiana wartości wysyła input, który oznacza sekcję jako zmienioną.
+  var BANNER_WIDTHS = ['100', '75', '50', '33', 'full'];
 
   function parseBanner(v) {
     var parts = (v || '').split(';');
-    var w = parts.length === 2 ? parseInt(parts[1], 10) : 100;
-    return {file: parts[0].trim(), w: BANNER_WIDTHS.indexOf(w) >= 0 ? w : 100};
+    var w = parts.length === 2 ? parts[1].trim().replace(/%$/, '') : '100';
+    return {file: parts[0].trim(), w: BANNER_WIDTHS.indexOf(w) >= 0 ? w : '100'};
   }
 
   function bannerURL(box, file) {
@@ -270,9 +271,9 @@
       none.hidden = false;
       none.textContent = t('banner.none');
     }
-    img.style.width = b.w + '%';
+    img.style.width = b.w === 'full' ? '100%' : b.w + '%';
     box.querySelectorAll('.bp-w button').forEach(function (btn) {
-      var on = +btn.dataset.w === b.w;
+      var on = btn.dataset.w === b.w;
       btn.classList.toggle('on', on);
       btn.setAttribute('aria-checked', on ? 'true' : 'false');
       btn.disabled = !b.file;
@@ -286,7 +287,8 @@
 
   function setBanner(box, file, w) {
     var inp = box.querySelector('input[data-field]');
-    inp.value = !file ? '' : (w === 100 ? file : file + ';' + w + '%');
+    w = String(w);
+    inp.value = !file ? '' : (w === '100' ? file : file + ';' + w + (w === 'full' ? '' : '%'));
     syncBannerPick(box);
     inp.dispatchEvent(new Event('input', {bubbles: true}));
   }
@@ -386,10 +388,10 @@
     } else if (e.target.closest('.bp-choose')) {
       chooseBanner(box, e.target.closest('.bp-choose'));
     } else if (e.target.closest('.bp-del')) {
-      setBanner(box, '', 100);
+      setBanner(box, '', '100');
     } else if (e.target.closest('.bp-w button')) {
       var cur = parseBanner(box.querySelector('input[data-field]').value);
-      if (cur.file) setBanner(box, cur.file, +e.target.closest('button').dataset.w);
+      if (cur.file) setBanner(box, cur.file, e.target.closest('button').dataset.w);
     }
   });
 
@@ -400,6 +402,66 @@
     if (f) uploadBanner(e.target.closest('.bpick'), f);
     e.target.value = '';
   }, true);
+
+  // Nagłówek strony gościa (szablon "headpick" w n_base.html, pagehead.go):
+  // przyciski wyrównania, wielkości i kolorów zapisują wartość w ukrytym polu
+  // (data-for), pogrubienie itp. to checkboxy; podgląd dostaje te same klasy
+  // co strona gościa i temat wybrany w tej samej sekcji.
+  function syncHeadPick(box) {
+    var val = function (f) { return box.querySelector('[data-field="' + f + '"]'); };
+    box.querySelectorAll('[data-for]').forEach(function (grp) {
+      var v = val(grp.dataset.for).value;
+      grp.querySelectorAll('button').forEach(function (b) {
+        var on = b.dataset.v === v;
+        b.classList.toggle('on', on);
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+    });
+    var over = box.querySelector('.hp-prev .gh-over');
+    var cls = ['gh-over'];
+    if (val('head_over_color').value) cls.push('c-' + val('head_over_color').value);
+    if (val('head_over_size').value) cls.push('sz-' + val('head_over_size').value);
+    if (val('head_over_bold').checked) cls.push('gh-b');
+    if (val('head_over_italic').checked) cls.push('gh-i');
+    if (val('head_over_upper').checked) cls.push('gh-up');
+    if (val('head_over_align').value) cls.push('ta-' + val('head_over_align').value);
+    over.className = cls.join(' ');
+    over.textContent = val('head_over').value.trim();
+    var name = box.querySelector('.hp-name');
+    name.className = 'hp-name' + (val('head_align').value ? ' ta-' + val('head_align').value : '') +
+      (val('head_hide_name').checked ? ' hidden-name' : '');
+    name.textContent = val('head_name').value.trim();
+    var sec = box.closest('.sec') || document;
+    var theme = sec.querySelector('input[data-field="theme"]');
+    box.querySelector('.hp-prev').setAttribute('data-theme', theme && theme.value ? theme.value : 'klasyczny');
+  }
+
+  function syncHeadPicks(root) {
+    root.querySelectorAll('.hpick').forEach(syncHeadPick);
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.hpick [data-for] button');
+    if (!b) return;
+    var box = b.closest('.hpick');
+    var inp = box.querySelector('[data-field="' + b.closest('[data-for]').dataset.for + '"]');
+    if (inp.value === b.dataset.v) return;
+    inp.value = b.dataset.v;
+    syncHeadPick(box);
+    inp.dispatchEvent(new Event('input', {bubbles: true}));
+  });
+  ['input', 'change'].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+      var box = e.target.closest && e.target.closest('.hpick');
+      if (box) { syncHeadPick(box); return; }
+      // temat w tej samej sekcji zmienia kolory podglądu
+      if (e.target.matches && e.target.matches('input[data-field="theme"]')) {
+        var sec = e.target.closest('.sec');
+        if (sec) syncHeadPicks(sec);
+      }
+    });
+  });
 
   // draftNotice pokazuje na górze strony, że wartości pochodzą ze szkicu.
   function draftNotice(onDiscard) {
@@ -556,7 +618,7 @@
   // katalog wczytujemy od razu, żeby teksty w JS działały na każdej stronie
   // (strony, które same wołają loadLocale, dostaną go z pamięci przeglądarki)
   var ready = loadLocale(document.documentElement.lang || 'pl');
-  ready.then(function () { syncBannerPicks(document); });
+  ready.then(function () { syncBannerPicks(document); syncHeadPicks(document); });
 
   // Kasowanie z oknem potwierdzenia (delete_api.go). Przycisk:
   //   <button data-delete="/api/x/1" data-title="Usunąć…?" data-text="…"

@@ -5,7 +5,9 @@ package main
 //
 // W bazie (events.mainbanner, events.room1banner.., formtemplates.banner)
 // jest nazwa pliku z katalogu media/<organizacja>/ i opcjonalnie szerokość:
-// "banner.png" (na całą szerokość) albo "banner.png;50%". Stare wpisy
+// "banner.png" (na całą szerokość) albo "banner.png;50%", albo
+// "banner.png;full" (na pełną szerokość strony, tylko główny banner
+// imprezy i formularza - pagehead.go, GuestHead). Stare wpisy
 // "banner.png;1600;400" podawały wymiary obrazka, które nigdy nie były
 // używane - czytamy je jako "na całą szerokość".
 
@@ -40,13 +42,20 @@ const BANNERMAXSIZE = 8 << 20
 type Banner struct {
 	File  string // ścieżka względem media/<organizacja>/
 	Width int    // % szerokości strony, jedna z bannerWidths
+	Full  bool   // na całą stronę (wtedy Width = 100)
 }
+
+// BANNERFULL - szerokość "cała strona" w zapisie bannera: pełna szerokość
+// strony, także w formularzu, gdzie "auto" to szerokość nagłówka.
+const BANNERFULL = "full"
 
 // ParseBanner czyta banner zapisany w bazie.
 func ParseBanner(s string) Banner {
 	parts := strings.Split(strings.TrimSpace(s), ";")
 	b := Banner{File: strings.TrimSpace(parts[0]), Width: 100}
-	if len(parts) == 2 {
+	if len(parts) == 2 && strings.TrimSpace(parts[1]) == BANNERFULL {
+		b.Full = true
+	} else if len(parts) == 2 {
 		n, err := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(parts[1]), "%"))
 		if err == nil && validBannerWidth(n) {
 			b.Width = n
@@ -68,6 +77,9 @@ func validBannerWidth(n int) bool {
 func (b Banner) String() string {
 	if b.File == "" {
 		return ""
+	}
+	if b.Full {
+		return b.File + ";" + BANNERFULL
 	}
 	if b.Width == 100 || !validBannerWidth(b.Width) {
 		return b.File
@@ -245,8 +257,16 @@ type nBannerPick struct {
 	Field string // nazwa pola w sekcji (data-field)
 	Value string // wartość z bazy
 	Base  string // adres katalogu organizacji, np. /media/mskarwina/
+	Full  bool   // można wybrać "cała strona" (główny banner)
 }
 
 func bannerPick(label, field, value string, user User) nBannerPick {
 	return nBannerPick{Label: label, Field: field, Value: cleanBanner(value), Base: path.Join("/", MEDIAROOT, user.URL) + "/"}
+}
+
+// mainBannerPick - wybór głównego bannera, z szerokością "cała strona".
+func mainBannerPick(label, field, value string, user User) nBannerPick {
+	p := bannerPick(label, field, value, user)
+	p.Full = true
+	return p
 }

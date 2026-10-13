@@ -173,6 +173,12 @@ func FormCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 				if err := db.FormTemplateSetTheme(id, user.ID, ThemeKey(src.Theme)); err != nil {
 					log.Printf("FormCreateAPI: theme: %v", err)
 				}
+				// wygląd nagłówka przechodzi, nazwa idzie za nazwą kopii
+				head := ParsePageHead(src.PageHead)
+				head.Name = ""
+				if err := db.FormTemplateSetPageHead(id, user.ID, head.String()); err != nil {
+					log.Printf("FormCreateAPI: page head: %v", err)
+				}
 			}
 		}
 		if msg.FromID > 0 {

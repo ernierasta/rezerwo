@@ -13,3 +13,16 @@
   {{block "scripts" .}}{{end}}
 </body>
 </html>{{end}}
+
+
+{{/* Górna część strony imprezy i formularza (pagehead.go, GuestHead):
+     banner "cała strona" stoi na początku .guest, poza nagłówkiem (w formularzu
+     węższym), więc ma pełną szerokość strony; reszta - zwykły banner, linijka
+     nad nazwą, nazwa i data - w nagłówku. */}}
+{{define "guestwide"}}{{if .BannerFull}}<div class="banner banner-wide">{{.Banner}}</div>{{end}}{{end}}
+{{define "guesthead"}}
+  {{if and .Banner (not .BannerFull)}}<div class="banner">{{.Banner}}</div>{{end}}
+  {{if .Over}}<p class="gh-over {{.OverClass}}">{{.Over}}</p>{{end}}
+  <h1{{if .HideName}} class="vh"{{else}}{{with .NameClass}} class="{{.}}"{{end}}{{end}}>{{.Name}}</h1>
+  {{if .When}}<p class="when{{with .NameClass}} {{.}}{{end}}">{{.When}}</p>{{end}}
+{{end}}

@@ -5,10 +5,9 @@
      data-price="{{.DefaultPrice}}"
      data-hidecosts="{{.HideCosts}}"{{if .SoldOut}}
      data-soldout="true"{{end}}>
+  {{template "guestwide" .Head}}
 
-  {{if .Banner}}<div class="banner">{{.Banner}}</div>{{end}}
-  <h1>{{.EventName}}</h1>
-  {{if .When}}<p class="when">{{.When}}</p>{{end}}
+  {{template "guesthead" .Head}}
   {{if .Desc}}<div class="desc">{{.Desc}}</div>{{end}}
 
   {{if gt (len .Rooms) 1}}

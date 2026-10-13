@@ -9,7 +9,7 @@ CREATE TABLE reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER
 CREATE TABLE users_customers (users_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(users_id_fk, customers_id_fk) ON CONFLICT ROLLBACK);
 CREATE TABLE admins (id INTEGER NOT NULL PRIMARY KEY, type TEXT NOT NULL, email TEXT NOT NULL, passwd TEXT, notes TEXT, users_id_fk INTEGER NOT NULL, language TEXT, FOREIGN KEY(users_id_fk) REFERENCES users(id));
 CREATE TABLE "prices" (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
-CREATE TABLE events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, no_sits_selected_title TEXT NOT NULL, no_sits_selected_text TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note_title TEXT NOT NULL, ordered_note_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, thankyou_notifications_id_fk INTEGER REFERENCES notifications(id), admin_notifications_id_fk INTEGER REFERENCES notifications(id), "bankaccounts_id_fk" INTEGER REFERENCES bankaccounts(id), sharable INTEGER, language TEXT, hidecosts INTEGER, mainbanner string, maindesc string, room1desc string, room1banner string, room2desc string, room2banner string, room3desc string, room3banner string, room4desc string, room4banner string, previous_event_id INTEGER, status TEXT NOT NULL DEFAULT 'published', addons_formtemplate_id INTEGER, theme TEXT DEFAULT '', pay_message TEXT NOT NULL DEFAULT '', FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
+CREATE TABLE events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, no_sits_selected_title TEXT NOT NULL, no_sits_selected_text TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note_title TEXT NOT NULL, ordered_note_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, thankyou_notifications_id_fk INTEGER REFERENCES notifications(id), admin_notifications_id_fk INTEGER REFERENCES notifications(id), "bankaccounts_id_fk" INTEGER REFERENCES bankaccounts(id), sharable INTEGER, language TEXT, hidecosts INTEGER, mainbanner string, maindesc string, room1desc string, room1banner string, room2desc string, room2banner string, room3desc string, room3banner string, room4desc string, room4banner string, previous_event_id INTEGER, status TEXT NOT NULL DEFAULT 'published', addons_formtemplate_id INTEGER, theme TEXT DEFAULT '', pay_message TEXT NOT NULL DEFAULT '', pagehead TEXT NOT NULL DEFAULT '', FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
 CREATE TABLE "customers" (
 	"id"	INTEGER NOT NULL,
 	"email"	TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE "formtemplates" (
 	"created_date"	INTEGER NOT NULL,
 	"thankyou"	TEXT,
 	"users_id_fk"	INTEGER NOT NULL,
-	"events_id_fk"	INTEGER, infopanel TEXT, bankaccounts_id_fk INTEGER REFERENCES bankaccounts(id), moneyfield TEXT, notifications_id_fk TEXT, admin_notifications_id_fk INTEGER REFERENCES notifications(id), kind TEXT NOT NULL DEFAULT 'form', language TEXT NOT NULL DEFAULT 'pl', status TEXT NOT NULL DEFAULT 'open', close_date INTEGER, infopanel_mode TEXT NOT NULL DEFAULT 'text', theme TEXT NOT NULL DEFAULT '', pay_message TEXT NOT NULL DEFAULT '',
+	"events_id_fk"	INTEGER, infopanel TEXT, bankaccounts_id_fk INTEGER REFERENCES bankaccounts(id), moneyfield TEXT, notifications_id_fk TEXT, admin_notifications_id_fk INTEGER REFERENCES notifications(id), kind TEXT NOT NULL DEFAULT 'form', language TEXT NOT NULL DEFAULT 'pl', status TEXT NOT NULL DEFAULT 'open', close_date INTEGER, infopanel_mode TEXT NOT NULL DEFAULT 'text', theme TEXT NOT NULL DEFAULT '', pay_message TEXT NOT NULL DEFAULT '', pagehead TEXT NOT NULL DEFAULT '',
 	FOREIGN KEY("users_id_fk") REFERENCES "users"("id"),
 	UNIQUE("url","users_id_fk"),
 	FOREIGN KEY("events_id_fk") REFERENCES "events"("id"),
@@ -146,8 +146,6 @@ CREATE TABLE reservation_status_log (
 	reservations_id_fk INTEGER NOT NULL,
 	FOREIGN KEY (reservations_id_fk) REFERENCES reservations(id) ON DELETE CASCADE
 );
-CREATE INDEX reservation_status_log_res
-	ON reservation_status_log (reservations_id_fk);
 CREATE TABLE orders (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	created_date INTEGER NOT NULL,
@@ -157,8 +155,6 @@ CREATE TABLE orders (
 	FOREIGN KEY (events_id_fk) REFERENCES events(id) ON DELETE CASCADE,
 	FOREIGN KEY (customers_id_fk) REFERENCES customers(id)
 );
-CREATE INDEX orders_event ON orders (events_id_fk);
-CREATE INDEX orders_customer ON orders (customers_id_fk);
 CREATE TABLE order_items (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	kind TEXT NOT NULL DEFAULT 'addon',   -- addon albo surcharge (dopłata)
@@ -172,8 +168,6 @@ CREATE TABLE order_items (
 	orders_id_fk INTEGER NOT NULL,
 	FOREIGN KEY (orders_id_fk) REFERENCES orders(id) ON DELETE CASCADE
 );
-CREATE INDEX order_items_order ON order_items (orders_id_fk);
-CREATE INDEX reservations_order ON reservations (orders_id_fk);
 CREATE TABLE "formanswers" (
 	"id"	INTEGER NOT NULL UNIQUE,
 	"value"	TEXT,
@@ -184,3 +178,9 @@ CREATE TABLE "formanswers" (
 	PRIMARY KEY("id" AUTOINCREMENT),
 	UNIQUE("formfields_id_fk","forms_id_fk",repeat_index)
 );
+CREATE INDEX reservation_status_log_res
+	ON reservation_status_log (reservations_id_fk);
+CREATE INDEX orders_event ON orders (events_id_fk);
+CREATE INDEX orders_customer ON orders (customers_id_fk);
+CREATE INDEX order_items_order ON order_items (orders_id_fk);
+CREATE INDEX reservations_order ON reservations (orders_id_fk);

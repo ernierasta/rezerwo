@@ -130,6 +130,9 @@ type Event struct {
 	// PayMessage - początek wiadomości dla odbiorcy przelewu (pay.go,
 	// tools/migration-paymessage.sql)
 	PayMessage string `db:"pay_message"`
+	// PageHead - nagłówek strony gościa, JSON PageHead (pagehead.go,
+	// tools/migration-pagehead.sql)
+	PageHead string `db:"pagehead"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -264,6 +267,9 @@ type FormTemplate struct {
 	// PayMessage - początek wiadomości dla odbiorcy przelewu (pay.go,
 	// tools/migration-paymessage.sql)
 	PayMessage string `db:"pay_message"`
+	// PageHead - nagłówek strony gościa, JSON PageHead (pagehead.go,
+	// tools/migration-pagehead.sql)
+	PageHead string `db:"pagehead"`
 }
 
 // IsOpen mówi, czy formularz przyjmuje teraz odpowiedzi.
@@ -740,6 +746,12 @@ func (db *DB) EventClearRooms(eventID int64) error {
 		return err
 	}
 	_, err := db.DB.Exec(`DELETE FROM events_rooms WHERE events_id_fk = $1`, eventID)
+	return err
+}
+
+// EventSetPageHead ustawia nagłówek strony imprezy dla gości (pagehead.go).
+func (db *DB) EventSetPageHead(eventID, userID int64, head string) error {
+	_, err := db.DB.Exec(`UPDATE events SET pagehead=$1 WHERE id=$2 AND users_id_fk=$3`, head, eventID, userID)
 	return err
 }
 
@@ -1338,6 +1350,12 @@ func (db *DB) FormTemplateSetPayMessage(tmplID, userID int64, msg string) error 
 // FormTemplateSetTheme ustawia temat graficzny strony formularza.
 func (db *DB) FormTemplateSetTheme(tmplID, userID int64, theme string) error {
 	_, err := db.DB.Exec(`UPDATE formtemplates SET theme=$1 WHERE id=$2 AND users_id_fk=$3`, theme, tmplID, userID)
+	return err
+}
+
+// FormTemplateSetPageHead ustawia nagłówek strony formularza (pagehead.go).
+func (db *DB) FormTemplateSetPageHead(tmplID, userID int64, head string) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET pagehead=$1 WHERE id=$2 AND users_id_fk=$3`, head, tmplID, userID)
 	return err
 }
 

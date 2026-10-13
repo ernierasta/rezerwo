@@ -40,6 +40,7 @@ type nFormVars struct {
 	PublicURL string
 
 	Banner    nBannerPick
+	Head      nHeadPick
 	HowTo     template.HTML
 	InfoPanel template.HTML
 	ThankYou  template.HTML
@@ -132,7 +133,8 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		Name:                templ.Name,
 		URL:                 templ.URL,
 		PublicURL:           fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
-		Banner:              bannerPick(T(lang, "field.main_banner"), "banner", templ.Banner.String, user),
+		Banner:              mainBannerPick(T(lang, "field.main_banner"), "banner", templ.Banner.String, user),
+		Head:                headPick(ParsePageHead(templ.PageHead), templ.Name, true),
 		HowTo:               template.HTML(templ.HowTo.String),
 		InfoPanel:           template.HTML(templ.InfoPanel.String),
 		ThankYou:            template.HTML(templ.ThankYou.String),
@@ -410,6 +412,10 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 			n, _ := strconv.ParseInt(val(key), 10, 64)
 			return n
 		}
+		flag := func(key string) bool {
+			b, _ := msg.Values[key].(bool)
+			return b
+		}
 
 		switch msg.Section {
 		case "basic":
@@ -447,6 +453,10 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 			}
 		case "page":
 			templ.Banner = ToNS(cleanBanner(val("banner")))
+			if err := db.FormTemplateSetPageHead(templ.ID, user.ID, pageHeadFromPanel(val, flag, templ.Name).String()); err != nil {
+				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+				return
+			}
 			templ.HowTo = ToNS(html("howto"))
 			templ.InfoPanel = ToNS(html("infopanel"))
 			mode := val("infopanel_mode")

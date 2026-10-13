@@ -89,8 +89,9 @@
 
         <div class="grp">
           <h5 class="grp-h">{{T "event.grp.header"}}</h5>
-          <div class="f"><label>{{T "field.main_desc"}}</label><div class="ed" data-editor="maindesc">{{.MainDesc}}</div></div>
           {{template "bannerpick" .MainBanner}}
+          {{template "headpick" .Head}}
+          <div class="f"><label>{{T "field.main_desc"}}</label><div class="ed" data-editor="maindesc">{{.MainDesc}}</div></div>
         </div>
 
         {{if .RoomTexts}}

@@ -404,6 +404,100 @@ textarea.inp { min-height: 80px; }
   .bpick .bp-box { grid-template-columns: minmax(0, 1fr); }
 }
 
+// linijka nad nazwą na stronie gościa i w podglądzie panelu (pagehead.go,
+// GuestHead / szablon "headpick"); kolory ciemniejsze na jasnych tematach,
+// jaśniejsze na ciemnych
+$gh-colors: (
+  "red":    (#C62828, #F28B82),
+  "orange": (#C25100, #F6AE6B),
+  "green":  (#2E7D32, #81C995),
+  "blue":   (#1565C0, #8AB4F8),
+  "purple": (#6A1B9A, #C58AF9),
+);
+.gh-over {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.3;
+
+  &.c-ink { color: var(--ink); }
+  &.c-accent { color: var(--blue-deep); }
+  @each $k, $c in $gh-colors {
+    &.c-#{$k} { color: nth($c, 1); }
+  }
+  &.sz-m { font-size: 16px; }
+  &.sz-l { font-size: 20px; }
+  &.sz-xl { font-size: 26px; }
+  &.gh-b { font-weight: 600; }
+  &.gh-i { font-style: italic; }
+  &.gh-up { text-transform: uppercase; letter-spacing: .08em; }
+}
+[data-theme="noc"], [data-theme="grafit"], [data-theme="sliwka"] {
+  @each $k, $c in $gh-colors {
+    .gh-over.c-#{$k} { color: nth($c, 2); }
+  }
+}
+// tylko dla czytników ekranu (np. nazwa imprezy ukryta, bo jest na bannerze)
+.vh {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.ta-center { text-align: center; }
+.ta-right { text-align: right; }
+
+// nagłówek strony gościa w panelu (szablon "headpick", n_ui.js)
+.hpick {
+  > * + * { margin-top: 14px; }
+  .hp-row { display: flex; gap: 8px; align-items: center; }
+  .hp-row .inp { flex: 1; min-width: 0; }
+  .hp-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+  .hp-seg button, .hp-tg { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 26px; padding: 0 6px; }
+  .hp-seg svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  .hp-sizes button { font-family: var(--display); line-height: 1; }
+  .hp-sizes .sz-s { font-size: 11px; }
+  .hp-sizes .sz-m { font-size: 14px; }
+  .hp-sizes .sz-l { font-size: 17px; }
+  .hp-sizes .sz-xl { font-size: 20px; }
+  .hp-tg {
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    input { position: absolute; opacity: 0; pointer-events: none; }
+    &:has(input:checked) { background: var(--blue-soft); color: var(--ink); }
+    &:has(input:focus-visible) { outline: 2px solid var(--blue-deep); }
+    span { font-size: 11.5px; font-weight: 600; letter-spacing: .04em; }
+  }
+  .hp-colors {
+    display: inline-flex;
+    gap: 4px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+
+    button { width: 26px; height: 26px; margin: 0; padding: 0; border: 0; border-radius: 6px; background: none; display: grid; place-items: center; }
+    i { width: 16px; height: 16px; border-radius: 50%; background: currentColor; }
+    button.on { background: var(--blue-soft); box-shadow: inset 0 0 0 1px var(--line-strong); }
+  }
+  .hp-prev {
+    padding: 12px 16px 14px;
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--ink);
+    > small { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 6px; }
+    .gh-over:empty { display: none; }
+  }
+  .hp-hide { height: 32px; padding: 0 10px; span { font-size: 13px; font-weight: 400; letter-spacing: 0; } }
+  .hp-name.hidden-name { opacity: .35; text-decoration: line-through; }
+  .hp-name { font-family: var(--display); font-weight: 500; font-size: 24px; line-height: 1.2; letter-spacing: -0.01em; }
+}
+
 .bp-menu {
   position: absolute;
   z-index: 50;
@@ -1032,6 +1126,9 @@ h5.subhead {
   .when { color: var(--muted); margin-top: 4px; }
   .banner { text-align: center; }
   .banner img, > img { width: 100%; max-width: 100%; height: auto; border-radius: 12px; }
+  .banner + .gh-over { margin-top: 10px; }
+  // banner "cała strona" (banner.go, BANNERFULL) nad nagłówkiem
+  .banner-wide { margin-bottom: 14px; }
   .desc {
     margin-top: 14px;
     max-width: 72ch;
@@ -1473,6 +1570,9 @@ h5.subhead {
   .gform-h {
     max-width: 780px;
     .banner { margin-bottom: 18px; }
+    // szerokość "formularz + panel" (pagehead.go, PageHead.Width)
+    &.wide { max-width: none; }
+    &.wide .desc { max-width: none; }
   }
 
   .gform-body {

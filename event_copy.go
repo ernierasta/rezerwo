@@ -280,6 +280,12 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		if err := db.EventSetTheme(newEventID, user.ID, ThemeKey(src.Theme.String)); err != nil {
 			log.Printf("EventCopyAPI: theme: %v", err)
 		}
+		// wygląd nagłówka przechodzi, nazwa idzie za nazwą kopii
+		head := ParsePageHead(src.PageHead)
+		head.Name = ""
+		if err := db.EventSetPageHead(newEventID, user.ID, head.String()); err != nil {
+			log.Printf("EventCopyAPI: page head: %v", err)
+		}
 
 		// rooms + prices
 		var problems []string

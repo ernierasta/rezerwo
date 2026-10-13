@@ -934,6 +934,10 @@ nobody = "Nikt z pokazanych odpowiedzi nie widział tego pola."
 empty_view = "Brak odpowiedzi w tym widoku."
 common_opts = "przy każdym wyborze"
 delete_confirm = "Skasować zaznaczone odpowiedzi (%d)? Tego nie da się cofnąć."
+copy = "Kopiuj do schowka"
+copy_title = "Zestawienie jako tekst do wklejenia np. do WhatsAppa"
+copied = "Zestawienie skopiowane – wklej je np. do WhatsAppa"
+copy_error = "Nie udało się skopiować do schowka"
 
 [pdf]
 seat = "MIEJSCE %d"

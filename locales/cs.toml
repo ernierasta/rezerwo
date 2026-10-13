@@ -932,6 +932,10 @@ nobody = "Nikdo ze zobrazených odpovědí toto pole neviděl."
 empty_view = "V tomto zobrazení nejsou žádné odpovědi."
 common_opts = "při každé volbě"
 delete_confirm = "Smazat označené odpovědi (%d)? Nelze vrátit zpět."
+copy = "Kopírovat do schránky"
+copy_title = "Přehled jako text k vložení např. do WhatsAppu"
+copied = "Přehled zkopírován – vložte ho např. do WhatsAppu"
+copy_error = "Kopírování do schránky se nezdařilo"
 
 [pdf]
 seat = "MÍSTO %d"

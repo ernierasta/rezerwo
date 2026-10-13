@@ -1,5 +1,5 @@
 {{define "body"}}
-<div class="doc wide-doc" id="ans-page" data-form-id="{{.ID}}">
+<div class="doc wide-doc" id="ans-page" data-form-id="{{.ID}}" data-form-name="{{.Name}}">
   {{template "up" .}}
   <div class="dh">
     <h3>{{T "form.answers"}}</h3>
@@ -23,6 +23,7 @@
       <button data-view="table" class="on">{{T "answers.view_table"}}</button>
       <button data-view="summary">{{T "answers.view_summary"}}</button>
     </div>
+    <button class="btn quiet sm" id="ans-copy" title="{{T "answers.copy_title"}}" hidden>{{T "answers.copy"}}</button>
     <label class="chk"><input type="checkbox" id="ans-pane" checked autocomplete="off"> {{T "form.detail_panel"}}</label>
   </div>
 

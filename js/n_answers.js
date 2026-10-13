@@ -35,7 +35,8 @@
     branch: document.getElementById('ans-branch'),
     view: document.getElementById('ans-view'),
     summary: document.getElementById('ans-summary'),
-    csvView: document.getElementById('ans-csv-view')
+    csvView: document.getElementById('ans-csv-view'),
+    copy: document.getElementById('ans-copy')
   };
 
   var data = {rows: [], columns: [], sections: [], moneyField: ''};
@@ -338,18 +339,13 @@
   }
 
   // optionList - opcje z liczbą i procentem od total; przy długiej liście
-  // (np. klasy 1A-9B) opcje bez wyborów zwijają się do jednej linii.
+  // opcje bez wyborów w jednej linii (shortOpts).
   function optionList(opts, total) {
     var ul = node('ul');
-    var zero = opts.filter(function (o) { return !o.n; });
-    if (opts.length > 8 && zero.length) {
-      opts = opts.filter(function (o) { return o.n; });
-    } else {
-      zero = [];
-    }
-    opts.forEach(function (o) {
+    var so = shortOpts(opts);
+    so.opts.forEach(function (o) {
       var li = node('li', o.other ? 'other' : '');
-      var p = total ? Math.round(o.n * 100 / total) : 0;
+      var p = pct(o.n, total);
       li.appendChild(node('span', '', o.label));
       li.appendChild(node('b', 'num', String(o.n)));
       li.appendChild(node('small', 'num', p + '%'));
@@ -360,30 +356,33 @@
       li.appendChild(bar);
       ul.appendChild(li);
     });
-    if (zero.length) {
+    if (so.zero.length) {
       var rest = node('li', 'zero');
-      rest.appendChild(node('span', 'muted', zero.map(function (o) { return o.label; }).join(', ')));
+      rest.appendChild(node('span', 'muted', so.zero.map(function (o) { return o.label; }).join(', ')));
       rest.appendChild(node('b', 'num muted', '0'));
       ul.appendChild(rest);
     }
     return ul;
   }
 
-  function summaryCard(c, rows) {
+  // fieldSummary liczy zestawienie pola dla pokazanych wierszy; z wyniku
+  // powstaje karta (summaryCard) i tekst do schowka (summaryText).
+  //   {label, notes, groups: [{title, opts, total}]}  - pole z opcjami
+  //   {label, notes, sum, money}                      - liczba, ilość × cena
+  //   {label, notes, filled}                          - pozostałe pola
+  function fieldSummary(c, rows) {
     if (c.role) return null;
     var seen = rows.filter(function (r) { return !r._na[c.key]; });
     if (!seen.length) return null;
-    var card = node('div', 'card');
-    card.appendChild(node('div', 'lbl', c.label));
     var seenNote = seen.length < rows.length ? RZ.t('answers.seen', [seen.length, rows.length]) : '';
     var filled = seen.filter(function (r) { return String(r.values[c.key] || '').trim() !== ''; });
+    var s = {label: c.label, notes: seenNote};
 
     if (c.options) {
-      if (seenNote) card.appendChild(node('div', 'seen', seenNote));
       var opts = optionRows(c, seen);
       if (!c.parent) {
-        card.appendChild(optionList(opts, seen.length));
-        return card;
+        s.groups = [{title: '', opts: opts, total: seen.length}];
+        return s;
       }
       // grupy wg wyboru rodzica, etykiety z opcji rodzica
       var parent = colByKey[c.parent];
@@ -398,24 +397,20 @@
         }
         byWhen[o.when].opts.push(o);
       });
+      s.groups = [];
       groups.forEach(function (g) {
         // podstawa procentów: ci, którzy widzieli pole i wybrali tę wartość rodzica
         var base = seen.filter(function (r) { return (r.picks[c.parent] || []).indexOf(g.when) >= 0; }).length;
         if (!base) return;
-        card.appendChild(node('div', 'opt-grp', (plabel[g.when] || g.when) + ' (' + base + ')'));
-        card.appendChild(optionList(g.opts, base));
+        s.groups.push({title: (plabel[g.when] || g.when) + ' (' + base + ')', opts: g.opts, total: base});
       });
       if (common.some(function (o) { return o.n; })) {
-        if (groups.length) card.appendChild(node('div', 'opt-grp', RZ.t('answers.common_opts')));
-        card.appendChild(optionList(common, seen.length));
+        s.groups.push({title: groups.length ? RZ.t('answers.common_opts') : '', opts: common, total: seen.length});
       }
-      return card;
+      return s;
     }
 
-    var filledNote = RZ.t('answers.filled', [filled.length, seen.length]);
-    var notes = function () {
-      card.appendChild(node('div', 'seen', filledNote + (seenNote ? ' · ' + seenNote : '')));
-    };
+    s.notes = RZ.t('answers.filled', [filled.length, seen.length]) + (seenNote ? ' · ' + seenNote : '');
     if (c.type === 'number' || c.type === 'multiplierField') {
       var sum = 0, money = 0;
       filled.forEach(function (r) {
@@ -428,14 +423,145 @@
           sum += num(v);
         }
       });
-      card.appendChild(node('div', 'big num', RZ.t('answers.sum') + ': ' + fmtNum(sum)));
-      if (money) card.appendChild(node('div', 'seen', RZ.t('answers.money') + ': ' + fmtNum(money)));
-      notes();
+      s.sum = sum;
+      s.money = money;
+      return s;
+    }
+    s.filled = filled.length;
+    return s;
+  }
+
+  // shortOpts - przy długiej liście (np. klasy 1A-9B) opcje bez wyborów
+  // zwijają się do jednej linii: {opts, zero}.
+  function shortOpts(opts) {
+    var zero = opts.filter(function (o) { return !o.n; });
+    if (opts.length > 8 && zero.length) return {opts: opts.filter(function (o) { return o.n; }), zero: zero};
+    return {opts: opts, zero: []};
+  }
+
+  function pct(n, total) { return total ? Math.round(n * 100 / total) : 0; }
+
+  function summaryCard(c, rows) {
+    var s = fieldSummary(c, rows);
+    if (!s) return null;
+    var card = node('div', 'card');
+    card.appendChild(node('div', 'lbl', s.label));
+    if (s.groups) {
+      if (s.notes) card.appendChild(node('div', 'seen', s.notes));
+      s.groups.forEach(function (g) {
+        if (g.title) card.appendChild(node('div', 'opt-grp', g.title));
+        card.appendChild(optionList(g.opts, g.total));
+      });
       return card;
     }
-    card.appendChild(node('div', 'big num', String(filled.length)));
-    notes();
+    if (s.sum !== undefined) {
+      card.appendChild(node('div', 'big num', RZ.t('answers.sum') + ': ' + fmtNum(s.sum)));
+      if (s.money) card.appendChild(node('div', 'seen', RZ.t('answers.money') + ': ' + fmtNum(s.money)));
+    } else {
+      card.appendChild(node('div', 'big num', String(s.filled)));
+    }
+    card.appendChild(node('div', 'seen', s.notes));
     return card;
+  }
+
+  // --- zestawienie jako tekst do wklejenia (WhatsApp) -------------------------
+  // *pogrubienie*, _kursywa_; znaczniki muszą przylegać do tekstu, a gwiazdka
+  // czy podkreślnik w etykiecie rozbiłyby formatowanie, więc wypadają.
+
+  function wa(s) { return String(s || '').replace(/[*_~`]/g, '').replace(/\s+/g, ' ').trim(); }
+  function bold(s) { s = wa(s); return s ? '*' + s + '*' : ''; }
+  function ital(s) { s = wa(s); return s ? '_' + s + '_' : ''; }
+
+  // short - bez długiego objaśnienia w nawiasie na końcu pytania („Nagroda
+  // do loterii (Przyjmiemy każdą…)”; krótkie „(Kč)” zostaje) i bez kropki
+  // na końcu zdania (skrót jak „itp.” ją zachowuje).
+  function short(s) {
+    s = wa(s);
+    var t = s.replace(/:$/, '').replace(/\)\.$/, ')');
+    var i = t.indexOf(' (');
+    if (/\)$/.test(t) && i > 0 && t.length - i > 16) t = t.slice(0, i);
+    t = t.replace(/([^\s.]{4,})\.$/, '$1');
+    return t || s;
+  }
+
+  // viewNote - jakie filtry obejmuje zestawienie (szybki filtr, gałąź, szukanie).
+  function viewNote() {
+    var parts = [];
+    var q = el.quick.querySelector('button.on');
+    if (quick !== 'all' && q) parts.push(q.textContent);
+    if (branch) parts.push(el.branch.options[el.branch.selectedIndex].textContent);
+    if (el.search.value.trim()) parts.push('„' + el.search.value.trim() + '”');
+    return parts.join(' · ');
+  }
+
+  function summaryText(rows) {
+    var out = [];
+    var d = new Date();
+    out.push('📋 ' + bold(page.dataset.formName) + ' ' + ital(d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear()));
+    var money = sumMoney(rows);
+    out.push(RZ.tN('count.answer', rows.length).replace(/^(\d+)/, '*$1*') + (money ? ' · ' + RZ.t('answers.money') + ' *' + money + '*' : ''));
+    var note = viewNote();
+    if (note) out.push(ital(note));
+    if (!rows.length) out.push('', RZ.t('answers.empty_view'));
+
+    var lastSec = null, pendingHead = null;
+    data.columns.forEach(function (c) {
+      if (c.section !== lastSec) {
+        lastSec = c.section;
+        var label = sectionLabel(c.section);
+        pendingHead = label ? '━━ ' + bold(label.toUpperCase()) + ' ━━' : null;
+      }
+      var s = fieldSummary(c, rows);
+      if (!s) return;
+      if (pendingHead) {
+        out.push('', pendingHead);
+        pendingHead = null;
+      }
+      out.push('');
+      if (s.groups) {
+        out.push('▸ ' + bold(short(s.label)) + (s.notes ? ' ' + ital(s.notes) : ''));
+        s.groups.forEach(function (g) {
+          if (g.title) out.push(ital(g.title));
+          var so = shortOpts(g.opts);
+          so.opts.forEach(function (o) {
+            out.push('• ' + short(o.label) + ': ' + (o.n ? '*' + o.n + '*' : '0') + ' (' + pct(o.n, g.total) + '%)');
+          });
+          if (so.zero.length) out.push('• ' + ital(so.zero.map(function (o) { return o.label; }).join(', ') + ': 0'));
+        });
+        return;
+      }
+      if (s.sum !== undefined) {
+        out.push('▸ ' + bold(short(s.label)) + ': ' + RZ.t('answers.sum') + ' *' + fmtNum(s.sum) + '*' +
+          (s.money ? ', ' + RZ.t('answers.money') + ' *' + fmtNum(s.money) + '*' : ''));
+        out.push(ital(s.notes));
+        return;
+      }
+      out.push('▸ ' + bold(short(s.label)) + ': ' + ital(s.notes));
+    });
+    return out.join('\n');
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    // http bez TLS (serwer testowy w sieci) - stary sposób przez textarea
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { /* niżej */ }
+      ta.remove();
+      if (ok) resolve(); else reject(new Error('clipboard'));
+    });
+  }
+
+  function copySummary() {
+    copyText(summaryText(table.visibleRows()))
+      .then(function () { RZ.toast(RZ.t('answers.copied')); })
+      .catch(function () { RZ.toast(RZ.t('answers.copy_error')); });
   }
 
   function renderSummary(rows) {
@@ -468,6 +594,7 @@
     el.view.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.view === v); });
     el.table.hidden = v !== 'table';
     el.summary.hidden = v !== 'summary';
+    el.copy.hidden = v !== 'summary';
     if (v === 'summary') {
       hideDetail();
       renderSummary(table.visibleRows());
@@ -560,6 +687,7 @@
       var b = e.target.closest('button[data-view]');
       if (b) setView(b.dataset.view);
     });
+    el.copy.addEventListener('click', copySummary);
     el.csvView.addEventListener('click', function (e) {
       e.preventDefault();
       location.href = csvViewURL();

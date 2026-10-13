@@ -925,6 +925,10 @@ nobody = "None of the shown answers saw this field."
 empty_view = "No answers in this view."
 common_opts = "for any choice"
 delete_confirm = "Delete the selected responses (%d)? This cannot be undone."
+copy = "Copy to clipboard"
+copy_title = "Summary as text to paste e.g. into WhatsApp"
+copied = "Summary copied – paste it e.g. into WhatsApp"
+copy_error = "Could not copy to the clipboard"
 
 [pdf]
 seat = "SEAT %d"

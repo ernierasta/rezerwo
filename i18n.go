@@ -231,23 +231,16 @@ func LocalesJSONHandler() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// PanelLang zwraca język panelu admina: ciasteczko, potem Accept-Language, potem pl.
+// PanelLang zwraca język panelu admina: ciasteczko z wyboru admina
+// (PANELLANGCOOKIE), inaczej zawsze DEFAULTLANG (pl).
+//
+// Języka przeglądarki (Accept-Language) świadomie nie bierzemy pod uwagę:
+// panel jest po polsku, dopóki admin sam nie kliknie CZ/EN, i wolimy, żeby
+// czeska przeglądarka nie przełączyła panelu na czeski bez jego woli. Wybór
+// przeżywa w ciasteczku i na koncie admina (admins.language).
 func PanelLang(r *http.Request) string {
 	if c, err := r.Cookie(PANELLANGCOOKIE); err == nil && c.Value != "" {
 		return KnownLang(c.Value)
-	}
-	for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
-		tag := strings.TrimSpace(strings.SplitN(part, ";", 2)[0])
-		if tag == "" {
-			continue
-		}
-		base := strings.ToLower(strings.SplitN(tag, "-", 2)[0])
-		localesMu.RLock()
-		_, ok := locales[base]
-		localesMu.RUnlock()
-		if ok {
-			return base
-		}
 	}
 	return DEFAULTLANG
 }

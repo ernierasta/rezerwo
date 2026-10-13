@@ -6,7 +6,7 @@
 <div class="doc" id="event-page" data-event-id="{{.ID}}">
   {{template "up" .}}
   <div class="dh">
-    <h3>{{.Name}}</h3>
+    <h3>{{.Name}} <span class="kind">{{T "kind.event"}}</span></h3>
     <div class="r">
       <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "common.res_preview"}}</a>
       <button class="btn quiet" data-copy-event="{{.ID}}">{{T "common.copy"}}</button>

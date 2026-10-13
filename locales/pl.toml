@@ -12,6 +12,11 @@ forms = "Formularze"
 catalogs = "Katalogi"
 logout = "Wyloguj"
 
+# --- podpis przy nazwie na stronie szczegółów ("Nazwa  IMPREZA") ----------
+[kind]
+event = "Impreza"
+form = "Formularz"
+
 [login]
 title = "Logowanie"
 email = "E-mail"

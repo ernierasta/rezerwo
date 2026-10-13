@@ -10,6 +10,11 @@ forms = "Formuláře"
 catalogs = "Katalogy"
 logout = "Odhlásit"
 
+# --- podpis przy názvu na stránce detailů ("Název  AKCE") ------------------
+[kind]
+event = "Akce"
+form = "Formulář"
+
 [login]
 title = "Přihlášení"
 email = "E-mail"

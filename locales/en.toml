@@ -10,6 +10,11 @@ forms = "Forms"
 catalogs = "Catalogues"
 logout = "Log out"
 
+# --- label next to the name on the detail page ("Name  EVENT") -------------
+[kind]
+event = "Event"
+form = "Form"
+
 [login]
 title = "Sign in"
 email = "E-mail"

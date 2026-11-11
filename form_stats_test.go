@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCountOptions(t *testing.T) {
 	defs, _ := ParseFormDef(`[{"type":"checkbox-group","name":"k","label":"Klasa","values":[
@@ -54,5 +57,42 @@ func TestFieldInPanel(t *testing.T) {
 		if got := fieldInPanel(d, PANELFIELDS); got != fields[i] {
 			t.Errorf("fields %d: %v", i, got)
 		}
+	}
+}
+
+func TestOptionsLook(t *testing.T) {
+	src := `{"type":"checkbox-group","name":"k","label":"Klasa","values":[
+		{"label":"1A","value":"1a"},{"label":"1B","value":"1b"},{"label":"2A","value":"2a"},{"label":"2B","value":"2b"},{"label":"3A","value":"3a"}]`
+	answers := []string{"1b", "1b, 2a", "jeśli trzeba dzwońcie", "2a, coś"}
+	html := func(extra string) string {
+		defs, err := ParseFormDef("[" + src + extra + "}]")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(optionsHTML(defs[0], fieldStat(defs[0], answers), "pl"))
+	}
+
+	// domyślnie: kafelki (dużo krótkich opcji), etykiety, zera, "Inne" razem
+	got := html("")
+	want := `<ul class="sum-list compact"><li class="sum-list-el"><span>1A</span> <b>0</b></li>` +
+		`<li class="sum-list-el"><span>1B</span> <b>2</b></li><li class="sum-list-el"><span>2A</span> <b>2</b></li>` +
+		`<li class="sum-list-el"><span>2B</span> <b>0</b></li><li class="sum-list-el"><span>3A</span> <b>0</b></li>` +
+		`<li class="sum-list-el other"><span>Inne</span> <b>2</b></li></ul>`
+	if got != want {
+		t.Errorf("default:\n%s\nwant\n%s", got, want)
+	}
+
+	got = html(`,"panel_layout":"list","panel_zero":"hide","panel_other":"each","panel_sort":"count"`)
+	want = `<ul class="sum-list"><li class="sum-list-el"><span>1B:</span> <b>2</b></li><li class="sum-list-el"><span>2A:</span> <b>2</b></li>` +
+		`<li class="sum-list-el other"><span>jeśli trzeba dzwońcie:</span> <b>1</b></li><li class="sum-list-el other"><span>coś:</span> <b>1</b></li></ul>`
+	if got != want {
+		t.Errorf("list:\n%s\nwant\n%s", got, want)
+	}
+
+	if got = html(`,"panel_other":"hide","panel_zero":"hide"`); strings.Contains(got, "Inne") || strings.Contains(got, "<b>0</b>") {
+		t.Errorf("hide: %s", got)
+	}
+	if got = html(`,"panel_layout":"total"`); got != "6" {
+		t.Errorf("total: %q", got)
 	}
 }

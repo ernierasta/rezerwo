@@ -134,6 +134,13 @@ func (i *FormFuncs) sum(FormFieldName string, sortByName, forceStringVals bool, 
 		return template.HTML(strconv.FormatInt(amm, 10))
 	}
 
+	// pole z opcjami liczy się wg definicji (form_stats.go), jak .Summary - z
+	// opcjami bez wyborów, etykietami zamiast wartości i ustawieniami wyglądu
+	// pola (kolejność też z ustawień, nie z rodzaju funkcji)
+	if d, st, ok := i.fieldByName(FormFieldName); ok && st.Kind == "options" && countOnlyThis == "" {
+		return optionsHTML(d, st, formLang(i.Template))
+	}
+
 	id := i.fieldID(FormFieldName)
 
 	if !forceStringVals { // if strings are forced, skip int retrieval

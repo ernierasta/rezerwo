@@ -3941,6 +3941,10 @@ h5.subhead a {
   background: var(--surface);
   font-size: 13.5px;
 }
+.ipanel ul.compact b {
+  padding-left: 6px;
+  border-left: 1px solid var(--line);
+}
 .ipanel .ip-bar {
   grid-column: 1/-1;
   display: block;
@@ -3960,6 +3964,48 @@ h5.subhead a {
 }
 .ipanel .done > b {
   color: var(--ok-ink);
+}
+
+ul.sum-list {
+  list-style: none;
+  margin: 4px 0 6px;
+  padding: 0;
+  font-weight: 400;
+}
+ul.sum-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line);
+}
+ul.sum-list li:last-child {
+  border-bottom: 0;
+}
+ul.sum-list b {
+  font-weight: 600;
+  white-space: nowrap;
+}
+ul.sum-list li.other span {
+  font-style: italic;
+}
+ul.sum-list.compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+ul.sum-list.compact li {
+  display: inline-flex;
+  gap: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13.5px;
+}
+ul.sum-list.compact b {
+  padding-left: 6px;
+  border-left: 1px solid var(--line);
 }
 
 .ff-stat {

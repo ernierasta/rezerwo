@@ -2199,6 +2199,8 @@ h5.subhead {
       background: var(--surface);
       font-size: 13.5px;
     }
+    // liczba oddzielona kreską: "1 | 6", a nie "16" przy numerach klas
+    b { padding-left: 6px; border-left: 1px solid var(--line); }
   }
 
   .ip-bar {
@@ -2213,6 +2215,44 @@ h5.subhead {
     &.done i { background: var(--bar-done); }
   }
   .done > b { color: var(--ok-ink); }
+}
+
+// zestawienie pola z opcjami we własnym tekście panelu (.Summary, stare .Sum*:
+// optionsHTML w form_stats.go); bywa wstawione w <strong> w punkcie listy
+ul.sum-list {
+  list-style: none;
+  margin: 4px 0 6px;
+  padding: 0;
+  font-weight: 400;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  li:last-child { border-bottom: 0; }
+  b { font-weight: 600; white-space: nowrap; }
+  li.other span { font-style: italic; }
+
+  &.compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+
+    li {
+      display: inline-flex;
+      gap: 6px;
+      padding: 1px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 13.5px;
+    }
+    // liczba oddzielona kreską: "1 | 6", a nie "16" przy numerach klas
+    b { padding-left: 6px; border-left: 1px solid var(--line); }
+  }
 }
 
 // stan pola pokazany przy polu zamiast w panelu (panel_place, szablon "ffstat")

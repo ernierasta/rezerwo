@@ -21,6 +21,16 @@ package main
 //   panel_only  licz tylko tę opcję (dawne .SumOnly "pole" "Tak")
 //   panel_place "field" - pokaż stan przy samym polu zamiast w panelu
 //               (brak = w panelu)
+//
+// Wygląd zestawienia pola z opcjami (w panelu i we własnym tekście, także
+// w starych .Sum*; optStyle):
+//   panel_layout "list" / "chips" (kafelki) / "total" (jedna liczba);
+//                brak = kafelki przy wielu krótkich opcjach, inaczej lista
+//   panel_other  "each" - każdy wpis "Inne" osobno, "hide" - bez nich;
+//                brak = jeden wiersz "Inne: N" (wpisy gości są publiczne)
+//   panel_zero   "hide" - bez opcji, których nikt nie wybrał
+//   panel_sort   "count" - od najczęstszych, "name" - alfabetycznie;
+//                brak = kolejność z formularza
 
 import (
 	"bytes"
@@ -288,6 +298,64 @@ func countOptions(d FormDefField, answers []string, parents [][]string) []Option
 	return out
 }
 
+// optStyle - wygląd zestawienia pola z opcjami (panel_layout, panel_other,
+// panel_zero, panel_sort w definicji pola).
+type optStyle struct{ layout, other, zero, sort string }
+
+func optStyleOf(d FormDefField) optStyle {
+	return optStyle{layout: d.S("panel_layout"), other: d.S("panel_other"), zero: d.S("panel_zero"), sort: d.S("panel_sort")}
+}
+
+// shape układa opcje wg ustawień: wpisy "Inne" razem/osobno/wcale, bez zer,
+// sortowanie; otherLabel to etykieta zbiorczego wiersza "Inne".
+func (s optStyle) shape(opts []OptionStat, otherLabel string) []OptionStat {
+	out := make([]OptionStat, 0, len(opts))
+	var others int64
+	for _, o := range opts {
+		if o.Other {
+			switch s.other {
+			case "each":
+			case "hide":
+				continue
+			default:
+				others += o.Count
+				continue
+			}
+		}
+		if o.Count == 0 && (o.Other || s.zero == "hide") {
+			continue
+		}
+		out = append(out, o)
+	}
+	switch s.sort {
+	case "count":
+		sort.SliceStable(out, func(a, b int) bool { return out[a].Count > out[b].Count })
+	case "name":
+		sort.SliceStable(out, func(a, b int) bool { return strings.ToLower(out[a].Label) < strings.ToLower(out[b].Label) })
+	}
+	if others > 0 {
+		out = append(out, OptionStat{Label: otherLabel, Count: others, Other: true})
+	}
+	return out
+}
+
+// compact mówi, czy pokazać opcje jako kafelki: z ustawienia albo same,
+// gdy jest ich dużo i są krótkie (klasy "1A", "2B").
+func (s optStyle) compact(opts []OptionStat) bool {
+	switch s.layout {
+	case "chips":
+		return true
+	case "list":
+		return false
+	}
+	for _, o := range opts {
+		if len([]rune(o.Label)) > 5 {
+			return false
+		}
+	}
+	return len(opts) >= 5
+}
+
 // OptionCount zwraca liczbę wyborów jednej opcji (po etykiecie albo wartości).
 // Pole zależne ma opcję w każdej grupie osobno - liczy się suma.
 func (st FieldStat) OptionCount(option string) int64 {
@@ -516,19 +584,23 @@ func BuildPanel(db *DB, user User, templ FormTemplate, mode string) PanelVars {
 			it.Pct, it.Done = pct(c, goal), goal > 0 && c >= goal
 			it.Only = &OptionStat{Label: only, Count: c, Goal: goal, Pct: it.Pct}
 		} else if st.Kind == "options" {
-			short := true
-			for _, o := range st.Options {
-				if o.Count == 0 && o.Other {
-					continue
-				}
+			// przy polu liczby stoją przy opcjach, wygląd zestawienia nie gra roli
+			style := optStyle{other: "each"}
+			if !atField {
+				style = optStyleOf(d)
+			}
+			if style.layout == "total" {
+				c, _ := strconv.ParseInt(it.Value, 10, 64)
+				it.Pct, it.Done = pct(c, goal), goal > 0 && c >= goal
+				v.Items = append(v.Items, it)
+				continue
+			}
+			for _, o := range style.shape(st.Options, T(formLang(templ), "panel.other")) {
 				o.Goal = goal
 				o.Pct = pct(o.Count, goal)
 				it.Options = append(it.Options, o)
-				if len([]rune(o.Label)) > 5 {
-					short = false
-				}
 			}
-			it.Compact = short && goal == 0 && len(it.Options) >= 5
+			it.Compact = goal == 0 && style.compact(it.Options)
 			if dep {
 				it.Groups = groupOptions(it.Options, parent)
 			}
@@ -641,21 +713,28 @@ func renderPanelVars(lang string, pv PanelVars) template.HTML {
 //
 // W edytorze to pastylki; w bazie akcje szablonu. Stare .Sum* działają dalej.
 
-// fieldStatByName liczy zestawienie pola o podanej nazwie (albo etykiecie).
-func (i *FormFuncs) fieldStatByName(name string) (FieldStat, bool) {
+// fieldByName szuka pola o podanej nazwie (albo etykiecie) i liczy jego
+// zestawienie.
+func (i *FormFuncs) fieldByName(name string) (FormDefField, FieldStat, bool) {
 	defs, err := ParseFormDef(i.Template.Content.String)
 	if err != nil {
-		return FieldStat{}, false
+		return nil, FieldStat{}, false
 	}
 	for _, d := range defs {
 		if d.S("name") == name || (d.S("name") != "" && plainLabel(d.S("label")) == name) {
 			if i.answers == nil {
 				i.answers = loadFormAnswers(i.DB, i.Template.ID)
 			}
-			return fieldStat(d, i.answers[d.S("name")]), true
+			return d, fieldStat(d, i.answers[d.S("name")]), true
 		}
 	}
-	return FieldStat{}, false
+	return nil, FieldStat{}, false
+}
+
+// fieldStatByName liczy zestawienie pola o podanej nazwie (albo etykiecie).
+func (i *FormFuncs) fieldStatByName(name string) (FieldStat, bool) {
+	_, st, ok := i.fieldByName(name)
+	return st, ok
 }
 
 // Submissions - ile osób wysłało formularz (dawne {{.Sum "forms"}}).
@@ -670,22 +749,43 @@ func (i *FormFuncs) Submissions() int64 {
 // Summary - zestawienie pola wg jego rodzaju: suma liczb, ilość sztuk,
 // lista opcji z liczbą wyborów albo liczba wypełnień pola tekstowego.
 func (i *FormFuncs) Summary(name string) template.HTML {
-	st, ok := i.fieldStatByName(name)
+	d, st, ok := i.fieldByName(name)
 	if !ok {
 		return ""
 	}
 	if st.Kind != "options" {
 		return template.HTML(template.HTMLEscapeString(st.Value()))
 	}
+	return optionsHTML(d, st, formLang(i.Template))
+}
+
+// optionsHTML rysuje zestawienie pola z opcjami we własnym tekście panelu
+// (i w mailach) wg ustawień wyglądu pola (optStyle): lista "opcja: liczba",
+// kafelki albo sama liczba wyborów.
+func optionsHTML(d FormDefField, st FieldStat, lang string) template.HTML {
+	style := optStyleOf(d)
+	if style.layout == "total" {
+		return template.HTML(st.Value())
+	}
+	opts := style.shape(st.Options, T(lang, "panel.other"))
+	compact := style.compact(opts)
 	var b strings.Builder
-	b.WriteString(`<ul class="sum-list">`)
-	for _, o := range st.Options {
-		if o.Other && o.Count == 0 {
-			continue
+	if compact {
+		b.WriteString(`<ul class="sum-list compact">`)
+	} else {
+		b.WriteString(`<ul class="sum-list">`)
+	}
+	for _, o := range opts {
+		b.WriteString(`<li class="sum-list-el`)
+		if o.Other {
+			b.WriteString(` other`)
 		}
-		b.WriteString(`<li class="sum-list-el">`)
+		b.WriteString(`"><span>`)
 		b.WriteString(template.HTMLEscapeString(o.Label))
-		b.WriteString(": <b>")
+		if !compact {
+			b.WriteString(":")
+		}
+		b.WriteString("</span> <b>")
 		b.WriteString(strconv.FormatInt(o.Count, 10))
 		b.WriteString("</b></li>")
 	}

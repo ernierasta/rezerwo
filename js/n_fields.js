@@ -856,7 +856,31 @@
         h += row(t('fields.panel_only'), '<select class="inp" data-panel-only>' + o + '</select>', t('fields.panel_only_hint'));
       }
     }
+    // wygląd zestawienia opcji: w panelu i w "Σ" własnego tekstu (optStyle
+    // w form_stats.go); przy polu i przy "licz tylko opcję" nie ma czego układać
+    var text = panelMode === 'text';
+    if (CHOICE.indexOf(f.type) >= 0 && !f.panel_only && (text || (on && f.panel_place !== 'field'))) {
+      if (text) h += '<p class="fd-place-all muted">' + esc(t('fields.panel_look_text')) + '</p>';
+      h += lookHTML(f);
+    }
     h += '<small class="muted">' + esc(t('fields.panel_hint_' + panelMode)) + '</small></div>';
+    return h;
+  }
+
+  // lookHTML - przełączniki wyglądu zestawienia; pierwsza wartość ('') to
+  // ustawienie domyślne, nie trafia do definicji pola
+  function lookHTML(f) {
+    function seg(prop, vals, labels) {
+      var cur = f[prop] || '';
+      return '<div class="seg" data-pseg="' + prop + '">' + vals.map(function (v, i) {
+        return '<button type="button" data-v="' + v + '"' + (cur === v ? ' class="on"' : '') + '>' + esc(t('fields.' + prop + '_' + labels[i])) + '</button>';
+      }).join('') + '</div>';
+    }
+    var h = row(t('fields.panel_layout'), seg('panel_layout', ['', 'list', 'chips', 'total'], ['auto', 'list', 'chips', 'total']), t('fields.panel_layout_hint'));
+    if (f.panel_layout === 'total') return h;
+    h += row(t('fields.panel_other'), seg('panel_other', ['', 'each', 'hide'], ['group', 'each', 'hide']), t('fields.panel_other_hint'));
+    h += row(t('fields.panel_zero'), seg('panel_zero', ['', 'hide'], ['show', 'hide']));
+    h += row(t('fields.panel_sort'), seg('panel_sort', ['', 'count', 'name'], ['form', 'count', 'name']));
     return h;
   }
 
@@ -1275,6 +1299,12 @@
 
     if (b.closest('[data-seg]')) {
       f[b.closest('[data-seg]').dataset.seg] = b.dataset.v;
+      changed('', true);
+      return;
+    }
+    if (b.closest('[data-pseg]')) {
+      var key = b.closest('[data-pseg]').dataset.pseg;
+      if (b.dataset.v) f[key] = b.dataset.v; else delete f[key];
       changed('', true);
       return;
     }

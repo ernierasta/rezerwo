@@ -47,6 +47,9 @@ func doneToken(formID int64) string {
 }
 
 type nFormPageVars struct {
+	// Density - odstępy między polami (density.go)
+	Density string
+
 	// tryb poprawiania z linku w mailu: token, zapisane odpowiedzi (JSON)
 	// i informacja nad formularzem
 	EditToken string
@@ -159,6 +162,7 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			Open:     templ.IsOpen(nowUnix()),
 			Currency: formCurrency(db, user, templ),
 			DraftKey: fmt.Sprintf("rezerwo.gform.%d", templ.ID),
+			Density:  DensityKey(templ.Density),
 		}
 		closeNote := ""
 		if v.Open && templ.CloseDate.Valid && templ.CloseDate.Int64 > 0 {

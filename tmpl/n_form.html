@@ -68,6 +68,11 @@
       <div class="sec-h"><b>{{T "form.sec.page"}}</b><span>{{.SumPage}}</span><a class="act" href="#strona">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         {{template "themepick" .}}
+        <div class="f" style="margin-top:16px"><label>{{T "density.label"}}</label>
+          <input type="hidden" data-field="density" value="{{.Density}}">
+          <div class="seg seg-pick">{{range .Densities}}<button type="button" data-v="{{.}}"{{if eq . $.Density}} class="on"{{end}}>{{T (printf "density.%s" (or . "normal"))}}</button>{{end}}</div>
+          <small>{{T "density.hint"}}</small>
+        </div>
         <div style="margin-top:18px">{{template "bannerpick" .Banner}}</div>
         <div style="margin-top:16px">{{template "headpick" .Head}}</div>
         <div class="f" style="margin-top:16px"><label>{{T "field.howto_form"}}</label><div class="ed" data-editor="howto">{{.HowTo}}</div></div>

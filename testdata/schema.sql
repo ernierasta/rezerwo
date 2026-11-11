@@ -44,7 +44,7 @@ CREATE TABLE "formtemplates" (
 	"created_date"	INTEGER NOT NULL,
 	"thankyou"	TEXT,
 	"users_id_fk"	INTEGER NOT NULL,
-	"events_id_fk"	INTEGER, infopanel TEXT, bankaccounts_id_fk INTEGER REFERENCES bankaccounts(id), moneyfield TEXT, notifications_id_fk TEXT, admin_notifications_id_fk INTEGER REFERENCES notifications(id), kind TEXT NOT NULL DEFAULT 'form', language TEXT NOT NULL DEFAULT 'pl', status TEXT NOT NULL DEFAULT 'open', close_date INTEGER, infopanel_mode TEXT NOT NULL DEFAULT 'text', theme TEXT NOT NULL DEFAULT '', pay_message TEXT NOT NULL DEFAULT '', pagehead TEXT NOT NULL DEFAULT '',
+	"events_id_fk"	INTEGER, infopanel TEXT, bankaccounts_id_fk INTEGER REFERENCES bankaccounts(id), moneyfield TEXT, notifications_id_fk TEXT, admin_notifications_id_fk INTEGER REFERENCES notifications(id), kind TEXT NOT NULL DEFAULT 'form', language TEXT NOT NULL DEFAULT 'pl', status TEXT NOT NULL DEFAULT 'open', close_date INTEGER, infopanel_mode TEXT NOT NULL DEFAULT 'text', theme TEXT NOT NULL DEFAULT '', pay_message TEXT NOT NULL DEFAULT '', pagehead TEXT NOT NULL DEFAULT '', density TEXT NOT NULL DEFAULT '',
 	FOREIGN KEY("users_id_fk") REFERENCES "users"("id"),
 	UNIQUE("url","users_id_fk"),
 	FOREIGN KEY("events_id_fk") REFERENCES "events"("id"),

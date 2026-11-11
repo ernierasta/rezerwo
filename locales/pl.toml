@@ -918,6 +918,17 @@ auto = "Panel buduje się sam: liczba zgłoszeń i zestawienie każdego pola z l
 fields = "W panelu są tylko pola z włączonym „Pokaż w panelu” w designerze."
 text = "Własny tekst z aktualnymi liczbami – wstawiasz je przyciskiem „Σ Wstaw zestawienie”, bez zmiennych."
 
+[density]
+label = "Odstępy między polami"
+normal = "Zwykłe"
+compact = "Mniejsze"
+tight = "Najmniejsze"
+hint = "Jak gęsto stoją pola na stronie gościa – niezależnie od tematu kolorów."
+
+[density.sum]
+compact = "mniejsze odstępy"
+tight = "najmniejsze odstępy"
+
 [theme]
 label = "Temat kolorów"
 hint = "Kolory strony, którą widzą goście. Teksty i obrazki zostają bez zmian."

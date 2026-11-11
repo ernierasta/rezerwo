@@ -276,6 +276,9 @@ type FormTemplate struct {
 	// PageHead - nagłówek strony gościa, JSON PageHead (pagehead.go,
 	// tools/migration-pagehead.sql)
 	PageHead string `db:"pagehead"`
+	// Density - odstępy między polami na stronie gościa: "", compact, tight
+	// (density.go, tools/migration-density.sql)
+	Density string `db:"density"`
 }
 
 // IsOpen mówi, czy formularz przyjmuje teraz odpowiedzi.
@@ -1425,6 +1428,12 @@ func (db *DB) FormTemplateSetPayMessage(tmplID, userID int64, msg string) error 
 // FormTemplateSetTheme ustawia temat graficzny strony formularza.
 func (db *DB) FormTemplateSetTheme(tmplID, userID int64, theme string) error {
 	_, err := db.DB.Exec(`UPDATE formtemplates SET theme=$1 WHERE id=$2 AND users_id_fk=$3`, theme, tmplID, userID)
+	return err
+}
+
+// FormTemplateSetDensity ustawia odstępy między polami strony formularza.
+func (db *DB) FormTemplateSetDensity(tmplID, userID int64, density string) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET density=$1 WHERE id=$2 AND users_id_fk=$3`, density, tmplID, userID)
 	return err
 }
 

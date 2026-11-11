@@ -61,7 +61,7 @@
     </aside>
 
     <section class="fd-canvas-wrap">
-      <div class="fd-canvas gform" id="fd-canvas" lang="{{.FormLang}}"></div>
+      <div class="fd-canvas gform{{with .Density}} density-{{.}}{{end}}" id="fd-canvas" lang="{{.FormLang}}"></div>
     </section>
 
     <aside class="fd-props" id="fd-props" aria-label="{{T "fields.settings"}}"></aside>

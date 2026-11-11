@@ -60,6 +60,9 @@ type nFormVars struct {
 	// Theme - temat strony gościa, Themes - lista do wyboru (themes.go)
 	Theme  string
 	Themes []GuestTheme
+	// Density - odstępy między polami (density.go), Densities - do wyboru
+	Density   string
+	Densities []string
 
 	// panel informacyjny (form_stats.go)
 	PanelMode   string
@@ -155,6 +158,8 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		AnswersCount:        answers,
 		Theme:               ThemeKey(templ.Theme),
 		Themes:              guestThemes,
+		Density:             DensityKey(templ.Density),
+		Densities:           densities,
 	}
 	if v.Status == "" {
 		v.Status = "open"
@@ -185,6 +190,9 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 	v.SumPage = TN(lang, "count.text", int64(texts)) + ", " + T(lang, "panel.mode_sum."+panelMode(templ))
 	if templ.Banner.String != "" {
 		v.SumPage = T(lang, "field.main_banner") + ", " + v.SumPage
+	}
+	if d := DensityKey(templ.Density); d != "" {
+		v.SumPage = T(lang, "density.sum."+d) + ", " + v.SumPage
 	}
 	v.SumPage = T(lang, "theme.label") + ": " + ThemeName(lang, templ.Theme) + ", " + v.SumPage
 
@@ -469,6 +477,10 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 			}
 			templ.ThankYou = ToNS(html("thankyou"))
 			if err := db.FormTemplateSetTheme(templ.ID, user.ID, ThemeKey(val("theme"))); err != nil {
+				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+				return
+			}
+			if err := db.FormTemplateSetDensity(templ.ID, user.ID, DensityKey(val("density"))); err != nil {
 				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 				return
 			}

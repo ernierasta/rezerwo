@@ -29,6 +29,7 @@ type nFieldsVars struct {
 	PublicURL string
 	FormLang  string
 	Currency  string
+	Density   string // odstępy między polami, podgląd jak u gościa (density.go)
 
 	Content    template.JS // definicja pól (JSON)
 	MoneyField string
@@ -98,6 +99,7 @@ func FormFieldsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			IsAddons:   isAddonsTemplate(templ),
 			PublicURL:  fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
 			FormLang:   formLang(templ),
+			Density:    DensityKey(templ.Density),
 			Currency:   formCurrency(db, user, templ),
 			Content:    template.JS(content),
 			MoneyField: templ.MoneyAmountFieldName.String,

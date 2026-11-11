@@ -204,6 +204,7 @@
       else el.innerHTML = v;
     });
     syncThemePick(sec);
+    syncSegPicks(sec);
     syncBannerPicks(sec);
     syncHeadPicks(sec);
   }
@@ -228,6 +229,25 @@
     if (inp.value === b.dataset.v) return;
     inp.value = b.dataset.v;
     syncThemePick(b.closest('.f'));
+    inp.dispatchEvent(new Event('input', {bubbles: true}));
+  });
+
+  // Przełącznik .seg-pick z ukrytym polem sekcji w tym samym .f (np. odstępy
+  // formularza, density.go): przycisk zapisuje swoje data-v w polu.
+  function syncSegPicks(root) {
+    root.querySelectorAll('.seg-pick').forEach(function (seg) {
+      var inp = seg.closest('.f').querySelector('input[data-field]');
+      seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === inp.value); });
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.seg-pick button');
+    if (!b) return;
+    var inp = b.closest('.f').querySelector('input[data-field]');
+    if (inp.value === b.dataset.v) return;
+    inp.value = b.dataset.v;
+    syncSegPicks(b.closest('.f'));
     inp.dispatchEvent(new Event('input', {bubbles: true}));
   });
 

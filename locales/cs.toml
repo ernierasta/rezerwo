@@ -916,6 +916,17 @@ auto = "Panel se sestaví sám: počet přihlášek a přehled každého pole s 
 fields = "V panelu jsou jen pole se zapnutým „Zobrazit v panelu“ v návrháři."
 text = "Vlastní text s aktuálními čísly – vkládáte je tlačítkem „Σ Vložit přehled“, bez proměnných."
 
+[density]
+label = "Mezery mezi poli"
+normal = "Běžné"
+compact = "Menší"
+tight = "Nejmenší"
+hint = "Jak hustě jsou pole na stránce pro hosty – nezávisle na barevném motivu."
+
+[density.sum]
+compact = "menší mezery"
+tight = "nejmenší mezery"
+
 [theme]
 label = "Barevný motiv"
 hint = "Barvy stránky, kterou vidí hosté. Texty a obrázky zůstávají beze změny."

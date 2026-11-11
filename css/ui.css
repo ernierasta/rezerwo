@@ -3036,6 +3036,104 @@ h5.subhead a {
   padding-top: 0;
 }
 
+.gform.density-compact .ff-row {
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+.gform.density-compact .ff .ff-l {
+  margin-bottom: 4px;
+}
+.gform.density-compact .ff .ff-d {
+  margin-bottom: 5px;
+}
+.gform.density-compact .ff .ff-l + .inp + .ff-d, .gform.density-compact .ff .ff-l + .mult + .ff-d {
+  margin-top: 4px;
+}
+.gform.density-compact .ff .inp {
+  min-height: 36px;
+  padding-block: 5px;
+}
+.gform.density-compact .ff textarea.inp {
+  min-height: 72px;
+}
+.gform.density-compact .ff.ff-header h2 {
+  padding-top: 4px;
+}
+.gform.density-compact .ff.ff-header h3 {
+  padding-top: 2px;
+}
+.gform.density-compact .ff.ff-divider {
+  padding: 2px 0;
+}
+.gform.density-compact .ff.ff-paragraph p {
+  line-height: 1.5;
+}
+.gform.density-compact .opts {
+  gap: 4px;
+}
+.gform.density-compact .opts .opt {
+  padding: 6px 11px;
+  min-height: 36px;
+}
+.gform.density-compact .gform-foot {
+  margin-top: 16px;
+}
+
+.gform.density-tight .ff-row {
+  gap: 6px 12px;
+  margin-bottom: 6px;
+}
+.gform.density-tight .ff .ff-l {
+  margin-bottom: 2px;
+  font-size: 14.5px;
+  line-height: 1.3;
+}
+.gform.density-tight .ff .ff-d {
+  margin: 0 0 3px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.gform.density-tight .ff .ff-l + .inp + .ff-d, .gform.density-tight .ff .ff-l + .mult + .ff-d {
+  margin-top: 2px;
+}
+.gform.density-tight .ff .inp {
+  min-height: 32px;
+  padding-block: 3px;
+}
+.gform.density-tight .ff textarea.inp {
+  min-height: 60px;
+}
+.gform.density-tight .ff.ff-header h2 {
+  font-size: 19px;
+  padding-top: 2px;
+  padding-bottom: 4px;
+}
+.gform.density-tight .ff.ff-header h3 {
+  font-size: 17px;
+  padding-top: 0;
+}
+.gform.density-tight .ff.ff-divider {
+  padding: 0;
+}
+.gform.density-tight .ff.ff-paragraph p {
+  line-height: 1.4;
+}
+.gform.density-tight .opts {
+  gap: 2px;
+}
+.gform.density-tight .opts.inline {
+  gap: 4px;
+}
+.gform.density-tight .opts .opt {
+  padding: 4px 10px;
+  min-height: 32px;
+  border-radius: 8px;
+  line-height: 1.25;
+}
+.gform.density-tight .gform-foot {
+  margin-top: 10px;
+}
+
 .opts {
   display: grid;
   gap: 6px;

@@ -909,6 +909,17 @@ auto = "The panel builds itself: number of submissions and a summary of every fi
 fields = "The panel only shows fields with “Show in panel” switched on in the designer."
 text = "Custom text with live numbers – insert them with “Σ Insert summary”, no variables."
 
+[density]
+label = "Spacing between fields"
+normal = "Normal"
+compact = "Smaller"
+tight = "Smallest"
+hint = "How closely fields sit on the guest page – independent of the colour theme."
+
+[density.sum]
+compact = "smaller spacing"
+tight = "smallest spacing"
+
 [theme]
 label = "Colour theme"
 hint = "Colours of the page your guests see. Texts and images stay the same."

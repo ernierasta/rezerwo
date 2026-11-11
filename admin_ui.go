@@ -168,6 +168,9 @@ type nHomeRow struct {
 	Money      string
 	// Closed - formularz nie przyjmuje odpowiedzi
 	Closed bool
+	// HasPeople - formularz ma pola, przy których zgłasza się osoby
+	// (form_fill.go) - wiersz dostaje przycisk "Zgłoś osoby"
+	HasPeople bool
 	// Old - schowany pod "Starsze" (listFold)
 	Old bool
 }
@@ -296,12 +299,17 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			if err != nil {
 				log.Printf("AdminStartPage: form answers count: %v", err)
 			}
+			hasPeople := false
+			if defs, err := ParseFormDef(ft.Content.String); err == nil {
+				hasPeople = len(peopleFields(defs)) > 0
+			}
 			row := nHomeRow{
-				ID:     ft.ID,
-				Name:   ft.Name,
-				DateS:  formStatusLabel(ft, lang),
-				Info:   TN(lang, "count.answer", n),
-				Closed: !ft.IsOpen(nowUnix()),
+				ID:        ft.ID,
+				HasPeople: hasPeople,
+				Name:      ft.Name,
+				DateS:     formStatusLabel(ft, lang),
+				Info:      TN(lang, "count.answer", n),
+				Closed:    !ft.IsOpen(nowUnix()),
 			}
 			// otwarte formularze widać zawsze, zamknięte - tylko najnowsze
 			if row.Closed && len(vars.Forms) >= listFold {

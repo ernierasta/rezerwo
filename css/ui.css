@@ -1291,6 +1291,21 @@ textarea.inp {
   padding: 13px 4px;
   border-bottom: 1px solid var(--line);
 }
+.start .row-act {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.start .row-act > .row {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+.start .row-act > .btn {
+  flex: none;
+  margin-right: 4px;
+}
 .start .rows:not(.show-old) > .old {
   display: none;
 }
@@ -2655,6 +2670,18 @@ h5.subhead a {
   .start .row {
     grid-template-columns: 1fr;
     gap: 2px;
+  }
+
+  .start .row-act {
+    flex-wrap: wrap;
+    gap: 0;
+    padding-bottom: 12px;
+  }
+  .start .row-act > .row {
+    flex-basis: 100%;
+  }
+  .start .row-act > .btn {
+    margin-left: 4px;
   }
 
   .doc {

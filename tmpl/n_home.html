@@ -36,11 +36,13 @@
   </h4>
   <div class="rows">
     {{range .Forms}}
-    <a class="row{{if .Closed}} closed{{end}}{{if .Old}} old{{end}}" href="/admin/forms/{{.ID}}">
+    {{if .HasPeople}}<div class="row-act{{if .Old}} old{{end}}">{{end}}
+    <a class="row{{if .Closed}} closed{{end}}{{if and .Old (not .HasPeople)}} old{{end}}" href="/admin/forms/{{.ID}}">
       <span class="{{if .Closed}}muted{{end}}">{{.DateS}}</span>
       <span>{{.Name}}</span>
       <small class="num">{{.Info}}</small>
     </a>
+    {{if .HasPeople}}<a class="btn sm" href="/admin/forms/{{.ID}}/fill">{{T "fill.open"}}</a></div>{{end}}
     {{else}}
     <div class="empty">{{T "home.no_forms"}}</div>
     {{end}}

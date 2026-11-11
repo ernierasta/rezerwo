@@ -582,6 +582,17 @@ $gh-colors: (
 
   .empty { color: var(--muted); padding: 13px 4px; border-bottom: 1px solid var(--line); }
 
+  // wiersz z przyciskiem obok (formularz z "Zgłoś osoby", form_fill.go)
+  .row-act {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--line);
+
+    > .row { flex: 1; min-width: 0; border-bottom: 0; }
+    > .btn { flex: none; margin-right: 4px; }
+  }
+
   // starsze pozycje schowane, dopóki admin nie kliknie "Starsze" (n_ui.js)
   .rows:not(.show-old) > .old { display: none; }
   .older { margin-top: 8px; padding: 2px 4px; }
@@ -1484,6 +1495,13 @@ h5.subhead {
   }
   .grid2 { grid-template-columns: 1fr; }
   .start .row { grid-template-columns: 1fr; gap: 2px; }
+  .start .row-act {
+    flex-wrap: wrap;
+    gap: 0;
+    padding-bottom: 12px;
+    > .row { flex-basis: 100%; }
+    > .btn { margin-left: 4px; }
+  }
   .doc { padding-inline: 16px; }
 }
 

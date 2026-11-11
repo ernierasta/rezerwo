@@ -60,8 +60,9 @@ type nGuestVars struct {
 // isAdminSession sprawdza, czy żądanie ma ważną sesję admina - bez
 // przekierowań, bo na stronie gościa nie chcemy nikogo nigdzie wysyłać.
 // Służy tylko do podglądu szkiców imprez z panelu.
-func isAdminSession(r *http.Request, cs *sessions.CookieStore) bool {
-	return sessionAdmin(r, cs) != ""
+func isAdminSession(r *http.Request, db *DB, cs *sessions.CookieStore) bool {
+	_, ok := sessionLogin(r, db, cs)
+	return ok
 }
 
 // orgLang to język strony organizacji, gdy nie ma otwartej imprezy:
@@ -124,7 +125,7 @@ func GuestReservationPage(db *DB, cs *sessions.CookieStore) func(w http.Response
 		lng := KnownLang(event.Language.String)
 
 		// szkic widzi tylko zalogowany admin (podgląd z panelu)
-		if event.Status.String == "draft" && !isAdminSession(r, cs) {
+		if event.Status.String == "draft" && !isAdminSession(r, db, cs) {
 			log.Printf("GuestReservationPage: draft event %d hidden from guests", event.ID)
 			ErrorHTML(T(lng, "guest.draft_title"), T(lng, "guest.draft_text"), lng, w, r)
 			return

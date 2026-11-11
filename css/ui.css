@@ -4093,3 +4093,30 @@ ul.sum-list.compact b {
 .fd .fd-badges b.panel {
   background: var(--lemon);
 }
+
+#managers .managers a.row {
+  cursor: pointer;
+}
+#managers .managers .row.on {
+  background: var(--pane);
+}
+#managers .manager-form {
+  margin-top: 18px;
+  padding: 4px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+#managers .manager-form h4 {
+  margin-top: 14px;
+}
+#managers .pass-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#managers .pass-row .inp {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, monospace;
+}

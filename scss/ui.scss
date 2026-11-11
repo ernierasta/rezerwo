@@ -2311,3 +2311,25 @@ ul.sum-list {
 
 .fd .fd-panel h5 { margin-top: 10px; }
 .fd .fd-badges b.panel { background: var(--lemon); }
+
+// loginy menedżerów (/admin/managers, n_managers.html)
+#managers {
+  .managers a.row { cursor: pointer; }
+  .managers .row.on { background: var(--pane); }
+  .manager-form {
+    margin-top: 18px;
+    padding: 4px 16px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+
+    h4 { margin-top: 14px; }
+  }
+  .pass-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    .inp { flex: 1; min-width: 0; font-family: ui-monospace, monospace; }
+  }
+}

@@ -117,12 +117,8 @@ func guestRenderTheme(w http.ResponseWriter, lang, theme string, vars interface{
 
 // isFormOwnerSession mówi, czy żądanie przyszło od admina tej organizacji.
 func isFormOwnerSession(r *http.Request, db *DB, cs *sessions.CookieStore, user User) bool {
-	email := sessionAdmin(r, cs)
-	if email == "" {
-		return false
-	}
-	u, err := db.UserGetByEmail(email)
-	return err == nil && u.ID == user.ID
+	login, ok := sessionLogin(r, db, cs)
+	return ok && login.User.ID == user.ID
 }
 
 // formLang to język strony formularza dla gościa.

@@ -33,20 +33,15 @@ type NPage struct {
 
 // --- pomoce ----------------------------------------------------------------
 
-// adminUser sprawdza sesję i zwraca organizację zalogowanego admina.
+// adminUser sprawdza sesję i zwraca organizację zalogowanego admina
+// (konta organizacji albo menedżera).
 func adminUser(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.CookieStore) (User, bool) {
-	email := sessionAdmin(r, cs)
-	if email == "" {
+	login, ok := sessionLogin(r, db, cs)
+	if !ok {
 		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 		return User{}, false
 	}
-	user, err := db.UserGetByEmail(email)
-	if err != nil {
-		log.Printf("admin_ui: can not get user %q: %v", email, err)
-		http.Error(w, "unknown user", http.StatusForbidden)
-		return User{}, false
-	}
-	return user, true
+	return login.User, true
 }
 
 // adminOwned sprawdza sesję i wczytuje obiekt {id} z adresu, o ile należy do

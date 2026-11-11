@@ -216,6 +216,11 @@ func ReservationsStatusAPI(db *DB, cs *sessions.CookieStore) func(w http.Respons
 			payed = sql.NullInt64{Int64: time.Now().Unix(), Valid: true}
 		}
 
+		// kto zmienia: e-mail logowania (menedżer albo konto organizacji)
+		who := sessionAdmin(r, cs)
+		if who == "" {
+			who = user.Email
+		}
 		var failed []int64
 		for _, id := range m.IDs {
 			if err := db.ReservationSetStatus(id, event.ID, m.Status, payed); err != nil {
@@ -227,7 +232,7 @@ func ReservationsStatusAPI(db *DB, cs *sessions.CookieStore) func(w http.Respons
 			if _, err := db.ReservationStatusLogAdd(&ReservationStatusLog{
 				Date:          time.Now().Unix(),
 				Status:        m.Status,
-				AdminEmail:    ToNS(user.Email),
+				AdminEmail:    ToNS(who),
 				ReservationID: id,
 			}); err != nil {
 				log.Printf("ReservationsStatusAPI: log %d: %v", id, err)

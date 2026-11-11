@@ -1,0 +1,63 @@
+{{define "body"}}
+<div class="doc start" id="managers">
+  <div class="dh"><h3>{{T "managers.title"}}</h3></div>
+  <p class="dsub">{{T "managers.hint"}}</p>
+
+  <h4>{{T "managers.owner"}}</h4>
+  <div class="rows accounts">
+    <div class="row">
+      <span>{{.OwnerEmail}}</span>
+      <small class="muted">{{T "managers.owner_desc"}}</small>
+    </div>
+  </div>
+
+  <h4>{{T "managers.list"}}
+    {{if .CanEdit}}<button class="btn sm" id="new-manager" type="button">{{T "managers.new"}}</button>{{end}}
+  </h4>
+  <div class="rows accounts managers">
+    {{range .Managers}}
+    {{if $.CanEdit}}
+    <a class="row" href="#m{{.ID}}" data-id="{{.ID}}" data-email="{{.Email}}" data-notes="{{.Notes}}">
+    {{else}}
+    <div class="row">
+    {{end}}
+      <span>{{.Email}}{{if .Me}} <small class="muted">({{T "managers.me"}})</small>{{end}}</span>
+      <small class="muted">{{.Notes}}</small>
+      <small class="muted">{{if .LastLogin}}{{T "managers.last_login" .LastLogin}}{{else}}{{T "managers.never"}}{{end}}</small>
+    {{if $.CanEdit}}</a>{{else}}</div>{{end}}
+    {{else}}
+    <div class="empty">{{T "managers.none"}}</div>
+    {{end}}
+  </div>
+
+  {{if .CanEdit}}
+  <form class="manager-form" id="manager-form" novalidate hidden>
+    <h4 data-new="{{T "managers.new"}}" data-edit="{{T "managers.edit"}}"></h4>
+    <div class="grid2">
+      <div class="f"><label for="m-email">{{T "managers.email"}}</label>
+        <input class="inp" id="m-email" name="email" autocomplete="off" spellcheck="false"></div>
+      <div class="f"><label for="m-notes">{{T "managers.notes"}}</label>
+        <input class="inp" id="m-notes" name="notes" autocomplete="off" placeholder="{{T "managers.notes_ph"}}"></div>
+      <div class="f"><label for="m-password">{{T "managers.password"}}</label>
+        <div class="pass-row">
+          <input class="inp" id="m-password" name="password" autocomplete="new-password" spellcheck="false">
+          <button class="btn quiet sm" type="button" id="m-generate">{{T "managers.generate"}}</button>
+        </div>
+        <small data-new="{{T "managers.password_hint"}}" data-edit="{{T "managers.password_keep"}}"></small></div>
+    </div>
+    <div class="sec-f">
+      <button class="btn" type="submit">{{T "common.save"}}</button>
+      <button class="btn quiet" type="button" id="m-cancel">{{T "common.cancel"}}</button>
+      <small class="msg"></small>
+      <button class="btn danger" type="button" id="m-delete" style="margin-left:auto"
+        data-title="{{T "managers.del_title"}}" data-next="/admin/managers">{{T "managers.del"}}</button>
+    </div>
+  </form>
+  {{else}}
+  <p class="shared">{{T "managers.owner_only"}}</p>
+  {{end}}
+</div>
+{{end}}
+{{define "scripts"}}{{if .CanEdit}}
+<script src="{{asset "/js/n_managers.js"}}"></script>
+{{end}}{{end}}

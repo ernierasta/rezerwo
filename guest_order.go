@@ -114,7 +114,7 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		lng := KnownLang(event.Language.String)
 
 		// szkic albo sprzedaż zamknięta: tylko admin (np. sprzedaż przy wejściu)
-		if !eventOnSale(event, nowUnix()) && !isAdminSession(r, cs) {
+		if !eventOnSale(event, nowUnix()) && !isAdminSession(r, db, cs) {
 			log.Printf("GuestOrderPage: event %d not on sale", eventID)
 			ErrorHTML(T(lng, "guest.no_event_title"), T(lng, "guest.no_event"), lng, w, r)
 			return

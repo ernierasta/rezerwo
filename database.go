@@ -34,7 +34,13 @@ type Admin struct {
 	UserID int64          `db:"users_id_fk"`
 	// Language - język panelu administracyjnego (tools/migration-redesign.sql)
 	Language sql.NullString `db:"language"`
+	// LastLogin - ostatnie logowanie (tools/migration-managers.sql)
+	LastLogin sql.NullInt64 `db:"last_login"`
 }
+
+// MANAGER - admins.type loginów menedżerów organizacji: własny e-mail
+// i hasło, dostęp do panelu swojej organizacji (auth.go, managers_ui.go).
+const MANAGER = "manager"
 
 type Customer struct {
 	ID      int64          `db:"id"`
@@ -1071,10 +1077,79 @@ func (db *DB) AdminGetLanguage(email string) (string, error) {
 	return lang.String, err
 }
 
+// AdminGetEmails - dodatkowi odbiorcy powiadomień o zamówieniach. Menedżerowie
+// (loginy do panelu) ich nie dostają.
 func (db *DB) AdminGetEmails(UserID int64) ([]string, error) {
 	aa := []string{}
-	err := db.DB.Select(&aa, `SELECT email FROM admins WHERE users_id_fk=$1`, UserID)
+	err := db.DB.Select(&aa, `SELECT email FROM admins WHERE users_id_fk=$1 AND type<>$2`, UserID, MANAGER)
 	return aa, err
+}
+
+const managerCols = `id, type, email, passwd, notes, users_id_fk, language, last_login`
+
+// ManagerGetAll - loginy menedżerów organizacji, w kolejności dodania.
+func (db *DB) ManagerGetAll(userID int64) ([]Admin, error) {
+	aa := []Admin{}
+	err := db.DB.Select(&aa, `SELECT `+managerCols+` FROM admins WHERE users_id_fk=$1 AND type=$2 ORDER BY id`, userID, MANAGER)
+	return aa, err
+}
+
+// ManagerGetByID - menedżer, o ile należy do organizacji userID.
+func (db *DB) ManagerGetByID(id, userID int64) (Admin, error) {
+	a := Admin{}
+	err := db.DB.Get(&a, `SELECT `+managerCols+` FROM admins WHERE id=$1 AND users_id_fk=$2 AND type=$3`, id, userID, MANAGER)
+	return a, err
+}
+
+// ManagerGetByEmail - menedżer po e-mailu (bez względu na wielkość liter).
+func (db *DB) ManagerGetByEmail(email string) (Admin, error) {
+	a := Admin{}
+	err := db.DB.Get(&a, `SELECT `+managerCols+` FROM admins WHERE email=$1 COLLATE NOCASE AND type=$2`, email, MANAGER)
+	return a, err
+}
+
+// ManagerAdd zapisuje nowego menedżera; Passwd musi już być hashem.
+func (db *DB) ManagerAdd(a *Admin) (int64, error) {
+	a.Type = MANAGER
+	return db.AdminAdd(a)
+}
+
+// ManagerMod zmienia e-mail, opis i hash hasła menedżera swojej organizacji.
+func (db *DB) ManagerMod(a *Admin) error {
+	ret, err := db.DB.NamedExec(`UPDATE admins SET email=:email, notes=:notes, passwd=:passwd
+WHERE id=:id AND users_id_fk=:users_id_fk AND type='manager'`, a)
+	if err != nil {
+		return err
+	}
+	if n, _ := ret.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (db *DB) ManagerDel(id, userID int64) error {
+	ret, err := db.DB.Exec(`DELETE FROM admins WHERE id=$1 AND users_id_fk=$2 AND type=$3`, id, userID, MANAGER)
+	if err != nil {
+		return err
+	}
+	if n, _ := ret.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (db *DB) ManagerSetLastLogin(id, unix int64) error {
+	_, err := db.DB.Exec(`UPDATE admins SET last_login=$1 WHERE id=$2`, unix, id)
+	return err
+}
+
+// LoginEmailTaken - czy e-mail jest już loginem: konta organizacji (users)
+// albo innego wiersza admins niż exceptID.
+func (db *DB) LoginEmailTaken(email string, exceptID int64) (bool, error) {
+	n := 0
+	err := db.DB.Get(&n, `SELECT (SELECT count(*) FROM users WHERE email=$1 COLLATE NOCASE)
+	+ (SELECT count(*) FROM admins WHERE email=$1 COLLATE NOCASE AND id<>$2)`, email, exceptID)
+	return n > 0, err
 }
 
 func (db *DB) NoteAdd(note string) (int64, error) {

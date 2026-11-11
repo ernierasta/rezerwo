@@ -35,6 +35,9 @@
   var INPUTS = ['text', 'textarea', 'number', 'date', 'select', 'radio-group', 'checkbox-group', 'multiplierField'];
   var CHOICE = ['select', 'radio-group', 'checkbox-group'];
   var PLAIN = ['text', 'textarea', 'number', 'date'];
+  // linia oddzielacza i podkreślenie nagłówka (lineLook w formdef.go)
+  var LINES = ['solid', 'dashed', 'dotted', 'double', 'thick'];
+  var LINE_COLORS = ['#2c3440', '#8a94a3', '#b23b3b', '#c7832b', '#2e7d4f', '#2463a6', '#7a4fa8'];
   var WIDTHS = [[12, '1'], [9, '¾'], [8, '⅔'], [6, '½'], [4, '⅓'], [3, '¼']];
 
   var fields = [];
@@ -466,6 +469,9 @@
         case 'paragraph':
           f = {type: 'paragraph', subtype: 'p', label: t('fields.new.paragraph'), access: false};
           break;
+        case 'divider':
+          f = {type: 'divider', line: 'solid', access: false};
+          break;
         default:
           return null;
       }
@@ -511,6 +517,39 @@
     return live ? h.replace(/ tabindex="-1"/g, '') : h;
   }
 
+  // lineOf - styl linii pola jak u gościa (lineLook w formdef.go)
+  function lineOf(f) {
+    var l = f.line || '';
+    if (LINES.indexOf(l) < 0 && !(l === 'none' && f.type === 'header')) l = '';
+    return !l && f.type === 'divider' ? 'solid' : l;
+  }
+  function lineColor(f) {
+    return /^#[0-9a-fA-F]{6}$/.test(f.line_color || '') && lineOf(f) !== 'none' ? f.line_color : '';
+  }
+  function lineCls(f) { var l = lineOf(f); return l ? ' ln-' + l : ''; }
+  function lineStyle(f) { var c = lineColor(f); return c ? ' style="--lc: ' + c + '"' : ''; }
+
+  // lineHTML - ustawienia linii: styl i kolor ('' = domyślne, nie trafia do definicji)
+  function lineHTML(f) {
+    var head = f.type === 'header';
+    var vals = head ? [''].concat(LINES, ['none']) : LINES;
+    var cur = head ? (f.line || '') : lineOf(f);
+    var h = row(t(head ? 'fields.underline_style' : 'fields.line_style'), '<div class="seg fd-lines" data-pseg="line">' + vals.map(function (v) {
+      var sample = v && v !== 'none' ? '<i class="fd-ln ln-' + v + '"></i>' : '';
+      return '<button type="button" data-v="' + v + '"' + (cur === v ? ' class="on"' : '') + ' title="' + esc(t('fields.line_' + (v || 'default'))) + '">' +
+        sample + '<span>' + esc(t('fields.line_' + (v || 'default'))) + '</span></button>';
+    }).join('') + '</div>', head ? t('fields.underline_hint') : '');
+    if (lineOf(f) === 'none') return h;
+    var c = lineColor(f);
+    h += row(t('fields.line_color'), '<div class="fd-colors">' +
+      '<button type="button" class="fd-sw def' + (c ? '' : ' on') + '" data-lcolor="" title="' + esc(t('fields.line_color_default')) + '"></button>' +
+      LINE_COLORS.map(function (x) {
+        return '<button type="button" class="fd-sw' + (c.toLowerCase() === x ? ' on' : '') + '" data-lcolor="' + x + '" style="background:' + x + '" title="' + x + '"></button>';
+      }).join('') +
+      '<input type="color" class="fd-swpick" data-lcolor-pick value="' + (c || '#8a94a3') + '" title="' + esc(t('fields.line_color_own')) + '"></div>');
+    return h;
+  }
+
   function fieldBody(f, live) {
     var req = f.required ? '<i class="req">*</i>' : '';
     var desc = f.description ? '<small class="ff-d">' + esc(f.description) + '</small>' : '';
@@ -529,7 +568,9 @@
     switch (f.type) {
       case 'header':
         var lvl = f.subtype === 'h3' ? 'h3' : (f.subtype === 'h4' || f.subtype === 'h5' || f.subtype === 'h6') ? 'h4' : 'h2';
-        return '<div class="ff ff-header' + cls + '"' + attrs + '><' + lvl + '>' + label + '</' + lvl + '></div>';
+        return '<div class="ff ff-header' + cls + lineCls(f) + '"' + attrs + lineStyle(f) + '><' + lvl + '>' + label + '</' + lvl + '></div>';
+      case 'divider':
+        return '<div class="ff ff-divider' + cls + lineCls(f) + '"' + attrs + lineStyle(f) + '><hr></div>';
       case 'paragraph':
         return '<div class="ff ff-paragraph' + cls + '"' + attrs + '><p>' + label + '</p></div>';
       case 'radio-group':
@@ -732,7 +773,8 @@
     }
 
     var labelName = type === 'header' ? t('fields.header_text') : type === 'paragraph' ? t('fields.paragraph_text') : t('fields.label');
-    h += row(labelName, richEditor(f.label || ''));
+    if (type !== 'divider') h += row(labelName, richEditor(f.label || ''));
+    if (type === 'divider') h += lineHTML(f);
 
     if (type === 'header') {
       var lv = f.subtype === 'h3' ? 'h3' : (f.subtype === 'h4' || f.subtype === 'h5') ? 'h4' : 'h2';
@@ -740,6 +782,7 @@
         [['h2', t('fields.size_l')], ['h3', t('fields.size_m')], ['h4', t('fields.size_s')]].map(function (x) {
           return '<button type="button" data-v="' + x[0] + '"' + (lv === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
         }).join('') + '</div>');
+      h += lineHTML(f);
     }
 
     if (isInput(type)) {
@@ -1086,6 +1129,12 @@
     if (!f) return;
     var el = e.target;
 
+    if (el.matches('[data-lcolor-pick]')) {
+      f.line_color = el.value;
+      props.querySelectorAll('.fd-sw.on').forEach(function (x) { x.classList.remove('on'); });
+      changed('lcolor:' + f._id);
+      return;
+    }
     if (el.matches('.fd-rich')) {
       setLabel(f, cleanHTML(el.innerHTML));
       changed('label:' + f._id);
@@ -1299,6 +1348,11 @@
 
     if (b.closest('[data-seg]')) {
       f[b.closest('[data-seg]').dataset.seg] = b.dataset.v;
+      changed('', true);
+      return;
+    }
+    if (b.matches('[data-lcolor]')) {
+      if (b.dataset.lcolor) f.line_color = b.dataset.lcolor; else delete f.line_color;
       changed('', true);
       return;
     }

@@ -2982,7 +2982,7 @@ h5.subhead a {
   font-size: 21px;
   padding-top: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--lc, var(--line));
 }
 .ff.ff-header h3 {
   font-size: 18px;
@@ -2990,6 +2990,42 @@ h5.subhead a {
 }
 .ff.ff-header h4 {
   font-size: 16px;
+}
+.ff.ff-header[class*=" ln-"] h2, .ff.ff-header[class*=" ln-"] h3, .ff.ff-header[class*=" ln-"] h4 {
+  padding-bottom: 6px;
+  border-bottom: var(--lw) var(--ls) var(--lc, var(--line));
+}
+.ff.ff-header.ln-none h2, .ff.ff-header.ln-none h3, .ff.ff-header.ln-none h4 {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.ff.ff-divider {
+  padding: 6px 0;
+}
+.ff.ff-divider hr {
+  margin: 0;
+  border: 0;
+  border-top: var(--lw, 1px) var(--ls, solid) var(--lc, var(--line));
+}
+.ff.ln-solid {
+  --ls: solid;
+  --lw: 1px;
+}
+.ff.ln-dashed {
+  --ls: dashed;
+  --lw: 1px;
+}
+.ff.ln-dotted {
+  --ls: dotted;
+  --lw: 2px;
+}
+.ff.ln-double {
+  --ls: double;
+  --lw: 4px;
+}
+.ff.ln-thick {
+  --ls: solid;
+  --lw: 3px;
 }
 .ff.ff-paragraph p {
   color: var(--ink);
@@ -3715,6 +3751,77 @@ h5.subhead a {
   display: flex;
   gap: 6px;
   margin-top: 8px;
+}
+.fd .seg.fd-lines {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+.fd .seg.fd-lines button {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  padding: 6px 6px 4px;
+  font-size: 12.5px;
+  min-height: 40px;
+  justify-content: flex-end;
+}
+.fd .seg.fd-lines span {
+  text-align: center;
+}
+.fd .fd-ln {
+  display: block;
+  border-top: var(--lw) var(--ls) currentColor;
+}
+.fd .fd-ln.ln-solid {
+  --ls: solid;
+  --lw: 1px;
+}
+.fd .fd-ln.ln-dashed {
+  --ls: dashed;
+  --lw: 1px;
+}
+.fd .fd-ln.ln-dotted {
+  --ls: dotted;
+  --lw: 2px;
+}
+.fd .fd-ln.ln-double {
+  --ls: double;
+  --lw: 4px;
+}
+.fd .fd-ln.ln-thick {
+  --ls: solid;
+  --lw: 3px;
+}
+.fd .fd-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.fd .fd-colors .fd-sw {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+  padding: 0;
+}
+.fd .fd-colors .fd-sw.def {
+  background: var(--line);
+}
+.fd .fd-colors .fd-sw.on {
+  box-shadow: 0 0 0 2px var(--blue-deep);
+}
+.fd .fd-colors .fd-swpick {
+  width: 34px;
+  height: 28px;
+  padding: 0 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
 }
 .fd .fd-example {
   margin-top: 10px;

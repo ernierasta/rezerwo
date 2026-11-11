@@ -2,7 +2,9 @@
      Te same klasy buduje podgląd w designerze pól (js/n_fields.js). */}}
 {{define "ffield"}}
 {{if eq .Type "header"}}
-  <div class="ff ff-header w12"{{with .ShowIf}} data-show="{{.}}"{{end}}>{{if eq .HeaderLevel "h2"}}<h2>{{.Label}}</h2>{{else if eq .HeaderLevel "h3"}}<h3>{{.Label}}</h3>{{else}}<h4>{{.Label}}</h4>{{end}}</div>
+  <div class="ff ff-header w12{{with .Line}} ln-{{.}}{{end}}"{{with .LineColor}} style="--lc: {{.}}"{{end}}{{with .ShowIf}} data-show="{{.}}"{{end}}>{{if eq .HeaderLevel "h2"}}<h2>{{.Label}}</h2>{{else if eq .HeaderLevel "h3"}}<h3>{{.Label}}</h3>{{else}}<h4>{{.Label}}</h4>{{end}}</div>
+{{else if eq .Type "divider"}}
+  <div class="ff ff-divider w12 ln-{{.Line}}"{{with .LineColor}} style="--lc: {{.}}"{{end}}{{with .ShowIf}} data-show="{{.}}"{{end}}><hr></div>
 {{else if eq .Type "paragraph"}}
   <div class="ff ff-paragraph w12"{{with .ShowIf}} data-show="{{.}}"{{end}}><p>{{.Label}}</p></div>
 {{else if or (eq .Type "radio-group") (eq .Type "checkbox-group")}}

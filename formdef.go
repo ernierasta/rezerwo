@@ -129,6 +129,14 @@ func CleanFormDef(ff []FormDefField) ([]FormDefField, error) {
 				}
 			}
 		}
+		if t == "header" || t == "divider" {
+			if s, ok := f["line"].(string); ok && (!lineStyles[s] || (s == "none" && t != "header")) {
+				delete(f, "line")
+			}
+			if c, ok := f["line_color"].(string); ok && !lineColorRe.MatchString(c) {
+				delete(f, "line_color")
+			}
+		}
 		if !isInputType(t) {
 			delete(f, "name")
 			continue
@@ -192,9 +200,11 @@ type RenderField struct {
 	IsMoney     bool // to pole jest kwotą do zapłaty (formtemplates.moneyfield)
 	Width       int  // 1-12 (col-md-N), 12 = cały wiersz
 	HeaderLevel string
-	Stat        *PanelItem // stan pola przy polu (panel_place), patrz form_stats.go
-	ShowIf      string     // warunek pokazania (własny albo sekcji) jako JSON, formconds.go
-	DependsOn   string     // opcje zależne od pola o tej nazwie, formconds.go
+	Line        string       // linia oddzielacza / podkreślenie nagłówka: solid, dashed, dotted, double, thick, none ("" = domyślna)
+	LineColor   template.CSS // kolor linii (#rrggbb) albo ""
+	Stat        *PanelItem   // stan pola przy polu (panel_place), patrz form_stats.go
+	ShowIf      string       // warunek pokazania (własny albo sekcji) jako JSON, formconds.go
+	DependsOn   string       // opcje zależne od pola o tej nazwie, formconds.go
 }
 
 // IsInput mówi, czy pole zbiera odpowiedź.
@@ -267,6 +277,29 @@ func BuildRenderRows(ff []FormDefField, moneyField string) []RenderRow {
 	return rows
 }
 
+// lineStyles to wygląd linii oddzielacza i podkreślenia nagłówka
+// (klasy ln-* w scss/ui.scss, js/n_fields.js); "none" tylko dla nagłówka.
+var lineStyles = map[string]bool{"solid": true, "dashed": true, "dotted": true, "double": true, "thick": true, "none": true}
+
+var lineColorRe = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+// lineLook czyta styl i kolor linii pola; nieznane wartości są pomijane
+// (kolor trafia do atrybutu style, więc tylko #rrggbb).
+func lineLook(d FormDefField, typ string) (string, template.CSS) {
+	style := d.S("line")
+	if !lineStyles[style] || (style == "none" && typ != "header") {
+		style = ""
+	}
+	if style == "" && typ == "divider" {
+		style = "solid"
+	}
+	var color template.CSS
+	if c := d.S("line_color"); lineColorRe.MatchString(c) && style != "none" {
+		color = template.CSS(c)
+	}
+	return style, color
+}
+
 // guestSubtypes to typy pola tekstowego, które przeglądarka pokazuje bez
 // własnych tekstów (podpowiedzi, kalendarzy).
 var guestSubtypes = map[string]bool{"text": true, "email": true, "tel": true}
@@ -314,6 +347,9 @@ func renderField(d FormDefField, idx int) RenderField {
 		default:
 			f.HeaderLevel = "h4"
 		}
+	}
+	if f.Type == "header" || f.Type == "divider" {
+		f.Line, f.LineColor = lineLook(d, f.Type)
 	}
 	if f.Type == "text" && !guestSubtypes[f.Subtype] {
 		// inne typy z dawnego formBuildera (color, date, password...) rysuje
@@ -421,7 +457,7 @@ func filterFormFields[L FormFieldType](l []L) []L {
 }
 
 func isTypeIgnored(t string) bool {
-	return slices.Contains([]string{"header", "paragraph", "button", "hidden"}, t)
+	return slices.Contains([]string{"header", "paragraph", "divider", "button", "hidden"}, t)
 }
 
 type FormAnswersJson struct {

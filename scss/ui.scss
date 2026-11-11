@@ -1674,10 +1674,30 @@ h5.subhead {
 
   &.ff-header {
     h2, h3, h4 { font-family: var(--display); font-weight: 500; }
-    h2 { font-size: 21px; padding-top: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+    h2 { font-size: 21px; padding-top: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--lc, var(--line)); }
     h3 { font-size: 18px; padding-top: 6px; }
     h4 { font-size: 16px; }
+
+    // własne podkreślenie (klasy ln-*, formdef.go lineLook)
+    &[class*=" ln-"] {
+      h2, h3, h4 { padding-bottom: 6px; border-bottom: var(--lw) var(--ls) var(--lc, var(--line)); }
+    }
+    &.ln-none {
+      h2, h3, h4 { padding-bottom: 0; border-bottom: 0; }
+    }
   }
+
+  // oddzielacz: sama linia
+  &.ff-divider {
+    padding: 6px 0;
+    hr { margin: 0; border: 0; border-top: var(--lw, 1px) var(--ls, solid) var(--lc, var(--line)); }
+  }
+
+  &.ln-solid { --ls: solid; --lw: 1px; }
+  &.ln-dashed { --ls: dashed; --lw: 1px; }
+  &.ln-dotted { --ls: dotted; --lw: 2px; }
+  &.ln-double { --ls: double; --lw: 4px; }
+  &.ln-thick { --ls: solid; --lw: 3px; }
 
   &.ff-paragraph p { color: var(--ink); line-height: 1.6; }
 }
@@ -2083,6 +2103,37 @@ h5.subhead {
 
   .fd-box { background: var(--pane); border: 1px solid var(--line); border-radius: 10px; padding: 2px 12px 12px; margin-top: 14px; }
   .fd-cur { display: flex; gap: 6px; margin-top: 8px; }
+
+  // styl linii (oddzielacz, podkreślenie nagłówka): próbka + nazwa
+  .seg.fd-lines {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+
+    button { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 6px 6px 4px; font-size: 12.5px; min-height: 40px; justify-content: flex-end; }
+    span { text-align: center; }
+  }
+  .fd-ln {
+    display: block;
+    border-top: var(--lw) var(--ls) currentColor;
+    &.ln-solid { --ls: solid; --lw: 1px; }
+    &.ln-dashed { --ls: dashed; --lw: 1px; }
+    &.ln-dotted { --ls: dotted; --lw: 2px; }
+    &.ln-double { --ls: double; --lw: 4px; }
+    &.ln-thick { --ls: solid; --lw: 3px; }
+  }
+
+  .fd-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+
+    .fd-sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); padding: 0; }
+    .fd-sw.def { background: var(--line); }
+    .fd-sw.on { box-shadow: 0 0 0 2px var(--blue-deep); }
+    .fd-swpick { width: 34px; height: 28px; padding: 0 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer; }
+  }
   .fd-example { margin-top: 10px; font-size: 14px; }
 
   .fd-adv {

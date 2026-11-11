@@ -1,6 +1,7 @@
 package main
 
 import (
+	"html/template"
 	"strings"
 	"testing"
 )
@@ -80,5 +81,70 @@ func TestMultiplierValue(t *testing.T) {
 	a, m, tot := ConvertMultiplicationToAmmountMultiplTotal("2 * 85 = 170")
 	if a != "2" || m != "85" || tot != "170" {
 		t.Errorf("round trip: %q %q %q", a, m, tot)
+	}
+}
+
+func TestLineLook(t *testing.T) {
+	defs, err := ParseFormDef(`[
+		{"type":"divider"},
+		{"type":"divider","line":"double","line_color":"#b23b3b"},
+		{"type":"divider","line":"none","line_color":"red;}x{"},
+		{"type":"header","label":"A"},
+		{"type":"header","label":"B","line":"none","line_color":"#2463a6"},
+		{"type":"header","label":"C","line":"dashed","line_color":"#2463A6"}
+	]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []struct{ line, color string }{
+		{"solid", ""}, {"double", "#b23b3b"}, {"solid", ""}, {"", ""}, {"none", ""}, {"dashed", "#2463A6"},
+	}
+	var got []RenderField
+	for _, r := range BuildRenderRows(defs, "") {
+		got = append(got, r.Fields...)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d fields, want %d", len(got), len(want))
+	}
+	for i, w := range want {
+		if got[i].Line != w.line || string(got[i].LineColor) != w.color {
+			t.Errorf("field %d: line %q color %q, want %q %q", i, got[i].Line, got[i].LineColor, w.line, w.color)
+		}
+	}
+
+	// zapis: złe wartości znikają, oddzielacz nie dostaje nazwy ani pola w formfields
+	defs, _ = ParseFormDef(`[{"type":"divider","name":"x","line":"none","line_color":"url(x)"},{"type":"header","label":"H","line":"wavy"}]`)
+	out, err := CleanFormDef(defs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"name", "line", "line_color"} {
+		if _, ok := out[0][k]; ok {
+			t.Errorf("divider kept %q", k)
+		}
+	}
+	if _, ok := out[1]["line"]; ok {
+		t.Errorf("header kept bad line")
+	}
+	if isInputType("divider") {
+		t.Errorf("divider is an input")
+	}
+
+	// szablon gościa: kolor w atrybucie style przechodzi przez html/template
+	tm, err := template.New("").Funcs(template.FuncMap{"T": func(...interface{}) string { return "" }}).ParseFiles("tmpl/n_formfield.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, w := range []string{
+		`<div class="ff ff-divider w12 ln-double" style="--lc: #b23b3b"><hr></div>`,
+		`<div class="ff ff-header w12 ln-dashed" style="--lc: #2463A6">`,
+	} {
+		var b strings.Builder
+		if err := tm.ExecuteTemplate(&b, "ffield", got[[]int{1, 5}[i]]); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(b.String(), w) {
+			t.Errorf("template: %s, want %s", b.String(), w)
+		}
 	}
 }

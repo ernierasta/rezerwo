@@ -1159,3 +1159,24 @@ other = "%d changes to save"
 [fill.mails]
 one = "Sending %d e-mail."
 other = "Sending %d e-mails."
+
+[contacts]
+title = "Saved people"
+hint = "People you added to forms – suggested when adding people. Click a person to correct the name, surname or e-mail, or to delete them."
+hint_all = "People added to forms by the organization account and managers – suggested when adding people. Click a person to correct the name, surname or e-mail, or to delete them."
+by_org = "organization account"
+edit = "Saved person"
+edit_hint = "The change also corrects submissions that were added for this person. Submissions the person sent themselves stay unchanged."
+del = "Delete person"
+del_title = "Delete the saved person?"
+del_text = "%s (%s) will disappear from the suggestions."
+del_text2 = "They stay at the functions in forms – remove them there on the “Sign people up” page."
+skipped = "Unchanged in: %s – there is already a submission with this e-mail."
+
+[contacts.saved]
+one = "Saved. %d submission corrected."
+other = "Saved. %d submissions corrected."
+
+[contacts.err]
+not_found = "No such person."
+dup = "You already have a person with the e-mail %s on the list."

@@ -2107,17 +2107,69 @@ func (db *DB) ManagerSetPerms(id, userID int64, all, org bool, items []ManagerAc
 // Contact - osoba wpisana kiedyś przez menedżera (podpowiedzi przy
 // dopisywaniu osób).
 type Contact struct {
+	ID      int64  `db:"id" json:"id"`
 	Name    string `db:"name" json:"name"`
 	Surname string `db:"surname" json:"surname"`
 	Email   string `db:"email" json:"email"`
+	// AdminID - kto ją wpisał (admins.id menedżera, 0 = konto organizacji)
+	AdminID int64 `db:"admins_id" json:"-"`
+	// By - e-mail menedżera, który ją wpisał ("" = konto organizacji);
+	// tylko w ContactGetAllOrg
+	By string `db:"by_email" json:"-"`
 }
 
 // ContactGetAll - osoby wpisane przez menedżera (adminID 0 = konto
 // organizacji), ostatnio używane najpierw.
 func (db *DB) ContactGetAll(userID, adminID int64) ([]Contact, error) {
 	cc := []Contact{}
-	err := db.DB.Select(&cc, `SELECT name, surname, email FROM manager_contacts WHERE users_id_fk=$1 AND admins_id=$2 ORDER BY used DESC, surname, name`, userID, adminID)
+	err := db.DB.Select(&cc, `SELECT id, name, surname, email, admins_id, '' AS by_email FROM manager_contacts WHERE users_id_fk=$1 AND admins_id=$2 ORDER BY used DESC, surname, name`, userID, adminID)
 	return cc, err
+}
+
+// ContactGetAllOrg - osoby wpisane przez wszystkich w organizacji (konto
+// organizacji i menedżerowie), ostatnio używane najpierw.
+func (db *DB) ContactGetAllOrg(userID int64) ([]Contact, error) {
+	cc := []Contact{}
+	err := db.DB.Select(&cc, `SELECT c.id, c.name, c.surname, c.email, c.admins_id, COALESCE(a.email, '') AS by_email
+FROM manager_contacts c LEFT JOIN admins a ON a.id=c.admins_id AND c.admins_id<>0
+WHERE c.users_id_fk=$1 ORDER BY c.used DESC, c.surname, c.name`, userID)
+	return cc, err
+}
+
+// ContactGet - jedna zapamiętana osoba organizacji.
+func (db *DB) ContactGet(id, userID int64) (Contact, error) {
+	var c Contact
+	err := db.DB.Get(&c, `SELECT id, name, surname, email, admins_id, '' AS by_email FROM manager_contacts WHERE id=$1 AND users_id_fk=$2`, id, userID)
+	return c, err
+}
+
+// ContactUpdate zmienia imię, nazwisko i e-mail zapamiętanej osoby.
+func (db *DB) ContactUpdate(c Contact, userID int64) error {
+	_, err := db.DB.Exec(`UPDATE manager_contacts SET name=$1, surname=$2, email=$3 WHERE id=$4 AND users_id_fk=$5`,
+		c.Name, c.Surname, strings.ToLower(c.Email), c.ID, userID)
+	return err
+}
+
+// ContactDelByID usuwa zapamiętaną osobę (zgłoszenia zostają).
+func (db *DB) ContactDelByID(id, userID int64) error {
+	_, err := db.DB.Exec(`DELETE FROM manager_contacts WHERE id=$1 AND users_id_fk=$2`, id, userID)
+	return err
+}
+
+// FormGetAllAddedBy - zgłoszenia osoby (e-mail) założone przez dopisującego
+// adder (form_fill.go) we wszystkich formularzach organizacji.
+func (db *DB) FormGetAllAddedBy(userID, adder int64, email string) ([]Form, error) {
+	ff := []Form{}
+	err := db.DB.Select(&ff, `SELECT * FROM forms WHERE users_id_fk=$1 AND added_by=$2 AND lower(trim(email))=lower(trim($3)) ORDER BY id`,
+		userID, adder, email)
+	return ff, err
+}
+
+// FormSetPerson zmienia imię, nazwisko i e-mail zgłoszenia.
+func (db *DB) FormSetPerson(f Form) error {
+	_, err := db.DB.Exec(`UPDATE forms SET name=$1, surname=$2, email=$3 WHERE id=$4 AND users_id_fk=$5`,
+		f.Name, f.Surname, f.Email, f.ID, f.UserID)
+	return err
 }
 
 // ContactSave zapamiętuje osobę (ten sam e-mail = nowe imię i nazwisko).

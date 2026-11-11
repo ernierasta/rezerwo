@@ -94,6 +94,8 @@ func main() {
 	rtr.HandleFunc("/admin/forms/{id:[0-9]+}/fill", FormFillPage(db, cookieStore))
 	rtr.HandleFunc("/api/forms/{id:[0-9]+}/fill", FormFillAPI(db, mailConf, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/forms/{id:[0-9]+}/contacts", FormContactDelAPI(db, cookieStore)).Methods("DELETE")
+	rtr.HandleFunc("/api/contacts/{id:[0-9]+}", ContactSaveAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/contacts/{id:[0-9]+}", ContactDelAPI(db, cookieStore)).Methods("DELETE")
 	rtr.HandleFunc("/api/forms/{id:[0-9]+}/fields", FormFieldsSaveAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/forms", FormCreateAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/forms/url", FormURLSuggestAPI(db, cookieStore)).Methods("GET")

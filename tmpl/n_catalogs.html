@@ -49,10 +49,13 @@
     {{end}}
   </div>
   {{template "older" .OlderAccounts}}
+
+  {{template "contacts" .Contacts}}
 </div>
 
 {{end}}
 {{define "scripts"}}
+{{template "contactsjs" .Contacts}}
 <script src="{{asset "/js/n_new.js"}}"></script>
 <script>
 document.getElementById('new-mail').addEventListener('click', function () { RZNew.mail(); });

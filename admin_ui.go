@@ -187,6 +187,8 @@ type nHomeVars struct {
 	Forms    []nHomeRow
 	// ile pozycji schowanych pod "Starsze"
 	OlderFinished, OlderForms int
+	// Contacts - zapamiętane osoby menedżera (contacts.go)
+	Contacts nContacts
 }
 
 // AdminStartPage - lista imprez i formularzy (nowy panel).
@@ -319,7 +321,11 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			vars.Forms = append(vars.Forms, row)
 		}
 
-		nRender(w, lang, vars, "tmpl/n_home.html")
+		if login := requestLogin(r); login.Manager {
+			vars.Contacts = contactsSection(db, user, login, lang, "/admin", false)
+		}
+
+		nRender(w, lang, vars, "tmpl/n_home.html", "tmpl/n_contacts.html")
 	}
 }
 
@@ -433,6 +439,8 @@ type nCatalogsVars struct {
 	Accounts []nCatalogAccount
 	// ile pozycji schowanych pod "Starsze"
 	OlderMails, OlderAccounts int
+	// Contacts - zapamiętane osoby (contacts.go)
+	Contacts nContacts
 }
 
 // CatalogsPage - /admin/catalogs: wspólne sale, maile i konta.
@@ -515,7 +523,9 @@ func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		vars.OlderMails = max(len(vars.Mails)-listFold, 0)
 		vars.OlderAccounts = max(len(vars.Accounts)-listFold, 0)
 
-		nRender(w, lang, vars, "tmpl/n_catalogs.html")
+		vars.Contacts = contactsSection(db, user, requestLogin(r), lang, "/admin/catalogs", true)
+
+		nRender(w, lang, vars, "tmpl/n_catalogs.html", "tmpl/n_contacts.html")
 	}
 }
 

@@ -1173,3 +1173,25 @@ many = "%d zmian do zapisania"
 one = "Wysyłamy %d maila."
 few = "Wysyłamy %d maile."
 many = "Wysyłamy %d maili."
+
+[contacts]
+title = "Zapamiętane osoby"
+hint = "Osoby, które dopisałeś/aś do formularzy – podpowiadane przy zgłaszaniu osób. Kliknij osobę, żeby poprawić imię, nazwisko lub e-mail albo ją usunąć."
+hint_all = "Osoby dopisane do formularzy przez konto organizacji i menedżerów – podpowiadane przy zgłaszaniu osób. Kliknij osobę, żeby poprawić imię, nazwisko lub e-mail albo ją usunąć."
+by_org = "konto organizacji"
+edit = "Zapamiętana osoba"
+edit_hint = "Zmiana poprawi też zgłoszenia, które za tę osobę dopisano. Zgłoszeń, które osoba wysłała sama, nie zmienia."
+del = "Usuń osobę"
+del_title = "Usunąć zapamiętaną osobę?"
+del_text = "%s (%s) zniknie z podpowiedzi."
+del_text2 = "Przy funkcjach w formularzach zostaje – stamtąd usuwa się ją na stronie „Zgłoś osoby”."
+skipped = "Bez zmian w: %s – jest tam już zgłoszenie z tym e-mailem."
+
+[contacts.saved]
+one = "Zapisano. Poprawiono %d zgłoszenie."
+few = "Zapisano. Poprawiono %d zgłoszenia."
+many = "Zapisano. Poprawiono %d zgłoszeń."
+
+[contacts.err]
+not_found = "Nie ma takiej osoby."
+dup = "Osobę z e-mailem %s masz już na liście."

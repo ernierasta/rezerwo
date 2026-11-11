@@ -1171,3 +1171,25 @@ many = "%d změn k uložení"
 one = "Posíláme %d e-mail."
 few = "Posíláme %d e-maily."
 many = "Posíláme %d e-mailů."
+
+[contacts]
+title = "Uložené osoby"
+hint = "Osoby, které jste připsali do formulářů – nabízejí se při přihlašování osob. Klikněte na osobu, abyste opravili jméno, příjmení nebo e-mail nebo ji smazali."
+hint_all = "Osoby připsané do formulářů účtem organizace a manažery – nabízejí se při přihlašování osob. Klikněte na osobu, abyste opravili jméno, příjmení nebo e-mail nebo ji smazali."
+by_org = "účet organizace"
+edit = "Uložená osoba"
+edit_hint = "Změna opraví i přihlášky, které za tuto osobu někdo připsal. Přihlášky, které osoba odeslala sama, nemění."
+del = "Smazat osobu"
+del_title = "Smazat uloženou osobu?"
+del_text = "%s (%s) zmizí z nabídky."
+del_text2 = "U funkcí ve formulářích zůstává – odtud se odebírá na stránce „Přihlásit osoby“."
+skipped = "Beze změny v: %s – už tam je přihláška s tímto e-mailem."
+
+[contacts.saved]
+one = "Uloženo. Opravena %d přihláška."
+few = "Uloženo. Opraveny %d přihlášky."
+many = "Uloženo. Opraveno %d přihlášek."
+
+[contacts.err]
+not_found = "Taková osoba neexistuje."
+dup = "Osobu s e-mailem %s už v seznamu máte."

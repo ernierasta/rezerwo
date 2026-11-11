@@ -1,0 +1,42 @@
+{{/* Zapamiętane osoby (contacts.go): lista na stronie startowej menedżera
+     i w Katalogach. Wywołanie: {{template "contacts" .Contacts}} w "body"
+     i {{template "contactsjs" .Contacts}} w "scripts". */}}
+{{define "contacts"}}{{if .Show}}
+<h4 id="contacts">{{T "contacts.title"}}</h4>
+<p class="dsub">{{if .All}}{{T "contacts.hint_all"}}{{else}}{{T "contacts.hint"}}{{end}}</p>
+<div class="rows accounts contacts">
+  {{range .Rows}}
+  <a class="row{{if .Old}} old{{end}}" href="#c{{.ID}}" data-id="{{.ID}}" data-name="{{.Name}}" data-surname="{{.Surname}}" data-email="{{.Email}}">
+    <span>{{.Name}} {{.Surname}}</span>
+    <small class="num">{{.Email}}</small>
+    <small class="muted">{{if .By}}{{.By}}{{end}}</small>
+  </a>
+  {{end}}
+</div>
+{{template "older" .Older}}
+{{end}}{{end}}
+
+{{define "contactsjs"}}{{if .Show}}
+<div class="dlg-back" id="ct-dlg" hidden>
+  <form class="dlg" id="ct-form" role="dialog" aria-modal="true" aria-labelledby="ct-title" novalidate>
+    <h3 id="ct-title">{{T "contacts.edit"}}</h3>
+    <div class="grid2">
+      <div class="f"><label for="ct-name">{{T "fill.name"}}</label>
+        <input class="inp" id="ct-name" name="name" autocomplete="off"></div>
+      <div class="f"><label for="ct-surname">{{T "fill.surname"}}</label>
+        <input class="inp" id="ct-surname" name="surname" autocomplete="off"></div>
+    </div>
+    <div class="f" style="margin-top:14px"><label for="ct-email">{{T "fill.email"}}</label>
+      <input class="inp" id="ct-email" name="email" autocomplete="off" spellcheck="false"></div>
+    <small class="muted">{{T "contacts.edit_hint"}}</small>
+    <div class="sec-f">
+      <button class="btn" type="submit">{{T "common.save"}}</button>
+      <button class="btn quiet" type="button" id="ct-cancel">{{T "common.cancel"}}</button>
+      <small class="msg"></small>
+      <button class="btn danger" type="button" id="ct-delete" style="margin-left:auto"
+        data-title="{{T "contacts.del_title"}}" data-text2="{{T "contacts.del_text2"}}" data-next="{{.Next}}">{{T "contacts.del"}}</button>
+    </div>
+  </form>
+</div>
+<script src="{{asset "/js/n_contacts.js"}}"></script>
+{{end}}{{end}}

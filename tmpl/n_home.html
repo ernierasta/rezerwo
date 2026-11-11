@@ -48,6 +48,8 @@
     {{end}}
   </div>
   {{template "older" .OlderForms}}
+
+  {{template "contacts" .Contacts}}
 </div>
 {{end}}
 
@@ -108,6 +110,7 @@
 
 {{define "scripts"}}
 {{template "dialogs" .}}
+{{template "contactsjs" .Contacts}}
 <script src="{{asset "/js/n_copy.js"}}"></script>
 <script src="{{asset "/js/n_newform.js"}}"></script>
 <script>

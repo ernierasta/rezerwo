@@ -130,6 +130,8 @@ var accessRules = []accessRule{
 	rule(`^/api/forms/(\d+)/(answers|answers\.csv|answers/status|answers/mail|infopanel|fill|contacts)$`, "", ACCFORM, needResults),
 
 	rule(`^/api/media/banners$`, "", "", needAnyFull),
+	// zapamiętane osoby: menedżer tylko swoje (sprawdza adminContact)
+	rule(`^/api/contacts/\d+$`, "", "", needAny),
 }
 
 // routeNeed - czego wymaga adres: need i (dla imprezy/formularza) jego id.

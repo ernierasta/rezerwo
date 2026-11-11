@@ -184,6 +184,19 @@
     }
     var n = onField(field);
     var goal = +box.dataset.goal || 0;
+    // puste wiersze widoczne tylko na wydruku - do brakującej liczby osób,
+    // co najmniej kilka (ktoś może zebrać więcej chętnych niż trzeba)
+    var blanks = Math.max(goal - n, 4);
+    for (var b = 0; b < blanks; b++) {
+      var bl = document.createElement('li');
+      bl.className = 'pp-blank';
+      bl.innerHTML = '<span></span><span></span>';
+      if (b === 0) {
+        bl.children[0].dataset.l = list.dataset.printName;
+        bl.children[1].dataset.l = list.dataset.printEmail;
+      }
+      list.appendChild(bl);
+    }
     var c = box.querySelector('.pp-count');
     c.textContent = goal ? t('fill.count_goal', [n, goal]) : RZ.tN('count.person', n);
     c.classList.toggle('done', goal > 0 && n >= goal);
@@ -354,6 +367,11 @@
       renderAll();
     }
   });
+
+  // wydruk: widoczne teraz pola z wybranymi wartościami, zapisane osoby
+  // i puste wiersze do wpisania ręcznie (style @media print w ui.scss)
+  var printBtn = document.getElementById('fill-print');
+  if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
 
   undoBtn.addEventListener('click', function () {
     pending = {add: {}, remove: {}};

@@ -1136,6 +1136,10 @@ few = "%d osoby"
 many = "%d osób"
 
 [fill]
+print = "Drukuj"
+print_hint = "Wydruk pokazuje widoczne teraz pola i zapisane osoby, z pustymi wierszami do dopisania ręcznie."
+print_name = "imię i nazwisko"
+print_email = "e-mail"
 open = "Zgłoś osoby"
 title = "Zgłaszanie osób"
 no_people = "W tym formularzu nie ma pól, przy których dopisuje się osoby. W edycji pól włącz „Menedżer dopisuje osoby” przy polu z zaznaczeniem."

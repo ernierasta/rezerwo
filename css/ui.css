@@ -4543,6 +4543,106 @@ ul.sum-list.compact b {
   color: var(--danger-ink);
 }
 
+.fill .pp-list li.pp-blank {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+  body.n:has(.fill) {
+    background: #fff;
+    color: #000;
+  }
+  body.n:has(.fill) .topbar {
+    display: none;
+  }
+
+  .fill .up, .fill .dh .r, .fill .dsub, .fill .draft-notice, .fill .fill-foot, .fill .pp-add, .fill .ff-err {
+    display: none !important;
+  }
+  .fill .dh h3 {
+    font-size: 20pt;
+  }
+  .fill .kind {
+    display: none;
+  }
+  .fill .fill-form {
+    margin-top: 8mm;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .fill .ff {
+    break-inside: avoid;
+  }
+  .fill select {
+    appearance: none;
+    background-image: none;
+  }
+  .fill .inp, .fill select, .fill textarea {
+    border-color: #000;
+  }
+  .fill .ff-people {
+    background: none;
+    border: 1px solid #000;
+    border-radius: 0;
+    padding: 3mm 4mm;
+    break-inside: auto;
+  }
+  .fill .ff-people legend {
+    padding: 0 2mm;
+  }
+  .fill .pp-count {
+    color: #000;
+  }
+  .fill .pp-list {
+    gap: 0;
+  }
+  .fill .pp-list li {
+    background: none;
+    border: 0;
+    border-bottom: 1px solid #999;
+    border-radius: 0;
+    padding: 1.5mm 0;
+    font-size: 11pt;
+    break-inside: avoid;
+  }
+  .fill .pp-list li small {
+    color: #000;
+  }
+  .fill .pp-list li > button, .fill .pp-list li .pp-tag {
+    display: none;
+  }
+  .fill .pp-list li.removed, .fill .pp-list li.empty {
+    display: none;
+  }
+  .fill .pp-list li.new {
+    background: none;
+  }
+  .fill .pp-list li.pp-blank {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 6mm;
+    height: 10mm;
+    padding: 0;
+    border: 0;
+  }
+  .fill .pp-list li.pp-blank span {
+    border-bottom: 1px solid #000;
+    position: relative;
+  }
+  .fill .pp-list li.pp-blank span[data-l]::before {
+    content: attr(data-l);
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 8pt;
+    color: #666;
+  }
+}
 @media (max-width: 640px) {
   .fill .fill-form {
     padding: 16px 14px 2px;

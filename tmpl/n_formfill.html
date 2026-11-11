@@ -3,7 +3,10 @@
   {{template "up" .}}
   <div class="dh">
     <h3>{{.Name}} <span class="kind">{{T "fill.title"}}</span></h3>
-    <div class="r"><a class="btn quiet" href="/admin/forms/{{.ID}}/answers">{{T "form.answers"}}</a></div>
+    <div class="r">
+      {{if not .NoPeople}}<button class="btn quiet" type="button" id="fill-print" title="{{T "fill.print_hint"}}">{{T "fill.print"}}</button>{{end}}
+      <a class="btn quiet" href="/admin/forms/{{.ID}}/answers">{{T "form.answers"}}</a>
+    </div>
   </div>
   {{if .NoPeople}}
   <p class="dsub">{{T "fill.no_people"}}</p>
@@ -38,7 +41,7 @@
   <legend class="ff-l">{{.Label}}</legend>
   {{if .Desc}}<small class="ff-d">{{.Desc}}</small>{{end}}
   <div class="pp-count"></div>
-  <ul class="pp-list"></ul>
+  <ul class="pp-list" data-print-name="{{T "fill.print_name"}}" data-print-email="{{T "fill.print_email"}}"></ul>
   <div class="pp-add">
     <input class="inp" type="text" data-p="name" placeholder="{{T "fill.name"}}" aria-label="{{T "fill.name"}}" autocomplete="off">
     <input class="inp" type="text" data-p="surname" placeholder="{{T "fill.surname"}}" aria-label="{{T "fill.surname"}}" autocomplete="off">

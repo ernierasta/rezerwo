@@ -2582,6 +2582,64 @@ ul.sum-list {
   }
 }
 
+.fill .pp-list li.pp-blank { display: none; }
+
+// wydruk strony zgłaszania (przycisk "Drukuj"): widoczne pola z wybranymi
+// wartościami, zapisane osoby i puste wiersze do wpisania ręcznie
+@media print {
+  @page { margin: 14mm 12mm; }
+  body.n:has(.fill) {
+    background: #fff;
+    color: #000;
+    .topbar { display: none; }
+  }
+  .fill {
+    .up, .dh .r, .dsub, .draft-notice, .fill-foot, .pp-add, .ff-err { display: none !important; }
+    .dh h3 { font-size: 20pt; }
+    .kind { display: none; }
+    .fill-form { margin-top: 8mm; padding: 0; border: 0; border-radius: 0; background: none; }
+    .ff { break-inside: avoid; }
+    select { appearance: none; background-image: none; }
+    .inp, select, textarea { border-color: #000; }
+    .ff-people { background: none; border: 1px solid #000; border-radius: 0; padding: 3mm 4mm; break-inside: auto; }
+    .ff-people legend { padding: 0 2mm; }
+    .pp-count { color: #000; }
+    .pp-list {
+      gap: 0;
+      li {
+        background: none;
+        border: 0;
+        border-bottom: 1px solid #999;
+        border-radius: 0;
+        padding: 1.5mm 0;
+        font-size: 11pt;
+        break-inside: avoid;
+        small { color: #000; }
+        > button, .pp-tag { display: none; }
+        &.removed, &.empty { display: none; }
+        &.new { background: none; }
+      }
+      li.pp-blank {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 6mm;
+        height: 10mm;
+        padding: 0;
+        border: 0;
+        span { border-bottom: 1px solid #000; position: relative; }
+        span[data-l]::before {
+          content: attr(data-l);
+          position: absolute;
+          top: 0;
+          left: 0;
+          font-size: 8pt;
+          color: #666;
+        }
+      }
+    }
+  }
+}
+
 @media (max-width: 640px) {
   .fill {
     .fill-form { padding: 16px 14px 2px; }

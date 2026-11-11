@@ -1124,6 +1124,10 @@ one = "%d person"
 other = "%d people"
 
 [fill]
+print = "Print"
+print_hint = "The printout shows the fields visible now and the people signed up, with blank lines to fill in by hand."
+print_name = "name and surname"
+print_email = "e-mail"
 open = "Sign people up"
 title = "Signing people up"
 no_people = "This form has no fields people can be added to. In the field editor switch on “Manager adds people” on a checkbox field."

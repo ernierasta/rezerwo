@@ -1134,6 +1134,10 @@ few = "%d osoby"
 many = "%d osob"
 
 [fill]
+print = "Tisk"
+print_hint = "Tisk obsahuje právě viditelná pole a zapsané osoby, s prázdnými řádky pro ruční doplnění."
+print_name = "jméno a příjmení"
+print_email = "e-mail"
 open = "Přihlásit osoby"
 title = "Přihlašování osob"
 no_people = "V tomto formuláři nejsou pole, u kterých se připisují osoby. V úpravě polí zapněte „Manažer připisuje osoby“ u zaškrtávacího pole."

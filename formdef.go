@@ -205,6 +205,10 @@ type RenderField struct {
 	Stat        *PanelItem   // stan pola przy polu (panel_place), patrz form_stats.go
 	ShowIf      string       // warunek pokazania (własny albo sekcji) jako JSON, formconds.go
 	DependsOn   string       // opcje zależne od pola o tej nazwie, formconds.go
+	// People - pole z dopisywaniem osób przez menedżera, Goal - ile osób
+	// potrzeba (panel_goal); tylko strona /admin/forms/{id}/fill (form_fill.go)
+	People bool
+	Goal   int64
 }
 
 // IsInput mówi, czy pole zbiera odpowiedź.

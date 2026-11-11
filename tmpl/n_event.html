@@ -3,13 +3,13 @@
 <script src="/js/quill2.min.js"></script>
 {{end}}
 {{define "body"}}
-<div class="doc" id="event-page" data-event-id="{{.ID}}">
+<div class="doc" id="event-page" data-event-id="{{.ID}}"{{if .RO}} data-ro{{end}}>
   {{template "up" .}}
   <div class="dh">
     <h3>{{.Name}} <span class="kind">{{T "kind.event"}}</span></h3>
     <div class="r">
       <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "common.res_preview"}}</a>
-      <button class="btn quiet" data-copy-event="{{.ID}}">{{T "common.copy"}}</button>
+      {{if not .NoOrg}}<button class="btn quiet" data-copy-event="{{.ID}}">{{T "common.copy"}}</button>{{end}}
     </div>
   </div>
   <p class="dsub">{{.SubTitle}}</p>
@@ -17,7 +17,7 @@
   <div class="secs">
 
     <!-- Podstawowe -->
-    <div class="sec" data-sec="podstawowe">
+    <div class="sec" data-sec="podstawowe" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.basic"}}</b><span>{{.SumBasic}}</span><a class="act" href="#podstawowe">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         <div class="grid2">
@@ -39,7 +39,7 @@
     </div>
 
     <!-- Terminy -->
-    <div class="sec" data-sec="terminy">
+    <div class="sec" data-sec="terminy" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.dates"}}</b><span class="num">{{.SumDates}}</span><a class="act" href="#terminy">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         <div class="grid2">
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Sala i ceny -->
-    <div class="sec" data-sec="sala">
+    <div class="sec" data-sec="sala" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.room"}}</b><span>{{.SumRoom}}</span><a class="act" href="#sala">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         <div class="grid2">
@@ -80,7 +80,7 @@
     </div>
 
     <!-- Wygląd (strona dla gości) -->
-    <div class="sec" data-sec="strona">
+    <div class="sec" data-sec="strona" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.guest_page"}}</b><span>{{.SumGuest}}</span><a class="act" href="#strona">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         <div class="grp">
@@ -143,7 +143,7 @@
     </div>
 
     <!-- Mail dla gościa -->
-    <div class="sec" data-sec="mail-gosc">
+    <div class="sec" data-sec="mail-gosc" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.mail_guest"}}</b><span {{if .MissMailGuest}}class="miss"{{end}}>{{.SumMailGuest}}</span><a class="act" href="#mail-gosc">{{if .MissMailGuest}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-guest">{{T "field.thankyou_mail"}}</label>
@@ -161,7 +161,7 @@
     </div>
 
     <!-- Mail do administratora -->
-    <div class="sec" data-sec="mail-admin">
+    <div class="sec" data-sec="mail-admin" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.mail_admin"}}</b><span {{if .MissMailAdmin}}class="miss"{{end}}>{{.SumMailAdmin}}</span><a class="act" href="#mail-admin">{{if .MissMailAdmin}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-admin">{{T "field.admin_mail"}}</label>
@@ -179,7 +179,7 @@
     </div>
 
     <!-- Konto bankowe -->
-    <div class="sec" data-sec="konto">
+    <div class="sec" data-sec="konto" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.bank"}}</b><span class="num {{if .MissBank}}miss{{end}}">{{.SumBank}}</span><a class="act" href="#konto">{{if .MissBank}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-bank">{{T "field.bank_account"}}</label>
@@ -200,7 +200,7 @@
     </div>
 
     <!-- Formularze -->
-    <div class="sec" data-sec="formularze">
+    <div class="sec" data-sec="formularze" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.forms"}}</b><span>{{.SumForms}}</span><a class="act" href="#formularze">{{if .Forms}}{{T "common.change"}}{{else}}{{T "common.set"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         {{if .FormChoices}}
@@ -242,7 +242,7 @@
     </div>
 
     <!-- Dodatki do zamówienia -->
-    <div class="sec" data-sec="dodatki">
+    <div class="sec" data-sec="dodatki" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.addons"}}</b><span>{{.SumAddons}}</span><a class="act" href="#dodatki">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         {{if .AddonsTemplateID}}
@@ -344,7 +344,7 @@
     </div>
 
     <!-- Ustawienia -->
-    <div class="sec" data-sec="ustawienia">
+    <div class="sec" data-sec="ustawienia" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.settings"}}</b><span>{{.SumSettings}}</span><a class="act" href="#ustawienia">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         <div class="check"><input type="checkbox" id="f-draft" data-field="draft" {{if .Draft}}checked{{end}}><label for="f-draft">{{T "field.draft"}}</label></div>

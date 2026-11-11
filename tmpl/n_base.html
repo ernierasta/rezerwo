@@ -14,7 +14,7 @@
     {{if .Crumb}}<span class="crumb-sep">›</span><span class="crumb">{{.Crumb}}</span>{{end}}
     <div class="r">
       <a href="/admin">{{T "nav.events"}}</a>
-      <a href="/admin/catalogs">{{T "nav.catalogs"}}</a>
+      {{if not .NoOrg}}<a href="/admin/catalogs">{{T "nav.catalogs"}}</a>{{end}}
       <a href="/admin/managers">{{T "nav.managers"}}</a>
       {{if .OrgName}}<span class="muted">{{.OrgName}}</span>{{end}}
       <span class="langs">

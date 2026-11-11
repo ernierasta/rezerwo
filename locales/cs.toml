@@ -355,7 +355,7 @@ oval_h = "oválný vodorovně"
 
 [managers]
 title = "Přístup do panelu"
-hint = "Manažeři se přihlašují do panelu vlastním e-mailem a heslem. Vidí a mění vše v panelu organizace (akce, rezervace, formuláře, katalogy), ale nemohou spravovat přihlašovací účty. Oznámení o objednávkách nedostávají."
+hint = "Manažeři se přihlašují do panelu vlastním e-mailem a heslem. Co vidí a co mohou měnit, nastavíte v oprávněních každého z nich. Přihlašovací účty spravuje jen účet organizace. Oznámení o objednávkách manažeři nedostávají."
 owner = "Účet organizace"
 owner_desc = "hlavní účet, spravuje přístup"
 list = "Manažeři"
@@ -425,6 +425,11 @@ need_description = "Uveďte, za co je doplatek."
 guest_item = "Toto je doplněk objednaný hostem — tady ho nemažeme."
 
 [form]
+mgr_mail_off = "neposíláme"
+mgr_mail_hint = "E-mail dostane osoba, kterou manažer připsal do formuláře nebo k další funkci (bez odkazu na opravu přihlášky)."
+mgr_mail_same = "stejný jako po odeslání formuláře"
+mgr_mail_tmpl = "E-mail"
+mgr_mail_on = "Posílat e-mail osobám, které připsal manažer"
 answers = "Odpovědi"
 open_page = "Otevřít formulář"
 none_yet = "Zatím nejsou žádné odpovědi."
@@ -435,6 +440,7 @@ columns = "Sloupce"
 detail_panel = "Panel podrobností"
 
 [form.sec]
+mail_mgr = "E-mail připsaným osobám"
 basic = "Základní"
 fields = "Pole"
 page = "Stránka"
@@ -625,6 +631,14 @@ fix = "Opravte označená pole."
 
 # --- návrhář polí (tmpl/n_fields.html) ---
 [fields]
+mgr_hidden_badge = "skryté pro manažera"
+mgr_people_badge = "manažer připisuje osoby"
+mgr_hidden_hint = "Pole se nezobrazuje na stránce „Připsat osoby“ (např. telefon, údaje o dítěti)."
+mgr_hidden = "Neviditelné pro manažery"
+mgr_people_hint = "Na stránce „Připsat osoby“ je místo zaškrtávacího pole seznam osob u této funkce. Každá připsaná osoba je přihláška s touto funkcí."
+mgr_people = "Manažer připisuje osoby"
+mgr_role = "Jméno, příjmení a e-mail zadává manažer u funkcí – toto pole nevidí."
+mgr_title = "Manažeři"
 title = "Pole formuláře"
 title_addons = "Pole doplňků"
 undo = "Zpět"
@@ -1085,3 +1099,75 @@ account = "Smazat účet"
 account_title = "Smazat bankovní účet?"
 account_text = "Účet „%s” bude smazán. Tuto akci nelze vrátit zpět."
 account_used = "Zůstanou bez bankovního účtu: %s."
+
+[perm]
+title = "Oprávnění"
+org = "Správa organizace"
+org_hint = "Katalogy (sály, e-maily, bankovní účty), návrhář sálů, nové akce a formuláře, kopírování akcí."
+all = "Všechny akce a formuláře"
+all_hint = "Plný přístup ke každé akci a formuláři, i k později přidaným. Vypněte, chcete-li vybrat jednotlivé."
+items_hint = "Vyberte, k čemu má manažer přístup. Nové akce a formuláře je třeba přidat zde."
+level_none = "bez přístupu"
+level_results = "obsluha"
+level_full = "plný přístup"
+levels_hint = "Obsluha: rezervace, odpovědi, přehledy, e-maily hostům a připisování osob – bez změny nastavení. Plný přístup: také nastavení, pole a mazání."
+sum_all = "všechny akce a formuláře"
+sum_nothing = "bez přístupu k akcím a formulářům"
+sum_org = "spravuje organizaci"
+bad_item = "Vybraná akce nebo formulář nepatří organizaci."
+denied_title = "Bez přístupu"
+denied = "K této části panelu nemáte oprávnění. Požádejte o ně účet organizace."
+
+[count.event]
+one = "%d akce"
+few = "%d akce"
+many = "%d akcí"
+
+[count.form]
+one = "%d formulář"
+few = "%d formuláře"
+many = "%d formulářů"
+
+[count.person]
+one = "%d osoba"
+few = "%d osoby"
+many = "%d osob"
+
+[fill]
+open = "Připsat osoby"
+title = "Připisování osob"
+no_people = "V tomto formuláři nejsou pole, u kterých se připisují osoby. V úpravě polí zapněte „Manažer připisuje osoby“ u zaškrtávacího pole."
+hint = "Vyberte pole nahoře (např. třídu) a pak u funkcí připište osoby: jméno, příjmení a e-mail. Zadané osoby se nabízejí u dalších funkcí i v jiných formulářích. Změny uloží tlačítko „Uložit“ dole."
+closed = "Formulář je pro hosty uzavřen – osoby můžete připisovat dál."
+undo_all = "Vrátit změny"
+name = "Jméno"
+surname = "Příjmení"
+email = "E-mail"
+add = "Přidat"
+by_guest = "vlastní přihláška"
+by_other = "připsal(a) někdo jiný"
+restore = "obnovit"
+remove = "Odebrat z této funkce"
+will_remove = "bude odebrána"
+new = "nová"
+nobody = "Zatím nikdo není zapsán."
+count_goal = "zapsáno: %d z %d"
+saved = "Uloženo: připsáno %d, odebráno %d."
+
+[fill.err]
+name = "Zadejte jméno a příjmení."
+email = "Neplatný e-mail: %s"
+dup = "Tato osoba už u této funkce je."
+shared = "Nejdřív vyplňte pole nahoře ve formuláři."
+field = "Tato funkce není při zvolených hodnotách polí vidět. Změňte výběr a zkuste to znovu."
+not_mine = "Odebírat můžete jen osoby, které jste připsal(a) sám/sama."
+
+[fill.changes]
+one = "%d změna k uložení"
+few = "%d změny k uložení"
+many = "%d změn k uložení"
+
+[fill.mails]
+one = "Posíláme %d e-mail."
+few = "Posíláme %d e-maily."
+many = "Posíláme %d e-mailů."

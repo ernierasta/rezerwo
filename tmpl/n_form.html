@@ -3,14 +3,15 @@
 <script src="/js/quill2.min.js"></script>
 {{end}}
 {{define "body"}}
-<div class="doc" id="form-page" data-form-id="{{.ID}}">
+<div class="doc" id="form-page" data-form-id="{{.ID}}"{{if .RO}} data-ro{{end}}>
   {{template "up" .}}
   <div class="dh">
     <h3>{{.Name}} <span class="kind">{{T "kind.form"}}</span></h3>
     <div class="r">
       <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "form.open_page"}}</a>
       <a class="btn quiet" href="/admin/forms/{{.ID}}/answers">{{T "form.answers"}}</a>
-      <a class="btn quiet" href="/admin#newform={{.ID}}">{{T "formpage.copy"}}</a>
+      {{if .HasPeople}}<a class="btn" href="/admin/forms/{{.ID}}/fill">{{T "fill.open"}}</a>{{end}}
+      {{if not .NoOrg}}<a class="btn quiet" href="/admin#newform={{.ID}}">{{T "formpage.copy"}}</a>{{end}}
     </div>
   </div>
   <p class="dsub"><span id="form-link">{{.PublicURL}}</span> <button class="link" id="copy-link" type="button">{{T "formpage.copy_link"}}</button></p>
@@ -18,7 +19,7 @@
   <div class="secs">
 
     <!-- Podstawowe -->
-    <div class="sec" data-sec="podstawowe">
+    <div class="sec" data-sec="podstawowe" data-cfg>
       <div class="sec-h"><b>{{T "form.sec.basic"}}</b><span>{{.SumBasic}}</span><a class="act" href="#podstawowe">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         <div class="grid2">
@@ -46,7 +47,7 @@
     </div>
 
     <!-- Pola: własny designer (forms_fields.go) -->
-    <div class="sec" data-sec="pola">
+    <div class="sec" data-sec="pola" data-cfg>
       <div class="sec-h"><b>{{T "form.sec.fields"}}</b><span>{{.SumFields}}</span><a class="act" href="#pola">{{T "common.show"}}</a></div>
       <div class="sec-b" hidden>
         {{if .FieldList}}
@@ -64,7 +65,7 @@
     </div>
 
     <!-- Strona -->
-    <div class="sec" data-sec="strona">
+    <div class="sec" data-sec="strona" data-cfg>
       <div class="sec-h"><b>{{T "form.sec.page"}}</b><span>{{.SumPage}}</span><a class="act" href="#strona">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         {{template "themepick" .}}
@@ -100,7 +101,7 @@
     </div>
 
     <!-- Mail po wysłaniu -->
-    <div class="sec" data-sec="mail-gosc">
+    <div class="sec" data-sec="mail-gosc" data-cfg>
       <div class="sec-h"><b>{{T "form.sec.mail_guest"}}</b><span {{if .MissMailGuest}}class="miss"{{end}}>{{.SumMailGuest}}</span><a class="act" href="#mail-gosc">{{if .MissMailGuest}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-guest">{{T "form.sec.mail_guest"}}</label>
@@ -117,8 +118,29 @@
       </div>
     </div>
 
+    {{if .HasPeople}}
+    <!-- Mail do osób dopisanych przez menedżera (form_fill.go) -->
+    <div class="sec" data-sec="mail-menedzer" data-cfg>
+      <div class="sec-h"><b>{{T "form.sec.mail_mgr"}}</b><span>{{.SumMailMgr}}</span><a class="act" href="#mail-menedzer">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="check"><input type="checkbox" id="f-mgr-mail" data-field="mgr_mail" {{if .MgrMail}}checked{{end}}><label for="f-mgr-mail">{{T "form.mgr_mail_on"}}</label></div>
+        <div class="f" style="margin-top:12px"><label for="f-mail-mgr">{{T "form.mgr_mail_tmpl"}}</label>
+          <div class="pick">
+            <select class="inp" id="f-mail-mgr" data-field="mgr_notifications_id_fk">
+              <option value="0">{{T "form.mgr_mail_same"}}</option>
+              {{range .Notifications}}<option value="{{.ID}}" {{if eq $.MgrNotificationID .ID}}selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+            {{if not .NoOrg}}<button type="button" class="btn quiet sm" data-new="mail" data-kind="forms" data-form="{{.ID}}" data-audience="guest" data-select="f-mail-mgr" data-edit="/admin/mails/" data-back="/admin/forms/{{.ID}}#mail-menedzer">{{T "catalog.new_mail"}} …</button>{{end}}
+          </div>
+          <small>{{T "form.mgr_mail_hint"}}</small>
+        </div>
+        <div class="sec-f"><button class="btn" data-save="mail_mgr">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+    {{end}}
+
     <!-- Mail do administratora -->
-    <div class="sec" data-sec="mail-admin">
+    <div class="sec" data-sec="mail-admin" data-cfg>
       <div class="sec-h"><b>{{T "form.sec.mail_admin"}}</b><span {{if .MissMailAdmin}}class="miss"{{end}}>{{.SumMailAdmin}}</span><a class="act" href="#mail-admin">{{if .MissMailAdmin}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-mail-admin">{{T "form.sec.mail_admin"}}</label>
@@ -136,7 +158,7 @@
     </div>
 
     <!-- Konto bankowe i pole kwoty -->
-    <div class="sec" data-sec="konto">
+    <div class="sec" data-sec="konto" data-cfg>
       <div class="sec-h"><b>{{T "form.sec.bank"}}</b><span class="num {{if .MissBank}}miss{{end}}">{{.SumBank}}</span><a class="act" href="#konto">{{if .MissBank}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
       <div class="sec-b" hidden>
         <div class="grid2">
@@ -164,7 +186,7 @@
     </div>
 
     <!-- Powiązana impreza -->
-    <div class="sec" data-sec="impreza">
+    <div class="sec" data-sec="impreza" data-cfg>
       <div class="sec-h"><b>{{T "form.sec.event"}}</b><span>{{.SumEvent}}</span><a class="act" href="#impreza">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
         <div class="f"><label for="f-event">{{T "field.related_event"}}</label>

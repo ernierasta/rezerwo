@@ -17,12 +17,12 @@
   <div class="rows accounts managers">
     {{range .Managers}}
     {{if $.CanEdit}}
-    <a class="row" href="#m{{.ID}}" data-id="{{.ID}}" data-email="{{.Email}}" data-notes="{{.Notes}}">
+    <a class="row" href="#m{{.ID}}" data-id="{{.ID}}" data-email="{{.Email}}" data-notes="{{.Notes}}" data-perms="{{.Perms}}">
     {{else}}
     <div class="row">
     {{end}}
       <span>{{.Email}}{{if .Me}} <small class="muted">({{T "managers.me"}})</small>{{end}}</span>
-      <small class="muted">{{.Notes}}</small>
+      <small class="muted">{{.Notes}}{{if .Notes}} · {{end}}{{.PermsSum}}</small>
       <small class="muted">{{if .LastLogin}}{{T "managers.last_login" .LastLogin}}{{else}}{{T "managers.never"}}{{end}}</small>
     {{if $.CanEdit}}</a>{{else}}</div>{{end}}
     {{else}}
@@ -44,6 +44,36 @@
           <button class="btn quiet sm" type="button" id="m-generate">{{T "managers.generate"}}</button>
         </div>
         <small data-new="{{T "managers.password_hint"}}" data-edit="{{T "managers.password_keep"}}"></small></div>
+    </div>
+
+    <div class="perms">
+      <h5>{{T "perm.title"}}</h5>
+      <div class="check"><input type="checkbox" id="m-org" name="org"><label for="m-org">{{T "perm.org"}}</label></div>
+      <small class="fd-under muted">{{T "perm.org_hint"}}</small>
+      <div class="check" style="margin-top:10px"><input type="checkbox" id="m-all" name="all"><label for="m-all">{{T "perm.all"}}</label></div>
+      <small class="fd-under muted">{{T "perm.all_hint"}}</small>
+      <div class="perm-items" id="m-items" hidden>
+        <p class="muted small">{{T "perm.items_hint"}}</p>
+        {{if .Events}}<h6>{{T "home.events"}}</h6>
+        <div class="perm-list">
+          {{range .Events}}<label class="perm-row"><span>{{.Name}} <small class="muted">{{.Info}}</small></span>
+            <select class="inp" data-kind="event" data-id="{{.ID}}">
+              <option value="">{{T "perm.level_none"}}</option>
+              <option value="results">{{T "perm.level_results"}}</option>
+              <option value="full">{{T "perm.level_full"}}</option>
+            </select></label>{{end}}
+        </div>{{end}}
+        {{if .Forms}}<h6>{{T "home.forms"}}</h6>
+        <div class="perm-list">
+          {{range .Forms}}<label class="perm-row"><span>{{.Name}} <small class="muted">{{.Info}}</small></span>
+            <select class="inp" data-kind="form" data-id="{{.ID}}">
+              <option value="">{{T "perm.level_none"}}</option>
+              <option value="results">{{T "perm.level_results"}}</option>
+              <option value="full">{{T "perm.level_full"}}</option>
+            </select></label>{{end}}
+        </div>{{end}}
+        <small class="muted">{{T "perm.levels_hint"}}</small>
+      </div>
     </div>
     <div class="sec-f">
       <button class="btn" type="submit">{{T "common.save"}}</button>

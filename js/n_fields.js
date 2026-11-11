@@ -624,6 +624,8 @@
       b.push('<b class="panel">' + esc(t(atField(f) ? 'fields.panel_badge_field' : 'fields.panel_badge')) + (f.panel_goal ? ' / ' + esc(f.panel_goal) : '') + '</b>');
     }
     if (isAddons && f.name && f.name.slice(-PERSEAT.length) === PERSEAT) b.push('<b>' + esc(t('fields.perseat_badge')) + '</b>');
+    if (!isAddons && f.mgr_people && f.type === 'checkbox-group') b.push('<b class="mgr">' + esc(t('fields.mgr_people_badge')) + '</b>');
+    if (!isAddons && f.mgr_hidden && !f.mgr_people && !role) b.push('<b class="mgr">' + esc(t('fields.mgr_hidden_badge')) + '</b>');
     var pr = condProblem(f);
     if (pr) {
       b.push('<b class="bad">⚠ ' + esc(pr) + '</b>');
@@ -853,6 +855,7 @@
       }
 
       if (!isAddons) h += panelHTML(f);
+      if (!isAddons) h += mgrHTML(f);
 
       // szerokość i wiersz
       h += row(t('fields.width'), '<div class="seg fd-widths" data-width>' + WIDTHS.map(function (w) {
@@ -876,6 +879,22 @@
     h += '<div class="fd-actions"><button class="btn quiet sm" data-act-sel="dup">' + esc(t('fields.duplicate')) + '</button>' +
       '<button class="btn danger sm" data-act-sel="del">' + esc(t('fields.delete_field')) + '</button></div>';
     props.innerHTML = h;
+  }
+
+  // mgrHTML - zachowanie pola na stronie "Dopisz osoby" menedżera
+  // (form_fill.go): pole ukryte albo funkcja, przy której dopisuje się osoby
+  function mgrHTML(f) {
+    var h = '<div class="fd-box fd-mgr"><h5>' + esc(t('fields.mgr_title')) + '</h5>';
+    if (roleOf(f)) return h + '<small class="muted">' + esc(t('fields.mgr_role')) + '</small></div>';
+    if (f.type === 'checkbox-group') {
+      h += check('mgr_people', f.mgr_people, t('fields.mgr_people'));
+      h += '<small class="fd-under muted">' + esc(t('fields.mgr_people_hint')) + '</small>';
+    }
+    if (!f.mgr_people) {
+      h += check('mgr_hidden', f.mgr_hidden, t('fields.mgr_hidden'));
+      h += '<small class="fd-under muted">' + esc(t('fields.mgr_hidden_hint')) + '</small>';
+    }
+    return h + '</div>';
   }
 
   function panelHTML(f) {
@@ -1229,6 +1248,12 @@
       case '_panel':
         f.panel = el.checked;
         break;
+      case 'mgr_people':
+      case 'mgr_hidden':
+        if (el.checked) f[prop] = true; else delete f[prop];
+        if (prop === 'mgr_people' && el.checked) delete f.mgr_hidden;
+        changed('', true);
+        return;
       case 'multiple':
         f.multiple = el.checked;
         if (!el.checked) {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
@@ -36,6 +37,12 @@ type Admin struct {
 	Language sql.NullString `db:"language"`
 	// LastLogin - ostatnie logowanie (tools/migration-managers.sql)
 	LastLogin sql.NullInt64 `db:"last_login"`
+	// AllAccess - menedżer ma pełny dostęp do wszystkich imprez i formularzy
+	// (inaczej tylko do wybranych z manager_access); OrgManage - zarządza
+	// organizacją: sale, maile, konta, nowe imprezy i formularze
+	// (access.go, tools/migration-managerperms.sql)
+	AllAccess bool `db:"all_access"`
+	OrgManage bool `db:"org_manage"`
 }
 
 // MANAGER - admins.type loginów menedżerów organizacji: własny e-mail
@@ -279,6 +286,11 @@ type FormTemplate struct {
 	// Density - odstępy między polami na stronie gościa: "", compact, tight
 	// (density.go, tools/migration-density.sql)
 	Density string `db:"density"`
+	// MgrMail - mail do osób dopisanych przez menedżera (form_fill.go);
+	// MgrNotificationID - jego szablon, NULL = ten sam co NotificationID
+	// (tools/migration-managerperms.sql)
+	MgrMail           bool          `db:"mgr_mail"`
+	MgrNotificationID sql.NullInt64 `db:"mgr_notifications_id_fk"`
 }
 
 // IsOpen mówi, czy formularz przyjmuje teraz odpowiedzi.
@@ -312,6 +324,9 @@ type Form struct {
 	FormTemplateID int64          `db:"formtemplates_id_fk"`
 	// OrderID - gdy odpowiedź to dodatki jednego zamówienia
 	OrderID sql.NullInt64 `db:"orders_id_fk"`
+	// AddedBy - zgłoszenie założył menedżer (form_fill.go): NULL = gość,
+	// 0 = konto organizacji, >0 = admins.id
+	AddedBy sql.NullInt64 `db:"added_by"`
 }
 
 type FormAnswer struct {
@@ -322,6 +337,8 @@ type FormAnswer struct {
 	// RepeatIndex - numer powtórzenia pola ("Kolacja 2" przy polu powtarzanym
 	// wg liczby miejsc); 0 dla zwykłych pól
 	RepeatIndex sql.NullInt64 `db:"repeat_index"`
+	// AddedBy - odpowiedź dopisał menedżer (jak Form.AddedBy)
+	AddedBy sql.NullInt64 `db:"added_by"`
 }
 
 type BankAccount struct {
@@ -1088,7 +1105,7 @@ func (db *DB) AdminGetEmails(UserID int64) ([]string, error) {
 	return aa, err
 }
 
-const managerCols = `id, type, email, passwd, notes, users_id_fk, language, last_login`
+const managerCols = `id, type, email, passwd, notes, users_id_fk, language, last_login, all_access, org_manage`
 
 // ManagerGetAll - loginy menedżerów organizacji, w kolejności dodania.
 func (db *DB) ManagerGetAll(userID int64) ([]Admin, error) {
@@ -1114,7 +1131,12 @@ func (db *DB) ManagerGetByEmail(email string) (Admin, error) {
 // ManagerAdd zapisuje nowego menedżera; Passwd musi już być hashem.
 func (db *DB) ManagerAdd(a *Admin) (int64, error) {
 	a.Type = MANAGER
-	return db.AdminAdd(a)
+	ret, err := db.DB.NamedExec(`INSERT INTO admins (type, email, passwd, notes, users_id_fk, all_access, org_manage)
+VALUES(:type, :email, :passwd, :notes, :users_id_fk, :all_access, :org_manage)`, a)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
 }
 
 // ManagerMod zmienia e-mail, opis i hash hasła menedżera swojej organizacji.
@@ -1131,6 +1153,12 @@ WHERE id=:id AND users_id_fk=:users_id_fk AND type='manager'`, a)
 }
 
 func (db *DB) ManagerDel(id, userID int64) error {
+	if _, err := db.DB.Exec(`DELETE FROM manager_access WHERE admins_id_fk=(SELECT id FROM admins WHERE id=$1 AND users_id_fk=$2 AND type=$3)`, id, userID, MANAGER); err != nil {
+		return err
+	}
+	if _, err := db.DB.Exec(`DELETE FROM manager_contacts WHERE admins_id=$1 AND users_id_fk=$2`, id, userID); err != nil {
+		return err
+	}
 	ret, err := db.DB.Exec(`DELETE FROM admins WHERE id=$1 AND users_id_fk=$2 AND type=$3`, id, userID, MANAGER)
 	if err != nil {
 		return err
@@ -1547,6 +1575,7 @@ var formTemplateDeleteSQL = []string{
 	`DELETE FROM formanswers WHERE formfields_id_fk IN (SELECT id FROM formfields WHERE formtemplates_id_fk=$1)`,
 	`DELETE FROM forms WHERE formtemplates_id_fk=$1`,
 	`DELETE FROM formfields WHERE formtemplates_id_fk=$1`,
+	`DELETE FROM manager_access WHERE kind='form' AND item_id=$1`,
 	`DELETE FROM formtemplates WHERE id=$1`,
 }
 
@@ -1594,6 +1623,7 @@ func (db *DB) EventDelete(eventID, userID int64) error {
 		`DELETE FROM orders WHERE events_id_fk=$1`,
 		`DELETE FROM prices WHERE events_id_fk=$1`,
 		`DELETE FROM events_rooms WHERE events_id_fk=$1`,
+		`DELETE FROM manager_access WHERE kind='event' AND item_id=$1`,
 		`DELETE FROM events_notifs WHERE events_id_fk=$1`,
 		`DELETE FROM eventsaddons WHERE events_id_fk=$1`,
 		`UPDATE formtemplates SET events_id_fk=NULL WHERE events_id_fk=$1`,
@@ -1681,6 +1711,7 @@ func (db *DB) NotificationDelete(mailID, userID int64) error {
 		`DELETE FROM events_notifs WHERE notifications_id_fk=$1`,
 		`UPDATE formtemplates SET notifications_id_fk=NULL WHERE notifications_id_fk=$1`,
 		`UPDATE formtemplates SET admin_notifications_id_fk=NULL WHERE admin_notifications_id_fk=$1`,
+		`UPDATE formtemplates SET mgr_notifications_id_fk=NULL WHERE mgr_notifications_id_fk=$1`,
 		`DELETE FROM formtemplates_notifs WHERE notifications_id_fk=$1`,
 	})
 	if err != nil {
@@ -1732,8 +1763,8 @@ func (db *DB) FormModNames(f *Form) error {
 }
 
 func (db *DB) FormAdd(f *Form) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO forms (name, surname, notes, email, created_date, status, users_id_fk, formtemplates_id_fk)
-	VALUES(:name, :surname, :notes, :email, :created_date, :status, :users_id_fk, :formtemplates_id_fk)`, f)
+	ret, err := db.DB.NamedExec(`INSERT INTO forms (name, surname, notes, email, created_date, status, users_id_fk, formtemplates_id_fk, added_by)
+	VALUES(:name, :surname, :notes, :email, :created_date, :status, :users_id_fk, :formtemplates_id_fk, :added_by)`, f)
 	if err != nil {
 		return -1, err
 	}
@@ -1802,8 +1833,8 @@ func (db *DB) FormDel(FormID, TemplateID int64) error {
 }
 
 func (db *DB) FormAnswerAdd(fa *FormAnswer) (int64, error) {
-	ret, err := db.DB.NamedExec(`INSERT INTO formanswers (value, formfields_id_fk, forms_id_fk, repeat_index)
-	VALUES(:value, :formfields_id_fk, :forms_id_fk, COALESCE(:repeat_index, 0))`, fa)
+	ret, err := db.DB.NamedExec(`INSERT INTO formanswers (value, formfields_id_fk, forms_id_fk, repeat_index, added_by)
+	VALUES(:value, :formfields_id_fk, :forms_id_fk, COALESCE(:repeat_index, 0), :added_by)`, fa)
 	if err != nil {
 		return -1, err
 	}
@@ -2025,4 +2056,156 @@ func NoMinus(n string, i int64) error {
 		return fmt.Errorf("wrong input param %q: %d", n, i)
 	}
 	return nil
+}
+
+// --- uprawnienia menedżerów i dopisywanie osób (access.go, form_fill.go) ---
+
+// ManagerAccess - jedna impreza albo formularz menedżera z ograniczonym
+// dostępem (admins.all_access = 0).
+type ManagerAccess struct {
+	AdminID int64  `db:"admins_id_fk"`
+	Kind    string `db:"kind"` // ACCEVENT, ACCFORM
+	ItemID  int64  `db:"item_id"`
+	Level   string `db:"level"` // LEVELRESULTS, LEVELFULL
+}
+
+// ManagerAccessGet - wybrane imprezy i formularze menedżera.
+func (db *DB) ManagerAccessGet(adminID int64) ([]ManagerAccess, error) {
+	aa := []ManagerAccess{}
+	err := db.DB.Select(&aa, `SELECT admins_id_fk, kind, item_id, level FROM manager_access WHERE admins_id_fk=$1`, adminID)
+	return aa, err
+}
+
+// ManagerSetPerms zapisuje uprawnienia menedżera swojej organizacji: oba
+// przełączniki i listę wybranych imprez/formularzy (zastępuje poprzednią).
+// Pozycje muszą już być sprawdzone (należą do organizacji).
+func (db *DB) ManagerSetPerms(id, userID int64, all, org bool, items []ManagerAccess) error {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	ret, err := tx.Exec(`UPDATE admins SET all_access=$1, org_manage=$2 WHERE id=$3 AND users_id_fk=$4 AND type=$5`, all, org, id, userID, MANAGER)
+	if err != nil {
+		return err
+	}
+	if n, _ := ret.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	if _, err := tx.Exec(`DELETE FROM manager_access WHERE admins_id_fk=$1`, id); err != nil {
+		return err
+	}
+	for _, it := range items {
+		if _, err := tx.Exec(`INSERT OR REPLACE INTO manager_access (admins_id_fk, kind, item_id, level) VALUES ($1, $2, $3, $4)`,
+			id, it.Kind, it.ItemID, it.Level); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// Contact - osoba wpisana kiedyś przez menedżera (podpowiedzi przy
+// dopisywaniu osób).
+type Contact struct {
+	Name    string `db:"name" json:"name"`
+	Surname string `db:"surname" json:"surname"`
+	Email   string `db:"email" json:"email"`
+}
+
+// ContactGetAll - osoby wpisane przez menedżera (adminID 0 = konto
+// organizacji), ostatnio używane najpierw.
+func (db *DB) ContactGetAll(userID, adminID int64) ([]Contact, error) {
+	cc := []Contact{}
+	err := db.DB.Select(&cc, `SELECT name, surname, email FROM manager_contacts WHERE users_id_fk=$1 AND admins_id=$2 ORDER BY used DESC, surname, name`, userID, adminID)
+	return cc, err
+}
+
+// ContactSave zapamiętuje osobę (ten sam e-mail = nowe imię i nazwisko).
+func (db *DB) ContactSave(userID, adminID int64, c Contact, used int64) error {
+	_, err := db.DB.Exec(`INSERT INTO manager_contacts (users_id_fk, admins_id, name, surname, email, used) VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (users_id_fk, admins_id, email) DO UPDATE SET name=excluded.name, surname=excluded.surname, used=excluded.used`,
+		userID, adminID, c.Name, c.Surname, strings.ToLower(c.Email), used)
+	return err
+}
+
+// ContactDel usuwa podpowiedź menedżera.
+func (db *DB) ContactDel(userID, adminID int64, email string) error {
+	_, err := db.DB.Exec(`DELETE FROM manager_contacts WHERE users_id_fk=$1 AND admins_id=$2 AND email=$3`, userID, adminID, strings.ToLower(email))
+	return err
+}
+
+// PersonAnswer - niepusta odpowiedź pola z osobą, która ją dała.
+type PersonAnswer struct {
+	FormID  int64          `db:"forms_id_fk"`
+	Field   string         `db:"field"`
+	Value   string         `db:"value"`
+	AddedBy sql.NullInt64  `db:"added_by"`
+	Name    sql.NullString `db:"name"`
+	Surname sql.NullString `db:"surname"`
+	Email   sql.NullString `db:"email"`
+	// FormAddedBy - kto założył zgłoszenie (forms.added_by)
+	FormAddedBy sql.NullInt64 `db:"form_added_by"`
+}
+
+// PersonAnswersForTemplate - niepuste odpowiedzi wszystkich zgłoszeń
+// formularza razem z danymi osoby (lista osób przy funkcji, form_fill.go).
+func (db *DB) PersonAnswersForTemplate(tmplID int64) ([]PersonAnswer, error) {
+	pp := []PersonAnswer{}
+	err := db.DB.Select(&pp, `SELECT fa.forms_id_fk, ff.name AS field, fa.value, fa.added_by, f.name, f.surname, f.email, f.added_by AS form_added_by
+FROM formanswers fa JOIN formfields ff ON ff.id=fa.formfields_id_fk JOIN forms f ON f.id=fa.forms_id_fk
+WHERE f.formtemplates_id_fk=$1 AND ff.formtemplates_id_fk=$1 AND fa.value IS NOT NULL AND trim(fa.value)<>''
+ORDER BY f.surname, f.name, f.id`, tmplID)
+	return pp, err
+}
+
+// FormAnswerGet - jedna odpowiedź zgłoszenia (sql.ErrNoRows, gdy jej nie ma).
+func (db *DB) FormAnswerGet(formID, fieldID int64) (FormAnswer, error) {
+	var fa FormAnswer
+	err := db.DB.Get(&fa, `SELECT * FROM formanswers WHERE forms_id_fk=$1 AND formfields_id_fk=$2 AND repeat_index=0`, formID, fieldID)
+	return fa, err
+}
+
+// FormAnswerSet zapisuje odpowiedź razem z tym, kto ją dopisał.
+func (db *DB) FormAnswerSet(fa *FormAnswer) error {
+	_, err := db.DB.NamedExec(`INSERT INTO formanswers (value, formfields_id_fk, forms_id_fk, repeat_index, added_by)
+VALUES(:value, :formfields_id_fk, :forms_id_fk, 0, :added_by)
+ON CONFLICT (formfields_id_fk, forms_id_fk, repeat_index) DO UPDATE SET value=excluded.value, added_by=excluded.added_by`, fa)
+	return err
+}
+
+// FormAnswerDelOne usuwa jedną odpowiedź zgłoszenia.
+func (db *DB) FormAnswerDelOne(formID, fieldID int64) error {
+	_, err := db.DB.Exec(`DELETE FROM formanswers WHERE forms_id_fk=$1 AND formfields_id_fk=$2`, formID, fieldID)
+	return err
+}
+
+// FormDelWithAnswers usuwa zgłoszenie razem z odpowiedziami i historią maili.
+func (db *DB) FormDelWithAnswers(formID, tmplID int64) error {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var n int64
+	if err := tx.Get(&n, `SELECT COUNT(id) FROM forms WHERE id=$1 AND formtemplates_id_fk=$2`, formID, tmplID); err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	err = execAll(tx, formID, []string{
+		`DELETE FROM formnotificationslog WHERE forms_id_fk=$1`,
+		`DELETE FROM formanswers WHERE forms_id_fk=$1`,
+		`DELETE FROM forms WHERE id=$1`,
+	})
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// FormTemplateSetMgrMail - mail do osób dopisanych przez menedżera.
+func (db *DB) FormTemplateSetMgrMail(tmplID, userID int64, on bool, notifID sql.NullInt64) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET mgr_mail=$1, mgr_notifications_id_fk=$2 WHERE id=$3 AND users_id_fk=$4`, on, notifID, tmplID, userID)
+	return err
 }

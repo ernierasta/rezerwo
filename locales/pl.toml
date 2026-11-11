@@ -357,7 +357,7 @@ oval_h = "owalny poziomo"
 
 [managers]
 title = "Dostęp do panelu"
-hint = "Menedżerowie logują się do panelu własnym e-mailem i hasłem. Widzą i zmieniają wszystko w panelu organizacji (imprezy, rezerwacje, formularze, katalogi), ale nie mogą zarządzać loginami. Powiadomień o zamówieniach nie dostają."
+hint = "Menedżerowie logują się do panelu własnym e-mailem i hasłem. Co widzą i co mogą zmieniać, ustawiasz w uprawnieniach każdego z nich. Loginami zarządza tylko konto organizacji. Powiadomień o zamówieniach menedżerowie nie dostają."
 owner = "Konto organizacji"
 owner_desc = "konto główne, zarządza dostępem"
 list = "Menedżerowie"
@@ -427,6 +427,11 @@ need_description = "Podaj, za co jest dopłata."
 guest_item = "To dodatek zamówiony przez gościa — nie kasujemy go tutaj."
 
 [form]
+mgr_mail_off = "nie wysyłamy"
+mgr_mail_hint = "Mail dostaje osoba, którą menedżer dopisał do formularza albo do kolejnej funkcji (bez linku do poprawiania zgłoszenia)."
+mgr_mail_same = "ten sam, co po wysłaniu formularza"
+mgr_mail_tmpl = "Mail"
+mgr_mail_on = "Wysyłaj mail osobom dopisanym przez menedżera"
 answers = "Odpowiedzi"
 open_page = "Otwórz formularz"
 none_yet = "Nie ma jeszcze odpowiedzi."
@@ -437,6 +442,7 @@ columns = "Kolumny"
 detail_panel = "Panel szczegółów"
 
 [form.sec]
+mail_mgr = "Mail do dopisanych osób"
 basic = "Podstawowe"
 fields = "Pola"
 page = "Strona"
@@ -627,6 +633,14 @@ fix = "Popraw zaznaczone pola."
 
 # --- designer pól (tmpl/n_fields.html) ---
 [fields]
+mgr_hidden_badge = "ukryte dla menedżera"
+mgr_people_badge = "menedżer dopisuje osoby"
+mgr_hidden_hint = "Pole nie pokazuje się na stronie „Dopisz osoby” (np. telefon, dane dziecka)."
+mgr_hidden = "Niewidoczne dla menedżerów"
+mgr_people_hint = "Na stronie „Dopisz osoby” zamiast pola wyboru jest lista osób przy tej funkcji. Każda dopisana osoba to zgłoszenie z zaznaczoną tą funkcją."
+mgr_people = "Menedżer dopisuje osoby"
+mgr_role = "Imię, nazwisko i e-mail menedżer wpisuje przy funkcjach – tego pola nie widzi."
+mgr_title = "Menedżerowie"
 title = "Pola formularza"
 title_addons = "Pola dodatków"
 undo = "Cofnij"
@@ -1087,3 +1101,75 @@ account = "Usuń konto"
 account_title = "Usunąć konto bankowe?"
 account_text = "Konto „%s” zostanie usunięte. Tego nie da się cofnąć."
 account_used = "Zostaną bez konta bankowego: %s."
+
+[perm]
+title = "Uprawnienia"
+org = "Zarządzanie organizacją"
+org_hint = "Katalogi (sale, maile, konta bankowe), projektant sal, nowe imprezy i formularze, kopiowanie imprez."
+all = "Wszystkie imprezy i formularze"
+all_hint = "Pełny dostęp do każdej imprezy i formularza, także dodanych później. Wyłącz, żeby wybrać pojedyncze."
+items_hint = "Wybierz, do czego menedżer ma dostęp. Nowe imprezy i formularze trzeba mu tu dodać."
+level_none = "brak dostępu"
+level_results = "obsługa"
+level_full = "pełny dostęp"
+levels_hint = "Obsługa: rezerwacje, odpowiedzi, raporty, maile do gości i dopisywanie osób – bez zmiany ustawień. Pełny dostęp: także ustawienia, pola i usuwanie."
+sum_all = "wszystkie imprezy i formularze"
+sum_nothing = "bez dostępu do imprez i formularzy"
+sum_org = "zarządza organizacją"
+bad_item = "Wybrana impreza albo formularz nie należy do organizacji."
+denied_title = "Brak dostępu"
+denied = "Nie masz uprawnień do tej części panelu. Zapytaj o nie konto organizacji."
+
+[count.event]
+one = "%d impreza"
+few = "%d imprezy"
+many = "%d imprez"
+
+[count.form]
+one = "%d formularz"
+few = "%d formularze"
+many = "%d formularzy"
+
+[count.person]
+one = "%d osoba"
+few = "%d osoby"
+many = "%d osób"
+
+[fill]
+open = "Dopisz osoby"
+title = "Dopisywanie osób"
+no_people = "W tym formularzu nie ma pól, przy których dopisuje się osoby. W edycji pól włącz „Menedżer dopisuje osoby” przy polu z zaznaczeniem."
+hint = "Wybierz pola na górze (np. klasę), a potem przy funkcjach dopisz osoby: imię, nazwisko i e-mail. Wpisane osoby są podpowiadane przy kolejnych funkcjach i w innych formularzach. Zmiany zapisuje przycisk „Zapisz” na dole."
+closed = "Formularz jest zamknięty dla gości – osoby nadal możesz dopisywać."
+undo_all = "Cofnij zmiany"
+name = "Imię"
+surname = "Nazwisko"
+email = "E-mail"
+add = "Dodaj"
+by_guest = "zgłoszenie własne"
+by_other = "dopisał(a) ktoś inny"
+restore = "przywróć"
+remove = "Usuń z tej funkcji"
+will_remove = "do usunięcia"
+new = "nowa"
+nobody = "Nikt jeszcze nie jest zapisany."
+count_goal = "zapisanych: %d z %d"
+saved = "Zapisano: dopisane %d, usunięte %d."
+
+[fill.err]
+name = "Wpisz imię i nazwisko."
+email = "Niepoprawny e-mail: %s"
+dup = "Ta osoba jest już przy tej funkcji."
+shared = "Najpierw uzupełnij pola na górze formularza."
+field = "Tej funkcji nie widać przy wybranych wartościach pól. Zmień wybór i spróbuj jeszcze raz."
+not_mine = "Możesz usuwać tylko osoby, które sam(a) dopisałeś/aś."
+
+[fill.changes]
+one = "%d zmiana do zapisania"
+few = "%d zmiany do zapisania"
+many = "%d zmian do zapisania"
+
+[fill.mails]
+one = "Wysyłamy %d maila."
+few = "Wysyłamy %d maile."
+many = "Wysyłamy %d maili."

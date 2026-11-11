@@ -1,0 +1,56 @@
+{{define "body"}}
+<div class="doc fill" id="fill" data-form-id="{{.ID}}" data-draft="{{.DraftKey}}">
+  {{template "up" .}}
+  <div class="dh">
+    <h3>{{.Name}} <span class="kind">{{T "fill.title"}}</span></h3>
+    <div class="r"><a class="btn quiet" href="/admin/forms/{{.ID}}/answers">{{T "form.answers"}}</a></div>
+  </div>
+  {{if .NoPeople}}
+  <p class="dsub">{{T "fill.no_people"}}</p>
+  {{else}}
+  <p class="dsub">{{T "fill.hint"}}</p>
+  {{if .Closed}}<div class="draft-notice">{{T "fill.closed"}}</div>{{end}}
+
+  <form class="gform-form fill-form" id="fill-form" novalidate>
+    {{range .Rows}}
+    <div class="ff-row">
+      {{range .Fields}}{{if .People}}{{template "ffpeople" .}}{{else}}{{template "ffield" .}}{{end}}{{end}}
+    </div>
+    {{end}}
+  </form>
+
+  <div class="fill-foot" id="fill-foot">
+    <span class="fill-count muted" id="fill-count"></span>
+    <p class="gform-msg" id="fill-msg" role="alert" hidden></p>
+    <button class="btn" type="button" id="fill-save" disabled>{{T "common.save"}}</button>
+    <button class="btn quiet" type="button" id="fill-undo" hidden>{{T "fill.undo_all"}}</button>
+  </div>
+
+  <script type="application/json" id="fill-state">{{.State}}</script>
+  {{end}}
+</div>
+{{end}}
+
+{{/* Pole z dopisywaniem osób (form_fill.go): lista osób przy funkcji
+     i wiersz "dodaj osobę"; listę rysuje js/n_formfill.js. */}}
+{{define "ffpeople"}}
+<fieldset class="ff ff-people w{{.Width}}" data-name="{{.Name}}" data-type="people" data-goal="{{.Goal}}"{{with .ShowIf}} data-show="{{.}}"{{end}}>
+  <legend class="ff-l">{{.Label}}</legend>
+  {{if .Desc}}<small class="ff-d">{{.Desc}}</small>{{end}}
+  <div class="pp-count"></div>
+  <ul class="pp-list"></ul>
+  <div class="pp-add">
+    <input class="inp" type="text" data-p="name" placeholder="{{T "fill.name"}}" aria-label="{{T "fill.name"}}" autocomplete="off">
+    <input class="inp" type="text" data-p="surname" placeholder="{{T "fill.surname"}}" aria-label="{{T "fill.surname"}}" autocomplete="off">
+    <input class="inp" type="email" data-p="email" placeholder="{{T "fill.email"}}" aria-label="{{T "fill.email"}}" autocomplete="off">
+    <button class="btn quiet sm" type="button" data-pp-add>{{T "fill.add"}}</button>
+    <ul class="pp-sug" role="listbox" hidden></ul>
+  </div>
+  <small class="ff-err" role="alert" hidden></small>
+</fieldset>
+{{end}}
+
+{{define "scripts"}}
+<script src="{{asset "/js/n_formconds.js"}}"></script>
+<script src="{{asset "/js/n_formfill.js"}}"></script>
+{{end}}

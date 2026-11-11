@@ -6,6 +6,7 @@ package main
 // jako sekcje harmonijki). Zapis sekcji: POST /api/events/{id}/section.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -29,6 +30,9 @@ type NPage struct {
 	// UpURL, UpLabel - strona nadrzędna: link "← ..." nad tytułem (szablon
 	// "up" w n_base.html) i ogniwo ścieżki w górnym pasku
 	UpURL, UpLabel string
+	// NoOrg - menedżer bez zarządzania organizacją: bez linku do katalogu
+	// (access.go)
+	NoOrg bool
 }
 
 // --- pomoce ----------------------------------------------------------------
@@ -41,8 +45,26 @@ func adminUser(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.Cook
 		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 		return User{}, false
 	}
+	if !allowed(db, login, r) {
+		denyAccess(w, r, login)
+		return User{}, false
+	}
+	// handler sięga po zalogowanego przez requestLogin(r)
+	*r = *r.WithContext(context.WithValue(r.Context(), loginCtxKey{}, login))
 	return login.User, true
 }
+
+type loginCtxKey struct{}
+
+// requestLogin - zalogowany zapisany przez adminUser (pusty Login = konto
+// organizacji bez ograniczeń, np. w testach wołających handler wprost).
+func requestLogin(r *http.Request) Login {
+	l, _ := r.Context().Value(loginCtxKey{}).(Login)
+	return l
+}
+
+// noOrg - zalogowany menedżer nie zarządza organizacją.
+func noOrg(r *http.Request) bool { return !requestLogin(r).CanOrg() }
 
 // adminOwned sprawdza sesję i wczytuje obiekt {id} z adresu, o ile należy do
 // organizacji admina (get zwraca błąd dla cudzego albo nieistniejącego).
@@ -192,13 +214,17 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		})
 
 		vars := nHomeVars{
-			NPage: NPage{Title: T(lang, "nav.events"), OrgName: orgName(user)},
+			NPage: NPage{Title: T(lang, "nav.events"), OrgName: orgName(user), NoOrg: noOrg(r)},
 		}
+		login := requestLogin(r)
 
 		now := time.Now().Unix()
 		const day = int64(24 * 3600)
 
 		for _, e := range events {
+			if login.Level(ACCEVENT, e.ID) == "" {
+				continue
+			}
 			st := eventStats(db, user.ID, e.ID)
 
 			// braki ("brak konta", "brak ceny") mają sens tylko przed imprezą -
@@ -262,6 +288,9 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		for _, ft := range templs {
 			if isAddonsTemplate(ft) {
 				continue // dodatki edytuje się w sekcji imprezy
+			}
+			if login.Level(ACCFORM, ft.ID) == "" {
+				continue
 			}
 			n, err := db.FormGetAmmount(user.ID, ft.ID)
 			if err != nil {
@@ -544,6 +573,8 @@ type nEventFormChoice struct {
 
 type nEventVars struct {
 	NPage
+	// RO - menedżer z dostępem "obsługa": bez zmian ustawień (access.go)
+	RO       bool
 	ID       int64
 	Name     string
 	Language string
@@ -666,6 +697,17 @@ func EventPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *
 		}
 		lang := PanelLang(r)
 		vars := buildEventVars(db, user, event, lang)
+		login := requestLogin(r)
+		vars.RO = !login.CanEdit(ACCEVENT, event.ID)
+		vars.NoOrg = noOrg(r)
+		// formularze, których menedżer nie widzi, nie trafiają na listę
+		forms := vars.FormChoices[:0]
+		for _, c := range vars.FormChoices {
+			if login.Level(ACCFORM, c.ID) != "" {
+				forms = append(forms, c)
+			}
+		}
+		vars.FormChoices = forms
 		nRender(w, lang, vars, "tmpl/n_event.html")
 	}
 }
@@ -1388,7 +1430,9 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 				return
 			}
 		case "forms":
-			if err := setEventForms(db, user.ID, event.ID, flag); err != nil {
+			login := requestLogin(r)
+			canEdit := func(id int64) bool { return login.CanEdit(ACCFORM, id) }
+			if err := setEventForms(db, user.ID, event.ID, flag, canEdit); err != nil {
 				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: T(lang, "common.save_error") + ": " + err.Error()})
 				return
 			}
@@ -1465,13 +1509,13 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 // setEventForms podpina do imprezy zaznaczone formularze (pola "form_<id>")
 // i odpina te, które były jej, a zostały odznaczone. Formularz zaznaczony
 // tutaj, a podpięty do innej imprezy, zostaje przepięty.
-func setEventForms(db *DB, userID, eventID int64, flag func(string) bool) error {
+func setEventForms(db *DB, userID, eventID int64, flag func(string) bool, canEdit func(formID int64) bool) error {
 	templs, err := db.FormTemplateGetAll(userID)
 	if err != nil {
 		return err
 	}
 	for _, ft := range templs {
-		if isAddonsTemplate(ft) {
+		if isAddonsTemplate(ft) || !canEdit(ft.ID) {
 			continue
 		}
 		mine := ft.EventID.Valid && ft.EventID.Int64 == eventID

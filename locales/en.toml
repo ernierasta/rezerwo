@@ -353,7 +353,7 @@ oval_h = "oval horizontal"
 
 [managers]
 title = "Panel access"
-hint = "Managers log in to the panel with their own e-mail and password. They can see and change everything in the organisation's panel (events, reservations, forms, catalogues), but cannot manage logins. They do not receive order notifications."
+hint = "Managers log in to the panel with their own e-mail and password. What they see and can change is set in each manager's permissions. Only the organisation account manages logins. Managers do not receive order notifications."
 owner = "Organisation account"
 owner_desc = "main account, manages access"
 list = "Managers"
@@ -423,6 +423,11 @@ need_description = "Say what the surcharge is for."
 guest_item = "This add-on was ordered by the guest — it is not deleted here."
 
 [form]
+mgr_mail_off = "not sent"
+mgr_mail_hint = "Sent to a person a manager added to the form or to another task (without the link to edit the submission)."
+mgr_mail_same = "the same as after submitting the form"
+mgr_mail_tmpl = "E-mail"
+mgr_mail_on = "Send an e-mail to people added by a manager"
 answers = "Answers"
 open_page = "Open the form"
 none_yet = "No answers yet."
@@ -433,6 +438,7 @@ columns = "Columns"
 detail_panel = "Details panel"
 
 [form.sec]
+mail_mgr = "E-mail to added people"
 basic = "Basics"
 fields = "Fields"
 page = "Page"
@@ -618,6 +624,14 @@ fix = "Please correct the highlighted fields."
 
 # --- field designer (tmpl/n_fields.html) ---
 [fields]
+mgr_hidden_badge = "hidden from managers"
+mgr_people_badge = "manager adds people"
+mgr_hidden_hint = "The field is not shown on the “Add people” page (e.g. phone, child details)."
+mgr_hidden = "Hidden from managers"
+mgr_people_hint = "On the “Add people” page this checkbox becomes a list of people for this task. Every person added is a submission with this task ticked."
+mgr_people = "Manager adds people"
+mgr_role = "Managers type the name, surname and e-mail next to each task – they do not see this field."
+mgr_title = "Managers"
 title = "Form fields"
 title_addons = "Add-on fields"
 undo = "Undo"
@@ -1078,3 +1092,70 @@ account = "Delete account"
 account_title = "Delete the bank account?"
 account_text = "The account “%s” will be deleted. This cannot be undone."
 account_used = "Left without a bank account: %s."
+
+[perm]
+title = "Permissions"
+org = "Manage the organisation"
+org_hint = "Catalogues (rooms, e-mails, bank accounts), room designer, new events and forms, copying events."
+all = "All events and forms"
+all_hint = "Full access to every event and form, including ones added later. Switch off to choose individual ones."
+items_hint = "Choose what the manager can access. New events and forms have to be added here."
+level_none = "no access"
+level_results = "handling"
+level_full = "full access"
+levels_hint = "Handling: reservations, answers, reports, e-mails to guests and adding people – no changes to settings. Full access: settings, fields and deleting too."
+sum_all = "all events and forms"
+sum_nothing = "no access to events and forms"
+sum_org = "manages the organisation"
+bad_item = "The chosen event or form does not belong to the organisation."
+denied_title = "No access"
+denied = "You do not have permission for this part of the panel. Ask the organisation account for it."
+
+[count.event]
+one = "%d event"
+other = "%d events"
+
+[count.form]
+one = "%d form"
+other = "%d forms"
+
+[count.person]
+one = "%d person"
+other = "%d people"
+
+[fill]
+open = "Add people"
+title = "Adding people"
+no_people = "This form has no fields people can be added to. In the field editor switch on “Manager adds people” on a checkbox field."
+hint = "Choose the fields at the top (e.g. the class), then add people to the tasks: first name, surname and e-mail. People you type are suggested for other tasks and in other forms. Save the changes with the “Save” button at the bottom."
+closed = "The form is closed for guests – you can still add people."
+undo_all = "Undo changes"
+name = "First name"
+surname = "Surname"
+email = "E-mail"
+add = "Add"
+by_guest = "own submission"
+by_other = "added by someone else"
+restore = "restore"
+remove = "Remove from this task"
+will_remove = "to be removed"
+new = "new"
+nobody = "Nobody has signed up yet."
+count_goal = "signed up: %d of %d"
+saved = "Saved: %d added, %d removed."
+
+[fill.err]
+name = "Enter the first name and surname."
+email = "Invalid e-mail: %s"
+dup = "This person is already on this task."
+shared = "Fill in the fields at the top of the form first."
+field = "This task is not shown for the chosen field values. Change the choice and try again."
+not_mine = "You can only remove people you added yourself."
+
+[fill.changes]
+one = "%d change to save"
+other = "%d changes to save"
+
+[fill.mails]
+one = "Sending %d e-mail."
+other = "Sending %d e-mails."

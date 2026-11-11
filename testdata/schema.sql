@@ -7,7 +7,7 @@ CREATE TABLE events_rooms (events_id_fk INTEGER NOT NULL, rooms_id_fk INTEGER NO
 CREATE TABLE notes (id INTEGER NOT NULL PRIMARY KEY, text TEXT NOT NULL);
 CREATE TABLE reservations (id INTEGER NOT NULL PRIMARY KEY, ordered_date INTEGER, payed_date INTEGER, price INTEGER, currency TEXT, status TEXT NOT NULL, notes_id_fk INTEGER, furnitures_id_fk INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, orders_id_fk INTEGER, FOREIGN KEY(notes_id_fk) REFERENCES notes(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
 CREATE TABLE users_customers (users_id_fk INTEGER NOT NULL, customers_id_fk INTEGER NOT NULL, FOREIGN KEY(users_id_fk) REFERENCES users(id), FOREIGN KEY(customers_id_fk) REFERENCES customers(id), UNIQUE(users_id_fk, customers_id_fk) ON CONFLICT ROLLBACK);
-CREATE TABLE admins (id INTEGER NOT NULL PRIMARY KEY, type TEXT NOT NULL, email TEXT NOT NULL, passwd TEXT, notes TEXT, users_id_fk INTEGER NOT NULL, language TEXT, last_login INTEGER, FOREIGN KEY(users_id_fk) REFERENCES users(id));
+CREATE TABLE admins (id INTEGER NOT NULL PRIMARY KEY, type TEXT NOT NULL, email TEXT NOT NULL, passwd TEXT, notes TEXT, users_id_fk INTEGER NOT NULL, language TEXT, last_login INTEGER, all_access INTEGER NOT NULL DEFAULT 1, org_manage INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(users_id_fk) REFERENCES users(id));
 CREATE TABLE "prices" (id INTEGER NOT NULL PRIMARY KEY, price INTEGER NOT NULL, currency TEXT NOT NULL, disabled INTEGER NOT NULL, events_id_fk INTEGER NOT NULL, furnitures_id_fk INTEGER NOT NULL, FOREIGN KEY(events_id_fk) REFERENCES events(id), FOREIGN KEY(furnitures_id_fk) REFERENCES furnitures(id), UNIQUE(furnitures_id_fk, events_id_fk) ON CONFLICT ROLLBACK);
 CREATE TABLE events (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, date INTEGER NOT NULL, from_date INTEGER NOT NULL, to_date INTEGER NOT NULL, default_price INTEGER NOT NULL, default_currency TEXT NOT NULL, no_sits_selected_title TEXT NOT NULL, no_sits_selected_text TEXT NOT NULL, how_to TEXT NOT NULL, order_howto TEXT NOT NULL, order_notes_desc TEXT NOT NULL, ordered_note_title TEXT NOT NULL, ordered_note_text TEXT NOT NULL, users_id_fk INTEGER NOT NULL, thankyou_notifications_id_fk INTEGER REFERENCES notifications(id), admin_notifications_id_fk INTEGER REFERENCES notifications(id), "bankaccounts_id_fk" INTEGER REFERENCES bankaccounts(id), sharable INTEGER, language TEXT, hidecosts INTEGER, mainbanner string, maindesc string, room1desc string, room1banner string, room2desc string, room2banner string, room3desc string, room3banner string, room4desc string, room4banner string, previous_event_id INTEGER, status TEXT NOT NULL DEFAULT 'published', addons_formtemplate_id INTEGER, theme TEXT DEFAULT '', pay_message TEXT NOT NULL DEFAULT '', pagehead TEXT NOT NULL DEFAULT '', FOREIGN KEY(users_id_fk) REFERENCES users(id), UNIQUE(name, users_id_fk) ON CONFLICT ROLLBACK);
 CREATE TABLE "customers" (
@@ -28,7 +28,7 @@ CREATE TABLE "forms" (
 	"email"	TEXT,
 	"created_date"	INTEGER NOT NULL,
 	"users_id_fk"	INTEGER NOT NULL,
-	"formtemplates_id_fk"	INTEGER NOT NULL, status TEXT, orders_id_fk INTEGER,
+	"formtemplates_id_fk"	INTEGER NOT NULL, status TEXT, orders_id_fk INTEGER, added_by INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("formtemplates_id_fk") REFERENCES "formtemplates"("id"),
 	UNIQUE("surname","email","formtemplates_id_fk"),
@@ -44,7 +44,7 @@ CREATE TABLE "formtemplates" (
 	"created_date"	INTEGER NOT NULL,
 	"thankyou"	TEXT,
 	"users_id_fk"	INTEGER NOT NULL,
-	"events_id_fk"	INTEGER, infopanel TEXT, bankaccounts_id_fk INTEGER REFERENCES bankaccounts(id), moneyfield TEXT, notifications_id_fk TEXT, admin_notifications_id_fk INTEGER REFERENCES notifications(id), kind TEXT NOT NULL DEFAULT 'form', language TEXT NOT NULL DEFAULT 'pl', status TEXT NOT NULL DEFAULT 'open', close_date INTEGER, infopanel_mode TEXT NOT NULL DEFAULT 'text', theme TEXT NOT NULL DEFAULT '', pay_message TEXT NOT NULL DEFAULT '', pagehead TEXT NOT NULL DEFAULT '', density TEXT NOT NULL DEFAULT '',
+	"events_id_fk"	INTEGER, infopanel TEXT, bankaccounts_id_fk INTEGER REFERENCES bankaccounts(id), moneyfield TEXT, notifications_id_fk TEXT, admin_notifications_id_fk INTEGER REFERENCES notifications(id), kind TEXT NOT NULL DEFAULT 'form', language TEXT NOT NULL DEFAULT 'pl', status TEXT NOT NULL DEFAULT 'open', close_date INTEGER, infopanel_mode TEXT NOT NULL DEFAULT 'text', theme TEXT NOT NULL DEFAULT '', pay_message TEXT NOT NULL DEFAULT '', pagehead TEXT NOT NULL DEFAULT '', density TEXT NOT NULL DEFAULT '', mgr_mail INTEGER NOT NULL DEFAULT 1, mgr_notifications_id_fk INTEGER REFERENCES notifications(id),
 	FOREIGN KEY("users_id_fk") REFERENCES "users"("id"),
 	UNIQUE("url","users_id_fk"),
 	FOREIGN KEY("events_id_fk") REFERENCES "events"("id"),
@@ -173,7 +173,7 @@ CREATE TABLE "formanswers" (
 	"value"	TEXT,
 	"formfields_id_fk"	INTEGER NOT NULL,
 	"forms_id_fk"	INTEGER NOT NULL,
-	repeat_index INTEGER NOT NULL DEFAULT 0,
+	repeat_index INTEGER NOT NULL DEFAULT 0, added_by INTEGER,
 	FOREIGN KEY("forms_id_fk") REFERENCES "forms"("id"),
 	PRIMARY KEY("id" AUTOINCREMENT),
 	UNIQUE("formfields_id_fk","forms_id_fk",repeat_index)
@@ -185,3 +185,21 @@ CREATE INDEX orders_customer ON orders (customers_id_fk);
 CREATE INDEX order_items_order ON order_items (orders_id_fk);
 CREATE INDEX reservations_order ON reservations (orders_id_fk);
 CREATE UNIQUE INDEX admins_email ON admins (email COLLATE NOCASE);
+CREATE TABLE manager_access (
+	admins_id_fk INTEGER NOT NULL,
+	kind TEXT NOT NULL,
+	item_id INTEGER NOT NULL,
+	level TEXT NOT NULL,
+	PRIMARY KEY (admins_id_fk, kind, item_id),
+	FOREIGN KEY (admins_id_fk) REFERENCES admins(id) ON DELETE CASCADE
+);
+CREATE TABLE manager_contacts (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	users_id_fk INTEGER NOT NULL,
+	admins_id INTEGER NOT NULL,
+	name TEXT NOT NULL,
+	surname TEXT NOT NULL,
+	email TEXT NOT NULL,
+	used INTEGER NOT NULL,
+	UNIQUE (users_id_fk, admins_id, email)
+);

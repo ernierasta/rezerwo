@@ -6,6 +6,7 @@ package main
 // formularza, teksty strony, maile, konto i odpowiedzi.
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -71,11 +72,19 @@ type nFormVars struct {
 	Notifications       []Notification
 	NotificationID      int64
 	AdminNotificationID int64
-	BankAccounts        []BankAccount
-	BankAccountID       int64
-	PayMessage          string
-	Events              []Event
-	EventID             int64
+	// RO - menedżer z dostępem "obsługa": bez zmian ustawień (access.go)
+	RO bool
+	// HasPeople - formularz ma pola, przy których menedżer dopisuje osoby
+	// (form_fill.go); MgrMail, MgrNotificationID - mail do tych osób
+	HasPeople         bool
+	MgrMail           bool
+	MgrNotificationID int64
+	SumMailMgr        string
+	BankAccounts      []BankAccount
+	BankAccountID     int64
+	PayMessage        string
+	Events            []Event
+	EventID           int64
 
 	SumBasic, SumFields, SumPage        string
 	SumMailGuest, SumMailAdmin, SumBank string
@@ -93,6 +102,8 @@ func FormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *h
 		}
 		lang := PanelLang(r)
 		vars := buildFormVars(db, user, templ, lang)
+		vars.RO = !requestLogin(r).CanEdit(ACCFORM, templ.ID)
+		vars.NoOrg = noOrg(r)
 		nRender(w, lang, vars, "tmpl/n_form.html")
 	}
 }
@@ -198,6 +209,13 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 
 	v.SumMailGuest, v.MissMailGuest = notificationName(db, user, templ.NotificationID.Int64, lang)
 	v.SumMailAdmin, v.MissMailAdmin = notificationName(db, user, templ.AdminNotificationID.Int64, lang)
+
+	if defs, err := ParseFormDef(templ.Content.String); err == nil {
+		v.HasPeople = len(peopleFields(defs)) > 0
+	}
+	v.MgrMail = templ.MgrMail
+	v.MgrNotificationID = templ.MgrNotificationID.Int64
+	v.SumMailMgr = mgrMailSummary(db, user, templ, lang)
 
 	if templ.BankAccountID.Valid && templ.BankAccountID.Int64 != 0 {
 		if ba, err := db.BankAccountGetByID(templ.BankAccountID.Int64, user.ID); err == nil {
@@ -490,6 +508,20 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 			}
 			templ.NotificationID = ToNI(id64("notifications_id_fk"))
 			claimMail(db, user, templ, templ.NotificationID.Int64)
+		case "mail_mgr":
+			mid := id64("mgr_notifications_id_fk")
+			if !refOwned(w, db, user.ID, "mail", mid) {
+				return
+			}
+			nid := sql.NullInt64{}
+			if mid > 0 {
+				nid = ToNI(mid)
+				claimMail(db, user, templ, mid)
+			}
+			if err := db.FormTemplateSetMgrMail(templ.ID, user.ID, flag("mgr_mail"), nid); err != nil {
+				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+				return
+			}
 		case "mail_admin":
 			if !refOwned(w, db, user.ID, "mail", id64("admin_notifications_id_fk")) {
 				return
@@ -513,6 +545,10 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 			}
 		case "event":
 			if !refOwned(w, db, user.ID, "event", id64("events_id_fk")) {
+				return
+			}
+			if eid := id64("events_id_fk"); eid > 0 && requestLogin(r).Level(ACCEVENT, eid) == "" {
+				jsonMsg(w, http.StatusForbidden, map[string]string{"msg": T(lang, "perm.denied")})
 				return
 			}
 			templ.EventID = ToNI(id64("events_id_fk"))
@@ -548,6 +584,8 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 			resp.Summary, resp.Missing = v.SumMailGuest, v.MissMailGuest
 		case "mail_admin":
 			resp.Summary, resp.Missing = v.SumMailAdmin, v.MissMailAdmin
+		case "mail_mgr":
+			resp.Summary = v.SumMailMgr
 		case "bank":
 			resp.Summary, resp.Missing = v.SumBank, v.MissBank
 		case "event":

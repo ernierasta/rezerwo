@@ -10,7 +10,33 @@
   var pass = form.elements.password;
   var msg = form.querySelector('.msg');
   var del = document.getElementById('m-delete');
+  var allBox = document.getElementById('m-all');
+  var orgBox = document.getElementById('m-org');
+  var itemsBox = document.getElementById('m-items');
   var id = 0;
+
+  // uprawnienia (access.go): nowy menedżer domyślnie ma wszystko, jak dotąd
+  function setPerms(p) {
+    p = p || {all: true, org: true, items: []};
+    allBox.checked = !!p.all;
+    orgBox.checked = !!p.org;
+    var lv = {};
+    (p.items || []).forEach(function (it) { lv[it.kind + ':' + it.id] = it.level; });
+    itemsBox.querySelectorAll('select[data-kind]').forEach(function (sel) {
+      sel.value = lv[sel.dataset.kind + ':' + sel.dataset.id] || '';
+    });
+    itemsBox.hidden = allBox.checked;
+  }
+
+  function getPerms() {
+    var items = [];
+    itemsBox.querySelectorAll('select[data-kind]').forEach(function (sel) {
+      if (sel.value) items.push({kind: sel.dataset.kind, id: Number(sel.dataset.id), level: sel.value});
+    });
+    return {all: allBox.checked, org: orgBox.checked, items: items};
+  }
+
+  allBox.addEventListener('change', function () { itemsBox.hidden = allBox.checked; });
 
   function setMode(edit) {
     form.querySelectorAll('[data-new]').forEach(function (el) {
@@ -24,6 +50,9 @@
     email.value = row ? row.dataset.email : '';
     notes.value = row ? row.dataset.notes : '';
     pass.value = '';
+    var perms = null;
+    try { perms = row && row.dataset.perms ? JSON.parse(row.dataset.perms) : null; } catch (e) { perms = null; }
+    setPerms(perms);
     msg.textContent = '';
     msg.classList.remove('bad');
     setMode(!!row);
@@ -70,7 +99,7 @@
     msg.classList.remove('bad');
     msg.textContent = '';
     var url = id ? '/api/managers/' + id : '/api/managers';
-    RZ.postJSON(url, {email: email.value, notes: notes.value, password: pass.value})
+    RZ.postJSON(url, {email: email.value, notes: notes.value, password: pass.value, perms: getPerms()})
       .then(function () {
         location.reload();
       })

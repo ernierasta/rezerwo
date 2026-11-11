@@ -36,6 +36,21 @@ func DevLogin(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 		}
 		session.Values["email"] = email
 		session.Values["role"] = "admin"
+		delete(session.Values, "manager")
+		delete(session.Values, "pv")
+		// ?manager=e-mail - menedżer tej samej organizacji (test uprawnień)
+		if me := r.URL.Query().Get("manager"); me != "" {
+			u, err1 := db.UserGetByEmail(email)
+			a, err2 := db.ManagerGetByEmail(me)
+			if err1 != nil || err2 != nil || a.UserID != u.ID {
+				http.Error(w, "dev login manager not found", http.StatusNotFound)
+				return
+			}
+			session.Values["email"] = a.Email
+			session.Values["manager"] = a.ID
+			session.Values["pv"] = passFingerprint(a.Passwd.String)
+			email = a.Email
+		}
 		if err := session.Save(r, w); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

@@ -245,6 +245,13 @@ type Login struct {
 	User    User
 	Email   string
 	Manager bool
+	// uprawnienia menedżera (access.go); konto organizacji ich nie potrzebuje
+	AdminID   int64
+	AllAccess bool
+	OrgManage bool
+	// Access - poziom wybranych imprez i formularzy (accessKey -> level),
+	// tylko gdy !AllAccess
+	Access map[string]string
 }
 
 // sessionLogin sprawdza sesję w bazie - bez przekierowań. Menedżer musi
@@ -275,7 +282,9 @@ func sessionLogin(r *http.Request, db *DB, cs *sessions.CookieStore) (Login, boo
 		if err != nil {
 			return Login{}, false
 		}
-		return Login{User: u, Email: a.Email, Manager: true}, true
+		l := Login{User: u, Email: a.Email, Manager: true}
+		loadAccess(db, &l, a)
+		return l, true
 	}
 	u, err := db.UserGetByEmail(email)
 	if err != nil {

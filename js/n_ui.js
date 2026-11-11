@@ -528,6 +528,13 @@
       var head = sec.querySelector('.sec-h');
       var act = sec.querySelector('.sec-h .act');
       if (act && !act.dataset.label) act.dataset.label = act.textContent;
+      // dostęp "obsługa" (access.go): ustawienia widać tylko w podsumowaniu
+      if (sec.hasAttribute('data-cfg') && sec.closest('[data-ro]')) {
+        if (act) act.remove();
+        var cfgBody = sec.querySelector('.sec-b');
+        if (cfgBody) cfgBody.remove();
+        return;
+      }
       if (!sec.querySelector('.sec-b')) return; // sekcja tylko z linkiem
       head.addEventListener('click', function (e) {
         if (e.target.tagName === 'A' && e.target.getAttribute('href') && !e.target.classList.contains('act')) return;

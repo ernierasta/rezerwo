@@ -1,8 +1,8 @@
 {{define "body"}}
 <div class="doc start">
   <h4>{{T "home.events"}}
-    <button class="btn quiet sm" data-copy-pick>{{T "home.copy_event"}}</button>
-    <button class="btn sm" id="new-event">{{T "home.new_event"}}</button>
+    <button class="btn quiet sm" data-copy-pick{{if .NoOrg}} hidden{{end}}>{{T "home.copy_event"}}</button>
+    <button class="btn sm" id="new-event"{{if .NoOrg}} hidden{{end}}>{{T "home.new_event"}}</button>
   </h4>
 
   {{if .Selling}}
@@ -32,7 +32,7 @@
   {{end}}
 
   <h4>{{T "home.forms"}}
-    <button class="btn sm" id="new-form">{{T "home.new_form"}}</button>
+    <button class="btn sm" id="new-form"{{if .NoOrg}} hidden{{end}}>{{T "home.new_form"}}</button>
   </h4>
   <div class="rows">
     {{range .Forms}}

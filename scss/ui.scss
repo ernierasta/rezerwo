@@ -2423,4 +2423,154 @@ ul.sum-list {
 
     .inp { flex: 1; min-width: 0; font-family: ui-monospace, monospace; }
   }
+
+  // uprawnienia (access.go)
+  .perms {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+
+    h5 { font-size: 15px; margin-bottom: 10px; }
+    h6 { font-size: 13.5px; font-weight: 500; color: var(--muted); margin: 14px 0 6px; }
+    .fd-under { display: block; margin: 2px 0 0 26px; }
+  }
+  .perm-items { margin-top: 12px; }
+  .perm-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .perm-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+    &:last-child { border-bottom: 0; }
+
+    span { flex: 1; min-width: 0; }
+    .inp { width: auto; min-height: 34px; padding-top: 4px; padding-bottom: 4px; }
+  }
+}
+
+// --- menedżer dopisuje osoby (/admin/forms/{id}/fill, form_fill.go) --------
+.fill {
+  .fill-form {
+    margin-top: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 26px 6px;
+  }
+
+  .ff-people {
+    background: var(--pane);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+
+  .pp-count {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    &.done { color: var(--ok-ink); }
+  }
+
+  .pp-list {
+    list-style: none;
+    margin: 0 0 10px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    li {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      padding: 5px 10px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14.5px;
+
+      b { font-weight: 500; }
+      small { color: var(--muted); }
+      .pp-tag { font-style: normal; font-size: 12.5px; color: var(--muted); margin-left: auto; }
+      > button { margin-left: auto; font-size: 15px; }
+      .pp-tag + button { margin-left: 0; }
+
+      &.new { border-color: var(--blue); background: var(--blue-soft); }
+      &.new .pp-tag { color: var(--blue-deep); }
+      &.removed { background: transparent; }
+      &.removed b, &.removed small { text-decoration: line-through; color: var(--muted); }
+      &.removed .pp-tag { color: var(--danger-ink); }
+      &.empty { background: none; border: 0; padding: 2px 0; font-size: 13.5px; }
+    }
+  }
+
+  .pp-add {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.4fr auto;
+    gap: 8px;
+    .inp { min-height: 38px; }
+  }
+
+  .pp-sug {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    box-shadow: 0 6px 20px var(--shade);
+
+    li {
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      small { color: var(--muted); margin-left: 6px; }
+      &:hover, &.on { background: var(--blue-soft); }
+    }
+  }
+
+  .fill-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 6;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px 12px;
+    margin-top: 16px;
+    padding: 12px 0;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+
+    .fill-count { margin-right: auto; }
+    .gform-msg { flex-basis: 100%; margin: 0; color: var(--danger-ink); }
+  }
+}
+
+@media (max-width: 640px) {
+  .fill {
+    .fill-form { padding: 16px 14px 2px; }
+    .pp-add {
+      grid-template-columns: 1fr 1fr;
+      [data-p="email"] { grid-column: 1 / -1; }
+      .btn { grid-column: 1 / -1; }
+    }
+  }
 }

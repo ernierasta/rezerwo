@@ -3,7 +3,11 @@
   {{if .Simple}}{{if .SimpleForms}}
   <div class="simple-go">
     {{range .SimpleForms}}
-    <a class="btn strong huge" href="/admin/forms/{{.ID}}/fill">{{T "fill.big"}}{{if gt (len $.SimpleForms) 1}}<small>{{.Name}}</small>{{end}}</a>
+    <a class="huge" href="/admin/forms/{{.ID}}/fill">
+      <span class="plus" aria-hidden="true">+</span>
+      <span><b>{{T "fill.big"}}</b><small><span class="click">{{T "fill.big_hint"}}</span>{{if gt (len $.SimpleForms) 1}} · {{.Name}}{{end}}</small></span>
+      <span class="go" aria-hidden="true">→</span>
+    </a>
     {{end}}
   </div>
   {{end}}{{end}}

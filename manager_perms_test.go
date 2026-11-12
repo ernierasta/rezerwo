@@ -160,7 +160,7 @@ func TestManagerPermsAndFill(t *testing.T) {
 		t.Fatalf("create simple manager: %d %s", rec.Code, rec.Body)
 	}
 	home3 := do("GET", "/admin", "", login("m3@example.com", "haslo-menedzera")).Body.String()
-	big := strings.Index(home3, `class="btn strong huge" href="/admin/forms/`+itoa(f1)+`/fill"`)
+	big := strings.Index(home3, `class="huge" href="/admin/forms/`+itoa(f1)+`/fill"`)
 	if big < 0 || big > strings.Index(home3, "Funkcje") {
 		t.Errorf("simple view: no big fill button above the lists")
 	}

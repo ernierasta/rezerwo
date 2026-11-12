@@ -1264,42 +1264,60 @@ textarea.inp {
 .start .simple-go {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 64px;
+}
+.start .simple-go .huge {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 18px;
-  margin: 12px 0 64px;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--blue-soft);
+  border: 1px solid color-mix(in srgb, var(--blue-deep) 30%, transparent);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
 }
-.start .simple-go .btn.huge {
-  --edge: color-mix(in srgb, var(--blue-deep) 62%, #000);
+.start .simple-go .huge .plus {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--blue-deep);
+  color: var(--on-accent);
+  font-size: 28px;
+  line-height: 1;
+}
+.start .simple-go .huge b {
   display: block;
-  width: min(440px, 100%);
-  padding: 18px 28px;
-  border-radius: 16px;
-  font-size: 21px;
   font-family: var(--display);
-  text-align: center;
-  white-space: normal;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--blue-deep) 78%, #fff), var(--blue-deep) 55%);
-  border: 1px solid var(--edge);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 0 var(--edge), 0 10px 22px rgba(var(--shade), 0.28);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-  transform: translateY(0);
-  transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+  font-weight: 500;
+  font-size: 21px;
+  line-height: 1.25;
 }
-.start .simple-go .btn.huge:hover {
-  filter: brightness(1.08);
-}
-.start .simple-go .btn.huge:active {
-  transform: translateY(5px);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 0 var(--edge), 0 3px 8px rgba(var(--shade), 0.25);
-}
-.start .simple-go .btn.huge small {
+.start .simple-go .huge small {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: 14px;
-  font-family: var(--font);
-  font-weight: 400;
-  opacity: 0.9;
-  text-shadow: none;
+  color: var(--muted);
+}
+.start .simple-go .huge small .click {
+  color: var(--blue-deep);
+  font-weight: 500;
+}
+.start .simple-go .huge .go {
+  font-size: 24px;
+  color: var(--blue-deep);
+  transition: transform 0.15s;
+}
+.start .simple-go .huge:hover, .start .simple-go .huge:focus-visible {
+  border-color: var(--blue-deep);
+}
+.start .simple-go .huge:hover .go, .start .simple-go .huge:focus-visible .go {
+  transform: translateX(4px);
 }
 .start.doc h4 {
   margin: 56px 0 8px;

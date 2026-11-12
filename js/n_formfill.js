@@ -185,8 +185,8 @@
     var n = onField(field);
     var goal = +box.dataset.goal || 0;
     // puste wiersze widoczne tylko na wydruku - do brakującej liczby osób,
-    // co najmniej kilka (ktoś może zebrać więcej chętnych niż trzeba)
-    var blanks = Math.max(goal - n, 4);
+    // i jeden zapasowy (ktoś może zebrać więcej chętnych), co najmniej dwa
+    var blanks = Math.max(goal - n + 1, 2);
     for (var b = 0; b < blanks; b++) {
       var bl = document.createElement('li');
       bl.className = 'pp-blank';

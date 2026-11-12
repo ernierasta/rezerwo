@@ -1048,13 +1048,29 @@
     var mixed = curs.some(function (c) { return c !== curs[0]; });
     if (!ps.length && !curs.some(Boolean)) return '';
     var cur = mixed ? null : curs[0];
+    // bez własnego warunku pole idzie za sekcją (jak w condHTML): opcja ''
+    // nazywa się tak, jak zadziała dla wszystkich zaznaczonych naraz
+    var secs = cf.map(function (f) {
+      var s = f.type === 'header' ? null : sectionOf(indexOfId(f._id));
+      return s && s.show_if ? s : null;
+    });
+    var inSec = secs.filter(Boolean).length;
+    var none = inSec === cf.length ? 'fields.cond_section' : inSec ? 'fields.bulk_cond_none' : 'fields.cond_always';
     var o = (mixed ? '<option value="-" selected>' + esc(t('fields.bulk_mixed')) + '</option>' : '') +
-      '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(t('fields.cond_always')) + '</option>';
+      '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(t(none)) + '</option>';
+    var sameSec = inSec === cf.length && secs.every(function (s) { return s === secs[0]; }) ? secs[0] : null;
     var parent = null;
     ps.forEach(function (p) {
       if (p.name === cur) parent = p;
       o += '<option value="' + esc(p.name) + '"' + (cur === p.name ? ' selected' : '') + '>' + esc(t('fields.cond_when', plain(p.label) || p.name)) + '</option>';
     });
+    if (cur && !parent) {
+      // wspólny warunek od pola niżej niż pierwsze zaznaczone (albo
+      // nieistniejącego) - pokazujemy go, a nie pierwszą opcję listy
+      var cp = byName(cur);
+      if (cp && isChoice(cp)) parent = cp;
+      o += '<option value="' + esc(cur) + '" selected>' + (cp ? '' : '⚠ ') + esc(cp ? t('fields.cond_when', plain(cp.label) || cur) : cur) + '</option>';
+    }
     var h = '<div class="fd-box fd-cond"><h5>' + esc(t('fields.cond_title')) + (cf.length < msel.length ? ' (' + esc(t('fields.bulk_of', [cf.length, msel.length])) + ')' : '') + '</h5>' +
       row(t('fields.cond_show'), '<select class="inp" data-bulk-cond>' + o + '</select>');
     if (parent) {
@@ -1064,6 +1080,11 @@
         return '<label class="check fd-check"><input type="checkbox" data-bulk-condval value="' + esc(v) + '"' + (n === cf.length ? ' checked' : '') +
           (n && n < cf.length ? ' data-indet' : '') + '><span>' + esc(x.label) + '</span></label>';
       }).join('') + '</div>';
+    }
+    if (sameSec) {
+      h += '<p class="muted small">' + esc(t('fields.cond_in_section', [plain(sameSec.label), condText(sameSec.show_if)])) + '</p>';
+    } else if (inSec) {
+      h += '<p class="muted small">' + esc(t('fields.bulk_cond_sections', [inSec, cf.length])) + '</p>';
     }
     return h + '<small class="muted">' + esc(t('fields.bulk_cond_hint')) + '</small></div>';
   }

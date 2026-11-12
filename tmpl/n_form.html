@@ -10,7 +10,7 @@
     <div class="r">
       <a class="btn quiet" href="{{.GuestURL}}" target="_blank" rel="noopener">{{T "form.open_page"}}</a>
       <a class="btn quiet" href="/admin/forms/{{.ID}}/answers">{{T "form.answers"}}</a>
-      {{if .HasPeople}}<a class="btn" href="/admin/forms/{{.ID}}/fill">{{T "fill.open"}}</a>{{end}}
+      {{if .HasPeople}}<a class="btn strong" href="/admin/forms/{{.ID}}/fill">{{T "fill.open"}}</a>{{end}}
       {{if not .NoOrg}}<a class="btn quiet" href="/admin#newform={{.ID}}">{{T "formpage.copy"}}</a>{{end}}
     </div>
   </div>

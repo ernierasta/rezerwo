@@ -166,7 +166,11 @@ body.n {
 
   &.quiet { background: transparent; border: 1px solid var(--line); color: var(--ink); }
   &.danger { background: transparent; border: 1px solid var(--line); color: var(--danger-ink); }
+  // wyraźny przycisk w kolorze akcentu (np. „Zgłoś osoby” obok wierszy listy)
+  &.strong { background: var(--blue-deep); color: var(--on-accent); font-weight: 500; }
+  &.strong:hover { filter: brightness(1.1); }
   &.sm { padding: 3px 10px; font-size: 14px; font-weight: 400; }
+  &.sm.strong { font-weight: 500; }
   &[disabled] { opacity: .5; cursor: default; }
 }
 

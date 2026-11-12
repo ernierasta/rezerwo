@@ -42,7 +42,7 @@
       <span>{{.Name}}</span>
       <small class="num">{{.Info}}</small>
     </a>
-    {{if .HasPeople}}<a class="btn sm" href="/admin/forms/{{.ID}}/fill">{{T "fill.open"}}</a></div>{{end}}
+    {{if .HasPeople}}<a class="btn sm strong" href="/admin/forms/{{.ID}}/fill">{{T "fill.open"}}</a></div>{{end}}
     {{else}}
     <div class="empty">{{T "home.no_forms"}}</div>
     {{end}}

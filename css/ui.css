@@ -615,10 +615,21 @@ body.n :focus-visible {
   border: 1px solid var(--line);
   color: var(--danger-ink);
 }
+.btn.strong {
+  background: var(--blue-deep);
+  color: var(--on-accent);
+  font-weight: 500;
+}
+.btn.strong:hover {
+  filter: brightness(1.1);
+}
 .btn.sm {
   padding: 3px 10px;
   font-size: 14px;
   font-weight: 400;
+}
+.btn.sm.strong {
+  font-weight: 500;
 }
 .btn[disabled] {
   opacity: 0.5;

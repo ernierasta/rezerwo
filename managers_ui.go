@@ -42,9 +42,11 @@ type nManager struct {
 
 // nManagerPerms - uprawnienia menedżera (access.go) w formularzu loginu.
 type nManagerPerms struct {
-	All   bool             `json:"all"`
-	Org   bool             `json:"org"`
-	Items []nManagerAccess `json:"items"`
+	All bool `json:"all"`
+	Org bool `json:"org"`
+	// Simple - uproszczony widok strony startowej (admin_ui.go)
+	Simple bool             `json:"simple"`
+	Items  []nManagerAccess `json:"items"`
 }
 
 type nManagerAccess struct {
@@ -136,7 +138,7 @@ type nManagerMsg struct {
 
 // managerPerms - uprawnienia menedżera z bazy.
 func managerPerms(db *DB, a Admin) nManagerPerms {
-	p := nManagerPerms{All: a.AllAccess, Org: a.OrgManage, Items: []nManagerAccess{}}
+	p := nManagerPerms{All: a.AllAccess, Org: a.OrgManage, Simple: a.SimpleView, Items: []nManagerAccess{}}
 	aa, err := db.ManagerAccessGet(a.ID)
 	if err != nil {
 		log.Printf("managerPerms %d: %v", a.ID, err)
@@ -169,6 +171,9 @@ func permsSummary(lang string, p nManagerPerms) string {
 	}
 	if p.Org {
 		parts = append(parts, T(lang, "perm.sum_org"))
+	}
+	if p.Simple {
+		parts = append(parts, T(lang, "perm.sum_simple"))
 	}
 	return strings.Join(parts, " · ")
 }
@@ -239,7 +244,7 @@ func savePerms(w http.ResponseWriter, db *DB, user User, lang string, id int64, 
 		jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "perm.bad_item")})
 		return false
 	}
-	if err := db.ManagerSetPerms(id, user.ID, p.All, p.Org, items); err != nil {
+	if err := db.ManagerSetPerms(id, user.ID, p.All, p.Org, p.Simple, items); err != nil {
 		log.Printf("savePerms %d: %v", id, err)
 		jsonMsg(w, http.StatusInternalServerError, map[string]string{"msg": T(lang, "common.save_error")})
 		return false

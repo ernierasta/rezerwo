@@ -249,6 +249,8 @@ type Login struct {
 	AdminID   int64
 	AllAccess bool
 	OrgManage bool
+	// SimpleView - uproszczony widok strony startowej
+	SimpleView bool
 	// Access - poziom wybranych imprez i formularzy (accessKey -> level),
 	// tylko gdy !AllAccess
 	Access map[string]string

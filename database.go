@@ -43,6 +43,9 @@ type Admin struct {
 	// (access.go, tools/migration-managerperms.sql)
 	AllAccess bool `db:"all_access"`
 	OrgManage bool `db:"org_manage"`
+	// SimpleView - uproszczony widok: na stronie startowej najpierw wielki
+	// przycisk "Dodaj osoby do funkcji" (tools/migration-simpleview.sql)
+	SimpleView bool `db:"simple_view"`
 }
 
 // MANAGER - admins.type loginów menedżerów organizacji: własny e-mail
@@ -1105,7 +1108,7 @@ func (db *DB) AdminGetEmails(UserID int64) ([]string, error) {
 	return aa, err
 }
 
-const managerCols = `id, type, email, passwd, notes, users_id_fk, language, last_login, all_access, org_manage`
+const managerCols = `id, type, email, passwd, notes, users_id_fk, language, last_login, all_access, org_manage, simple_view`
 
 // ManagerGetAll - loginy menedżerów organizacji, w kolejności dodania.
 func (db *DB) ManagerGetAll(userID int64) ([]Admin, error) {
@@ -1131,8 +1134,8 @@ func (db *DB) ManagerGetByEmail(email string) (Admin, error) {
 // ManagerAdd zapisuje nowego menedżera; Passwd musi już być hashem.
 func (db *DB) ManagerAdd(a *Admin) (int64, error) {
 	a.Type = MANAGER
-	ret, err := db.DB.NamedExec(`INSERT INTO admins (type, email, passwd, notes, users_id_fk, all_access, org_manage)
-VALUES(:type, :email, :passwd, :notes, :users_id_fk, :all_access, :org_manage)`, a)
+	ret, err := db.DB.NamedExec(`INSERT INTO admins (type, email, passwd, notes, users_id_fk, all_access, org_manage, simple_view)
+VALUES(:type, :email, :passwd, :notes, :users_id_fk, :all_access, :org_manage, :simple_view)`, a)
 	if err != nil {
 		return -1, err
 	}
@@ -2077,15 +2080,16 @@ func (db *DB) ManagerAccessGet(adminID int64) ([]ManagerAccess, error) {
 }
 
 // ManagerSetPerms zapisuje uprawnienia menedżera swojej organizacji: oba
-// przełączniki i listę wybranych imprez/formularzy (zastępuje poprzednią).
+// przełączniki, uproszczony widok i listę wybranych imprez/formularzy
+// (zastępuje poprzednią).
 // Pozycje muszą już być sprawdzone (należą do organizacji).
-func (db *DB) ManagerSetPerms(id, userID int64, all, org bool, items []ManagerAccess) error {
+func (db *DB) ManagerSetPerms(id, userID int64, all, org, simple bool, items []ManagerAccess) error {
 	tx, err := db.DB.Beginx()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	ret, err := tx.Exec(`UPDATE admins SET all_access=$1, org_manage=$2 WHERE id=$3 AND users_id_fk=$4 AND type=$5`, all, org, id, userID, MANAGER)
+	ret, err := tx.Exec(`UPDATE admins SET all_access=$1, org_manage=$2, simple_view=$3 WHERE id=$4 AND users_id_fk=$5 AND type=$6`, all, org, simple, id, userID, MANAGER)
 	if err != nil {
 		return err
 	}

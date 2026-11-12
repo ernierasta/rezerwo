@@ -1,5 +1,12 @@
 {{define "body"}}
 <div class="doc start">
+  {{if .Simple}}{{if .SimpleForms}}
+  <div class="simple-go">
+    {{range .SimpleForms}}
+    <a class="btn strong huge" href="/admin/forms/{{.ID}}/fill">{{T "fill.big"}}{{if gt (len $.SimpleForms) 1}}<small>{{.Name}}</small>{{end}}</a>
+    {{end}}
+  </div>
+  {{end}}{{end}}
   <h4>{{T "home.events"}}
     <button class="btn quiet sm" data-copy-pick{{if .NoOrg}} hidden{{end}}>{{T "home.copy_event"}}</button>
     <button class="btn sm" id="new-event"{{if .NoOrg}} hidden{{end}}>{{T "home.new_event"}}</button>

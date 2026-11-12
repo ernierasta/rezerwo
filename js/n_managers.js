@@ -12,6 +12,7 @@
   var del = document.getElementById('m-delete');
   var allBox = document.getElementById('m-all');
   var orgBox = document.getElementById('m-org');
+  var simpleBox = document.getElementById('m-simple');
   var itemsBox = document.getElementById('m-items');
   var id = 0;
 
@@ -20,6 +21,7 @@
     p = p || {all: true, org: true, items: []};
     allBox.checked = !!p.all;
     orgBox.checked = !!p.org;
+    simpleBox.checked = !!p.simple;
     var lv = {};
     (p.items || []).forEach(function (it) { lv[it.kind + ':' + it.id] = it.level; });
     itemsBox.querySelectorAll('select[data-kind]').forEach(function (sel) {
@@ -33,7 +35,7 @@
     itemsBox.querySelectorAll('select[data-kind]').forEach(function (sel) {
       if (sel.value) items.push({kind: sel.dataset.kind, id: Number(sel.dataset.id), level: sel.value});
     });
-    return {all: allBox.checked, org: orgBox.checked, items: items};
+    return {all: allBox.checked, org: orgBox.checked, simple: simpleBox.checked, items: items};
   }
 
   allBox.addEventListener('change', function () { itemsBox.hidden = allBox.checked; });

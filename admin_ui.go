@@ -199,6 +199,29 @@ type nHomeVars struct {
 	OlderFinished, OlderForms int
 	// Contacts - zapamiętane osoby menedżera (contacts.go)
 	Contacts nContacts
+	// Simple - uproszczony widok menedżera: nad listami wielki przycisk
+	// "Dodaj osoby do funkcji" dla każdego z tych formularzy (z osobami,
+	// otwarte; gdy żaden nie jest otwarty - najnowszy)
+	Simple      bool
+	SimpleForms []nHomeRow
+}
+
+// simpleForms - formularze do wielkiego przycisku uproszczonego widoku.
+func simpleForms(forms []nHomeRow) []nHomeRow {
+	var open, all []nHomeRow
+	for _, f := range forms {
+		if !f.HasPeople {
+			continue
+		}
+		all = append(all, f)
+		if !f.Closed {
+			open = append(open, f)
+		}
+	}
+	if len(open) == 0 && len(all) > 0 {
+		return all[:1]
+	}
+	return open
 }
 
 // AdminStartPage - lista imprez i formularzy (nowy panel).
@@ -331,8 +354,12 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			vars.Forms = append(vars.Forms, row)
 		}
 
-		if login := requestLogin(r); login.Manager {
+		if login.Manager {
 			vars.Contacts = contactsSection(db, user, login, lang, "/admin", false)
+			if login.SimpleView {
+				vars.Simple = true
+				vars.SimpleForms = simpleForms(vars.Forms)
+			}
 		}
 
 		nRender(w, r, lang, vars, "tmpl/n_home.html", "tmpl/n_contacts.html")

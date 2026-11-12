@@ -151,6 +151,19 @@ func TestManagerPermsAndFill(t *testing.T) {
 	if strings.Contains(home, `href="/admin/catalogs"`) {
 		t.Errorf("home of manager without org_manage links to catalogs")
 	}
+	if strings.Contains(home, "simple-go") {
+		t.Errorf("home without simple view shows the big button")
+	}
+	// uproszczony widok: wielki przycisk do dopisywania osób nad listami
+	simplePerms := strings.Replace(perms, `"org":false`, `"org":false,"simple":true`, 1)
+	if rec := do("POST", "/api/managers", `{"email":"m3@example.com","password":"haslo-menedzera","perms":`+simplePerms+`}`, owner); rec.Code != 200 {
+		t.Fatalf("create simple manager: %d %s", rec.Code, rec.Body)
+	}
+	home3 := do("GET", "/admin", "", login("m3@example.com", "haslo-menedzera")).Body.String()
+	big := strings.Index(home3, `class="btn strong huge" href="/admin/forms/`+itoa(f1)+`/fill"`)
+	if big < 0 || big > strings.Index(home3, "Funkcje") {
+		t.Errorf("simple view: no big fill button above the lists")
+	}
 	// konto organizacji widzi wszystko
 	if rec := do("GET", "/admin/forms/"+itoa(f2), "", owner); rec.Code != 200 {
 		t.Errorf("owner: form 2: %d", rec.Code)

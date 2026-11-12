@@ -204,6 +204,7 @@ func loadAccess(db *DB, l *Login, a Admin) {
 	l.AdminID = a.ID
 	l.AllAccess = a.AllAccess
 	l.OrgManage = a.OrgManage
+	l.SimpleView = a.SimpleView
 	if a.AllAccess {
 		return
 	}

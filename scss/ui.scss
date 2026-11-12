@@ -556,14 +556,39 @@ $gh-colors: (
 // --- listy (strona startowa) ----------------------------------------------
 
 .start {
+  // uproszczony widok menedżera (admins.simple_view): wielki przycisk nad
+  // listami, z wyraźnym odstępem od nich
+  .simple-go {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 8px 0 64px;
+
+    .btn.huge {
+      display: block;
+      padding: 26px 20px;
+      border-radius: 14px;
+      font-size: 24px;
+      font-family: var(--display);
+      text-align: center;
+      white-space: normal;
+      box-shadow: 0 4px 14px rgba(var(--shade), .14);
+
+      small { display: block; margin-top: 6px; font-size: 15px; font-family: var(--font); font-weight: 400; opacity: .9; }
+    }
+  }
+
+  // &.doc - mocniej niż body.n h4 { margin: 0 }; wyraźna przerwa między
+  // sekcjami Imprezy / Formularze / Zapamiętane osoby
+  &.doc h4 { margin: 56px 0 8px; }
+  &.doc h4:first-child { margin-top: 0; }
+
   h4 {
     font-size: 19px;
-    margin: 30px 0 8px;
     display: flex;
     align-items: center;
     gap: 10px;
 
-    &:first-child { margin-top: 0; }
     .btn { margin-left: auto; }
     .btn + .btn { margin-left: 0; }
   }

@@ -1261,15 +1261,41 @@ textarea.inp {
   font-size: 14.5px;
 }
 
+.start .simple-go {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 8px 0 64px;
+}
+.start .simple-go .btn.huge {
+  display: block;
+  padding: 26px 20px;
+  border-radius: 14px;
+  font-size: 24px;
+  font-family: var(--display);
+  text-align: center;
+  white-space: normal;
+  box-shadow: 0 4px 14px rgba(var(--shade), 0.14);
+}
+.start .simple-go .btn.huge small {
+  display: block;
+  margin-top: 6px;
+  font-size: 15px;
+  font-family: var(--font);
+  font-weight: 400;
+  opacity: 0.9;
+}
+.start.doc h4 {
+  margin: 56px 0 8px;
+}
+.start.doc h4:first-child {
+  margin-top: 0;
+}
 .start h4 {
   font-size: 19px;
-  margin: 30px 0 8px;
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.start h4:first-child {
-  margin-top: 0;
 }
 .start h4 .btn {
   margin-left: auto;

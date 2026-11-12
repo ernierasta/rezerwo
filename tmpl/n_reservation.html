@@ -3,7 +3,8 @@
      data-event-id="{{.EventID}}"
      data-currency="{{.DefaultCurrency}}"
      data-price="{{.DefaultPrice}}"
-     data-hidecosts="{{.HideCosts}}"{{if .SoldOut}}
+     data-hidecosts="{{.HideCosts}}"
+     data-live="/res/{{.UserURL}}/live?event-id={{.EventID}}"{{if .SoldOut}}
      data-soldout="true"{{end}}>
   {{template "guestwide" .Head}}
 
@@ -13,7 +14,7 @@
   {{if gt (len .Rooms) 1}}
   <div class="roomtabs" id="roomtabs">
     {{range $i, $r := .Rooms}}
-    <button data-room="{{$r.RoomID}}" {{if eq $i 0}}class="on"{{end}}>{{$r.Name}} <small class="num">{{$r.SeatsFree}}</small></button>
+    <button data-room="{{$r.RoomID}}" {{if eq $i 0}}class="on"{{end}}>{{$r.Name}} <small class="num" data-free>{{$r.SeatsFree}}</small></button>
     {{end}}
   </div>
   {{end}}
@@ -29,7 +30,7 @@
           <button class="btn quiet sm" data-zoom="in" aria-label="{{T "guest.zoom_in"}}">+</button>
           <button class="btn quiet sm" data-zoom="reset">{{T "guest.zoom_reset"}}</button>
           <span class="pan-hint">{{T "guest.pan_hint"}}</span>
-          <span class="free num">{{$r.SeatsFree}}/{{$r.SeatsTotal}} {{T "guest.free_seats"}}</span>
+          <span class="free num"><span data-free>{{$r.SeatsFree}}</span>/<span data-total>{{$r.SeatsTotal}}</span> {{T "guest.free_seats"}}</span>
         </div>
         <svg viewBox="0 0 {{$r.Width}} {{$r.Height}}" role="img" aria-label="{{$r.Name}}">
           {{range $r.Objects}}
@@ -56,7 +57,7 @@
 
           {{range $r.Chairs}}
           <g class="chair{{with .State}} st-{{.}}{{end}}" data-number="{{.Number}}" data-room="{{$r.RoomID}}" data-table="{{.Table}}"
-             data-price="{{.Price}}" data-currency="{{.Currency}}" data-status="{{.Status}}">
+             data-price="{{.Price}}" data-currency="{{.Currency}}" data-status="{{.Status}}" data-state="{{.State}}">
             <rect class="chair-{{.Status}}" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="5">
               <title>{{.Title}}</title>
             </rect>

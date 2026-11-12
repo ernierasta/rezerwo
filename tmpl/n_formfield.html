@@ -40,7 +40,7 @@
     {{$f := .}}
     <select class="inp" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Multiple}}multiple{{end}}>
       {{if not .Multiple}}<option value="">{{T "field.select_hint"}}</option>{{end}}
-      {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}{{if $f.DependsOn}} data-when="{{.When}}"{{end}}>{{.Label}}{{with .Stat}} ({{.Count}}{{if .Goal}} / {{.Goal}}{{end}}){{end}}</option>{{end}}
+      {{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}{{if $f.DependsOn}} data-when="{{.When}}"{{end}} data-label="{{.Label}}">{{.Label}}{{with .Stat}} ({{.Count}}{{if .Goal}} / {{.Goal}}{{end}}){{end}}</option>{{end}}
     </select>
     {{else if eq .Type "number"}}
     <input class="inp num" type="number" inputmode="decimal" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Min}}min="{{.Min}}"{{end}} {{if .Max}}max="{{.Max}}"{{end}} {{if .Step}}step="{{.Step}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}>

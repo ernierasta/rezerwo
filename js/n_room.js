@@ -295,5 +295,73 @@
     render();
   });
 
-  RZ.ready.then(render);
+  // --- stan miejsc na żywo (live.go) -----------------------------------------
+  // Co 15 s pytamy o stan miejsc: zajęte w międzyczasie przestają być
+  // klikalne (i znikają z wyboru gościa, z komunikatem), zwolnione wracają,
+  // liczniki wolnych miejsc się przewijają. O miejscu i tak decyduje /order.
+
+  var chairs = {};
+  document.querySelectorAll('g.chair').forEach(function (g) {
+    chairs[g.dataset.room + ':' + g.dataset.number] = g;
+  });
+
+  function setSoldOut(on) {
+    emptyText = on ? 'guest.sold_out' : 'guest.nothing_selected';
+    ['order', 'order-mobile', 'clear'].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (b) b.hidden = on;
+    });
+  }
+
+  function applyLive(d) {
+    var gone = [];
+    var changed = false;
+    var free = 0, all = 0;
+    (d.rooms || []).forEach(function (room) {
+      free += room.free;
+      all += room.total;
+      room.seats.forEach(function (s) {
+        var g = chairs[room.id + ':' + s.n];
+        if (!g) return;
+        var title = g.querySelector('title');
+        if (title && title.textContent !== s.t) title.textContent = s.t;
+        var state = s.st || '';
+        if (g.dataset.status === s.s && (g.dataset.state || '') === state) return;
+
+        var idx = selected.findIndex(function (x) { return x.el === g; });
+        if (idx >= 0 && s.s !== 'free') {
+          selected.splice(idx, 1);
+          gone.push(seatLabel(g));
+          changed = true;
+        }
+        g.dataset.status = s.s;
+        g.dataset.state = state;
+        g.setAttribute('class', 'chair' + (state ? ' st-' + state : ''));
+        var keep = idx >= 0 && s.s === 'free'; // nadal wybrane przez gościa
+        if (!keep) g.querySelector('rect').setAttribute('class', 'chair-' + s.s);
+        RZ.hit(g);
+      });
+      document.querySelectorAll('[data-room="' + room.id + '"] [data-free]').forEach(function (el) {
+        RZ.setText(el, String(room.free));
+      });
+      document.querySelectorAll('[data-room="' + room.id + '"] [data-total]').forEach(function (el) {
+        RZ.setText(el, String(room.total));
+      });
+    });
+
+    var soldOut = all > 0 && free === 0;
+    if (soldOut !== (emptyText === 'guest.sold_out')) {
+      setSoldOut(soldOut);
+      changed = true;
+    }
+    if (changed) render();
+    if (gone.length) {
+      RZ.toast(RZ.t(gone.length === 1 ? 'guest.seat_gone' : 'guest.seats_gone', [gone.join('; ')]));
+    }
+  }
+
+  RZ.ready.then(function () {
+    render();
+    if (page.dataset.live) RZ.live(page.dataset.live, 15000, applyLive);
+  });
 })();

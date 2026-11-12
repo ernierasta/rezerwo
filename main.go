@@ -112,9 +112,11 @@ func main() {
 
 	// strony dla gości
 	rtr.HandleFunc("/res/{user}", GuestReservationPage(db, cookieStore))
+	rtr.HandleFunc("/res/{user}/live", GuestRoomLiveAPI(db, cookieStore)).Methods("GET")
 	rtr.HandleFunc("/order", GuestOrderPage(db, cookieStore))
 	rtr.HandleFunc("/form/{userurl}/{formurl}", GuestFormPage(db, cookieStore))
 	rtr.HandleFunc("/form/{userurl}/{formurl}/send", GuestFormSendAPI(db, mailConf)).Methods("POST")
+	rtr.HandleFunc("/form/{userurl}/{formurl}/live", GuestFormLiveAPI(db, cookieStore)).Methods("GET")
 	rtr.HandleFunc("/form/{userurl}/{formurl}/done", GuestFormDonePage(db))
 	rtr.HandleFunc("/", AboutHTML())
 

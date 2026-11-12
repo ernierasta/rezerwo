@@ -68,7 +68,8 @@
     }
     document.body.appendChild(toastEl);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(hideToast, undo ? 8000 : 3000);
+    // dłuższy tekst dłużej na ekranie (ok. 60 ms na znak)
+    toastTimer = setTimeout(hideToast, undo ? 8000 : Math.max(3000, String(text).length * 60));
   }
 
   function hideToast() {
@@ -924,7 +925,196 @@
     };
   }
 
+  // --- stan "na żywo" na stronach gościa (live.go) ---------------------------
+  // live() co jakiś czas pyta serwer o liczby, roll() przewija zmienioną
+  // liczbę jak licznik (stara wyjeżdża, nowa wjeżdża), hit() na chwilę
+  // podświetla to, co się zmieniło, morph() nanosi nowy HTML panelu na stary
+  // tak, że animują się tylko zmienione liczby.
+
+  var reduceMotion = !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var rolling = []; // funkcje kończące trwające animacje
+
+  function hit(el) {
+    if (!el || !el.classList) return;
+    el.classList.remove('live-hit');
+    el.getBoundingClientRect(); // restart animacji
+    el.classList.add('live-hit');
+    clearTimeout(el.liveHitTimer);
+    el.liveHitTimer = setTimeout(function () { el.classList.remove('live-hit'); }, 2200);
+  }
+
+  function numOf(s) {
+    var m = String(s).replace(/\s/g, '').match(/-?\d+(?:[.,]\d+)?/);
+    return m ? parseFloat(m[0].replace(',', '.')) : NaN;
+  }
+
+  // rollText zmienia tekst węzła; przewija tylko część, która się różni
+  // ("12 / 10" -> "13 / 10" przewija samo "2" -> "3")
+  function rollText(node, text) {
+    var old = node.nodeValue;
+    if (old === text) return;
+    var parent = node.parentNode;
+    if (reduceMotion || !parent || parent.namespaceURI !== 'http://www.w3.org/1999/xhtml') {
+      node.nodeValue = text;
+      return;
+    }
+    var p = 0;
+    while (p < old.length && p < text.length && old[p] === text[p]) p++;
+    var s = 0;
+    while (s < old.length - p && s < text.length - p && old[old.length - 1 - s] === text[text.length - 1 - s]) s++;
+
+    var box = document.createElement('span');
+    var down = numOf(text) < numOf(old);
+    box.className = 'roll' + (down ? ' down' : '');
+    var a = document.createElement('span');
+    a.className = 'roll-old';
+    a.textContent = old.slice(p, old.length - s);
+    var b = document.createElement('span');
+    b.className = 'roll-new';
+    b.textContent = text.slice(p, text.length - s);
+    box.appendChild(a);
+    box.appendChild(b);
+
+    var frag = document.createDocumentFragment();
+    var pre = document.createTextNode(old.slice(0, p));
+    var post = document.createTextNode(old.slice(old.length - s));
+    frag.appendChild(pre);
+    frag.appendChild(box);
+    frag.appendChild(post);
+    parent.replaceChild(frag, node);
+    node.nodeValue = text;
+
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      if (box.parentNode === parent) {
+        parent.insertBefore(node, pre);
+        parent.removeChild(pre);
+        parent.removeChild(box);
+        parent.removeChild(post);
+      }
+      rolling.splice(rolling.indexOf(finish), 1);
+    }
+    rolling.push(finish);
+    setTimeout(finish, 700);
+  }
+
+  function finishRolls() {
+    rolling.slice().forEach(function (f) { f(); });
+  }
+
+  // setText(el, "3 / 10") - nowy tekst elementu z przewinięciem i błyskiem
+  function setText(el, text) {
+    if (!el || el.textContent === text) return false;
+    finishRolls();
+    if (el.childNodes.length === 1 && el.firstChild.nodeType === 3) rollText(el.firstChild, text);
+    else el.textContent = text;
+    hit(el);
+    return true;
+  }
+
+  function parseHTML(html) {
+    var tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    return tpl.content;
+  }
+
+  function nodesOf(root) {
+    var out = [];
+    var w = document.createTreeWalker(root, 1 | 4); // elementy i teksty
+    while (w.nextNode()) out.push(w.currentNode);
+    return out;
+  }
+
+  function syncAttrs(el, src) {
+    ['class', 'style'].forEach(function (a) {
+      var v = src.getAttribute(a);
+      if (v === null) { if (el.hasAttribute(a)) el.removeAttribute(a); } else if (el.getAttribute(a) !== v) el.setAttribute(a, v);
+    });
+  }
+
+  // morph(el, html) - nanosi nowy HTML na wnętrze el. Gdy zmieniły się
+  // tylko liczby (ten sam układ), przewija zmienione teksty, przestawia
+  // klasy i style (szerokość pasków) i podświetla wiersze ze zmianą;
+  // przy innym układzie podmienia całość. hitSel - który przodek tekstu
+  // ma błysnąć (domyślnie jego rodzic).
+  function morph(el, html, hitSel) {
+    finishRolls();
+    var fresh = parseHTML(html);
+    var holder = document.createElement('div');
+    holder.appendChild(fresh.cloneNode(true));
+    var shape = function (s) { return s.replace(/\d+/g, '0'); };
+    if (el.liveHTML === undefined) el.liveHTML = el.innerHTML;
+    if (el.liveHTML === holder.innerHTML) return false;
+    if (shape(el.liveHTML) !== shape(holder.innerHTML)) {
+      el.innerHTML = holder.innerHTML;
+      el.liveHTML = holder.innerHTML;
+      hit(el);
+      return true;
+    }
+    el.liveHTML = holder.innerHTML;
+    var olds = nodesOf(el), news = nodesOf(holder);
+    if (olds.length !== news.length) {
+      el.innerHTML = holder.innerHTML;
+      hit(el);
+      return true;
+    }
+    var hits = [];
+    olds.forEach(function (o, i) {
+      var n = news[i];
+      if (o.nodeType === 1) {
+        syncAttrs(o, n);
+      } else if (o.nodeValue !== n.nodeValue) {
+        // rodzic przed rollText - ten na czas animacji wyjmuje węzeł z drzewa
+        var par = o.parentNode;
+        var h = par && (hitSel && par.closest(hitSel) || par);
+        rollText(o, n.nodeValue);
+        if (h && hits.indexOf(h) < 0) hits.push(h);
+      }
+    });
+    hits.forEach(hit);
+    return true;
+  }
+
+  // live(url, ms, onData) - odpytuje url co ms milisekund, onData dostaje
+  // JSON tylko wtedy, gdy coś się zmieniło. W karcie w tle nie pyta wcale,
+  // po powrocie pyta od razu; przy błędach coraz rzadziej, 404/410 kończy.
+  function live(url, every, onData) {
+    var timer = null, last = null, wait = every, stopped = false, busy = false;
+    function schedule(ms) {
+      clearTimeout(timer);
+      if (!stopped) timer = setTimeout(poll, ms);
+    }
+    function poll() {
+      if (stopped || busy || document.hidden) return;
+      busy = true;
+      fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+        .then(function (r) {
+          if (r.status === 404 || r.status === 410) { stopped = true; return null; }
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        })
+        .then(function (txt) {
+          wait = every;
+          if (txt === null || txt === last) return;
+          last = txt;
+          onData(JSON.parse(txt));
+        })
+        .catch(function () { wait = Math.min(wait * 2, 300000); })
+        .then(function () { busy = false; schedule(wait); });
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) schedule(300);
+    });
+    schedule(every);
+  }
+
   global.RZ = {
+    live: live,
+    morph: morph,
+    setText: setText,
+    hit: hit,
     t: t,
     tN: tN,
     ready: ready,

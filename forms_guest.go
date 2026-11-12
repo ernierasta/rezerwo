@@ -65,6 +65,8 @@ type nFormPageVars struct {
 	Rows     []RenderRow
 	UniqID   string
 	SendURL  string
+	// Live - adres stanu "na żywo" (live.go); pusty = strona nie odpytuje
+	Live string
 
 	Open    bool
 	Preview bool // admin ogląda zamknięty formularz
@@ -198,12 +200,12 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 
 		// panel informacyjny: automatyczny, z wybranych pól albo własny tekst;
 		// część pól może mieć stan pokazany przy polu zamiast w panelu
-		if mode := panelMode(templ); mode == PANELAUTO || mode == PANELFIELDS {
-			pv := BuildPanel(db, user, templ, mode)
-			v.Info = renderPanelVars(lang, pv)
-			AttachFieldStats(v.Rows, pv.Fields)
-		} else {
-			v.Info = RenderInfoPanel(db, user, templ, mode)
+		// (live.go odświeża je potem na stronie co pół minuty)
+		info, items := guestFormInfo(db, user, templ, lang)
+		v.Info = info
+		AttachFieldStats(v.Rows, items)
+		if info != "" || len(items) > 0 {
+			v.Live = fmt.Sprintf("/form/%s/%s/live", user.URL, templ.URL)
 		}
 
 		// formularz bez nazwiska jest anonimowy: dostaje unikatowy numer

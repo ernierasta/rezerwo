@@ -1,6 +1,6 @@
 {{define "body"}}
 <div class="guest gform{{if .Info}} has-info{{end}}{{with .Density}} density-{{.}}{{end}}" id="gform"
-     data-send="{{.SendURL}}" data-draft="{{.DraftKey}}" data-currency="{{.Currency}}" data-lang="{{.Lang}}"{{if .EditToken}}
+     data-send="{{.SendURL}}" data-draft="{{.DraftKey}}" data-currency="{{.Currency}}" data-lang="{{.Lang}}"{{with .Live}} data-live="{{.}}"{{end}}{{if .EditToken}}
      data-edit="{{.EditToken}}" data-prefill="{{.Prefill}}"{{end}}>
   {{template "guestwide" .Head}}
 

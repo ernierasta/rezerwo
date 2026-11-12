@@ -21,6 +21,79 @@
   var sent = false;
   var conds = null;
 
+  // --- liczby na żywo (live.go) ------------------------------------------
+  // Co 30 s pytamy o panel informacyjny i liczby przy polach; zmienione
+  // liczby się przewijają. Cele niczego nie blokują (12 / 10 jest w porządku).
+  // Opcje list zbieramy już teraz: listy zależne (n_formconds.js) zdejmują
+  // część opcji z <select>, a liczby mają się zmieniać i w nich.
+  var liveSelOpts = Array.prototype.map.call(form.querySelectorAll('select option[data-label]'), function (o) {
+    return {o: o, ff: o.closest('.ff')};
+  });
+
+  function optKey(el, value) {
+    return (el.getAttribute('data-when') || '') + '|' + value;
+  }
+
+  function liveStat(ff, html) {
+    var cur = ff.querySelector(':scope > .ff-stat');
+    if (!html) {
+      if (cur) cur.remove();
+      return;
+    }
+    var fresh = document.createElement('div');
+    fresh.innerHTML = html.trim();
+    var n = fresh.firstElementChild;
+    if (!n) return;
+    if (!cur) {
+      var before = ff.classList.contains('ff-group') ? null : ff.querySelector(':scope > .ff-d');
+      ff.insertBefore(n, before || ff.querySelector(':scope > .ff-err'));
+      RZ.hit(n);
+      return;
+    }
+    if (cur.className !== n.className) cur.className = n.className;
+    RZ.morph(cur, n.innerHTML);
+  }
+
+  function liveOpts(ff, opts) {
+    Array.prototype.forEach.call(ff.querySelectorAll('label.opt'), function (l) {
+      var inp = l.querySelector('input');
+      if (!inp || inp.hasAttribute('data-other')) return;
+      var o = opts[optKey(l, inp.value)];
+      if (!o) return;
+      var small = l.querySelector('.opt-stat');
+      if (!o.t) {
+        if (small) small.remove();
+        return;
+      }
+      if (!small) {
+        small = document.createElement('small');
+        small.className = 'opt-stat';
+        l.appendChild(small);
+      }
+      small.classList.toggle('done', !!o.d);
+      RZ.setText(small, o.t);
+    });
+    liveSelOpts.forEach(function (x) {
+      if (x.ff !== ff) return;
+      var o = opts[optKey(x.o, x.o.value)];
+      if (!o) return;
+      var text = x.o.dataset.label + (o.t ? ' (' + o.t + ')' : '');
+      if (x.o.textContent !== text) x.o.textContent = text;
+    });
+  }
+
+  function applyLive(d) {
+    var inner = root.querySelector('.gform-info .inner');
+    if (inner && typeof d.info === 'string') RZ.morph(inner, d.info, 'li, .ip-row');
+    var f = d.fields || {};
+    fields.forEach(function (ff) {
+      var lf = f[ff.dataset.name];
+      if (!lf) return;
+      if (lf.opts) liveOpts(ff, lf.opts);
+      else liveStat(ff, lf.stat);
+    });
+  }
+
   // --- pomocnicze --------------------------------------------------------
 
   function inputs(ff) {
@@ -459,5 +532,6 @@
       if (ff.dataset.type === 'multiplierField') updateMult(ff);
     });
     updateTotal();
+    if (root.dataset.live) RZ.live(root.dataset.live, 30000, applyLive);
   });
 })();

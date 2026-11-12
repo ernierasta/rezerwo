@@ -4741,3 +4741,106 @@ ul.sum-list.compact b {
     grid-column: 1/-1;
   }
 }
+.roll {
+  display: inline-grid;
+  overflow: hidden;
+  vertical-align: bottom;
+  line-height: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.roll > span {
+  grid-area: 1/1;
+  white-space: pre;
+}
+.roll .roll-old {
+  animation: roll-out 0.45s cubic-bezier(0.3, 0.7, 0.3, 1) forwards;
+}
+.roll .roll-new {
+  animation: roll-in 0.45s cubic-bezier(0.3, 0.7, 0.3, 1) both;
+}
+.roll.down .roll-old {
+  animation-name: roll-out-down;
+}
+.roll.down .roll-new {
+  animation-name: roll-in-down;
+}
+
+@keyframes roll-out {
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+@keyframes roll-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+@keyframes roll-out-down {
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+@keyframes roll-in-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+.live-hit:not(g) {
+  animation: live-hit 2s ease-out;
+  border-radius: 4px;
+}
+
+@keyframes live-hit {
+  0%, 25% {
+    background-color: var(--blue-soft);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.opts .opt .opt-stat.live-hit {
+  animation-name: live-hit-pane;
+}
+
+@keyframes live-hit-pane {
+  0%, 25% {
+    background-color: var(--blue-soft);
+  }
+  100% {
+    background-color: var(--pane);
+  }
+}
+g.chair.live-hit rect {
+  animation: seat-hit 1.8s ease-out;
+}
+
+@keyframes seat-hit {
+  0%, 30% {
+    stroke: var(--blue-deep);
+    stroke-width: 4;
+  }
+  100% {
+    stroke-width: 1.5;
+  }
+}
+.ip-bar i {
+  transition: width 0.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll .roll-old, .roll .roll-new {
+    animation: none;
+  }
+
+  .roll .roll-old {
+    display: none;
+  }
+
+  .ip-bar i {
+    transition: none;
+  }
+}

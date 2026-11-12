@@ -51,6 +51,9 @@ type nGuestVars struct {
 	HideCosts       bool
 	UserURL         string
 	SoldOut         bool // żadnego wolnego miejsca we wszystkich salach
+	// MaxSeats - ile miejsc można wybrać naraz (seat_limits.go); 0 = bez
+	// limitu (admin sprzedający przy wejściu)
+	MaxSeats int
 
 	// tekst pokazywany, gdy gość klika "Zamawiam" bez wybranych miejsc
 	NoSitsTitle string
@@ -177,6 +180,9 @@ func GuestReservationPage(db *DB, cs *sessions.CookieStore) func(w http.Response
 			total += gr.SeatsTotal
 		}
 		vars.SoldOut = total > 0 && free == 0
+		if !isAdminSession(r, db, cs) {
+			vars.MaxSeats = seatCap(total)
+		}
 
 		guestRenderTheme(w, lng, event.Theme.String, vars, "tmpl/n_reservation.html")
 	}

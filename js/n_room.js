@@ -16,6 +16,8 @@
   var emptyText = page.dataset.soldout ? 'guest.sold_out' : 'guest.nothing_selected';
 
   var selected = []; // {number, room, price, el}
+  // limit miejsc w jednym zamówieniu (seat_limits.go); 0 = bez limitu
+  var maxSeats = Number(page.dataset.maxseats || 0);
 
   function money(n) {
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (currency ? ' ' + currency : '');
@@ -81,6 +83,10 @@
       selected.splice(idx, 1);
       rect.setAttribute('class', 'chair-free');
     } else {
+      if (maxSeats && selected.length >= maxSeats) {
+        RZ.toast(RZ.t('guest.max_seats', [RZ.tN('count.seat', maxSeats)]));
+        return;
+      }
       var price = Number(g.dataset.price) || defaultPrice;
       selected.push({el: g, number: g.dataset.number, room: g.dataset.room, price: price});
       rect.setAttribute('class', 'chair-selected');

@@ -114,7 +114,8 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		lng := KnownLang(event.Language.String)
 
 		// szkic albo sprzedaż zamknięta: tylko admin (np. sprzedaż przy wejściu)
-		if !eventOnSale(event, nowUnix()) && !isAdminSession(r, db, cs) {
+		admin := isAdminSession(r, db, cs)
+		if !eventOnSale(event, nowUnix()) && !admin {
 			log.Printf("GuestOrderPage: event %d not on sale", eventID)
 			ErrorHTML(T(lng, "guest.no_event_title"), T(lng, "guest.no_event"), lng, w, r)
 			return
@@ -146,6 +147,27 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			}
 			seen[k] = true
 			picked = append(picked, c)
+		}
+
+		// limit miejsc na gościa i na adres IP (seat_limits.go); admin
+		// sprzedający przy wejściu limitu nie ma
+		holdIP := ""
+		if !admin {
+			limit := seatCap(len(chairs))
+			if len(picked) > limit {
+				log.Printf("GuestOrderPage: %d seats over limit %d (event %d, %d seats)", len(picked), limit, eventID, len(chairs))
+				ErrorHTML(T(lng, "order.too_many_title"), T(lng, "order.too_many_text", TN(lng, "count.seat", int64(limit))), lng, w, r)
+				return
+			}
+			if holdIP = clientIP(r); holdIP != "" {
+				holds.lock()
+				defer holds.unlock()
+				if held := holds.held(db, holdIP, eventID); held+len(picked) > limit {
+					log.Printf("GuestOrderPage: %s holds %d seats, wants %d more, limit %d (event %d)", holdIP, held, len(picked), limit, eventID)
+					ErrorHTML(T(lng, "order.held_title"), T(lng, "order.held_text", TN(lng, "count.seat", int64(held)), TN(lng, "count.seat", int64(limit)), MARKEDMINUTES), lng, w, r)
+					return
+				}
+			}
 		}
 
 		// blokada miejsc: status "marked" do czasu potwierdzenia zamówienia
@@ -180,6 +202,9 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			labels = append(labels, strconv.FormatInt(ss[i], 10))
 		}
 		totalPrice := strconv.FormatInt(total, 10)
+		if holdIP != "" {
+			holds.add(holdIP, resIDs)
+		}
 
 		vars := nOrderVars{
 			Title:           event.Name,

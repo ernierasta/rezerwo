@@ -4,7 +4,8 @@
      data-currency="{{.DefaultCurrency}}"
      data-price="{{.DefaultPrice}}"
      data-hidecosts="{{.HideCosts}}"
-     data-live="/res/{{.UserURL}}/live?event-id={{.EventID}}"{{if .SoldOut}}
+     data-live="/res/{{.UserURL}}/live?event-id={{.EventID}}"{{with .MaxSeats}}
+     data-maxseats="{{.}}"{{end}}{{if .SoldOut}}
      data-soldout="true"{{end}}>
   {{template "guestwide" .Head}}
 

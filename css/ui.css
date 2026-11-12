@@ -1269,7 +1269,7 @@ textarea.inp {
 }
 .start .simple-go .huge {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
@@ -1308,16 +1308,8 @@ textarea.inp {
   color: var(--blue-deep);
   font-weight: 500;
 }
-.start .simple-go .huge .go {
-  font-size: 24px;
-  color: var(--blue-deep);
-  transition: transform 0.15s;
-}
 .start .simple-go .huge:hover, .start .simple-go .huge:focus-visible {
   border-color: var(--blue-deep);
-}
-.start .simple-go .huge:hover .go, .start .simple-go .huge:focus-visible .go {
-  transform: translateX(4px);
 }
 .start.doc h4 {
   margin: 56px 0 8px;

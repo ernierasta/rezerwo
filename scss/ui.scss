@@ -558,7 +558,7 @@ $gh-colors: (
 .start {
   // uproszczony widok menedżera (admins.simple_view): wielki przycisk nad
   // listami, z wyraźnym odstępem od nich. Płaski jak reszta panelu - że to
-  // przycisk, mówi kółko z plusem, podpowiedź „Kliknij tutaj…” i strzałka
+  // przycisk, mówi kółko z plusem, i podpowiedź „Kliknij tutaj…”
   .simple-go {
     display: flex;
     flex-direction: column;
@@ -567,7 +567,7 @@ $gh-colors: (
 
     .huge {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr);
       align-items: center;
       gap: 16px;
       padding: 16px 20px;
@@ -592,10 +592,8 @@ $gh-colors: (
       b { display: block; font-family: var(--display); font-weight: 500; font-size: 21px; line-height: 1.25; }
       small { display: block; margin-top: 2px; font-size: 14px; color: var(--muted); }
       small .click { color: var(--blue-deep); font-weight: 500; }
-      .go { font-size: 24px; color: var(--blue-deep); transition: transform .15s; }
 
       &:hover, &:focus-visible { border-color: var(--blue-deep); }
-      &:hover .go, &:focus-visible .go { transform: translateX(4px); }
     }
   }
 

@@ -78,6 +78,7 @@ func ManagersPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 			http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 			return
 		}
+		setRequestLogin(r, login)
 		lang := PanelLang(r)
 		user := login.User
 
@@ -106,7 +107,7 @@ func ManagersPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		if vars.CanEdit {
 			vars.Events, vars.Forms = permItems(db, user, lang)
 		}
-		nRender(w, lang, vars, "tmpl/n_managers.html")
+		nRender(w, r, lang, vars, "tmpl/n_managers.html")
 	}
 }
 

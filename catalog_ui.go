@@ -75,7 +75,7 @@ func MailPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *h
 		vars.Forms = mailForms(db, user, true)
 		vars.Vars = mailPageVars(db, user, vars.Forms)
 		vars.UpURL, vars.UpLabel = upLink(r, db, user, lang)
-		nRender(w, lang, vars, "tmpl/n_mail.html")
+		nRender(w, r, lang, vars, "tmpl/n_mail.html")
 	}
 }
 
@@ -342,7 +342,7 @@ func AccountPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 		}
 		vars.Back, vars.BackLabel = backLink(r, lang, "catalog.accounts")
 		vars.UpURL, vars.UpLabel = upLink(r, db, user, lang)
-		nRender(w, lang, vars, "tmpl/n_account.html")
+		nRender(w, r, lang, vars, "tmpl/n_account.html")
 	}
 }
 

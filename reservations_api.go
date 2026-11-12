@@ -788,6 +788,6 @@ func ReservationsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			EventName: event.Name,
 			Currency:  event.DefaultCurrency,
 		}
-		nRender(w, lang, vars, "tmpl/n_reservations.html")
+		nRender(w, r, lang, vars, "tmpl/n_reservations.html")
 	}
 }

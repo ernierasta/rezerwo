@@ -97,6 +97,6 @@ func RoomDesignerPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		if v.RoomRes, err = db.RoomReservations(roomID); err != nil {
 			log.Printf("RoomDesignerPage: room %d reservations: %v", roomID, err)
 		}
-		nRender(w, lang, v, "tmpl/n_designer.html")
+		nRender(w, r, lang, v, "tmpl/n_designer.html")
 	}
 }

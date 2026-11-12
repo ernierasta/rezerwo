@@ -210,7 +210,7 @@ func FormFillPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		people := peopleFields(defs)
 		if len(people) == 0 {
 			v.NoPeople = true
-			nRender(w, lang, v, "tmpl/n_formfill.html", "tmpl/n_formfield.html")
+			nRender(w, r, lang, v, "tmpl/n_formfill.html", "tmpl/n_formfield.html")
 			return
 		}
 
@@ -250,7 +250,7 @@ func FormFillPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		}
 		b, _ := json.Marshal(st)
 		v.State = template.JS(b)
-		nRender(w, lang, v, "tmpl/n_formfill.html", "tmpl/n_formfield.html")
+		nRender(w, r, lang, v, "tmpl/n_formfill.html", "tmpl/n_formfield.html")
 	}
 }
 

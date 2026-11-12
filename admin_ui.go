@@ -50,8 +50,13 @@ func adminUser(w http.ResponseWriter, r *http.Request, db *DB, cs *sessions.Cook
 		return User{}, false
 	}
 	// handler sięga po zalogowanego przez requestLogin(r)
-	*r = *r.WithContext(context.WithValue(r.Context(), loginCtxKey{}, login))
+	setRequestLogin(r, login)
 	return login.User, true
+}
+
+// setRequestLogin zapisuje zalogowanego w żądaniu (requestLogin).
+func setRequestLogin(r *http.Request, login Login) {
+	*r = *r.WithContext(context.WithValue(r.Context(), loginCtxKey{}, login))
 }
 
 type loginCtxKey struct{}
@@ -97,15 +102,20 @@ func adminOwned[T any](w http.ResponseWriter, r *http.Request, db *DB, cs *sessi
 }
 
 // nTemplate parsuje szablon strony razem z nowym layoutem i funkcjami języka.
-func nTemplate(lang string, files ...string) (*template.Template, error) {
+// nTemplate - szablon panelu; manager = zalogowany jest menedżerem (bez
+// linku "Dostęp" w górnym pasku).
+func nTemplate(lang string, manager bool, files ...string) (*template.Template, error) {
 	all := append([]string{}, files...)
 	all = append(all, "tmpl/n_base.html")
 	name := strings.TrimPrefix(files[0], "tmpl/")
-	return template.New(name).Funcs(TmplFuncs(lang)).ParseFiles(all...)
+	return template.New(name).Funcs(TmplFuncs(lang)).
+		Funcs(template.FuncMap{"manager": func() bool { return manager }}).
+		ParseFiles(all...)
 }
 
-func nRender(w http.ResponseWriter, lang string, vars interface{}, files ...string) {
-	t, err := nTemplate(lang, files...)
+// nRender - strona panelu; zalogowanego bierze z requestLogin(r).
+func nRender(w http.ResponseWriter, r *http.Request, lang string, vars interface{}, files ...string) {
+	t, err := nTemplate(lang, requestLogin(r).Manager, files...)
 	if err != nil {
 		log.Printf("admin_ui: template parse %v: %v", files, err)
 		http.Error(w, "template error", http.StatusInternalServerError)
@@ -325,7 +335,7 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			vars.Contacts = contactsSection(db, user, login, lang, "/admin", false)
 		}
 
-		nRender(w, lang, vars, "tmpl/n_home.html", "tmpl/n_contacts.html")
+		nRender(w, r, lang, vars, "tmpl/n_home.html", "tmpl/n_contacts.html")
 	}
 }
 
@@ -525,7 +535,7 @@ func CatalogsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 
 		vars.Contacts = contactsSection(db, user, requestLogin(r), lang, "/admin/catalogs", true)
 
-		nRender(w, lang, vars, "tmpl/n_catalogs.html", "tmpl/n_contacts.html")
+		nRender(w, r, lang, vars, "tmpl/n_catalogs.html", "tmpl/n_contacts.html")
 	}
 }
 
@@ -726,7 +736,7 @@ func EventPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *
 			}
 		}
 		vars.FormChoices = forms
-		nRender(w, lang, vars, "tmpl/n_event.html")
+		nRender(w, r, lang, vars, "tmpl/n_event.html")
 	}
 }
 

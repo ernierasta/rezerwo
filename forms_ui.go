@@ -104,7 +104,7 @@ func FormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *h
 		vars := buildFormVars(db, user, templ, lang)
 		vars.RO = !requestLogin(r).CanEdit(ACCFORM, templ.ID)
 		vars.NoOrg = noOrg(r)
-		nRender(w, lang, vars, "tmpl/n_form.html")
+		nRender(w, r, lang, vars, "tmpl/n_form.html")
 	}
 }
 
@@ -703,7 +703,7 @@ func AnswersPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r
 			ID:   templ.ID,
 			Name: templ.Name,
 		}
-		nRender(w, lang, vars, "tmpl/n_answers.html")
+		nRender(w, r, lang, vars, "tmpl/n_answers.html")
 	}
 }
 

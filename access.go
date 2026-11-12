@@ -185,8 +185,9 @@ func denyAccess(w http.ResponseWriter, r *http.Request, login Login) {
 		jsonMsg(w, http.StatusForbidden, map[string]string{"msg": T(lang, "perm.denied")})
 		return
 	}
+	setRequestLogin(r, login)
 	w.WriteHeader(http.StatusForbidden)
-	nRender(w, lang, nPanelErrorVars{
+	nRender(w, r, lang, nPanelErrorVars{
 		NPage: NPage{Title: T(lang, "perm.denied_title"), OrgName: orgName(login.User), NoOrg: !login.CanOrg()},
 		Text:  T(lang, "perm.denied"),
 	}, "tmpl/n_panel_error.html")

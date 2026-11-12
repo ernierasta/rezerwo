@@ -117,6 +117,13 @@ func TestManagers(t *testing.T) {
 	if rec := do("GET", "/admin/managers", "", owner); rec.Code != 200 || !strings.Contains(rec.Body.String(), "jan@example.com") || !strings.Contains(rec.Body.String(), `id="manager-form"`) {
 		t.Fatalf("manager page for owner: %d", rec.Code)
 	}
+	// zakładka "Dostęp" tylko dla konta organizacji
+	if rec := do("GET", "/admin/managers", "", mgr); strings.Contains(rec.Body.String(), `href="/admin/managers"`) {
+		t.Fatal("manager sees the access tab")
+	}
+	if rec := do("GET", "/admin/managers", "", owner); !strings.Contains(rec.Body.String(), `href="/admin/managers"`) {
+		t.Fatal("owner does not see the access tab")
+	}
 
 	// inna organizacja nie zmieni cudzego menedżera
 	db.UserSetPass("other@example.com", h)

@@ -118,7 +118,7 @@ func FormFieldsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		if back := r.URL.Query().Get("back"); strings.HasPrefix(back, "/admin/") {
 			v.BackURL = back
 		}
-		nRender(w, lang, v, "tmpl/n_fields.html")
+		nRender(w, r, lang, v, "tmpl/n_fields.html")
 	}
 }
 

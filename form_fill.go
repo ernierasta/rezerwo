@@ -254,6 +254,29 @@ func FormFillPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 	}
 }
 
+// FormFillPeopleAPI - GET /api/forms/{id}/fill/people: aktualne osoby przy
+// funkcjach; strona dopisywania odpytuje co 30 s (RZ.live), żeby widzieć
+// zgłoszenia gości i innych menedżerów bez przeładowania.
+func FormFillPeopleAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, templ, ok := adminFormTemplate(w, r, db, cs, false)
+		if !ok {
+			return
+		}
+		defs, err := ParseFormDef(templ.Content.String)
+		if err != nil {
+			log.Printf("FormFillPeopleAPI: form %d: %v", templ.ID, err)
+		}
+		people, err := fillPeople(db, requestLogin(r), templ, peopleFields(defs))
+		if err != nil {
+			log.Printf("FormFillPeopleAPI: people: %v", err)
+			jsonMsg(w, http.StatusInternalServerError, map[string]string{"msg": "error"})
+			return
+		}
+		writeLive(w, r, map[string]interface{}{"people": people})
+	}
+}
+
 // --- zapis ----------------------------------------------------------------
 
 type fillAdd struct {

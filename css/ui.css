@@ -1264,26 +1264,42 @@ textarea.inp {
 .start .simple-go {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin: 8px 0 64px;
+  align-items: center;
+  gap: 18px;
+  margin: 12px 0 64px;
 }
 .start .simple-go .btn.huge {
+  --edge: color-mix(in srgb, var(--blue-deep) 62%, #000);
   display: block;
-  padding: 26px 20px;
-  border-radius: 14px;
-  font-size: 24px;
+  width: min(440px, 100%);
+  padding: 18px 28px;
+  border-radius: 16px;
+  font-size: 21px;
   font-family: var(--display);
   text-align: center;
   white-space: normal;
-  box-shadow: 0 4px 14px rgba(var(--shade), 0.14);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--blue-deep) 78%, #fff), var(--blue-deep) 55%);
+  border: 1px solid var(--edge);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 0 var(--edge), 0 10px 22px rgba(var(--shade), 0.28);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  transform: translateY(0);
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+}
+.start .simple-go .btn.huge:hover {
+  filter: brightness(1.08);
+}
+.start .simple-go .btn.huge:active {
+  transform: translateY(5px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 0 var(--edge), 0 3px 8px rgba(var(--shade), 0.25);
 }
 .start .simple-go .btn.huge small {
   display: block;
-  margin-top: 6px;
-  font-size: 15px;
+  margin-top: 4px;
+  font-size: 14px;
   font-family: var(--font);
   font-weight: 400;
   opacity: 0.9;
+  text-shadow: none;
 }
 .start.doc h4 {
   margin: 56px 0 8px;
@@ -4326,6 +4342,67 @@ ul.sum-list.compact b {
   margin-left: 4px;
 }
 
+.ff-people-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.ff-people-list .fpl[hidden], .ff-people-list .fpl.empty {
+  display: none;
+}
+.ff-people-list .fpl-h {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  color: var(--muted);
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.ff-people-list .fpl-n {
+  font-weight: 600;
+  color: var(--ink);
+}
+.ff-people-list .fpl-ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.ff-people-list .fpl-ul li {
+  padding: 2px 10px 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 14px;
+}
+.ff-people-list .fpl-ul li::before {
+  content: "✓";
+  color: var(--ok-ink);
+  font-weight: 700;
+  margin-right: 5px;
+}
+.ff-people-list .fpl-ul li.me {
+  border-color: var(--ok-ink);
+  font-weight: 500;
+}
+.ff-people-list .fpl-ul li.me small {
+  margin-left: 6px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.ff-people-list .fpl-ul li.fpl-slot {
+  min-width: 120px;
+  border-style: dashed;
+  background: transparent;
+}
+.ff-people-list .fpl-ul li.fpl-slot::before {
+  content: " ";
+  margin: 0;
+}
+
 .fd .fd-place-all {
   font-size: 13px;
   margin: 2px 0 12px;
@@ -4521,6 +4598,15 @@ ul.sum-list.compact b {
   border: 0;
   padding: 2px 0;
   font-size: 13.5px;
+}
+.fill .pp-list li:not(.empty):not(.pp-blank):not(.removed) > b::before {
+  content: "✓";
+  color: var(--ok-ink);
+  font-weight: 700;
+  margin-right: 6px;
+}
+.fill .pp-list li.new > b::before {
+  opacity: 0.55;
 }
 .fill .pp-add {
   position: relative;

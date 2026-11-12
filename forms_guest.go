@@ -204,7 +204,9 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 		info, items := guestFormInfo(db, user, templ, lang)
 		v.Info = info
 		AttachFieldStats(v.Rows, items)
-		if info != "" || len(items) > 0 {
+		lists := peopleLists(db, templ, defs)
+		AttachPeopleLists(v.Rows, defs, lists)
+		if info != "" || len(items) > 0 || len(lists) > 0 {
 			v.Live = fmt.Sprintf("/form/%s/%s/live", user.URL, templ.URL)
 		}
 

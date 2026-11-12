@@ -167,6 +167,8 @@ type RenderOption struct {
 	ID       string
 	Stat     *OptionStat // stan opcji przy polu (panel_place), patrz form_stats.go
 	When     string      // opcja pola zależnego: wartość rodzica (formconds.go)
+	People   []string    // imiona i nazwiska zapisanych (people_list.go)
+	Blanks   []struct{}  // puste miejsca do celu pola (people_list.go)
 }
 
 // RenderField to pole gotowe dla szablonu tmpl/n_formfield.html.
@@ -209,6 +211,10 @@ type RenderField struct {
 	// potrzeba (panel_goal); tylko strona /admin/forms/{id}/fill (form_fill.go)
 	People bool
 	Goal   int64
+	// PeopleList - pod opcjami lista zapisanych (people_list.go), Slots -
+	// ile miejsc na osoby pokazać przy każdej opcji (puste do celu pola)
+	PeopleList bool
+	Slots      int64
 }
 
 // IsInput mówi, czy pole zbiera odpowiedź.

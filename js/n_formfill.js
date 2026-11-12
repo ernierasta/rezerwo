@@ -171,7 +171,9 @@
       if (p.mine) {
         btn = removed ? button(t('fill.restore'), {'data-restore': p.form}) : button('×', {'data-remove': p.form, 'title': t('fill.remove'), 'aria-label': t('fill.remove')});
       }
-      list.appendChild(li(p, removed ? 'removed' : (p.mine ? 'mine' : ''), removed ? t('fill.will_remove') : tag, btn));
+      var el = li(p, removed ? 'removed' : (p.mine ? 'mine' : ''), removed ? t('fill.will_remove') : tag, btn);
+      el.dataset.k = key(field, p.form);
+      list.appendChild(el);
     });
     (pending.add[field] || []).forEach(function (p, i) {
       list.appendChild(li(p, 'new', t('fill.new'), button('×', {'data-unadd': i, 'title': t('fill.remove'), 'aria-label': t('fill.remove')})));
@@ -405,14 +407,18 @@
     return out;
   }
 
+  var saving = false;
+
   saveBtn.addEventListener('click', function () {
     var list = batches();
     if (!list.length) return;
+    saving = true;
     saveBtn.disabled = true;
     msgEl.hidden = true;
     var sum = {added: 0, removed: 0, mails: 0};
     var step = function (i) {
       if (i >= list.length) {
+        saving = false;
         pending = {add: {}, remove: {}};
         renderAll();
         var text = t('fill.saved', [sum.added, sum.removed]);
@@ -436,6 +442,7 @@
         });
         step(i + 1);
       }).catch(function (err) {
+        saving = false;
         renderAll();
         msgEl.textContent = err.message || t('common.save_error');
         msgEl.hidden = false;
@@ -453,9 +460,25 @@
     if (pendingCount()) { e.preventDefault(); e.returnValue = ''; }
   });
 
+  // osoby na żywo: zgłoszenia gości i innych menedżerów co 30 s; nowe
+  // wiersze na chwilę się podświetlają, oczekujące zmiany zostają
+  function applyLive(d) {
+    if (saving || !d.people) return; // odpowiedź zapisu i tak przyniesie świeży stan
+    var known = {};
+    Object.keys(people).forEach(function (f) {
+      (people[f] || []).forEach(function (p) { known[key(f, p.form)] = true; });
+    });
+    people = d.people;
+    renderAll();
+    Array.prototype.forEach.call(form.querySelectorAll('.pp-list li[data-k]'), function (el) {
+      if (!known[el.dataset.k]) RZ.hit(el);
+    });
+  }
+
   RZ.ready.then(function () {
     restoreDraft();
     conds.apply();
     renderAll();
+    RZ.live('/api/forms/' + formID + '/fill/people', 30000, applyLive);
   });
 })();

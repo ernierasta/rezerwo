@@ -134,6 +134,9 @@ type liveOpt struct {
 type liveField struct {
 	Stat string             `json:"stat,omitempty"`
 	Opts map[string]liveOpt `json:"opts,omitempty"`
+	// People - lista zapisanych: wartość opcji -> imiona i nazwiska
+	// (people_list.go)
+	People map[string][]string `json:"people,omitempty"`
 }
 
 func optStatText(s *OptionStat) liveOpt {
@@ -172,6 +175,9 @@ func GuestFormLiveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			Info   string               `json:"info"`
 			Fields map[string]liveField `json:"fields"`
 		}{Info: string(info), Fields: map[string]liveField{}}
+		for name, people := range peopleLists(db, templ, defs) {
+			out.Fields[name] = liveField{People: people}
+		}
 
 		var stat *template.Template
 		for _, row := range rows {
@@ -188,13 +194,16 @@ func GuestFormLiveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 					if err := stat.ExecuteTemplate(&buf, "ffstat", f.Stat); err != nil {
 						log.Printf("GuestFormLiveAPI: ffstat %s: %v", f.Name, err)
 					}
-					out.Fields[f.Name] = liveField{Stat: buf.String()}
+					lf := out.Fields[f.Name]
+					lf.Stat = buf.String()
+					out.Fields[f.Name] = lf
 					continue
 				}
 				if _, ok := items[f.Name]; !ok || len(f.Options) == 0 {
 					continue
 				}
-				lf := liveField{Opts: map[string]liveOpt{}}
+				lf := out.Fields[f.Name]
+				lf.Opts = map[string]liveOpt{}
 				for _, o := range f.Options {
 					lf.Opts[o.When+"|"+o.Value] = optStatText(o.Stat)
 				}

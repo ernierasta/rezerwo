@@ -127,7 +127,7 @@ var accessRules = []accessRule{
 	rule(`^/admin/forms/(\d+)/fields$`, "", ACCFORM, needFull),
 	rule(`^/api/forms/(\d+)/(fields|section|maildraft)$`, "", ACCFORM, needFull),
 	rule(`^/api/forms/(\d+)$`, "", ACCFORM, needFull),
-	rule(`^/api/forms/(\d+)/(answers|answers\.csv|answers/status|answers/mail|infopanel|fill|contacts)$`, "", ACCFORM, needResults),
+	rule(`^/api/forms/(\d+)/(answers|answers\.csv|answers/status|answers/mail|infopanel|fill|fill/people|contacts)$`, "", ACCFORM, needResults),
 
 	rule(`^/api/media/banners$`, "", "", needAnyFull),
 	// zapamiętane osoby: menedżer tylko swoje (sprawdza adminContact)

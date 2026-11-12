@@ -28,6 +28,16 @@
       </label>
       {{end}}
     </div>
+    {{if .PeopleList}}{{/* lista zapisanych (people_list.go), odświeża js/n_formpage.js */}}
+    <div class="ff-people-list" data-slots="{{.Slots}}">
+      {{range .Options}}
+      <div class="fpl{{if and (not .People) (not $f.Slots)}} empty{{end}}" data-v="{{.Value}}"{{if $f.DependsOn}} data-when="{{.When}}"{{end}}>
+        <p class="fpl-h"><span>{{if eq (len $f.Options) 1}}{{T "gform.people_title"}}{{else}}{{.Label}}{{end}}</span> <b class="fpl-n">{{len .People}}</b></p>
+        <ul class="fpl-ul">{{range .People}}<li>{{.}}</li>{{end}}{{range .Blanks}}<li class="fpl-slot"></li>{{end}}</ul>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
     {{with .Stat}}{{template "ffstat" .}}{{end}}
     <small class="ff-err" role="alert" hidden></small>
   </fieldset>

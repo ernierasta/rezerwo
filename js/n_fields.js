@@ -624,6 +624,7 @@
       b.push('<b class="panel">' + esc(t(atField(f) ? 'fields.panel_badge_field' : 'fields.panel_badge')) + (f.panel_goal ? ' / ' + esc(f.panel_goal) : '') + '</b>');
     }
     if (isAddons && f.name && f.name.slice(-PERSEAT.length) === PERSEAT) b.push('<b>' + esc(t('fields.perseat_badge')) + '</b>');
+    if (!isAddons && f.people_list && f.type === 'checkbox-group') b.push('<b class="mgr">✓ ' + esc(t('fields.people_list_badge')) + '</b>');
     if (!isAddons && f.mgr_people && f.type === 'checkbox-group') b.push('<b class="mgr">' + esc(t('fields.mgr_people_badge')) + '</b>');
     if (!isAddons && f.mgr_hidden && !f.mgr_people && !role) b.push('<b class="mgr">' + esc(t('fields.mgr_hidden_badge')) + '</b>');
     var pr = condProblem(f);
@@ -855,6 +856,7 @@
       }
 
       if (!isAddons) h += panelHTML(f);
+      if (!isAddons && type === 'checkbox-group') h += peopleListHTML(f);
       if (!isAddons) h += mgrHTML(f);
 
       // szerokość i wiersz
@@ -895,6 +897,17 @@
       h += '<small class="fd-under muted">' + esc(t('fields.mgr_hidden_hint')) + '</small>';
     }
     return h + '</div>';
+  }
+
+  // peopleListHTML - lista zapisanych pod opcjami na stronie gościa
+  // (people_list.go)
+  function peopleListHTML(f) {
+    return '<div class="fd-box fd-plist"><h5>' + esc(t('fields.people_title')) + '</h5>' +
+      check('people_list', f.people_list, t('fields.people_list')) +
+      '<small class="fd-under muted">' + esc(t('fields.people_list_hint')) + '</small>' +
+      (f.people_list ? check('people_slots', f.people_slots, t('fields.people_slots')) +
+        '<small class="fd-under muted">' + esc(t(f.panel_goal > 0 ? 'fields.people_slots_hint' : 'fields.people_slots_nogoal')) + '</small>' : '') +
+      '</div>';
   }
 
   function panelHTML(f) {
@@ -1248,6 +1261,8 @@
       case '_panel':
         f.panel = el.checked;
         break;
+      case 'people_list':
+      case 'people_slots':
       case 'mgr_people':
       case 'mgr_hidden':
         if (el.checked) f[prop] = true; else delete f[prop];

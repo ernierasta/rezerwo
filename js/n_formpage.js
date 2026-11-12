@@ -89,8 +89,105 @@
     fields.forEach(function (ff) {
       var lf = f[ff.dataset.name];
       if (!lf) return;
+      if (lf.people && plData[ff.dataset.name]) {
+        plData[ff.dataset.name] = lf.people;
+        renderPL(ff, true);
+      }
       if (lf.opts) liveOpts(ff, lf.opts);
-      else liveStat(ff, lf.stat);
+      else if (lf.stat !== undefined || !lf.people) liveStat(ff, lf.stat);
+    });
+  }
+
+  // --- listy zapisanych (people_list.go) -----------------------------------
+  // Pod opcjami pola są imiona i nazwiska osób, które je zaznaczyły; gość,
+  // który zaznacza opcję, od razu widzi przy niej siebie ("ty"). Jego
+  // wcześniejszy wpis (poprawka zgłoszenia) nie pokazuje się drugi raz.
+  var plData = {};
+  var plFields = fields.filter(function (ff) { return ff.querySelector('.ff-people-list'); });
+  plFields.forEach(function (ff) {
+    var m = {};
+    Array.prototype.forEach.call(ff.querySelectorAll('.fpl'), function (g) {
+      m[g.dataset.v] = Array.prototype.map.call(g.querySelectorAll('.fpl-ul li:not(.fpl-slot)'), function (li) { return li.textContent; });
+    });
+    plData[ff.dataset.name] = m;
+  });
+
+  function myName() {
+    var n = form.querySelector('[name="name-REQUIRED"]');
+    var s = form.querySelector('[name="surname-REQUIRED"]');
+    return ((n ? n.value : '') + ' ' + (s ? s.value : '')).trim().replace(/\s+/g, ' ');
+  }
+
+  function optInput(ff, v) {
+    var hit = null;
+    Array.prototype.forEach.call(ff.querySelectorAll('label.opt input'), function (i) {
+      if (!hit && !i.hasAttribute('data-other') && i.value === v) hit = i;
+    });
+    return hit;
+  }
+
+  function renderPL(ff, fromServer) {
+    var data = plData[ff.dataset.name] || {};
+    var me = myName();
+    var meLow = me.toLowerCase();
+    var goal = +ff.querySelector('.ff-people-list').dataset.slots || 0;
+    Array.prototype.forEach.call(ff.querySelectorAll('.fpl'), function (g) {
+      var inp = optInput(ff, g.dataset.v);
+      var lab = inp && inp.closest('label.opt');
+      g.hidden = !!(lab && lab.hidden);
+      var checked = !!(inp && inp.checked && !ff.hidden && !g.hidden);
+      var names = (data[g.dataset.v] || []).slice();
+      if (meLow && (checked || root.dataset.edit)) {
+        for (var i = 0; i < names.length; i++) {
+          if (names[i].toLowerCase() === meLow) { names.splice(i, 1); break; }
+        }
+      }
+      var sig = names.join('\n') + '\n' + (checked ? '+' + me : '');
+      var ul = g.querySelector('.fpl-ul');
+      if (ul.dataset.sig === sig) return;
+      var before = {};
+      Array.prototype.forEach.call(ul.querySelectorAll('li:not(.me):not(.fpl-slot)'), function (li) { before[li.textContent] = true; });
+      ul.dataset.sig = sig;
+      ul.textContent = '';
+      names.forEach(function (n) {
+        var li = document.createElement('li');
+        li.textContent = n;
+        ul.appendChild(li);
+        if (fromServer && !before[n]) RZ.hit(li);
+      });
+      if (checked) {
+        var li = document.createElement('li');
+        li.className = 'me';
+        var b = document.createElement('span');
+        b.textContent = me || t('gform.people_you');
+        li.appendChild(b);
+        if (me) {
+          var tag = document.createElement('small');
+          tag.textContent = t('gform.people_you');
+          li.appendChild(tag);
+        }
+        ul.appendChild(li);
+      }
+      // puste miejsca do celu pola; ponad cel kolejne osoby po prostu dochodzą
+      var n = names.length + (checked ? 1 : 0);
+      for (var k = n; k < goal; k++) {
+        var slot = document.createElement('li');
+        slot.className = 'fpl-slot';
+        ul.appendChild(slot);
+      }
+      g.classList.toggle('empty', !ul.children.length);
+      RZ.setText(g.querySelector('.fpl-n'), String(n));
+    });
+  }
+
+  function renderAllPL() { plFields.forEach(function (ff) { renderPL(ff, false); }); }
+
+  if (plFields.length) {
+    // po n_formconds.js, który na tę samą zmianę chowa pola i opcje
+    var plLater = function () { setTimeout(renderAllPL, 0); };
+    form.addEventListener('change', plLater);
+    form.addEventListener('input', function (e) {
+      if (e.target.name === 'name-REQUIRED' || e.target.name === 'surname-REQUIRED') plLater();
     });
   }
 
@@ -532,6 +629,7 @@
       if (ff.dataset.type === 'multiplierField') updateMult(ff);
     });
     updateTotal();
+    renderAllPL();
     if (root.dataset.live) RZ.live(root.dataset.live, 30000, applyLive);
   });
 })();

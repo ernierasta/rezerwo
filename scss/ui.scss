@@ -561,20 +561,42 @@ $gh-colors: (
   .simple-go {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    margin: 8px 0 64px;
+    align-items: center;
+    gap: 18px;
+    margin: 12px 0 64px;
 
+    // wypukły przycisk: jaśniejsza góra, ciemna "krawędź" pod spodem i cień;
+    // po wciśnięciu zjeżdża w dół na krawędź
     .btn.huge {
+      --edge: color-mix(in srgb, var(--blue-deep) 62%, #000);
       display: block;
-      padding: 26px 20px;
-      border-radius: 14px;
-      font-size: 24px;
+      width: min(440px, 100%);
+      padding: 18px 28px;
+      border-radius: 16px;
+      font-size: 21px;
       font-family: var(--display);
       text-align: center;
       white-space: normal;
-      box-shadow: 0 4px 14px rgba(var(--shade), .14);
+      background: linear-gradient(to bottom, color-mix(in srgb, var(--blue-deep) 78%, #fff), var(--blue-deep) 55%);
+      border: 1px solid var(--edge);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .35),
+        0 6px 0 var(--edge),
+        0 10px 22px rgba(var(--shade), .28);
+      text-shadow: 0 1px 1px rgba(0, 0, 0, .25);
+      transform: translateY(0);
+      transition: transform .08s, box-shadow .08s, filter .15s;
 
-      small { display: block; margin-top: 6px; font-size: 15px; font-family: var(--font); font-weight: 400; opacity: .9; }
+      &:hover { filter: brightness(1.08); }
+      &:active {
+        transform: translateY(5px);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, .25),
+          0 1px 0 var(--edge),
+          0 3px 8px rgba(var(--shade), .25);
+      }
+
+      small { display: block; margin-top: 4px; font-size: 14px; font-family: var(--font); font-weight: 400; opacity: .9; text-shadow: none; }
     }
   }
 
@@ -2429,6 +2451,47 @@ ul.sum-list {
 }
 .opts.inline .opt .opt-stat { margin-left: 4px; }
 
+// lista zapisanych pod opcjami pola (people_list.go, js/n_formpage.js)
+.ff-people-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+
+  .fpl[hidden], .fpl.empty { display: none; }
+  .fpl-h {
+    margin: 0 0 4px;
+    font-size: 13.5px;
+    color: var(--muted);
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+  }
+  .fpl-n { font-weight: 600; color: var(--ink); }
+  .fpl-ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+
+    li {
+      padding: 2px 10px 2px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 14px;
+
+      &::before { content: "✓"; color: var(--ok-ink); font-weight: 700; margin-right: 5px; }
+      &.me { border-color: var(--ok-ink); font-weight: 500; }
+      &.me small { margin-left: 6px; color: var(--muted); font-weight: 400; }
+      // puste miejsce do celu pola (people_slots)
+      &.fpl-slot { min-width: 120px; border-style: dashed; background: transparent; &::before { content: "\00a0"; margin: 0; } }
+    }
+  }
+}
+
 .fd .fd-place-all { font-size: 13px; margin: 2px 0 12px; }
 
 // podgląd panelu na stronie formularza w panelu admina
@@ -2558,6 +2621,9 @@ ul.sum-list {
       &.removed b, &.removed small { text-decoration: line-through; color: var(--muted); }
       &.removed .pp-tag { color: var(--danger-ink); }
       &.empty { background: none; border: 0; padding: 2px 0; font-size: 13.5px; }
+      // zielony ptaszek: osoba jest już przy funkcji
+      &:not(.empty):not(.pp-blank):not(.removed) > b::before { content: "✓"; color: var(--ok-ink); font-weight: 700; margin-right: 6px; }
+      &.new > b::before { opacity: .55; }
     }
   }
 

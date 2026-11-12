@@ -4395,8 +4395,8 @@ ul.sum-list.compact b {
 }
 .ff-people-list .fpl-ul li.fpl-slot {
   min-width: 120px;
-  border-style: dashed;
-  background: transparent;
+  border: 1.5px dashed color-mix(in srgb, var(--muted) 80%, transparent);
+  background: rgba(var(--shade), 0.06);
 }
 .ff-people-list .fpl-ul li.fpl-slot::before {
   content: " ";

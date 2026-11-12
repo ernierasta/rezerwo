@@ -4408,6 +4408,47 @@ ul.sum-list.compact b {
   margin: 2px 0 12px;
 }
 
+.fd .fd-same {
+  margin: -2px 0 6px;
+  font-size: 13.5px;
+}
+
+.fd .fd-bulk-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+.fd .fd-bulk-types .chip {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.fd .fd-bulk-types .chip b {
+  font-weight: 600;
+  color: var(--blue-deep);
+  margin-left: 2px;
+}
+.fd .fd-bulk-types button.chip {
+  cursor: pointer;
+}
+.fd .fd-bulk-types button.chip:hover {
+  border-color: var(--blue-deep);
+  background: var(--blue-soft);
+}
+
+.fd.fd-multi .fd-item.sel .fd-tools {
+  display: none;
+}
+
+.fd.fd-multi .fd-item:hover .fd-tools {
+  display: none;
+}
+
 .panel-set .seg {
   margin: 2px 0 6px;
   flex-wrap: wrap;

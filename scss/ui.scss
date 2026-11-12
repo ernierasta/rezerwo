@@ -2494,6 +2494,31 @@ ul.sum-list {
 
 .fd .fd-place-all { font-size: 13px; margin: 2px 0 12px; }
 
+// edycja zbiorcza (kilka zaznaczonych pól, n_fields.js)
+.fd .fd-same { margin: -2px 0 6px; font-size: 13.5px; }
+.fd .fd-bulk-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+
+  .chip {
+    font: inherit;
+    font-size: 13.5px;
+    padding: 4px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    b { font-weight: 600; color: var(--blue-deep); margin-left: 2px; }
+  }
+  button.chip { cursor: pointer; }
+  button.chip:hover { border-color: var(--blue-deep); background: var(--blue-soft); }
+}
+// przy kilku zaznaczonych pasek narzędzi pojedynczego pola tylko przeszkadza
+.fd.fd-multi .fd-item.sel .fd-tools { display: none; }
+.fd.fd-multi .fd-item:hover .fd-tools { display: none; }
+
 // podgląd panelu na stronie formularza w panelu admina
 .panel-set {
   .seg { margin: 2px 0 6px; flex-wrap: wrap; }

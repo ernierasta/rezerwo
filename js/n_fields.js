@@ -50,6 +50,7 @@
   var undoStack = [], redoStack = [], current = null, lastKey = '', lastTime = 0;
   var dragSrc = null;
   var trying = false, tryConds = null;
+  var msel = [], anchor = 0, ptrDown = false; // edycja zbiorcza: zaznaczone pola
   var btnTry = document.getElementById('fd-try');
 
   // --- pomocnicze --------------------------------------------------------
@@ -359,6 +360,9 @@
     fields = o.fields;
     moneyId = o.moneyId;
     sel = byId(o.sel) ? o.sel : 0;
+    msel = msel.filter(byId);
+    if (msel.length < 2) msel = [];
+    root.classList.toggle('fd-multi', isMulti());
   }
 
   // commit zapisuje stan do historii. Kolejne zmiany tego samego ustawienia
@@ -496,6 +500,7 @@
     fields.splice(index, 0, f);
     if (newRow) ownRow(index);
     sel = f._id;
+    msel = [];
     commit();
     render();
     renderProps();
@@ -657,7 +662,7 @@
       r.fields.forEach(function (f) {
         var w = isInput(f.type) ? (f._w || 12) : 12;
         var cond = !isAddons && effCond(f) ? ' cond' : '';
-        h += '<div class="fd-item w' + w + cond + (f._id === sel ? ' sel' : '') + '" data-id="' + f._id + '" draggable="true" tabindex="0">' +
+        h += '<div class="fd-item w' + w + cond + (isSel(f) ? ' sel' : '') + '" data-id="' + f._id + '" draggable="true" tabindex="0">' +
           '<div class="fd-tools">' +
           '<button type="button" data-act="up" title="' + esc(t('fields.move_up')) + ' (Alt+↑)">↑</button>' +
           '<button type="button" data-act="down" title="' + esc(t('fields.move_down')) + ' (Alt+↓)">↓</button>' +
@@ -690,7 +695,7 @@
     trying = on;
     btnTry.setAttribute('aria-pressed', on ? 'true' : 'false');
     root.classList.toggle('trying', on);
-    if (on) sel = 0;
+    if (on) { sel = 0; msel = []; root.classList.remove('fd-multi'); }
     render();
     renderProps();
   }
@@ -698,9 +703,9 @@
   function select(id) {
     if (trying && id) setTrying(false);
     sel = id;
-    canvas.querySelectorAll('.fd-item').forEach(function (el) {
-      el.classList.toggle('sel', +el.dataset.id === id);
-    });
+    msel = [];
+    if (id) anchor = id;
+    markSel();
     renderProps();
   }
 
@@ -748,6 +753,7 @@
     } else {
       h += '<p class="muted small">' + esc(t('fields.addons_hint')) + '</p>';
     }
+    h += bulkStartHTML();
     h += '<h5>' + esc(t('fields.shortcuts')) + '</h5><p class="muted small">' + esc(t('fields.shortcuts_text')) + '</p>';
     return h;
   }
@@ -758,6 +764,11 @@
         '<button class="btn quiet sm" data-try-end>' + esc(t('fields.try_end')) + '</button>';
       return;
     }
+    if (isMulti()) {
+      props.innerHTML = bulkHTML();
+      props.querySelectorAll('[data-indet]').forEach(function (x) { x.indeterminate = true; });
+      return;
+    }
     var f = byId(sel);
     if (!f) {
       props.innerHTML = overviewHTML();
@@ -765,7 +776,7 @@
     }
     var type = f.type;
     var h = '<div class="fd-ph"><h4>' + esc(t('fields.type.' + (type === 'text' && f.subtype === 'tel' ? 'tel' : type))) + '</h4>' +
-      '<button class="link" data-deselect>' + esc(t('common.close')) + '</button></div>';
+      '<button class="link" data-deselect>' + esc(t('common.close')) + '</button></div>' + selectSameHTML(f);
 
     // zamiana rodzaju w obrębie zgodnej grupy (opcje / zwykłe pola)
     var group = CHOICE.indexOf(type) >= 0 ? CHOICE : (PLAIN.indexOf(type) >= 0 && !roleOf(f) ? PLAIN : null);
@@ -908,6 +919,365 @@
       (f.people_list ? check('people_slots', f.people_slots, t('fields.people_slots')) +
         '<small class="fd-under muted">' + esc(t(f.panel_goal > 0 ? 'fields.people_slots_hint' : 'fields.people_slots_nogoal')) + '</small>' : '') +
       '</div>';
+  }
+
+  // --- edycja zbiorcza --------------------------------------------------
+  //
+  // Kilka zaznaczonych pól (Ctrl+klik, Shift+klik, „zaznacz wszystkie pola
+  // tego rodzaju”) - panel pokazuje ustawienia, które mają sens dla nich
+  // razem. Każde ustawienie trafia tylko do pól, których dotyczy (BULK.ok);
+  // różne wartości w zaznaczonych polach widać jako „różne” / stan pośredni.
+
+  function typeKey(f) { return f.type === 'text' && f.subtype === 'tel' ? 'tel' : f.type; }
+  function isMulti() { return msel.length > 1; }
+  function isSel(f) { return isMulti() ? msel.indexOf(f._id) >= 0 : f._id === sel; }
+  function bulkFields() { return fields.filter(function (f) { return msel.indexOf(f._id) >= 0; }); }
+  function sameType(type) { return fields.filter(function (f) { return typeKey(f) === type; }); }
+
+  function noRole(f) { return isInput(f.type) && !roleOf(f); }
+  function isType() {
+    var ts = Array.prototype.slice.call(arguments);
+    return function (f) { return ts.indexOf(f.type) >= 0; };
+  }
+
+  // BULK - ustawienia edycji zbiorczej: ok(f) - czy dotyczy pola,
+  // get(f) - wartość do porównania, set(f, v) - zmiana
+  var BULK = {
+    required: {ok: noRole, get: function (f) { return !!f.required; }, set: function (f, v) { f.required = v; }},
+    tkind: {ok: function (f) { return f.type === 'text' && roleOf(f) !== 'email'; },
+      get: function (f) { return f.subtype || 'text'; }, set: function (f, v) { f.subtype = v; }},
+    hsize: {ok: isType('header'),
+      get: function (f) { return f.subtype === 'h3' ? 'h3' : (f.subtype === 'h4' || f.subtype === 'h5' || f.subtype === 'h6') ? 'h4' : 'h2'; },
+      set: function (f, v) { f.subtype = v; }},
+    line: {ok: isType('header', 'divider'), get: function (f) { return f.type === 'header' ? (f.line || '') : lineOf(f); },
+      set: function (f, v) { if (v) f.line = v; else delete f.line; }},
+    line_color: {ok: function (f) { return BULK.line.ok(f) && lineOf(f) !== 'none'; }, get: lineColor,
+      set: function (f, v) { if (v) f.line_color = v; else delete f.line_color; }},
+    placeholder: {ok: isType('text', 'textarea', 'number')},
+    maxlength: {ok: isType('text', 'textarea'), num: true},
+    rows: {ok: isType('textarea'), num: true},
+    min: {ok: isType('number')},
+    max: {ok: isType('number')},
+    step: {ok: isType('number')},
+    inline: {ok: isType('radio-group', 'checkbox-group'), get: function (f) { return !!f.inline; }, set: function (f, v) { f.inline = v; }},
+    other: {ok: isType('radio-group', 'checkbox-group'), get: function (f) { return !!f.other; }, set: function (f, v) { f.other = v; }},
+    multiple: {ok: isType('select'), get: function (f) { return !!f.multiple; }, set: function (f, v) {
+      f.multiple = v;
+      if (!v) {
+        var seen = false;
+        (f.values || []).forEach(function (o) { if (o.selected) { if (seen) o.selected = false; seen = true; } });
+      }
+    }},
+    multipl: {ok: isType('multiplierField')},
+    pre: {ok: isType('multiplierField')},
+    post: {ok: isType('multiplierField')},
+    _panel: {ok: noRole, get: inPanel, set: function (f, v) { f.panel = v; }},
+    panel_place: {ok: function (f) { return noRole(f) && inPanel(f); },
+      get: function (f) { return f.panel_place === 'field' ? 'field' : 'panel'; },
+      set: function (f, v) { if (v === 'field') f.panel_place = 'field'; else delete f.panel_place; }},
+    panel_goal: {ok: function (f) { return noRole(f) && inPanel(f); }, num: true},
+    people_list: {ok: isType('checkbox-group'), flag: true},
+    people_slots: {ok: function (f) { return f.type === 'checkbox-group' && !!f.people_list; }, flag: true},
+    mgr_people: {ok: isType('checkbox-group'), flag: true},
+    mgr_hidden: {ok: function (f) { return noRole(f) && !f.mgr_people; }, flag: true},
+    _w: {ok: function (f) { return isInput(f.type); }, get: function (f) { return f._w || 12; }, set: function (f, v) { f._w = +v; }},
+    _nr: {ok: function (f) { return isInput(f.type) && (f._w || 12) < 12; }, get: function (f) { return !!f._nr; }, set: function (f, v) { f._nr = v; }}
+  };
+
+  function bulkDef(prop) {
+    var d = BULK[prop];
+    if (!d.get) d.get = d.flag ? function (f) { return !!f[prop]; } : function (f) { return f[prop] === undefined ? '' : String(f[prop]); };
+    if (!d.set) {
+      d.set = d.flag ? function (f, v) {
+        if (v) f[prop] = true; else delete f[prop];
+        if (prop === 'mgr_people' && v) delete f.mgr_hidden;
+      } : function (f, v) {
+        if (v === '') delete f[prop]; else f[prop] = d.num ? Number(v) : v;
+      };
+    }
+    return d;
+  }
+
+  // bulkScope - zaznaczone pola, których dotyczy ustawienie, i ich wartość
+  // (mixed - różne)
+  function bulkScope(prop) {
+    var d = bulkDef(prop);
+    var list = bulkFields().filter(d.ok);
+    var vals = list.map(d.get);
+    var mixed = vals.some(function (v) { return v !== vals[0]; });
+    return {list: list, value: mixed ? null : vals[0], mixed: mixed};
+  }
+
+  // bulkNote - „(3 z 5)”, gdy ustawienie dotyczy tylko części zaznaczonych
+  function bulkNote(s) {
+    var n = msel.length;
+    return s.list.length < n ? ' (' + t('fields.bulk_of', [s.list.length, n]) + ')' : '';
+  }
+
+  function bulkCheck(prop, label) {
+    var s = bulkScope(prop);
+    if (!s.list.length) return '';
+    return '<label class="check fd-check"><input type="checkbox" data-bulk="' + prop + '"' + (s.value === true ? ' checked' : '') +
+      (s.mixed ? ' data-indet' : '') + '><span>' + esc(label + bulkNote(s)) + '</span></label>';
+  }
+
+  function bulkSeg(prop, label, opts, hint) {
+    var s = bulkScope(prop);
+    if (!s.list.length) return '';
+    return row(label + bulkNote(s), '<div class="seg' + (prop === 'line' ? ' fd-lines' : prop === '_w' ? ' fd-widths' : '') + '" data-bulk-seg="' + prop + '">' + opts.map(function (o) {
+      return '<button type="button" data-v="' + esc(o[0]) + '"' + (s.value === String(o[0]) || s.value === o[0] ? ' class="on"' : '') +
+        (o[2] ? ' title="' + esc(o[2]) + '"' : '') + '>' + o[1] + '</button>';
+    }).join('') + '</div>', s.mixed ? t('fields.bulk_mixed_hint') : (hint || ''));
+  }
+
+  function bulkInp(prop, label, attrs) {
+    var s = bulkScope(prop);
+    if (!s.list.length) return '';
+    return row(label + bulkNote(s), '<input class="inp" data-bulk-inp="' + prop + '" value="' + esc(s.mixed ? '' : s.value) + '"' +
+      (s.mixed ? ' placeholder="' + esc(t('fields.bulk_mixed')) + '"' : '') + ' ' + (attrs || '') + '>');
+  }
+
+  // bulkCondHTML - „Kiedy pokazać” dla wszystkich zaznaczonych (bez pól
+  // z rolą); warunek może zależeć tylko od pola nad wszystkimi
+  function bulkCondHTML(list) {
+    var cf = list.filter(function (f) { return !roleOf(f); });
+    if (isAddons || !cf.length) return '';
+    var first = Math.min.apply(null, cf.map(function (f) { return indexOfId(f._id); }));
+    var ps = parentsFor(first);
+    var curs = cf.map(function (f) { return f.show_if ? f.show_if.field : ''; });
+    var mixed = curs.some(function (c) { return c !== curs[0]; });
+    if (!ps.length && !curs.some(Boolean)) return '';
+    var cur = mixed ? null : curs[0];
+    var o = (mixed ? '<option value="-" selected>' + esc(t('fields.bulk_mixed')) + '</option>' : '') +
+      '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(t('fields.cond_always')) + '</option>';
+    var parent = null;
+    ps.forEach(function (p) {
+      if (p.name === cur) parent = p;
+      o += '<option value="' + esc(p.name) + '"' + (cur === p.name ? ' selected' : '') + '>' + esc(t('fields.cond_when', plain(p.label) || p.name)) + '</option>';
+    });
+    var h = '<div class="fd-box fd-cond"><h5>' + esc(t('fields.cond_title')) + (cf.length < msel.length ? ' (' + esc(t('fields.bulk_of', [cf.length, msel.length])) + ')' : '') + '</h5>' +
+      row(t('fields.cond_show'), '<select class="inp" data-bulk-cond>' + o + '</select>');
+    if (parent) {
+      h += '<div class="fd-condvals">' + (parent.values || []).map(function (x) {
+        var v = optValue(x);
+        var n = cf.filter(function (f) { return (f.show_if.values || []).indexOf(v) >= 0; }).length;
+        return '<label class="check fd-check"><input type="checkbox" data-bulk-condval value="' + esc(v) + '"' + (n === cf.length ? ' checked' : '') +
+          (n && n < cf.length ? ' data-indet' : '') + '><span>' + esc(x.label) + '</span></label>';
+      }).join('') + '</div>';
+    }
+    return h + '<small class="muted">' + esc(t('fields.bulk_cond_hint')) + '</small></div>';
+  }
+
+  function bulkHTML() {
+    var list = bulkFields();
+    var types = {};
+    list.forEach(function (f) { var k = typeKey(f); types[k] = (types[k] || 0) + 1; });
+    var tkeys = Object.keys(types);
+    var h = '<div class="fd-ph"><h4>' + esc(t('fields.bulk_title', list.length)) + '</h4>' +
+      '<button class="link" data-deselect>' + esc(t('fields.bulk_clear')) + '</button></div>';
+    // rodzaje wśród zaznaczonych - klik zawęża zaznaczenie do jednego
+    h += '<div class="fd-bulk-types">' + tkeys.map(function (k) {
+      return tkeys.length > 1
+        ? '<button type="button" class="chip" data-bulk-only="' + k + '" title="' + esc(t('fields.bulk_only')) + '">' + esc(t('fields.type.' + k)) + ' <b>' + types[k] + '</b></button>'
+        : '<span class="chip">' + esc(t('fields.type.' + k)) + ' <b>' + types[k] + '</b></span>';
+    }).join('') + '</div>';
+    if (tkeys.length > 1) h += '<small class="muted">' + esc(t('fields.bulk_only_hint')) + '</small>';
+
+    // zamiana rodzaju: wszystkie w tej samej grupie, bez ról
+    var group = null;
+    if (!isAddons && !list.some(roleOf)) {
+      [CHOICE, PLAIN].forEach(function (g) {
+        if (list.every(function (f) { return g.indexOf(f.type) >= 0 && typeKey(f) !== 'tel'; })) group = g;
+      });
+    }
+    if (group) {
+      var one = tkeys.length === 1 ? list[0].type : '';
+      h += row(t('fields.kind'), '<select class="inp" data-bulk-convert>' + (one ? '' : '<option value="" selected>' + esc(t('fields.bulk_mixed')) + '</option>') +
+        group.map(function (g) {
+          return '<option value="' + g + '"' + (g === one ? ' selected' : '') + '>' + esc(t('fields.type.' + g)) + '</option>';
+        }).join('') + '</select>');
+    }
+
+    h += bulkCheck('required', t('fields.required'));
+    h += bulkSeg('tkind', t('fields.text_kind'), [['text', esc(t('fields.type.text'))], ['email', esc(t('fields.role.email'))], ['tel', esc(t('fields.type.tel'))]]);
+    h += bulkSeg('hsize', t('fields.header_size'), [['h2', esc(t('fields.size_l'))], ['h3', esc(t('fields.size_m'))], ['h4', esc(t('fields.size_s'))]]);
+    var ls = bulkScope('line');
+    if (ls.list.length) {
+      var allHead = ls.list.every(isType('header'));
+      var lvals = allHead ? [''].concat(LINES, ['none']) : LINES;
+      h += bulkSeg('line', t(allHead ? 'fields.underline_style' : 'fields.line_style'), lvals.map(function (v) {
+        return [v, (v && v !== 'none' ? '<i class="fd-ln ln-' + v + '"></i>' : '') + '<span>' + esc(t('fields.line_' + (v || 'default'))) + '</span>', t('fields.line_' + (v || 'default'))];
+      }));
+      var cs = bulkScope('line_color');
+      if (cs.list.length) {
+        var c = cs.mixed ? null : cs.value;
+        h += row(t('fields.line_color') + bulkNote(cs), '<div class="fd-colors">' +
+          '<button type="button" class="fd-sw def' + (c === '' ? ' on' : '') + '" data-bulk-lcolor="" title="' + esc(t('fields.line_color_default')) + '"></button>' +
+          LINE_COLORS.map(function (x) {
+            return '<button type="button" class="fd-sw' + (c && c.toLowerCase() === x ? ' on' : '') + '" data-bulk-lcolor="' + x + '" style="background:' + x + '" title="' + x + '"></button>';
+          }).join('') + '</div>');
+      }
+    }
+    h += bulkInp('placeholder', t('fields.placeholder'));
+    h += bulkInp('maxlength', t('fields.maxlength'), 'type="number" min="1" inputmode="numeric"');
+    h += bulkInp('rows', t('fields.rows'), 'type="number" min="1" max="30"');
+    if (bulkScope('min').list.length) {
+      h += '<div class="fd-grid3">' + bulkInp('min', t('fields.min'), 'type="number"') + bulkInp('max', t('fields.max'), 'type="number"') +
+        bulkInp('step', t('fields.step'), 'type="number" min="0" step="any"') + '</div>';
+    }
+    h += bulkCheck('inline', t('fields.inline'));
+    h += bulkCheck('other', t('fields.other'));
+    h += bulkCheck('multiple', t('fields.multiple'));
+    if (bulkScope('multipl').list.length) {
+      h += '<div class="fd-box">' + bulkInp('multipl', t('fields.price'), 'type="number" min="0" step="any" inputmode="decimal"') +
+        '<div class="fd-grid2">' + bulkInp('pre', t('fields.before')) + bulkInp('post', t('fields.after')) + '</div>' +
+        '<div class="fd-cur">' + ['Kč', '€', 'zł'].map(function (c) {
+          return '<button type="button" class="btn quiet sm" data-bulk-currency="' + c + '">' + c + '</button>';
+        }).join('') + '</div></div>';
+    }
+
+    if (!isAddons && bulkScope('_panel').list.length) {
+      h += '<div class="fd-box fd-panel"><h5>' + esc(t('fields.panel_title')) + '</h5>' + bulkCheck('_panel', t('fields.panel_show')) +
+        bulkSeg('panel_place', t('fields.panel_place'), ['panel', 'field'].map(function (v) { return [v, esc(t('fields.panel_place_' + v))]; })) +
+        bulkInp('panel_goal', t('fields.panel_goal'), 'type="number" min="0" inputmode="numeric"') +
+        '<small class="muted">' + esc(t('fields.panel_hint_' + panelMode)) + '</small></div>';
+    }
+    if (!isAddons && bulkScope('people_list').list.length) {
+      h += '<div class="fd-box fd-plist"><h5>' + esc(t('fields.people_title')) + '</h5>' +
+        bulkCheck('people_list', t('fields.people_list')) + bulkCheck('people_slots', t('fields.people_slots')) + '</div>';
+    }
+    if (!isAddons && (bulkScope('mgr_people').list.length || bulkScope('mgr_hidden').list.length)) {
+      h += '<div class="fd-box fd-mgr"><h5>' + esc(t('fields.mgr_title')) + '</h5>' +
+        bulkCheck('mgr_people', t('fields.mgr_people')) + bulkCheck('mgr_hidden', t('fields.mgr_hidden')) + '</div>';
+    }
+
+    h += bulkSeg('_w', t('fields.width'), WIDTHS.map(function (w) { return [w[0], w[1], t('fields.width_' + w[0])]; }), t('fields.width_hint'));
+    h += bulkCheck('_nr', t('fields.new_row'));
+
+    h += bulkCondHTML(list);
+
+    h += '<div class="fd-actions"><button class="btn danger sm" data-bulk-del>' + esc(t('fields.bulk_delete', list.length)) + '</button></div>';
+    return h;
+  }
+
+  // setMulti - zaznacza pola ids; jedno pole to zwykłe zaznaczenie
+  function setMulti(ids) {
+    ids = fields.filter(function (f) { return ids.indexOf(f._id) >= 0; }).map(function (f) { return f._id; });
+    if (ids.length < 2) { select(ids[0] || 0); return; }
+    if (trying) setTrying(false);
+    msel = ids;
+    sel = 0;
+    markSel();
+    renderProps();
+  }
+
+  function markSel() {
+    root.classList.toggle('fd-multi', isMulti());
+    canvas.querySelectorAll('.fd-item').forEach(function (el) {
+      var f = byId(+el.dataset.id);
+      el.classList.toggle('sel', !!f && isSel(f));
+    });
+  }
+
+  function applyBulk(prop, v, key) {
+    var d = bulkDef(prop);
+    bulkFields().filter(d.ok).forEach(function (f) { d.set(f, v); });
+    changed(key || '', !key);
+  }
+
+  function bulkDelete() {
+    var list = bulkFields();
+    var n = list.reduce(function (s, f) { return s + answersOf(f); }, 0);
+    var doDelete = function () {
+      list.forEach(function (f) {
+        fields.splice(indexOfId(f._id), 1);
+        if (isInput(f.type) && f.name) dropRefs(f.name);
+        if (moneyId === f._id) moneyId = 0;
+      });
+      msel = [];
+      sel = 0;
+      changed('', true);
+      RZ.toast(t('fields.bulk_deleted', list.length), {label: t('fields.undo'), action: undo});
+    };
+    dialog(t('fields.bulk_delete_title', list.length), '<p>' + esc(n ? t('fields.bulk_delete_answers', n) : t('fields.bulk_delete_text')) + '</p>',
+      t('fields.bulk_delete', list.length), doDelete, true);
+  }
+
+  function bulkInput(el) {
+    if (el.matches('[data-bulk-inp]')) {
+      applyBulk(el.dataset.bulkInp, el.value, 'bulk:' + el.dataset.bulkInp);
+      el.placeholder = '';
+    }
+  }
+
+  function bulkChange(el) {
+    if (el.matches('[data-bulk]')) { applyBulk(el.dataset.bulk, el.checked); return; }
+    if (el.matches('[data-bulk-convert]')) {
+      if (!el.value) return;
+      bulkFields().forEach(function (f) { convert(f, el.value); });
+      changed('', true);
+      return;
+    }
+    if (el.matches('[data-bulk-cond]')) {
+      if (el.value === '-') return;
+      bulkFields().forEach(function (f) {
+        if (roleOf(f)) return;
+        if (!el.value) delete f.show_if;
+        else if (!f.show_if || f.show_if.field !== el.value) f.show_if = {field: el.value, values: []};
+      });
+      changed('', true);
+      return;
+    }
+    if (el.matches('[data-bulk-condval]')) {
+      bulkFields().forEach(function (f) {
+        if (roleOf(f) || !f.show_if) return;
+        var vs = (f.show_if.values || []).filter(function (v) { return v !== el.value; });
+        if (el.checked) vs.push(el.value);
+        f.show_if.values = vs;
+      });
+      changed('', true);
+    }
+  }
+
+  function bulkClick(b) {
+    if (b.closest('[data-bulk-seg]')) { applyBulk(b.closest('[data-bulk-seg]').dataset.bulkSeg, b.dataset.v); return; }
+    if (b.matches('[data-bulk-lcolor]')) { applyBulk('line_color', b.dataset.bulkLcolor); return; }
+    if (b.matches('[data-bulk-currency]')) {
+      bulkFields().filter(isType('multiplierField')).forEach(function (f) {
+        f.pre = '(';
+        f.post = ' ' + b.dataset.bulkCurrency + ')';
+      });
+      changed('', true);
+      return;
+    }
+    if (b.matches('[data-bulk-only]')) {
+      setMulti(bulkFields().filter(function (f) { return typeKey(f) === b.dataset.bulkOnly; }).map(function (f) { return f._id; }));
+      return;
+    }
+    if (b.matches('[data-bulk-del]')) bulkDelete();
+  }
+
+  // selectSameHTML - skrót do edycji zbiorczej przy pojedynczym polu
+  function selectSameHTML(f) {
+    var n = sameType(typeKey(f)).length;
+    if (n < 2) return '';
+    return '<p class="fd-same"><button type="button" class="link" data-select-type="' + typeKey(f) + '">' +
+      esc(t('fields.bulk_select_same', [t('fields.type.' + typeKey(f)), n])) + '</button></p>';
+  }
+
+  // bulkStartHTML - w przeglądzie: zaznacz wszystkie pola danego rodzaju
+  function bulkStartHTML() {
+    var types = {}, order = [];
+    fields.forEach(function (f) {
+      var k = typeKey(f);
+      if (!types[k]) order.push(k);
+      types[k] = (types[k] || 0) + 1;
+    });
+    order = order.filter(function (k) { return types[k] > 1; });
+    if (!order.length) return '';
+    return '<h5>' + esc(t('fields.bulk_start')) + '</h5><div class="fd-bulk-types">' + order.map(function (k) {
+      return '<button type="button" class="chip" data-select-type="' + k + '">' + esc(t('fields.type.' + k)) + ' <b>' + types[k] + '</b></button>';
+    }).join('') + '</div><p class="muted small">' + esc(t('fields.bulk_start_hint')) + '</p>';
   }
 
   function panelHTML(f) {
@@ -1069,6 +1439,9 @@
   // --- zmiany ustawień ---------------------------------------------------
 
   function changed(key, rerenderProps) {
+    msel = msel.filter(byId);
+    if (msel.length < 2) msel = [];
+    root.classList.toggle('fd-multi', isMulti());
     commit(key);
     render();
     if (rerenderProps) renderProps();
@@ -1157,6 +1530,7 @@
   }
 
   props.addEventListener('input', function (e) {
+    if (isMulti()) { bulkInput(e.target); return; }
     var f = byId(sel);
     if (!f) return;
     var el = e.target;
@@ -1211,6 +1585,7 @@
   }
 
   props.addEventListener('change', function (e) {
+    if (isMulti()) { bulkChange(e.target); return; }
     var f = byId(sel);
     if (!f) return;
     var el = e.target;
@@ -1363,6 +1738,11 @@
     if (b.matches('[data-add]')) { addField(b.dataset.add); return; }
     if (b.matches('[data-deselect]')) { select(0); return; }
     if (b.matches('[data-try-end]')) { setTrying(false); return; }
+    if (b.matches('[data-select-type]')) {
+      setMulti(sameType(b.dataset.selectType).map(function (x) { return x._id; }));
+      return;
+    }
+    if (isMulti()) { bulkClick(b); return; }
     if (!f) return;
 
     if (b.matches('[data-cmd]')) {
@@ -1522,6 +1902,7 @@
         }
         fields.splice(i + 1, 0, c);
         sel = c._id;
+        msel = [];
         changed('', true);
         break;
       case 'del':
@@ -1569,8 +1950,29 @@
     }
     var id = +item.dataset.id;
     if (tool) { act(tool.dataset.act, id); return; }
+    if (e.ctrlKey || e.metaKey) {
+      // Ctrl+klik: dodaj / usuń pole z zaznaczenia
+      var ids = isMulti() ? msel.slice() : (sel ? [sel] : []);
+      var at = ids.indexOf(id);
+      if (at >= 0) ids.splice(at, 1); else ids.push(id);
+      anchor = id;
+      setMulti(ids);
+      return;
+    }
+    if (e.shiftKey && anchor && byId(anchor)) {
+      // Shift+klik: wszystkie pola od ostatnio klikniętego do tego
+      var a = indexOfId(anchor), z = indexOfId(id);
+      setMulti(fields.slice(Math.min(a, z), Math.max(a, z) + 1).map(function (x) { return x._id; }));
+      return;
+    }
     select(id);
   });
+
+  canvas.addEventListener('mousedown', function (e) {
+    ptrDown = true;
+    if (e.shiftKey && e.target.closest('.fd-item')) e.preventDefault(); // bez zaznaczania tekstu
+  });
+  document.addEventListener('mouseup', function () { setTimeout(function () { ptrDown = false; }, 0); });
 
   canvas.addEventListener('change', function () {
     if (trying && tryConds) tryConds.apply();
@@ -1739,11 +2141,14 @@
     btnSave.disabled = true;
     stateEl.textContent = t('common.loading');
     var selIdx = indexOfId(sel);
+    var mIdx = msel.map(indexOfId);
     RZ.postJSON('/api/forms/' + formID + '/fields', {content: serialize(), moneyfield: moneyName(), renames: renames()})
       .then(function (resp) {
         counts = resp.counts || {};
         load(resp.content, resp.moneyfield);
         sel = selIdx >= 0 && fields[selIdx] ? fields[selIdx]._id : 0;
+        msel = mIdx.filter(function (i) { return i >= 0 && fields[i]; }).map(function (i) { return fields[i]._id; });
+        if (msel.length < 2) msel = [];
         savedSig = signature();
         undoStack = [];
         redoStack = [];
@@ -1791,6 +2196,16 @@
       if ((e.key.toLowerCase() === 'z' && e.shiftKey) || e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
     }
     if (editing(document.activeElement)) return;
+    if (isMulti()) {
+      if (e.key === 'Delete') { e.preventDefault(); bulkDelete(); }
+      else if (e.key === 'Escape') select(0);
+      return;
+    }
+    if (mod && e.key.toLowerCase() === 'a' && document.activeElement && document.activeElement.closest && document.activeElement.closest('#fd-canvas')) {
+      e.preventDefault();
+      setMulti(fields.map(function (x) { return x._id; }));
+      return;
+    }
     if (!sel) return;
     if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       e.preventDefault();
@@ -1807,7 +2222,7 @@
 
   canvas.addEventListener('focusin', function (e) {
     var item = e.target.closest('.fd-item');
-    if (item && +item.dataset.id !== sel && e.target === item) select(+item.dataset.id);
+    if (item && !ptrDown && !isMulti() && +item.dataset.id !== sel && e.target === item) select(+item.dataset.id);
   });
 
   window.addEventListener('beforeunload', function (e) {

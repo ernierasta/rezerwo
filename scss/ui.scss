@@ -558,7 +558,8 @@ $gh-colors: (
 .start {
   // uproszczony widok menedżera (admins.simple_view): wielki przycisk nad
   // listami, z wyraźnym odstępem od nich. Płaski jak reszta panelu - że to
-  // przycisk, mówi kółko z plusem, i podpowiedź „Kliknij tutaj…”
+  // przycisk, mówią ilustracja (ludzie z plusem), podpowiedź „Kliknij
+  // tutaj…” i rączka-kursor, która co chwilę „naciska” napis
   .simple-go {
     display: flex;
     flex-direction: column;
@@ -569,32 +570,56 @@ $gh-colors: (
       display: grid;
       grid-template-columns: auto minmax(0, 1fr);
       align-items: center;
-      gap: 16px;
-      padding: 16px 20px;
-      border-radius: 12px;
+      gap: 20px;
+      padding: 18px 22px;
+      border-radius: 14px;
       background: var(--blue-soft);
       border: 1px solid color-mix(in srgb, var(--blue-deep) 30%, transparent);
       color: var(--ink);
       text-decoration: none;
-      transition: border-color .15s, background .15s;
-
-      .plus {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        background: var(--blue-deep);
-        color: var(--on-accent);
-        font-size: 28px;
-        line-height: 1;
-      }
-      b { display: block; font-family: var(--display); font-weight: 500; font-size: 21px; line-height: 1.25; }
-      small { display: block; margin-top: 2px; font-size: 14px; color: var(--muted); }
-      small .click { color: var(--blue-deep); font-weight: 500; }
+      transition: border-color .15s;
 
       &:hover, &:focus-visible { border-color: var(--blue-deep); }
+
+      .people {
+        width: 120px;
+        height: 96px;
+        .bk { fill: color-mix(in srgb, var(--blue-deep) 45%, var(--surface)); }
+        .fr { fill: var(--blue-deep); stroke: var(--blue-soft); stroke-width: 3; }
+        .pl { fill: var(--ok-ink); stroke: var(--surface); stroke-width: 4; }
+        .pls { stroke: #fff; stroke-width: 4; stroke-linecap: round; }
+      }
+
+      // tekst tylko tak szeroki jak napis, żeby rączka stała przy nim
+      .txt { position: relative; justify-self: start; padding-right: 44px; }
+      b { display: block; font-family: var(--display); font-weight: 500; font-size: 23px; line-height: 1.25; }
+      small { display: block; margin-top: 4px; font-size: 15px; color: var(--muted); }
+      small .click { color: var(--blue-deep); font-weight: 500; }
+
+      .hand {
+        position: absolute;
+        right: -6px;
+        bottom: -26px;
+        width: 42px;
+        height: 49px;
+        animation: simple-tap 1.6s ease-in-out infinite;
+        .hb { fill: var(--surface); stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; }
+        .hl { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; fill: none; }
+      }
     }
+
+    @media (max-width: 640px) {
+      .huge { gap: 14px; padding: 14px 16px; }
+      .huge .people { width: 80px; height: 64px; }
+      .huge b { font-size: 20px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .huge .hand { animation: none; } }
+  }
+
+  @keyframes simple-tap {
+    0%, 60%, 100% { transform: translate(0, 0); }
+    70% { transform: translate(-4px, -6px) scale(.94); }
+    80% { transform: translate(0, 0); }
   }
 
   // &.doc - mocniej niż body.n h4 { margin: 0 }; wyraźna przerwa między
@@ -2643,17 +2668,14 @@ ul.sum-list {
       > button { margin-left: auto; font-size: 15px; }
       .pp-tag + button { margin-left: 0; }
 
-      &.new { border-color: var(--blue); background: var(--blue-soft); }
-      &.new .pp-tag { color: var(--blue-deep); }
-      &.removed { background: transparent; }
-      &.removed b, &.removed small { text-decoration: line-through; color: var(--muted); }
-      &.removed .pp-tag { color: var(--danger-ink); }
+      > button.sure { color: var(--danger-ink); font-size: 14px; font-weight: 500; }
       &.empty { background: none; border: 0; padding: 2px 0; font-size: 13.5px; }
       // zielony ptaszek: osoba jest już przy funkcji
-      &:not(.empty):not(.pp-blank):not(.removed) > b::before { content: "✓"; color: var(--ok-ink); font-weight: 700; margin-right: 6px; }
-      &.new > b::before { opacity: .55; }
+      &:not(.empty):not(.pp-blank) > b::before { content: "✓"; color: var(--ok-ink); font-weight: 700; margin-right: 6px; }
     }
   }
+
+  .ff-people.busy .pp-add { opacity: .6; }
 
   .pp-add {
     position: relative;
@@ -2685,24 +2707,6 @@ ul.sum-list {
       &:hover, &.on { background: var(--blue-soft); }
     }
   }
-
-  .fill-foot {
-    position: sticky;
-    bottom: 0;
-    z-index: 6;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px 12px;
-    margin-top: 16px;
-    padding: 12px 0;
-    background: var(--bg);
-    border-top: 1px solid var(--line);
-
-    .fill-count { margin-right: auto; }
-    .gform-msg { flex-basis: 100%; margin: 0; color: var(--danger-ink); }
-  }
 }
 
 .fill .pp-list li.pp-blank { display: none; }
@@ -2720,7 +2724,7 @@ ul.sum-list {
     > .doc { max-width: none; margin: 0; padding: 0; }
   }
   .fill {
-    .up, .dh .r, .dsub, .draft-notice, .fill-foot, .pp-add, .ff-err, .kind { display: none !important; }
+    .up, .dh .r, .dsub, .draft-notice, .pp-add, .ff-err, .kind { display: none !important; }
     .dh h3 { font-size: 13pt; line-height: 1.2; }
 
     // pola wspólne i nagłówki przez całą szerokość, funkcje po dwie w rzędzie
@@ -2787,8 +2791,7 @@ ul.sum-list {
         break-inside: avoid;
         small { color: #000; }
         > button, .pp-tag { display: none; }
-        &.removed, &.empty { display: none; }
-        &.new { background: none; }
+        &.empty { display: none; }
       }
       li.pp-blank {
         display: grid;

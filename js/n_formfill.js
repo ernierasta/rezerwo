@@ -3,10 +3,9 @@
 //
 // Pola wspólne (np. klasa) to zwykłe pola formularza z warunkami
 // (n_formconds.js); pola .ff-people mają listę osób i wiersz "dodaj osobę"
-// z podpowiedziami z wcześniej wpisanych osób. Zmiany czekają na "Zapisz".
-// Każde dopisanie pamięta wartości pól wspólnych z chwili dodania, bo nowa
-// osoba dostaje je do swojego zgłoszenia (np. klasę 1, choć przed zapisem
-// wybrano już klasę 2) - zapis wysyła po jednym żądaniu na każdy zestaw.
+// z podpowiedziami z wcześniej wpisanych osób. Każda zmiana od razu trafia
+// do bazy: „Dodaj” (albo wybór podpowiedzi) zapisuje osobę z bieżącymi
+// wartościami pól wspólnych, × (kliknięte drugi raz, dla pewności) ją zdejmuje.
 (function () {
   'use strict';
 
@@ -22,13 +21,11 @@
   var contacts = state.contacts || [];
   var shared = Array.prototype.slice.call(form.querySelectorAll('.ff[data-name]:not(.ff-people)'));
   var boxes = Array.prototype.slice.call(form.querySelectorAll('.ff-people'));
-  var saveBtn = document.getElementById('fill-save');
-  var undoBtn = document.getElementById('fill-undo');
-  var countEl = document.getElementById('fill-count');
-  var msgEl = document.getElementById('fill-msg');
-
-  // pending.add[pole] = [{name, surname, email, data}], pending.remove = {"pole:form": true}
-  var pending = {add: {}, remove: {}};
+  // confirm - "pole:form" osoby, przy której × kliknięto raz (drugie
+  // kliknięcie usuwa); busy - trwa zapis
+  var confirm = null;
+  var confirmTimer = 0;
+  var busy = false;
   var conds = RZ.formConds(form);
 
   function lower(s) { return String(s || '').toLowerCase(); }
@@ -112,22 +109,11 @@
 
   function key(field, formId) { return field + ':' + formId; }
 
-  function pendingCount() {
-    var n = Object.keys(pending.remove).length;
-    Object.keys(pending.add).forEach(function (f) { n += pending.add[f].length; });
-    return n;
-  }
-
-  function onField(field) {
-    var n = 0;
-    (people[field] || []).forEach(function (p) { if (!pending.remove[key(field, p.form)]) n++; });
-    return n + (pending.add[field] || []).length;
-  }
+  function onField(field) { return (people[field] || []).length; }
 
   function hasEmail(field, email) {
     email = lower(email);
-    return (people[field] || []).some(function (p) { return lower(p.email) === email && !pending.remove[key(field, p.form)]; }) ||
-      (pending.add[field] || []).some(function (p) { return lower(p.email) === email; });
+    return (people[field] || []).some(function (p) { return lower(p.email) === email; });
   }
 
   function li(p, cls, tag, btn) {
@@ -165,18 +151,18 @@
     var list = box.querySelector('.pp-list');
     list.textContent = '';
     (people[field] || []).forEach(function (p) {
-      var removed = !!pending.remove[key(field, p.form)];
+      var k = key(field, p.form);
       var tag = p.by === 'guest' ? t('fill.by_guest') : p.by === 'other' ? t('fill.by_other') : '';
       var btn = null;
-      if (p.mine) {
-        btn = removed ? button(t('fill.restore'), {'data-restore': p.form}) : button('×', {'data-remove': p.form, 'title': t('fill.remove'), 'aria-label': t('fill.remove')});
+      if (p.mine && confirm === k) {
+        btn = button(t('fill.remove_sure'), {'data-remove': p.form});
+        btn.classList.add('sure');
+      } else if (p.mine) {
+        btn = button('×', {'data-remove': p.form, 'title': t('fill.remove'), 'aria-label': t('fill.remove')});
       }
-      var el = li(p, removed ? 'removed' : (p.mine ? 'mine' : ''), removed ? t('fill.will_remove') : tag, btn);
-      el.dataset.k = key(field, p.form);
+      var el = li(p, p.mine ? 'mine' : '', tag, btn);
+      el.dataset.k = k;
       list.appendChild(el);
-    });
-    (pending.add[field] || []).forEach(function (p, i) {
-      list.appendChild(li(p, 'new', t('fill.new'), button('×', {'data-unadd': i, 'title': t('fill.remove'), 'aria-label': t('fill.remove')})));
     });
     if (!list.children.length) {
       var e = document.createElement('li');
@@ -204,14 +190,47 @@
     c.classList.toggle('done', goal > 0 && n >= goal);
   }
 
-  function renderAll() {
-    boxes.forEach(renderBox);
-    var n = pendingCount();
-    saveBtn.disabled = n === 0;
-    undoBtn.hidden = n === 0;
-    countEl.textContent = n ? RZ.tN('fill.changes', n) : '';
-    if (n) msgEl.hidden = true;
+  function renderAll() { boxes.forEach(renderBox); }
+
+  // setPeople - nowy stan list z serwera; świeżo dopisane wiersze na chwilę
+  // się podświetlają
+  function setPeople(next) {
+    var known = {};
+    Object.keys(people).forEach(function (f) {
+      (people[f] || []).forEach(function (p) { known[key(f, p.form)] = true; });
+    });
+    people = next;
+    renderAll();
+    Array.prototype.forEach.call(form.querySelectorAll('.pp-list li[data-k]'), function (el) {
+      if (!known[el.dataset.k]) RZ.hit(el);
+    });
   }
+
+  function setBusy(box, on) {
+    busy = on;
+    box.classList.toggle('busy', on);
+    Array.prototype.forEach.call(box.querySelectorAll('.pp-add input, .pp-add button'), function (el) { el.disabled = on; });
+  }
+
+  // send - jedna zmiana od razu do bazy; błąd pokazuje przy polu, którego
+  // dotyczy (wspólnym albo tej funkcji)
+  function send(box, msg, done) {
+    if (busy) return;
+    setBusy(box, true);
+    RZ.postJSON('/api/forms/' + formID + '/fill', msg).then(function (resp) {
+      setBusy(box, false);
+      if (resp.contacts) contacts = resp.contacts;
+      if (resp.people) setPeople(resp.people);
+      done(resp);
+    }).catch(function (err) {
+      setBusy(box, false);
+      var ff = err.field && form.querySelector('.ff[data-name="' + err.field + '"]');
+      showError(ff || box, err.message || t('common.save_error'));
+      if (ff && ff !== box) ff.scrollIntoView({behavior: 'smooth', block: 'center'});
+    });
+  }
+
+  function mailsNote(resp) { return resp.mails ? ' ' + RZ.tN('fill.mails', resp.mails) : ''; }
 
   // --- dodawanie -------------------------------------------------------------
 
@@ -240,14 +259,32 @@
     if (hasEmail(field, p.email)) return showError(box, t('fill.err.dup'));
     if (sharedError()) return showError(box, t('fill.err.shared'));
     showError(box, '');
-    p.data = collect();
-    (pending.add[field] = pending.add[field] || []).push(p);
-    rememberContact(p);
-    var inp = inputsOf(box);
-    inp.name.value = inp.surname.value = inp.email.value = '';
     hideSug(box);
-    inp.name.focus();
-    renderAll();
+    send(box, {data: collect(), add: [{field: field, name: p.name, surname: p.surname, email: p.email}], remove: []}, function (resp) {
+      rememberContact(p);
+      var inp = inputsOf(box);
+      inp.name.value = inp.surname.value = inp.email.value = '';
+      inp.name.focus();
+      RZ.toast(t('fill.added', p.name + ' ' + p.surname) + mailsNote(resp));
+    });
+  }
+
+  function removePerson(box, formId) {
+    var field = box.dataset.name;
+    var k = key(field, formId);
+    clearTimeout(confirmTimer);
+    if (confirm !== k) {
+      // pierwsze kliknięcie: × zmienia się w „Na pewno usunąć?”
+      confirm = k;
+      renderAll();
+      confirmTimer = setTimeout(function () { confirm = null; renderAll(); }, 5000);
+      return;
+    }
+    confirm = null;
+    var p = (people[field] || []).filter(function (x) { return String(x.form) === String(formId); })[0];
+    send(box, {data: collect(), add: [], remove: [{field: field, form: +formId}]}, function () {
+      if (p) RZ.toast(t('fill.removed', (p.name + ' ' + p.surname).trim()));
+    });
   }
 
   // --- podpowiedzi -----------------------------------------------------------
@@ -359,14 +396,7 @@
       var inp = inputsOf(box);
       addPerson(box, {name: inp.name.value, surname: inp.surname.value, email: inp.email.value});
     } else if (b.hasAttribute('data-remove')) {
-      pending.remove[key(field, b.getAttribute('data-remove'))] = true;
-      renderAll();
-    } else if (b.hasAttribute('data-restore')) {
-      delete pending.remove[key(field, b.getAttribute('data-restore'))];
-      renderAll();
-    } else if (b.hasAttribute('data-unadd')) {
-      pending.add[field].splice(+b.getAttribute('data-unadd'), 1);
-      renderAll();
+      removePerson(box, b.getAttribute('data-remove'));
     }
   });
 
@@ -375,104 +405,11 @@
   var printBtn = document.getElementById('fill-print');
   if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
 
-  undoBtn.addEventListener('click', function () {
-    pending = {add: {}, remove: {}};
-    renderAll();
-  });
-
-  // --- zapis -----------------------------------------------------------------
-
-  // batches - żądania: usunięcia w pierwszym, dopisania pogrupowane według
-  // wartości pól wspólnych z chwili dodania
-  function batches() {
-    var out = [];
-    var remove = Object.keys(pending.remove).map(function (k) {
-      var i = k.lastIndexOf(':');
-      return {field: k.slice(0, i), form: +k.slice(i + 1)};
-    });
-    var groups = {};
-    var order = [];
-    Object.keys(pending.add).forEach(function (field) {
-      pending.add[field].forEach(function (p) {
-        var g = JSON.stringify(p.data);
-        if (!groups[g]) { groups[g] = {data: p.data, add: [], remove: []}; order.push(g); }
-        groups[g].add.push({field: field, name: p.name, surname: p.surname, email: p.email});
-      });
-    });
-    order.forEach(function (g) { out.push(groups[g]); });
-    if (remove.length) {
-      if (out.length) out[0].remove = remove;
-      else out.push({data: collect(), add: [], remove: remove});
-    }
-    return out;
-  }
-
-  var saving = false;
-
-  saveBtn.addEventListener('click', function () {
-    var list = batches();
-    if (!list.length) return;
-    saving = true;
-    saveBtn.disabled = true;
-    msgEl.hidden = true;
-    var sum = {added: 0, removed: 0, mails: 0};
-    var step = function (i) {
-      if (i >= list.length) {
-        saving = false;
-        pending = {add: {}, remove: {}};
-        renderAll();
-        var text = t('fill.saved', [sum.added, sum.removed]);
-        if (sum.mails) text += ' ' + RZ.tN('fill.mails', sum.mails);
-        RZ.toast(text);
-        return;
-      }
-      RZ.postJSON('/api/forms/' + formID + '/fill', list[i]).then(function (resp) {
-        sum.added += resp.added || 0;
-        sum.removed += resp.removed || 0;
-        sum.mails += resp.mails || 0;
-        if (resp.people) people = resp.people;
-        if (resp.contacts) contacts = resp.contacts;
-        // zapisana część znika z oczekujących, reszta zostaje na wypadek błędu
-        if (i === 0) pending.remove = {};
-        list[i].add.forEach(function (a) {
-          var arr = pending.add[a.field] || [];
-          for (var j = 0; j < arr.length; j++) {
-            if (arr[j].email === a.email) { arr.splice(j, 1); break; }
-          }
-        });
-        step(i + 1);
-      }).catch(function (err) {
-        saving = false;
-        renderAll();
-        msgEl.textContent = err.message || t('common.save_error');
-        msgEl.hidden = false;
-        var ff = err.field && form.querySelector('.ff[data-name="' + err.field + '"]');
-        if (ff) {
-          showError(ff, err.message);
-          ff.scrollIntoView({behavior: 'smooth', block: 'center'});
-        }
-      });
-    };
-    step(0);
-  });
-
-  window.addEventListener('beforeunload', function (e) {
-    if (pendingCount()) { e.preventDefault(); e.returnValue = ''; }
-  });
-
   // osoby na żywo: zgłoszenia gości i innych menedżerów co 30 s; nowe
-  // wiersze na chwilę się podświetlają, oczekujące zmiany zostają
+  // wiersze na chwilę się podświetlają
   function applyLive(d) {
-    if (saving || !d.people) return; // odpowiedź zapisu i tak przyniesie świeży stan
-    var known = {};
-    Object.keys(people).forEach(function (f) {
-      (people[f] || []).forEach(function (p) { known[key(f, p.form)] = true; });
-    });
-    people = d.people;
-    renderAll();
-    Array.prototype.forEach.call(form.querySelectorAll('.pp-list li[data-k]'), function (el) {
-      if (!known[el.dataset.k]) RZ.hit(el);
-    });
+    if (busy || !d.people) return; // odpowiedź zapisu i tak przyniesie świeży stan
+    setPeople(d.people);
   }
 
   RZ.ready.then(function () {

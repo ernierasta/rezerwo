@@ -22,13 +22,6 @@
     {{end}}
   </form>
 
-  <div class="fill-foot" id="fill-foot">
-    <span class="fill-count muted" id="fill-count"></span>
-    <p class="gform-msg" id="fill-msg" role="alert" hidden></p>
-    <button class="btn" type="button" id="fill-save" disabled>{{T "common.save"}}</button>
-    <button class="btn quiet" type="button" id="fill-undo" hidden>{{T "fill.undo_all"}}</button>
-  </div>
-
   <script type="application/json" id="fill-state">{{.State}}</script>
   {{end}}
 </div>
@@ -46,7 +39,7 @@
     <input class="inp" type="text" data-p="name" placeholder="{{T "fill.name"}}" aria-label="{{T "fill.name"}}" autocomplete="off">
     <input class="inp" type="text" data-p="surname" placeholder="{{T "fill.surname"}}" aria-label="{{T "fill.surname"}}" autocomplete="off">
     <input class="inp" type="email" data-p="email" placeholder="{{T "fill.email"}}" aria-label="{{T "fill.email"}}" autocomplete="off">
-    <button class="btn quiet sm" type="button" data-pp-add>{{T "fill.add"}}</button>
+    <button class="btn strong" type="button" data-pp-add>{{T "fill.add"}}</button>
     <ul class="pp-sug" role="listbox" hidden></ul>
   </div>
   <small class="ff-err" role="alert" hidden></small>

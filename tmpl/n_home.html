@@ -4,8 +4,15 @@
   <div class="simple-go">
     {{range .SimpleForms}}
     <a class="huge" href="/admin/forms/{{.ID}}/fill">
-      <span class="plus" aria-hidden="true">+</span>
-      <span><b>{{T "fill.big"}}</b><small><span class="click">{{T "fill.big_hint"}}</span>{{if gt (len $.SimpleForms) 1}} · {{.Name}}{{end}}</small></span>
+      <svg class="people" viewBox="0 0 120 96" aria-hidden="true">
+        <circle class="bk" cx="32" cy="34" r="12"/><path class="bk" d="M12 80a20 20 0 0 1 40 0z"/>
+        <circle class="bk" cx="88" cy="34" r="12"/><path class="bk" d="M68 80a20 20 0 0 1 40 0z"/>
+        <circle class="fr" cx="60" cy="38" r="15"/><path class="fr" d="M32 90a28 28 0 0 1 56 0z"/>
+        <circle class="pl" cx="98" cy="72" r="16"/><path class="pls" d="M98 64v16M90 72h16"/>
+      </svg>
+      <span class="txt"><b>{{T "fill.big"}}</b><small><span class="click">{{T "fill.big_hint"}}</span>{{if gt (len $.SimpleForms) 1}} · {{.Name}}{{end}}</small>
+        <svg class="hand" viewBox="0 0 48 56" aria-hidden="true"><path class="hb" d="M17 4c2.8 0 5 2.2 5 5v15l1.2-.6c2.6-1.2 5.6 0 6.6 2.6l.4 1 1-.4c2.6-1 5.6.2 6.6 2.8l.2.6.6-.2c2.8-.8 5.6.9 6.2 3.7.2.9.2 1.8.1 2.7L42.6 46c-1 5.3-5.6 9-11 9H24c-3.6 0-7-1.7-9.1-4.6L4.6 36.6c-1.6-2.2-1.2-5.3.9-7 2-1.6 4.9-1.5 6.8.2L12 30V9c0-2.8 2.2-5 5-5z"/><path class="hl" d="M27 36v8M34 37v7"/></svg>
+      </span>
     </a>
     {{end}}
   </div>

@@ -207,6 +207,12 @@ func FormFillPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 			DraftKey: fmt.Sprintf("rezerwo.fill.%d", templ.ID),
 			Closed:   !templ.IsOpen(nowUnix()),
 		}
+		// otwarte ze strony startowej (?from=home) - strzałka wraca tam,
+		// a nie do szczegółów formularza
+		if r.URL.Query().Get("from") == "home" {
+			v.UpURL = "/admin"
+			v.UpLabel = T(lang, "nav.home")
+		}
 		people := peopleFields(defs)
 		if len(people) == 0 {
 			v.NoPeople = true

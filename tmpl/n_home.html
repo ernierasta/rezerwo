@@ -3,7 +3,7 @@
   {{if .Simple}}{{if .SimpleForms}}
   <div class="simple-go">
     {{range .SimpleForms}}
-    <a class="huge" href="/admin/forms/{{.ID}}/fill">
+    <a class="huge" href="/admin/forms/{{.ID}}/fill?from=home">
       <svg class="people" viewBox="0 0 120 96" aria-hidden="true">
         <circle class="bk" cx="32" cy="34" r="12"/><path class="bk" d="M12 80a20 20 0 0 1 40 0z"/>
         <circle class="bk" cx="88" cy="34" r="12"/><path class="bk" d="M68 80a20 20 0 0 1 40 0z"/>
@@ -59,7 +59,7 @@
       <span>{{.Name}}</span>
       <small class="num">{{.Info}}</small>
     </a>
-    {{if .HasPeople}}<a class="btn sm strong" href="/admin/forms/{{.ID}}/fill">{{T "fill.open"}}</a></div>{{end}}
+    {{if .HasPeople}}<a class="btn sm strong" href="/admin/forms/{{.ID}}/fill?from=home">{{T "fill.open"}}</a></div>{{end}}
     {{else}}
     <div class="empty">{{T "home.no_forms"}}</div>
     {{end}}

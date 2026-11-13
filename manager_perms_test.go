@@ -160,9 +160,17 @@ func TestManagerPermsAndFill(t *testing.T) {
 		t.Fatalf("create simple manager: %d %s", rec.Code, rec.Body)
 	}
 	home3 := do("GET", "/admin", "", login("m3@example.com", "haslo-menedzera")).Body.String()
-	big := strings.Index(home3, `class="huge" href="/admin/forms/`+itoa(f1)+`/fill"`)
+	big := strings.Index(home3, `class="huge" href="/admin/forms/`+itoa(f1)+`/fill?from=home"`)
 	if big < 0 || big > strings.Index(home3, "Funkcje") {
 		t.Errorf("simple view: no big fill button above the lists")
+	}
+	// strzałka na górze wraca tam, skąd przyszedł: na start albo do formularza
+	m3 := login("m3@example.com", "haslo-menedzera")
+	if fill := do("GET", "/admin/forms/"+itoa(f1)+"/fill?from=home", "", m3).Body.String(); !strings.Contains(fill, `class="up" href="/admin"`) {
+		t.Errorf("fill from home: up link does not lead home")
+	}
+	if fill := do("GET", "/admin/forms/"+itoa(f1)+"/fill", "", m3).Body.String(); !strings.Contains(fill, `class="up" href="/admin/forms/`+itoa(f1)+`"`) {
+		t.Errorf("fill from form page: up link does not lead to the form")
 	}
 	// konto organizacji widzi wszystko
 	if rec := do("GET", "/admin/forms/"+itoa(f2), "", owner); rec.Code != 200 {

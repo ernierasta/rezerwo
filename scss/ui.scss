@@ -702,6 +702,16 @@ $gh-colors: (
     .prog { grid-column: 1 / -1; margin-top: 2px; }
     .money { grid-column: 1 / -1; }
   }
+
+  // strona z linkami: opis przycisków bywa długi - idzie pod nazwę, zamiast
+  // zabierać kolumnę `auto` i ściskać nazwę do zera (nachodziły na siebie)
+  .row.lpage {
+    grid-template-columns: 120px minmax(0, 1fr);
+    row-gap: 4px;
+
+    > small { grid-column: 2; }
+    > small:empty { display: none; }
+  }
 }
 
 // --- tabela ----------------------------------------------------------------
@@ -1827,6 +1837,7 @@ h5.subhead {
   }
   .grid2 { grid-template-columns: 1fr; }
   .start .row { grid-template-columns: 1fr; gap: 2px; }
+  .start .row.lpage { grid-template-columns: 1fr; > small { grid-column: 1; } }
   .start .row-act {
     flex-wrap: wrap;
     gap: 0;

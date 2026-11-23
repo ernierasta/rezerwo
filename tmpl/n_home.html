@@ -72,7 +72,7 @@
   </h4>
   <div class="rows">
     {{range .Pages}}
-    <a class="row{{if .Old}} old{{end}}" href="/admin/pages/{{.ID}}">
+    <a class="row lpage{{if .Old}} old{{end}}" href="/admin/pages/{{.ID}}">
       <span class="muted">{{.DateS}}</span>
       <span>{{.Name}}{{if .Missing}} <small class="miss">{{.Missing}}</small>{{end}}</span>
       <small>{{.Info}}</small>

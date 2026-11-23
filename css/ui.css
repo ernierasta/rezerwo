@@ -1705,6 +1705,16 @@ textarea.inp {
 .start .row.event .money {
   grid-column: 1/-1;
 }
+.start .row.lpage {
+  grid-template-columns: 120px minmax(0, 1fr);
+  row-gap: 4px;
+}
+.start .row.lpage > small {
+  grid-column: 2;
+}
+.start .row.lpage > small:empty {
+  display: none;
+}
 
 .tbl {
   width: 100%;
@@ -3478,6 +3488,13 @@ h5.subhead a {
   .start .row {
     grid-template-columns: 1fr;
     gap: 2px;
+  }
+
+  .start .row.lpage {
+    grid-template-columns: 1fr;
+  }
+  .start .row.lpage > small {
+    grid-column: 1;
   }
 
   .start .row-act {

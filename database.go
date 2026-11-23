@@ -157,6 +157,9 @@ type Event struct {
 	// name, phone albo pusto = na końcu, po uwagach (AddonsPositions,
 	// tools/migration-addonsafter.sql)
 	AddonsAfter string `db:"addons_after"`
+	// Sponsors - sekcja "Sponsorzy", JSON Sponsors (sponsors.go,
+	// tools/migration-sponsors.sql)
+	Sponsors string `db:"sponsors"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -803,6 +806,12 @@ func (db *DB) EventSetAddonsSection(eventID, userID int64, on bool) error {
 // EventSetAddonsAfter - miejsce dodatków w formularzu zamówienia.
 func (db *DB) EventSetAddonsAfter(eventID, userID int64, after string) error {
 	_, err := db.DB.Exec(`UPDATE events SET addons_after=$1 WHERE id=$2 AND users_id_fk=$3`, AddonsAfterNorm(after), eventID, userID)
+	return err
+}
+
+// EventSetSponsors ustawia sekcję "Sponsorzy" (sponsors.go).
+func (db *DB) EventSetSponsors(eventID, userID int64, sponsors string) error {
+	_, err := db.DB.Exec(`UPDATE events SET sponsors=$1 WHERE id=$2 AND users_id_fk=$3`, sponsors, eventID, userID)
 	return err
 }
 

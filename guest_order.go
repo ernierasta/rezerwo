@@ -52,6 +52,9 @@ type nOrderVars struct {
 	AddonsSection bool
 	// AddonsAfter - po którym polu danych osoby są dodatki (AddonsPositions)
 	AddonsAfter string
+
+	// Sponsors - sekcja "Sponsorzy" pod formularzem albo nil (sponsors.go)
+	Sponsors *nGuestSponsors
 }
 
 // nOrderAddon to jedno pole dodatków gotowe do wyświetlenia: pola powtarzane
@@ -244,6 +247,7 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			AddonsSection:   event.AddonsSection,
 			AddonsAfter:     AddonsAfterNorm(event.AddonsAfter),
 			Currency:        event.DefaultCurrency,
+			Sponsors:        guestSponsors(event, user.URL, lng, "order"),
 		}
 
 		guestRenderTheme(w, lng, event.Theme.String, vars, "tmpl/n_order.html")
@@ -258,6 +262,8 @@ type ReservationOrderStatusVars struct {
 	BTNOk         string
 	Theme         string // atrybut data-theme (themes.go)
 	Logo          bool   // atrybut data-logo: znak organizacji tematu
+	// Sponsors - sekcja "Sponsorzy" pod podziękowaniem albo nil (sponsors.go)
+	Sponsors *nGuestSponsors
 }
 
 // Order - dane zamówienia z formularza gościa (/order/status)
@@ -401,14 +407,17 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 
 		// tekst po zamówieniu też jest szablonem (np. z kodem QR)
 		statusTitle, statusText := orderedNoteOrDefault(db, event, user, o, lng)
+		pageOF := orderFuncsFromOrder(o, db, user)
+		pageOF.Web = true // obrazki (.Sponsors) jako adresy, nie cid:
 		p := ReservationOrderStatusVars{
 			LBLLang:       lng,
 			LBLTitle:      T(lng, "order.page_title"),
 			LBLStatus:     statusTitle,
-			LBLStatusText: template.HTML(renderOrderTmpl(statusText, orderFuncsFromOrder(o, db, user))),
+			LBLStatusText: template.HTML(renderOrderTmpl(statusText, pageOF)),
 			BTNOk:         "OK",
 			Theme:         themeAttr(event.Theme.String),
 			Logo:          ThemeLogo(event.Theme.String),
+			Sponsors:      guestSponsors(event, user.URL, lng, "done"),
 		}
 		t, err := template.ParseFiles("tmpl/n_order_status.html")
 		if err != nil {
@@ -455,10 +464,11 @@ func sendOrderMails(db *DB, conf MailConfig, event Event, user User, o Order) {
 		of := orderFuncsFromOrder(o, db, user)
 		text := renderOrderTmpl(n.Text, of)
 		if err := conf.Send(Mail{
-			From:    conf.From,
-			To:      append(admins, user.Email),
-			Subject: OrderSubject(n.Title.String, of),
-			Text:    mailHTMLHead + text + "</html>",
+			From:     conf.From,
+			To:       append(admins, user.Email),
+			Subject:  OrderSubject(n.Title.String, of),
+			Text:     mailHTMLHead + text + "</html>",
+			Embedded: of.EmbeddedImgs,
 		}); err != nil {
 			log.Printf("sendOrderMails: admin mail: %v", err)
 		}

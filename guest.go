@@ -58,6 +58,9 @@ type nGuestVars struct {
 	// tekst pokazywany, gdy gość klika "Zamawiam" bez wybranych miejsc
 	NoSitsTitle string
 	NoSitsText  template.HTML
+
+	// Sponsors - sekcja "Sponsorzy" pod planem sali albo nil (sponsors.go)
+	Sponsors *nGuestSponsors
 }
 
 // isAdminSession sprawdza, czy żądanie ma ważną sesję admina - bez
@@ -153,6 +156,7 @@ func GuestReservationPage(db *DB, cs *sessions.CookieStore) func(w http.Response
 			UserURL:         user.URL,
 			NoSitsTitle:     event.NoSitsSelectedTitle,
 			NoSitsText:      template.HTML(event.NoSitsSelectedText),
+			Sponsors:        guestSponsors(event, user.URL, lng, "seats"),
 		}
 		vars.Title = vars.Head.Name
 		if vars.NoSitsTitle == "" {

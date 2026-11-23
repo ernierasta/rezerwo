@@ -286,6 +286,9 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		if err := db.EventSetTheme(newEventID, user.ID, ThemeNorm(src.Theme.String)); err != nil {
 			log.Printf("EventCopyAPI: theme: %v", err)
 		}
+		if err := db.EventSetSponsors(newEventID, user.ID, src.Sponsors); err != nil {
+			log.Printf("EventCopyAPI: sponsors: %v", err)
+		}
 		// wygląd nagłówka przechodzi, nazwa idzie za nazwą kopii
 		head := ParsePageHead(src.PageHead)
 		head.Name = ""

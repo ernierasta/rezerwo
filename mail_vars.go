@@ -57,6 +57,8 @@ var eventMailVars = []mailVar{
 	{".PayIBAN", "mail.var.pay_iban", false, true, "", "", false},
 	{".PayVS", "mail.var.pay_vs", false, true, "", "", false},
 	{".PayMessage", "mail.var.pay_message", false, true, "", "", false},
+	// logo sponsorów imprezy (sponsors.go)
+	{".Sponsors", "mail.var.sponsors", false, false, "", "", false},
 }
 
 // formMailVars - zmienne maili formularza templ: dane gościa, kwota, pola
@@ -260,21 +262,25 @@ func checkMailTemplate(subject, text string) error {
 }
 
 // sampleOrderFuncs - przykładowe zamówienie do podglądu i maila próbnego.
-// Impreza: pierwsza, która używa tego maila, inaczej najnowsza.
+// Impreza: najnowsza z tych, które używają tego maila, inaczej najnowsza w ogóle.
 func sampleOrderFuncs(db *DB, user User, lang string, mailID int64, preview bool) *OrderFuncs {
 	events, err := db.EventGetAllByUserID(user.ID)
 	if err != nil {
 		log.Printf("sampleOrderFuncs: events: %v", err)
 	}
-	var event Event
+	// mail bywa podpięty do kilku edycji imprezy - bierzemy najnowszą z nich
+	// (jej sponsorzy, sale), bez takiej najnowszą imprezę w ogóle
+	var event, newest Event
 	for _, e := range events {
-		if e.ThankYouNotificationsID.Int64 == mailID || e.AdminNotificationsID.Int64 == mailID {
-			event = e
-			break
-		}
-		if e.Date > event.Date {
+		if (e.ThankYouNotificationsID.Int64 == mailID || e.AdminNotificationsID.Int64 == mailID) && (event.ID == 0 || e.Date > event.Date) {
 			event = e
 		}
+		if e.Date > newest.Date {
+			newest = e
+		}
+	}
+	if event.ID == 0 {
+		event = newest
 	}
 
 	room := T(lang, "mail.sample.room")
@@ -498,6 +504,9 @@ type OrderFuncs struct {
 	// bez generowania biletów PDF (zaznaczamy tylko, że byłyby w załączniku)
 	Preview     bool
 	PDFAttached bool
+	// Web - szablon idzie na stronę (tekst po zamówieniu): obrazki
+	// (.Sponsors) jako zwykłe adresy, nie cid:
+	Web bool
 
 	// Lang - język etykiet w danych do przelewu (.PayInfo), język imprezy
 	Lang string

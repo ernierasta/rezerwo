@@ -26,3 +26,15 @@
   <h1{{if .HideName}} class="vh"{{else}}{{with .NameClass}} class="{{.}}"{{end}}{{end}}>{{.Name}}</h1>
   {{if .When}}<p class="when{{with .NameClass}} {{.}}{{end}}">{{.When}}</p>{{end}}
 {{end}}
+
+
+{{/* Sekcja "Sponsorzy" imprezy (sponsors.go, nGuestSponsors): logo
+     w wierszach ułożonych przez organizatora; w wierszu logo mają tę samą
+     wysokość, a gdy się nie mieszczą, zmniejszają się (scss/ui.scss). */}}
+{{define "sponsors"}}{{with .}}
+<section class="sponsors" style="--sp-h:{{.Height}}px" aria-label="{{.Title}}">
+  <h4>{{.Title}}</h4>
+  {{range .Rows}}<div class="sp-row">{{range .}}{{if .Link}}<a href="{{.Link}}" target="_blank" rel="noopener"><img src="{{.Src}}" alt="" loading="lazy"></a>{{else}}<span><img src="{{.Src}}" alt="" loading="lazy"></span>{{end}}{{end}}</div>
+  {{end}}
+</section>
+{{end}}{{end}}

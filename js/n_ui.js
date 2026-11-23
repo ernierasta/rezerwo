@@ -208,6 +208,8 @@
     syncSegPicks(sec);
     syncBannerPicks(sec);
     syncHeadPicks(sec);
+    // własne edytory sekcji (np. sponsorzy) przerysowują się z pól
+    sec.dispatchEvent(new CustomEvent('sec:values', {bubbles: true}));
   }
 
   // Wybór tematu strony gościa (szablon "themepick" w n_base.html): próbki
@@ -322,23 +324,25 @@
     inp.dispatchEvent(new Event('input', {bubbles: true}));
   }
 
+  // uploadMedia wgrywa obrazek do katalogu organizacji (banner.go,
+  // /api/media/banners); obietnica daje {name, url}.
+  function uploadMedia(file) {
+    var fd = new FormData();
+    fd.append('file', file);
+    return fetch('/api/media/banners', {method: 'POST', body: fd})
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (body) {
+          if (!r.ok) throw new Error(body.msg || ('HTTP ' + r.status));
+          return body;
+        });
+      });
+  }
+
   function uploadBanner(box, file) {
     var name = box.querySelector('.bp-name');
     var prev = name.textContent;
     name.textContent = t('banner.uploading');
-    var fd = new FormData();
-    fd.append('file', file);
-    fetch('/api/media/banners', {method: 'POST', body: fd})
-      .then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (body) {
-          if (!r.ok) {
-          var err = new Error(body.msg || ('HTTP ' + r.status));
-          err.field = body.field; // pole, którego dotyczy błąd (np. formularz gościa)
-          throw err;
-        }
-          return body;
-        });
-      })
+    uploadMedia(file)
       .then(function (resp) {
         setBanner(box, resp.name, parseBanner(box.querySelector('input[data-field]').value).w);
       })
@@ -359,7 +363,9 @@
   function bpOutside(e) { if (bpMenu && !bpMenu.contains(e.target)) closeBannerMenu(); }
   function bpEsc(e) { if (e.key === 'Escape') closeBannerMenu(); }
 
-  function chooseBanner(box, anchor) {
+  // mediaMenu pokazuje pod anchor miniaturki wgranych obrazków organizacji;
+  // kliknięta woła onPick({name, url}). current - nazwa zaznaczonego pliku.
+  function mediaMenu(anchor, current, onPick) {
     closeBannerMenu();
     fetch('/api/media/banners')
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -368,7 +374,6 @@
         bpMenu = document.createElement('div');
         bpMenu.className = 'bp-menu';
         bpMenu.setAttribute('role', 'listbox');
-        var current = parseBanner(box.querySelector('input[data-field]').value);
         if (!files.length) {
           var p = document.createElement('p');
           p.className = 'muted';
@@ -379,7 +384,7 @@
           var b = document.createElement('button');
           b.type = 'button';
           b.setAttribute('role', 'option');
-          if (f.name === current.file) b.classList.add('on');
+          if (f.name === current) b.classList.add('on');
           var img = document.createElement('img');
           img.src = f.url;
           img.alt = '';
@@ -390,7 +395,7 @@
           b.appendChild(s);
           b.addEventListener('click', function () {
             closeBannerMenu();
-            setBanner(box, f.name, current.w);
+            onPick(f);
           });
           bpMenu.appendChild(b);
         });
@@ -407,6 +412,11 @@
         if (first) first.focus();
       })
       .catch(function (err) { toast(err.message); });
+  }
+
+  function chooseBanner(box, anchor) {
+    var current = parseBanner(box.querySelector('input[data-field]').value);
+    mediaMenu(anchor, current.file, function (f) { setBanner(box, f.name, current.w); });
   }
 
   document.addEventListener('click', function (e) {
@@ -1269,6 +1279,8 @@
     ready: ready,
     sections: sections,
     bannerPicks: syncBannerPicks,
+    uploadMedia: uploadMedia,
+    mediaMenu: mediaMenu,
     loadLocale: loadLocale,
     toast: toast,
     postJSON: postJSON,

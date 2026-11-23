@@ -142,6 +142,52 @@
       </div>
     </div>
 
+    <!-- Sponsorzy (sponsors.go, js/n_sponsors.js) -->
+    <div class="sec" data-sec="sponsorzy" data-cfg>
+      <div class="sec-h"><b>{{T "event.sec.sponsors"}}</b><span>{{.SumSponsors}}</span><a class="act" href="#sponsorzy">{{if .Sponsors.Rows}}{{T "common.change"}}{{else}}{{T "common.set"}}{{end}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="spk" data-base="{{.Sponsors.Base}}">
+          <input type="hidden" data-field="sponsors_rows" value="{{.Sponsors.RowsJSON}}">
+          <div class="grid2">
+            <div class="f"><label for="f-sp-title">{{T "sponsors.section_title"}}</label>
+              <input class="inp" id="f-sp-title" data-field="sponsors_title" value="{{.Sponsors.Title}}" maxlength="120" placeholder="{{.Sponsors.TitleDefault}}">
+              <small>{{T "sponsors.title_hint"}}</small></div>
+            <div class="f"><label>{{T "sponsors.size"}}</label>
+              <input type="hidden" data-field="sponsors_size" value="{{.Sponsors.Size}}">
+              <div class="seg seg-pick" role="radiogroup" aria-label="{{T "sponsors.size"}}">
+                <button type="button" data-v="s"{{if eq .Sponsors.Size "s"}} class="on"{{end}}>{{T "sponsors.size_s"}}</button>
+                <button type="button" data-v=""{{if eq .Sponsors.Size ""}} class="on"{{end}}>{{T "sponsors.size_m"}}</button>
+                <button type="button" data-v="l"{{if eq .Sponsors.Size "l"}} class="on"{{end}}>{{T "sponsors.size_l"}}</button>
+              </div></div>
+          </div>
+          <div class="f"><label>{{T "sponsors.logos"}}</label>
+            <div class="sp-board" aria-describedby="sp-hint"></div>
+            <div class="sp-sel" hidden>
+              <img alt="">
+              <div class="sp-sel-f">
+                <small class="sp-sel-name"></small>
+                <input class="inp" type="url" placeholder="{{T "sponsors.link_ph"}}" aria-label="{{T "sponsors.link"}}">
+              </div>
+              <button type="button" class="link sp-del">{{T "banner.remove"}}</button>
+            </div>
+            <div class="tools" style="margin-top:10px">
+              <button type="button" class="btn quiet sm sp-up">{{T "sponsors.upload"}}</button>
+              <button type="button" class="btn quiet sm sp-choose">{{T "banner.choose"}}</button>
+            </div>
+            <input type="file" class="sp-file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
+            <small id="sp-hint">{{T "sponsors.hint"}}</small>
+          </div>
+          <div class="f"><label>{{T "sponsors.where"}}</label>
+            <div class="check"><input type="checkbox" id="f-sp-seats" data-field="sponsors_seats"{{if .Sponsors.Seats}} checked{{end}}><label for="f-sp-seats">{{T "sponsors.where_seats"}}</label></div>
+            <div class="check" style="margin-top:6px"><input type="checkbox" id="f-sp-order" data-field="sponsors_order"{{if .Sponsors.Order}} checked{{end}}><label for="f-sp-order">{{T "sponsors.where_order"}}</label></div>
+            <div class="check" style="margin-top:6px"><input type="checkbox" id="f-sp-done" data-field="sponsors_done"{{if .Sponsors.Done}} checked{{end}}><label for="f-sp-done">{{T "sponsors.where_done"}}</label></div>
+            <small>{{T "sponsors.mail_hint"}}</small>
+          </div>
+        </div>
+        <div class="sec-f"><button class="btn" data-save="sponsors">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
     <!-- Mail dla gościa -->
     <div class="sec" data-sec="mail-gosc" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.mail_guest"}}</b><span {{if .MissMailGuest}}class="miss"{{end}}>{{.SumMailGuest}}</span><a class="act" href="#mail-gosc">{{if .MissMailGuest}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
@@ -383,4 +429,5 @@
 <script src="{{asset "/js/n_vars.js"}}"></script>
 <script src="{{asset "/js/n_new.js"}}"></script>
 <script src="{{asset "/js/n_event.js"}}"></script>
+<script src="{{asset "/js/n_sponsors.js"}}"></script>
 {{end}}

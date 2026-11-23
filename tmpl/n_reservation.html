@@ -98,6 +98,8 @@
     </div>
   </div>
 
+  {{template "sponsors" .Sponsors}}
+
   <div class="bar-mobile" id="barmobile">
     <span class="sum" id="bar-sum">{{if .SoldOut}}{{T "guest.sold_out"}}{{else}}{{T "guest.nothing_selected"}}{{end}}</span>
     <button class="btn" id="order-mobile" {{if .SoldOut}}hidden{{end}}>{{T "guest.order"}}</button>

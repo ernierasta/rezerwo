@@ -11,6 +11,13 @@
     <h1>{{.LBLStatus}}</h1>
     <div class="desc">{{.LBLStatusText}}</div>
     <p style="margin-top:24px"><a class="btn" href="/">{{.BTNOk}}</a></p>
+    {{with .Sponsors}}
+    <section class="sponsors" style="--sp-h:{{.Height}}px" aria-label="{{.Title}}">
+      <h4>{{.Title}}</h4>
+      {{range .Rows}}<div class="sp-row">{{range .}}{{if .Link}}<a href="{{.Link}}" target="_blank" rel="noopener"><img src="{{.Src}}" alt="" loading="lazy"></a>{{else}}<span><img src="{{.Src}}" alt="" loading="lazy"></span>{{end}}{{end}}</div>
+      {{end}}
+    </section>
+    {{end}}
   </div>
 </body>
 </html>

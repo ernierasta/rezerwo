@@ -714,6 +714,10 @@ type nEventVars struct {
 	ReportTotal nReportRow
 	Occupancy   int64
 
+	// Sponsors - edytor sekcji "Sponsorzy" (sponsors.go)
+	Sponsors    nSponsorsPick
+	SumSponsors string
+
 	SumAddons        string
 	AddonsTemplateID int64
 	AddonsSection    bool
@@ -923,6 +927,7 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		MainDesc:        template.HTML(event.MainDesc.String),
 		MainBanner:      mainBannerPick(T(lang, "field.main_banner"), "mainbanner", event.MainBanner.String, user),
 		Head:            eventHeadPick(event),
+		Sponsors:        sponsorsPick(event, user),
 		OrderHowto:      template.HTML(event.OrderHowto),
 		OrderNotesDesc:  event.OrderNotesDescription,
 		NoSitsTitle:     event.NoSitsSelectedTitle,
@@ -1032,6 +1037,7 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 		guest = T(lang, "field.main_banner") + ", " + guest
 	}
 	v.SumGuest = T(lang, "theme.label") + ": " + ThemeName(lang, event.Theme.String) + ", " + guest
+	v.SumSponsors = sponsorsSummary(v.Sponsors.Sponsors, lang)
 
 	v.SumMailGuest, v.MissMailGuest = notificationName(db, user, event.ThankYouNotificationsID.Int64, lang)
 	v.SumMailAdmin, v.MissMailAdmin = notificationName(db, user, event.AdminNotificationsID.Int64, lang)
@@ -1635,6 +1641,16 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
 				return
 			}
+		case "sponsors":
+			sp, err := sponsorsFromPanel(val, flag)
+			if err != nil {
+				jsonMsg(w, http.StatusBadRequest, nSectionResp{Msg: err.Error()})
+				return
+			}
+			if err := db.EventSetSponsors(event.ID, user.ID, sp.String()); err != nil {
+				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
+				return
+			}
 		case "addons":
 			event.AddonsSection = flag("addons_section")
 			if err := db.EventSetAddonsSection(event.ID, user.ID, event.AddonsSection); err != nil {
@@ -1685,6 +1701,8 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			resp.Summary = v.SumSettings
 		case "addons":
 			resp.Summary = v.SumAddons
+		case "sponsors":
+			resp.Summary = v.SumSponsors
 		}
 		jsonMsg(w, http.StatusOK, resp)
 	}

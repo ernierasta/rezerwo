@@ -3233,3 +3233,128 @@ g.chair.live-hit rect { animation: seat-hit 1.8s ease-out; }
   .roll .roll-old { display: none; }
   .ip-bar i { transition: none; }
 }
+
+// --- sekcja "Sponsorzy" (sponsors.go, tmpl/n_guest_base.html) ---------------
+// W wierszu logo mają wspólną wysokość --sp-h; gdy się nie mieszczą, flex
+// je zwęża, a object-fit nie pozwala ich zniekształcić.
+.sponsors {
+  margin: 48px auto 8px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+
+  h4 {
+    margin: 0 0 18px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+}
+
+.sponsors .sp-row,
+.sp-board .sp-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px 32px;
+
+  > * { flex: 0 1 auto; min-width: 0; display: block; }
+}
+.sponsors .sp-row + .sp-row { margin-top: 20px; }
+
+.guest .sponsors img,
+.order-status .sponsors img,
+.sp-board img {
+  display: block;
+  height: var(--sp-h, 72px);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+.sponsors a { border-radius: 6px; transition: opacity .15s; }
+.sponsors a:hover { opacity: .8; }
+
+@media (max-width: 640px) {
+  .sponsors .sp-row { flex-wrap: wrap; gap: 14px 22px; }
+  .guest .sponsors img, .order-status .sponsors img { height: calc(var(--sp-h, 72px) * .75); }
+}
+
+// edytor w panelu (js/n_sponsors.js): to samo ułożenie, plus pola zrzutu
+.spk > .f { margin-top: 22px; }
+.spk .check + small, .spk .sp-board ~ small { display: block; margin-top: 8px; }
+.sp-board {
+  padding: 14px;
+  background: var(--pane);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+
+  .sp-row {
+    min-height: calc(var(--sp-h, 72px) + 16px);
+    padding: 6px;
+    border-radius: 8px;
+    gap: 10px 20px;
+  }
+  .sp-logo {
+    position: relative;
+    padding: 6px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: var(--surface);
+    cursor: grab;
+    &:hover { border-color: var(--line-strong); }
+    &:focus-visible { outline: 2px solid var(--blue-deep); outline-offset: 2px; }
+    &.on { border-color: var(--blue-deep); }
+    &.dragging { opacity: .35; }
+    &.missing { border-color: var(--danger-line); background: var(--danger-soft); min-width: 60px; }
+    // znaczek linku
+    &.linked::after {
+      content: "↗";
+      position: absolute; top: -8px; right: -8px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--blue-deep); color: var(--on-accent);
+      font-size: 11px; line-height: 18px; text-align: center;
+    }
+  }
+  .sp-mark {
+    flex: 0 0 4px;
+    align-self: stretch;
+    border-radius: 2px;
+    background: var(--blue-deep);
+  }
+  // pasek "nowy wiersz": między wierszami widać go tylko przy przeciąganiu
+  .sp-gap {
+    height: 6px;
+    margin: 2px 0;
+    border-radius: 8px;
+    transition: height .12s;
+  }
+  .sp-gap.last {
+    height: auto;
+    margin-top: 8px;
+    padding: 12px;
+    border: 2px dashed var(--line-strong);
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+  }
+  &.dragging .sp-gap:not(.last) { height: 26px; border: 2px dashed var(--line-strong); }
+  .sp-gap.over, &.dragging .sp-gap.over { border-color: var(--blue-deep); background: var(--blue-soft); }
+}
+
+.sp-sel {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+
+  > img { height: 40px; width: auto; max-width: 120px; object-fit: contain; }
+  .sp-sel-f { flex: 1; min-width: 0; display: grid; gap: 4px; }
+  .sp-sel-name { color: var(--muted); word-break: break-all; }
+  &[hidden] { display: none; }
+}

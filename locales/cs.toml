@@ -639,6 +639,7 @@ people_title = "Přihlášení"
 people_you = "vy"
 remembered = "Některá pole jsme vyplnili údaji z vašeho předchozího formuláře na tomto zařízení."
 remembered_clear = "Vymazat"
+restored = "Vyplnili jsme odpovědi odeslané dříve z tohoto zařízení. Upravte, co potřebujete, a odešlete znovu."
 
 [gform.err]
 email_used = "Z této e-mailové adresy už byl tento formulář odeslán. Pro změnu odpovědí použijte odkaz z potvrzovacího e-mailu (platí %d dní od odeslání). Pokud jde o jinou osobu, použijte jinou adresu."

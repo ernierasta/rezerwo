@@ -74,6 +74,9 @@ type nFormPageVars struct {
 	HasMoney bool
 	Currency string
 	DraftKey string
+	// EditDays - tyle dni przeglądarka trzyma kopię wysłanych odpowiedzi
+	// (tyle samo, ile gość może je poprawić, form_edit.go)
+	EditDays int
 }
 
 // guestForm szuka organizacji i formularza z adresu. Dodatki do zamówienia
@@ -164,6 +167,7 @@ func GuestFormPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			Open:     templ.IsOpen(nowUnix()),
 			Currency: formCurrency(db, user, templ),
 			DraftKey: fmt.Sprintf("rezerwo.gform.%d", templ.ID),
+			EditDays: EDITDAYS,
 			Density:  DensityKey(templ.Density),
 		}
 		closeNote := ""

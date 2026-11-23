@@ -641,6 +641,7 @@ people_title = "Zapisani"
 people_you = "ty"
 remembered = "Część pól uzupełniliśmy danymi z Twojego poprzedniego formularza na tym urządzeniu."
 remembered_clear = "Wyczyść"
+restored = "Wpisaliśmy odpowiedzi wysłane wcześniej z tego urządzenia. Popraw, co trzeba, i wyślij ponownie."
 
 [gform.err]
 email_used = "Z tego adresu e-mail wysłano już ten formularz. Aby zmienić odpowiedzi, użyj linku z maila z potwierdzeniem (działa %d dni od wysłania). Jeśli to inna osoba, użyj innego adresu."

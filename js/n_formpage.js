@@ -469,6 +469,70 @@
     });
   }
 
+  // --- kopia wysłanych odpowiedzi ------------------------------------------
+  // Gość, który wraca poprawić zgłoszenie (np. dopisać się do kolejnej
+  // funkcji), dostaje wpisane wszystkie swoje odpowiedzi, a nie tylko dane
+  // podstawowe - inaczej wysłałby pusty wybór i niechcący wypisał się
+  // z reszty. Kopia żyje tyle, ile serwer pozwala poprawiać (EDITDAYS od
+  // pierwszego wysłania); później i tak nie da się już nic zmienić.
+
+  var sentKey = draftKey ? draftKey + '.sent' : '';
+  var editMs = (Number(root.dataset.editdays) || 0) * 24 * 3600 * 1000;
+
+  function snapshot() {
+    var d = {};
+    fields.forEach(function (ff) {
+      var o = ff.querySelector('.other-text');
+      d[ff.dataset.name] = {v: ff.hidden ? [] : valueOf(ff), o: o && !ff.hidden ? o.value : undefined};
+    });
+    return d;
+  }
+
+  function emailOf(d) {
+    var e = d && d['email-REQUIRED'];
+    return e && e.v && e.v[0] ? String(e.v[0]).trim().toLowerCase() : '';
+  }
+
+  function loadSent() {
+    var s;
+    try { s = JSON.parse(localStorage.getItem(sentKey) || 'null'); } catch (e) { s = null; }
+    if (!s || !s.d || !(s.until > Date.now())) {
+      if (s) try { localStorage.removeItem(sentKey); } catch (e) { /* nic */ }
+      return null;
+    }
+    return s;
+  }
+
+  function keepSent() {
+    if (!sentKey || !editMs) return;
+    var d = snapshot();
+    var old = loadSent();
+    // termin liczy się od pierwszego wysłania tego samego zgłoszenia
+    var until = old && emailOf(old.d) === emailOf(d) ? old.until : Date.now() + editMs;
+    try { localStorage.setItem(sentKey, JSON.stringify({until: until, d: d})); } catch (e) { /* prywatne okno */ }
+  }
+
+  // restoreSent oddaje true, jeśli wpisała wysłane wcześniej odpowiedzi
+  function restoreSent() {
+    var s = sentKey && loadSent();
+    if (!s) return false;
+    fillAll(s.d);
+    var note = document.getElementById('gform-restored');
+    if (!note) return true;
+    note.hidden = false;
+    document.getElementById('gform-restored-clear').addEventListener('click', function () {
+      fields.forEach(function (ff) { setField(ff, {v: [''], o: ''}); });
+      conds.apply();
+      RZ.multiSync(form);
+      updateTotal();
+      try { localStorage.removeItem(sentKey); } catch (e) { /* nic */ }
+      note.hidden = true;
+      clearDraft();
+      renderAllPL();
+    });
+    return true;
+  }
+
   // --- zdarzenia ---------------------------------------------------------
 
   // applyConds przelicza pola warunkowe; ukryte pole nie pokazuje błędu
@@ -558,6 +622,7 @@
           return;
         }
         sent = true;
+        keepSent();
         clearDraft();
         remember();
         location.href = resp.done;
@@ -624,10 +689,12 @@
   if (info && window.matchMedia('(max-width: 860px)').matches) info.open = false;
 
   RZ.loadLocale(root.dataset.lang || 'pl').then(function () {
-    // link z maila: zapisane odpowiedzi zamiast szkicu i zapamiętanych danych
+    // link z maila: zapisane odpowiedzi zamiast szkicu i zapamiętanych danych;
+    // inaczej szkic, potem kopia wysłanych odpowiedzi, a na końcu same dane
+    // podstawowe z innych formularzy organizacji
     if (root.dataset.prefill) {
       try { fillAll(JSON.parse(root.dataset.prefill)); } catch (e) { /* nic */ }
-    } else if (!restoreDraft()) recall();
+    } else if (!restoreDraft() && !restoreSent()) recall();
     fields.forEach(function (ff) {
       if (ff.dataset.type === 'multiplierField') updateMult(ff);
     });

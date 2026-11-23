@@ -1,6 +1,6 @@
 {{define "body"}}
 <div class="guest gform{{if .Info}} has-info{{end}}{{with .Density}} density-{{.}}{{end}}" id="gform"
-     data-send="{{.SendURL}}" data-draft="{{.DraftKey}}" data-currency="{{.Currency}}" data-lang="{{.Lang}}"{{with .Live}} data-live="{{.}}"{{end}}{{if .EditToken}}
+     data-send="{{.SendURL}}" data-draft="{{.DraftKey}}" data-editdays="{{.EditDays}}" data-currency="{{.Currency}}" data-lang="{{.Lang}}"{{with .Live}} data-live="{{.}}"{{end}}{{if .EditToken}}
      data-edit="{{.EditToken}}" data-prefill="{{.Prefill}}"{{end}}>
   {{template "guestwide" .Head}}
 
@@ -32,6 +32,10 @@
       <div class="draft-notice" id="gform-remembered" hidden>
         <span>{{T "gform.remembered"}}</span>
         <button class="link" type="button" id="gform-remembered-clear">{{T "gform.remembered_clear"}}</button>
+      </div>
+      <div class="draft-notice" id="gform-restored" hidden>
+        <span>{{T "gform.restored"}}</span>
+        <button class="link" type="button" id="gform-restored-clear">{{T "gform.remembered_clear"}}</button>
       </div>
       {{if .UniqID}}<p class="uniq">{{T "gform.uniq_id"}} <b class="num" id="uniqid">{{.UniqID}}</b></p>{{end}}
 

@@ -631,6 +631,7 @@ people_title = "Signed up"
 people_you = "you"
 remembered = "Some fields were filled in from your previous form on this device."
 remembered_clear = "Clear"
+restored = "We filled in the answers sent earlier from this device. Change what you need and send again."
 
 [gform.err]
 email_used = "This form has already been sent from this e-mail address. To change your answers, use the link in the confirmation e-mail (valid for %d days after sending). If you are someone else, please use another address."

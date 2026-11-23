@@ -2607,9 +2607,17 @@ h5.subhead a {
   flex-direction: column;
   gap: 14px;
 }
-.side .legend {
+.side .legend-box {
   padding: 0 4px;
-  gap: 8px 18px;
+}
+.side .legend-box h4 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.side .legend {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 8px;
 }
 
 .basket {
@@ -3229,6 +3237,12 @@ h5.subhead a {
 
   .side {
     position: static;
+  }
+
+  .side .legend {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 18px;
   }
 
   .plan-wrap > div:first-child {

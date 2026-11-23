@@ -1341,7 +1341,13 @@ h5.subhead {
   flex-direction: column;
   gap: 14px;
 
-  .legend { padding: 0 4px; gap: 8px 18px; }
+  // legenda pod koszykiem: tytuł i kolory jeden pod drugim
+  .legend-box {
+    padding: 0 4px;
+
+    h4 { font-size: 16px; margin-bottom: 8px; }
+  }
+  .legend { flex-direction: column; flex-wrap: nowrap; gap: 8px; }
 }
 
 .basket {
@@ -1711,6 +1717,7 @@ h5.subhead {
   .plan-wrap { grid-template-columns: minmax(0, 1fr); }
   .basket { display: none; }
   .side { position: static; }
+  .side .legend { flex-direction: row; flex-wrap: wrap; gap: 6px 18px; }
   // legenda zaraz pod planem, przed opisem "jak zamówić"
   .plan-wrap > div:first-child { display: contents; }
   .plan-wrap .howto { order: 1; margin-top: 0; }

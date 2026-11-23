@@ -84,14 +84,17 @@
         <button class="btn" id="order" {{if .SoldOut}}hidden{{end}}>{{T "guest.order"}}</button>
         <button class="link" id="clear" style="margin-top:10px" {{if .SoldOut}}hidden{{end}}>{{T "guest.clear"}}</button>
       </aside>
-      <ul class="legend" aria-label="{{T "guest.legend"}}">
-        <li><i class="sw free"></i>{{T "status.free"}}</li>
-        <li><i class="sw sel"></i>{{T "guest.selected"}}</li>
-        <li class="lg-taken"><i class="sw taken"></i>{{T "guest.taken"}}</li>
-        <li class="lg-classic"><i class="sw ordered"></i>{{T "status.ordered"}}</li>
-        <li class="lg-classic"><i class="sw payed"></i>{{T "status.payed"}}</li>
-        <li><i class="sw off"></i>{{T "guest.unavailable"}}</li>
-      </ul>
+      <div class="legend-box">
+        <h4>{{T "guest.legend_title"}}</h4>
+        <ul class="legend" aria-label="{{T "guest.legend"}}">
+          <li><i class="sw free"></i>{{T "status.free"}}</li>
+          <li><i class="sw sel"></i>{{T "guest.selected"}}</li>
+          <li class="lg-taken"><i class="sw taken"></i>{{T "guest.taken"}}</li>
+          <li class="lg-classic"><i class="sw ordered"></i>{{T "status.ordered"}}</li>
+          <li class="lg-classic"><i class="sw payed"></i>{{T "status.payed"}}</li>
+          <li><i class="sw off"></i>{{T "guest.unavailable"}}</li>
+        </ul>
+      </div>
     </div>
   </div>
 

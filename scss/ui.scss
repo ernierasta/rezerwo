@@ -1307,7 +1307,7 @@ h5.subhead {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 18px;
-  margin: 12px 0 0;
+  margin: 0;
   padding: 0;
   font-size: 14px;
   color: var(--muted);
@@ -1331,13 +1331,23 @@ h5.subhead {
   .lg-classic { display: none; }
 }
 
+// prawa kolumna: koszyk i pod nim legenda, razem przyklejone przy przewijaniu
+// (przy dużej sali legenda pod planem bywa daleko poza ekranem)
+.side {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  .legend { padding: 0 4px; gap: 8px 18px; }
+}
+
 .basket {
   background: var(--pane);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 18px;
-  position: sticky;
-  top: 16px;
 
   h4 { font-size: 16px; margin-bottom: 8px; }
 
@@ -1684,6 +1694,10 @@ h5.subhead {
 @media (max-width: 860px) {
   .plan-wrap { grid-template-columns: minmax(0, 1fr); }
   .basket { display: none; }
+  .side { position: static; }
+  // legenda zaraz pod planem, przed opisem "jak zamówić"
+  .plan-wrap > div:first-child { display: contents; }
+  .plan-wrap .howto { order: 1; margin-top: 0; }
   .bar-mobile { display: flex; }
 }
 

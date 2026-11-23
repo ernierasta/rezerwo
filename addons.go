@@ -10,7 +10,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -43,10 +45,18 @@ type AddonField struct {
 	// ("Kolacja 1", "Kolacja 2", ...). Włącza je końcówka nazwy pola
 	// PERSEATSUFFIX, tak jak istniejąca konwencja "-REQUIRED" w formularzach.
 	PerSeat bool
+
+	// Multi - gość sam dokłada kolejne wpisy przyciskiem "+" (np. nazwiska
+	// rodzin, dla których zamawia), najwyżej tyle, ile zarezerwował miejsc.
+	// Włącza je końcówka nazwy MULTISUFFIX. Tylko pola bez ceny.
+	Multi bool
 }
 
 // PERSEATSUFFIX - końcówka nazwy pola dodatków powtarzanego wg liczby miejsc.
 const PERSEATSUFFIX = "-perseat"
+
+// MULTISUFFIX - końcówka nazwy pola dodatków, które gość powtarza sam ("+").
+const MULTISUFFIX = "-multi"
 
 // IsPriced mówi, czy pole zwiększa kwotę zamówienia.
 func (f AddonField) IsPriced() bool {
@@ -95,6 +105,7 @@ func ParseAddonFields(content string) []AddonField {
 
 		// multiplierField: liczba razy cena, z tekstem przed i po
 		f.Price = intOf(m["multipl"])
+		f.Multi = strings.HasSuffix(strings.ToLower(f.Name), MULTISUFFIX) && !f.IsPriced()
 		// formBuilder i designer pól zapisują teksty jako "pre"/"post"
 		// (nawiasy z domyślnego "(" ... " Kč)" w kroku zamówienia są zbędne)
 		f.Before = strings.Trim(str(m["pre"]), "( ")
@@ -134,13 +145,138 @@ func pricedAddonLabels(db *DB, event Event) map[string]bool {
 	return out
 }
 
+// OrderAddonLine to odpowiedzi jednego pola dodatków w jednym zamówieniu,
+// np. "Rodziny: Kowalscy, Rusnokowie" albo "Kolacja: schabowy, ryba".
+type OrderAddonLine struct {
+	Field  AddonField
+	Values []string
+}
+
+// addonAnswersByOrder zbiera odpowiedzi dodatków (bez pól z ceną - te są
+// pozycjami zamówienia) po id zamówienia, pola w kolejności z definicji.
+// Odpowiedzi na pola, których w definicji już nie ma, idą na koniec.
+func addonAnswersByOrder(db *DB, event Event) map[int64][]OrderAddonLine {
+	rows, err := db.AddonAnswersByEvent(event.ID)
+	if err != nil {
+		log.Printf("addonAnswersByOrder: %v", err)
+		return nil
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	return groupAddonAnswers(rows, EventAddonFields(db, event))
+}
+
+// groupAddonAnswers składa odpowiedzi w linie po zamówieniu i polu.
+func groupAddonAnswers(rows []AddonAnswerRow, fields []AddonField) map[int64][]OrderAddonLine {
+	pos := map[string]int{}
+	for i, f := range fields {
+		pos[f.Name] = i
+	}
+
+	out := map[int64][]OrderAddonLine{}
+	for _, r := range rows {
+		if strings.TrimSpace(r.Value) == "" {
+			continue
+		}
+		var f AddonField
+		if i, ok := pos[r.Name]; ok {
+			f = fields[i]
+		} else {
+			f = AddonField{Name: r.Name, Label: plainLabel(r.Display)}
+		}
+		if f.IsPriced() {
+			continue
+		}
+		lines := out[r.OrderID]
+		found := false
+		for i := range lines {
+			if lines[i].Field.Name == f.Name {
+				lines[i].Values = append(lines[i].Values, r.Value)
+				found = true
+				break
+			}
+		}
+		if !found {
+			lines = append(lines, OrderAddonLine{Field: f, Values: []string{r.Value}})
+		}
+		out[r.OrderID] = lines
+	}
+
+	// kolejność pól jak w definicji (nieznane na końcu)
+	rank := func(name string) int {
+		if i, ok := pos[name]; ok {
+			return i
+		}
+		return len(fields)
+	}
+	for id, lines := range out {
+		sort.SliceStable(lines, func(a, b int) bool {
+			return rank(lines[a].Field.Name) < rank(lines[b].Field.Name)
+		})
+		out[id] = lines
+	}
+	return out
+}
+
+// orderAddonsHTML - dodatki zamówień do maila ({{.Addons}}): odpowiedzi
+// ("Rodziny: Kowalscy, Rusnokowie") i pozycje z ceną ("Parking: 2 × 100").
+// Bez dodatków pusto, więc linijka w mailu po prostu nic nie wstawia.
+func orderAddonsHTML(db *DB, event Event, orderIDs []int64) template.HTML {
+	esc := template.HTMLEscapeString
+	fields := EventAddonFields(db, event)
+	var b strings.Builder
+	line := func(label, value string) {
+		b.WriteString(esc(label) + ": <strong>" + esc(value) + "</strong><br>")
+	}
+	for _, id := range orderIDs {
+		rows, err := db.AddonAnswersByOrder(id)
+		if err != nil {
+			log.Printf("orderAddonsHTML: order %d: %v", id, err)
+		}
+		for _, l := range groupAddonAnswers(rows, fields)[id] {
+			line(l.Field.Label, strings.Join(l.Values, ", "))
+		}
+		items, err := db.OrderItemsGetByOrder(id)
+		if err != nil {
+			log.Printf("orderAddonsHTML: items %d: %v", id, err)
+		}
+		for _, it := range items {
+			label, value, ok := strings.Cut(it.Description, ": ")
+			if !ok {
+				label, value = it.Description, fmt.Sprintf("%d × %d", it.Amount, it.Price)
+			}
+			line(label, value)
+		}
+	}
+	return template.HTML(b.String())
+}
+
+// sampleAddonsHTML - przykład do podglądu maila: pola dodatków imprezy
+// z wielokropkiem zamiast odpowiedzi.
+func sampleAddonsHTML(db *DB, event Event, lang string) template.HTML {
+	esc := template.HTMLEscapeString
+	var b strings.Builder
+	for _, f := range EventAddonFields(db, event) {
+		v := "…"
+		if f.IsPriced() {
+			v = fmt.Sprintf("1 × %d", f.Price)
+		}
+		b.WriteString(esc(f.Label) + ": <strong>" + esc(v) + "</strong><br>")
+	}
+	if b.Len() == 0 {
+		b.WriteString(esc(T(lang, "mail.sample.addons")))
+	}
+	return template.HTML(b.String())
+}
+
 // AddonAnswer to jedna odpowiedź gościa na pole dodatków.
 type AddonAnswer struct {
 	Field  AddonField
 	Value  string
 	Amount int64 // dla pól z ceną: ile sztuk
-	// Repeat - numer powtórzenia dla pól "tyle razy, ile miejsc" (1, 2, ...);
-	// 0 dla pól wypełnianych raz na zamówienie
+	// Repeat - numer powtórzenia dla pól "tyle razy, ile miejsc" i pól
+	// dokładanych przez gościa (1, 2, ...); 0 dla pól wypełnianych raz
 	Repeat int64
 }
 
@@ -177,8 +313,22 @@ func AddonInputName(f AddonField, repeat int64) string {
 // Pola mają w formularzu nazwy "addon-<nazwa pola>" (i "addon-<nazwa>-amount"
 // dla liczby sztuk), żeby nie mieszać ich z danymi osoby. Pola powtarzane wg
 // liczby miejsc mają numer powtórzenia w nazwie (addon-<nazwa>-1, -2, ...).
+// Pola dokładane przez gościa ("+") też, ale czytamy najwyżej tyle wpisów, ile
+// miejsc, puste pomijamy i numerujemy od nowa bez dziur.
 func CollectAddonAnswers(fields []AddonField, form map[string][]string, seats int64) []AddonAnswer {
 	var out []AddonAnswer
+
+	collectMulti := func(f AddonField) {
+		var n int64
+		for i := int64(1); i <= seats; i++ {
+			value := strings.TrimSpace(first(form[AddonInputName(f, i)]))
+			if value == "" {
+				continue
+			}
+			n++
+			out = append(out, AddonAnswer{Field: f, Value: value, Repeat: n})
+		}
+	}
 
 	collect := func(f AddonField, repeat int64) {
 		name := AddonInputName(f, repeat)
@@ -201,6 +351,10 @@ func CollectAddonAnswers(fields []AddonField, form map[string][]string, seats in
 	}
 
 	for _, f := range fields {
+		if f.Multi {
+			collectMulti(f)
+			continue
+		}
 		if f.PerSeat && seats > 0 {
 			for i := int64(1); i <= seats; i++ {
 				collect(f, i)

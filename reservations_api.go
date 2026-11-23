@@ -60,8 +60,28 @@ type nResListResp struct {
 	Currency  string     `json:"currency"`
 	Rows      []nResJSON `json:"rows"`
 	// Addons - pozycje zamówień (dodatki i dopłaty) po id zamówienia
-	Addons        map[int64][]nAddonItemJSON `json:"addons"`
-	Notifications []nResNotifOpt             `json:"notifications"`
+	Addons map[int64][]nAddonItemJSON `json:"addons"`
+	// Answers - odpowiedzi dodatków bez ceny po id zamówienia
+	// ("Rodziny: Kowalscy, Rusnokowie")
+	Answers       map[int64][]nAddonAnswerJSON `json:"answers"`
+	Notifications []nResNotifOpt               `json:"notifications"`
+}
+
+// nAddonAnswerJSON to odpowiedzi jednego pola dodatków w zamówieniu.
+type nAddonAnswerJSON struct {
+	Label  string   `json:"label"`
+	Values []string `json:"values"`
+}
+
+// eventAddonAnswersJSON - addonAnswersByOrder w postaci dla tabeli rezerwacji.
+func eventAddonAnswersJSON(db *DB, event Event) map[int64][]nAddonAnswerJSON {
+	out := map[int64][]nAddonAnswerJSON{}
+	for id, lines := range addonAnswersByOrder(db, event) {
+		for _, l := range lines {
+			out[id] = append(out[id], nAddonAnswerJSON{Label: l.Field.Label, Values: l.Values})
+		}
+	}
+	return out
 }
 
 // eventAddonsByOrder zwraca pozycje zamówień imprezy pogrupowane po zamówieniu.
@@ -159,6 +179,7 @@ func ReservationsListAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseW
 			Currency:  event.DefaultCurrency,
 			Rows:      reservationRows(db, user, event),
 			Addons:    eventAddonsByOrder(db, event.ID),
+			Answers:   eventAddonAnswersJSON(db, event),
 		}
 		for _, n := range notifs {
 			resp.Notifications = append(resp.Notifications, nResNotifOpt{ID: n.ID, Name: n.Name})
@@ -412,6 +433,13 @@ func sendEventMailToOrder(db *DB, mailConf MailConfig, user User, event Event, m
 		first.CustName.String, first.CustSurname.String, first.CustPhone.String,
 		first.CustEmail.String, first.Notes.String, event.Name, sits, prices, rooms,
 		event.ID, total, user, db)
+	seen := map[int64]bool{}
+	for _, rf := range frs {
+		if id := rf.OrderID.Int64; id != 0 && !seen[id] {
+			seen[id] = true
+			of.OrderIDs = append(of.OrderIDs, id)
+		}
+	}
 	text := renderOrderTmpl(mail.Text, of)
 	if err := mailConf.SendAsOrg(user, first.CustEmail.String, OrderSubject(mail.Title.String, of), text,
 		append(mail.Files(user), of.AttachedFiles...), append(mail.Images(user), of.EmbeddedImgs...)); err != nil {
@@ -440,6 +468,29 @@ func ReservationsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 		lang := PanelLang(r)
 		rows := reservationRows(db, user, event)
 
+		// odpowiedzi dodatków (bez ceny) jako kolumny: jedna na pole, kilka
+		// odpowiedzi (np. rodziny) w jednej komórce
+		answers := addonAnswersByOrder(db, event)
+		var cols []string
+		seen := map[string]bool{}
+		for _, f := range EventAddonFields(db, event) {
+			if !f.IsPriced() && !seen[f.Label] {
+				seen[f.Label] = true
+				cols = append(cols, f.Label)
+			}
+		}
+		for _, lines := range answers {
+			for _, l := range lines {
+				if !seen[l.Field.Label] {
+					seen[l.Field.Label] = true
+					cols = append(cols, l.Field.Label)
+				}
+			}
+		}
+		if len(answers) == 0 {
+			cols = nil
+		}
+
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q",
 			strings.ReplaceAll(event.Name, "\"", "")+".csv"))
@@ -447,14 +498,22 @@ func ReservationsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 		cw := newSafeCSV(w)
 		defer cw.Flush()
 
-		cw.Write([]string{
+		cw.Write(append([]string{
 			T(lang, "res.person"), T(lang, "field.rooms"), T(lang, "res.seats"),
 			"e-mail", T(lang, "order.phone"), T(lang, "res.status"), T(lang, "res.amount"),
 			T(lang, "field.currency"), T(lang, "res.ordered_date"), T(lang, "status.payed"),
 			T(lang, "order.notes"),
-		})
+		}, cols...))
 		for _, row := range rows {
-			cw.Write([]string{
+			extra := make([]string, len(cols))
+			for _, l := range answers[row.OrderID] {
+				for i, c := range cols {
+					if c == l.Field.Label {
+						extra[i] = strings.Join(l.Values, ", ")
+					}
+				}
+			}
+			cw.Write(append([]string{
 				strings.TrimSpace(row.Name + " " + row.Surname),
 				row.Room,
 				strconv.FormatInt(row.Chair, 10),
@@ -466,7 +525,7 @@ func ReservationsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWr
 				FormatDate(lang, row.OrderedDate),
 				FormatDate(lang, row.PayedDate),
 				row.Notes,
-			})
+			}, extra...))
 		}
 	}
 }
@@ -697,13 +756,24 @@ func EventAddonsCSVAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWri
 		defer cw.Flush()
 
 		priced := pricedAddonLabels(db, event)
+		multi := multiAddonLabels(db, event)
 		cw.Write([]string{T(lang, "addons.field"), T(lang, "addons.answer"), T(lang, "addons.count")})
 		for _, c := range counts {
 			label := plainLabel(c.Field)
-			if priced[label] || strings.TrimSpace(c.Value) == "" {
-				continue // pola z ceną są niżej, w dopłatach
+			if priced[label] || multi[label] || strings.TrimSpace(c.Value) == "" {
+				continue // pola z ceną są niżej, w dopłatach; pola "+" w wpisach gości
 			}
 			cw.Write([]string{label, c.Value, strconv.FormatInt(c.Count, 10)})
+		}
+
+		// wpisy gości z pól "+" (np. rodziny) z zamawiającym
+		if mr := addonMultiRows(db, event); len(mr) > 0 {
+			cw.Write([]string{})
+			cw.Write([]string{T(lang, "addons.multi_title"), T(lang, "addons.answer"),
+				T(lang, "addons.multi_who"), T(lang, "addons.multi_seats")})
+			for _, m := range mr {
+				cw.Write([]string{m.Field, m.Value, m.Who, strconv.FormatInt(m.Seats, 10)})
+			}
 		}
 
 		// dopłaty osobno: ile sztuk i za ile

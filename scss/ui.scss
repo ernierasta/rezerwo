@@ -824,6 +824,7 @@ $gh-colors: (
     .kv-row { font-size: 14px; }
 
     .kv-row.item { flex-wrap: wrap; }
+    .kv-row.answer span:last-child { text-align: right; }
     .item-actions { display: flex; gap: 10px; width: 100%; justify-content: flex-end; }
     .item-actions .link { font-size: 13px; }
 
@@ -1672,6 +1673,21 @@ h5.subhead {
 
       .inp { width: 90px; }
     }
+
+    // pole dokładane przez gościa ("+"): wiersze jeden pod drugim
+    .multi-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .multi-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      .inp { flex: 1; min-width: 0; }
+    }
+    .multi-add { margin-top: 8px; align-self: flex-start; }
   }
 }
 

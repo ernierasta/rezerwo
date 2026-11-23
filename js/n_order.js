@@ -72,6 +72,54 @@
     recount();
   }
 
+  // Pola dokładane przez gościa ("+", np. nazwiska rodzin): kolejny wiersz to
+  // kopia pierwszego, najwyżej tyle wierszy, ile miejsc. Nazwy pól zawsze idą
+  // po kolei (addon-<pole>-1, -2, ...), także po usunięciu wiersza ze środka.
+  document.querySelectorAll('.addon-multi').forEach(function (box) {
+    var rows = box.querySelector('.multi-rows');
+    var add = box.querySelector('.multi-add');
+    var max = Number(box.dataset.max) || 1;
+    var base = box.dataset.base;
+    var proto = rows.querySelector('.multi-row');
+
+    function renumber() {
+      var all = rows.querySelectorAll('.multi-row');
+      all.forEach(function (row, i) {
+        var el = row.querySelector('input, select');
+        el.name = base + '-' + (i + 1);
+        if (i > 0) el.id = el.name;
+      });
+      add.hidden = all.length >= max;
+    }
+
+    add.addEventListener('click', function () {
+      if (rows.querySelectorAll('.multi-row').length >= max) return;
+      var row = proto.cloneNode(true);
+      var el = row.querySelector('input, select');
+      el.value = '';
+      if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      el.required = false; // obowiązkowy jest tylko pierwszy wpis
+      el.removeAttribute('aria-invalid');
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn quiet sm multi-del';
+      del.textContent = '✕';
+      del.title = add.dataset.remove;
+      del.setAttribute('aria-label', add.dataset.remove);
+      del.addEventListener('click', function () {
+        row.remove();
+        renumber();
+        add.focus();
+      });
+      row.appendChild(del);
+      rows.appendChild(row);
+      renumber();
+      el.focus();
+    });
+
+    renumber();
+  });
+
   // walidacja z komunikatami w języku imprezy (form ma novalidate, bo natywne
   // dymki przeglądarki byłyby w jej języku, np. czeskim na polskiej imprezie)
   var form = document.getElementById('order-form');

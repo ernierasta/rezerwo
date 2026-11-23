@@ -32,6 +32,13 @@
 
   var ROLE = {name: 'name-REQUIRED', surname: 'surname-REQUIRED', email: 'email-REQUIRED'};
   var PERSEAT = '-perseat';
+  var MULTI = '-multi'; // gość dokłada kolejne wpisy "+" (MULTISUFFIX w addons.go)
+  function hasSuffix(f, suf) { return !!(f.name && f.name.slice(-suf.length) === suf); }
+  function baseName(name) {
+    if (name.slice(-PERSEAT.length) === PERSEAT) return name.slice(0, -PERSEAT.length);
+    if (name.slice(-MULTI.length) === MULTI) return name.slice(0, -MULTI.length);
+    return name;
+  }
   var INPUTS = ['text', 'textarea', 'number', 'date', 'select', 'radio-group', 'checkbox-group', 'multiplierField'];
   var CHOICE = ['select', 'radio-group', 'checkbox-group'];
   var PLAIN = ['text', 'textarea', 'number', 'date'];
@@ -635,7 +642,8 @@
     if (!isAddons && (panelMode === 'auto' || panelMode === 'fields') && inPanel(f)) {
       b.push('<b class="panel">' + esc(t(atField(f) ? 'fields.panel_badge_field' : 'fields.panel_badge')) + (f.panel_goal ? ' / ' + esc(f.panel_goal) : '') + '</b>');
     }
-    if (isAddons && f.name && f.name.slice(-PERSEAT.length) === PERSEAT) b.push('<b>' + esc(t('fields.perseat_badge')) + '</b>');
+    if (isAddons && hasSuffix(f, PERSEAT)) b.push('<b>' + esc(t('fields.perseat_badge')) + '</b>');
+    if (isAddons && hasSuffix(f, MULTI) && f.type !== 'multiplierField') b.push('<b>' + esc(t('fields.multi_badge')) + '</b>');
     if (!isAddons && f.people_list && f.type === 'checkbox-group') b.push('<b class="mgr">✓ ' + esc(t('fields.people_list_badge')) + '</b>');
     if (!isAddons && f.mgr_people && f.type === 'checkbox-group') b.push('<b class="mgr">' + esc(t('fields.mgr_people_badge')) + '</b>');
     if (!isAddons && f.mgr_hidden && !f.mgr_people && !role) b.push('<b class="mgr">' + esc(t('fields.mgr_hidden_badge')) + '</b>');
@@ -869,9 +877,10 @@
       }
 
       if (isAddons && type !== 'multiplierField') {
-        var ps = f.name && f.name.slice(-PERSEAT.length) === PERSEAT;
-        h += check('_perseat', ps, t('fields.perseat'));
+        h += check('_perseat', hasSuffix(f, PERSEAT), t('fields.perseat'));
         h += '<small class="fd-under muted">' + esc(t('fields.perseat_hint')) + '</small>';
+        h += check('_multi', hasSuffix(f, MULTI), t('fields.multi'));
+        h += '<small class="fd-under muted">' + esc(t('fields.multi_hint')) + '</small>';
       }
 
       if (!isAddons) h += panelHTML(f);
@@ -1479,7 +1488,7 @@
   function setLabel(f, html) {
     f.label = html;
     if (f._new && !f._nameEdited && isInput(f.type) && !roleOf(f)) {
-      var suffix = isAddons && f.name && f.name.slice(-PERSEAT.length) === PERSEAT ? PERSEAT : '';
+      var suffix = !isAddons ? '' : hasSuffix(f, PERSEAT) ? PERSEAT : hasSuffix(f, MULTI) ? MULTI : '';
       var old = f.name;
       f.name = uniqueName((slug(html) || f.type) + suffix, f._id);
       renameRefs(old, f.name);
@@ -1656,8 +1665,11 @@
         moneyId = el.checked ? f._id : (moneyId === f._id ? 0 : moneyId);
         break;
       case '_perseat':
-        var base = f.name.slice(-PERSEAT.length) === PERSEAT ? f.name.slice(0, -PERSEAT.length) : f.name;
-        f.name = el.checked ? uniqueName(base + PERSEAT, f._id) : uniqueName(base, f._id);
+      case '_multi':
+        // jedno albo drugie: "na każde miejsce" i "gość dokłada" się wykluczają
+        var base = baseName(f.name);
+        var suf = prop === '_perseat' ? PERSEAT : MULTI;
+        f.name = el.checked ? uniqueName(base + suf, f._id) : uniqueName(base, f._id);
         break;
       case '_nr':
         f._nr = el.checked;

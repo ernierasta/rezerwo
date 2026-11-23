@@ -57,12 +57,26 @@ type nOrderAddon struct {
 	Repeat int64
 	Input  string // nazwa pola w formularzu
 	Title  string // etykieta z numerem powtórzenia
+	// Max - pole dokładane przez gościa ("+"): ile wpisów najwyżej (= miejsca)
+	Max int64
 }
 
 // orderAddonFields rozwija definicję dodatków na pola do wyświetlenia.
 func orderAddonFields(fields []AddonField, seats int64) []nOrderAddon {
 	var out []nOrderAddon
 	for _, f := range fields {
+		if f.Multi {
+			if seats > 0 {
+				out = append(out, nOrderAddon{
+					AddonField: f,
+					Repeat:     1,
+					Input:      AddonInputName(f, 1),
+					Title:      f.Label,
+					Max:        seats,
+				})
+			}
+			continue
+		}
 		if f.PerSeat && seats > 0 {
 			for i := int64(1); i <= seats; i++ {
 				out = append(out, nOrderAddon{
@@ -248,6 +262,8 @@ type Order struct {
 	Email               string
 	Name, Surname       string
 	Phone, Notes        string
+	// OrderID - zamówienie (orders) z dodatkami, dla .Addons w mailach
+	OrderID int64
 }
 
 // ReservationOrderStatusHTML - POST /order/status: zablokowane miejsca
@@ -369,7 +385,8 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 		// zapisuje dodatki (odpowiedzi i dopłaty). Suma = ceny miejsc z bazy
 		// + dopłaty policzone na serwerze; przy ukrytych cenach formularz
 		// sumy nie wysyła i zostaje pusta, jak dotąd.
-		_, addonsTotal := SaveOrderWithAddons(db, event, user, cID, reservationIDs, o.Notes, r.Form)
+		orderID, addonsTotal := SaveOrderWithAddons(db, event, user, cID, reservationIDs, o.Notes, r.Form)
+		o.OrderID = orderID
 		if o.TotalPrice != "" {
 			o.TotalPrice = strconv.FormatInt(seatsTotal+addonsTotal, 10)
 		}

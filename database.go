@@ -1370,6 +1370,44 @@ func (db *DB) AddonAnswerSummary(eventID int64) ([]AddonAnswerCount, error) {
 	return rr, err
 }
 
+// AddonAnswerRow to jedna odpowiedź dodatków przy konkretnym zamówieniu.
+type AddonAnswerRow struct {
+	OrderID int64  `db:"order_id"`
+	Name    string `db:"name"`
+	Display string `db:"display"`
+	Value   string `db:"value"`
+	Repeat  int64  `db:"repeat_index"`
+}
+
+// AddonAnswersByEvent zwraca odpowiedzi dodatków wszystkich zamówień imprezy
+// po kolei: zamówienie, pole (w kolejności z definicji), powtórzenie.
+func (db *DB) AddonAnswersByEvent(eventID int64) ([]AddonAnswerRow, error) {
+	rr := []AddonAnswerRow{}
+	err := db.DB.Select(&rr, `SELECT o.id order_id, ff.name, ff.display,
+			COALESCE(fa.value, '') value, COALESCE(fa.repeat_index, 0) repeat_index
+		FROM formanswers fa
+		JOIN forms f ON fa.forms_id_fk = f.id
+		JOIN orders o ON f.orders_id_fk = o.id
+		JOIN formfields ff ON fa.formfields_id_fk = ff.id
+		WHERE o.events_id_fk = $1
+		ORDER BY o.id, ff.id, fa.repeat_index`, eventID)
+	return rr, err
+}
+
+// AddonAnswersByOrder - AddonAnswersByEvent dla jednego zamówienia (maile).
+func (db *DB) AddonAnswersByOrder(orderID int64) ([]AddonAnswerRow, error) {
+	rr := []AddonAnswerRow{}
+	err := db.DB.Select(&rr, `SELECT o.id order_id, ff.name, ff.display,
+			COALESCE(fa.value, '') value, COALESCE(fa.repeat_index, 0) repeat_index
+		FROM formanswers fa
+		JOIN forms f ON fa.forms_id_fk = f.id
+		JOIN orders o ON f.orders_id_fk = o.id
+		JOIN formfields ff ON fa.formfields_id_fk = ff.id
+		WHERE o.id = $1
+		ORDER BY ff.id, fa.repeat_index`, orderID)
+	return rr, err
+}
+
 // OrderItemsGetByEvent zwraca wszystkie pozycje zamówień imprezy (raporty).
 func (db *DB) OrderItemsGetByEvent(eventID int64) ([]OrderItem, error) {
 	ii := []OrderItem{}

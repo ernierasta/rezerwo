@@ -26,7 +26,7 @@
     pane: document.getElementById('res-pane')
   };
 
-  var data = {rows: [], currency: '', notifications: [], addons: {}};
+  var data = {rows: [], currency: '', notifications: [], addons: {}, answers: {}};
   var view = 'orders';   // orders | seats
   var quick = 'all';     // all | ordered | payed | unpaid7 | nomail
   var table;
@@ -296,7 +296,23 @@
     box.innerHTML = '<h5>' + RZ.t('addons.in_order') + '</h5>';
 
     var items = (data.addons && data.addons[orderID]) || [];
-    if (!items.length) {
+    var answers = (data.answers && data.answers[orderID]) || [];
+
+    // odpowiedzi gościa bez ceny: "Rodziny: Kowalscy, Rusnokowie"
+    answers.forEach(function (a) {
+      var line = document.createElement('div');
+      line.className = 'kv-row answer';
+      var name = document.createElement('span');
+      name.className = 'muted';
+      name.textContent = a.label;
+      var val = document.createElement('span');
+      val.textContent = (a.values || []).join(', ');
+      line.appendChild(name);
+      line.appendChild(val);
+      box.appendChild(line);
+    });
+
+    if (!items.length && !answers.length) {
       var none = document.createElement('p');
       none.className = 'muted';
       none.textContent = RZ.t('addons.none_in_order');
@@ -513,6 +529,7 @@
       data.rows = d.rows || [];
       data.currency = d.currency || '';
       data.addons = d.addons || {};
+      data.answers = d.answers || {};
       (d.notifications || []).forEach(function (n) {
         var o = document.createElement('option');
         o.value = n.id;

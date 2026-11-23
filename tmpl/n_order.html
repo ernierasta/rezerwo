@@ -86,8 +86,9 @@
     <div class="addons" id="addons">
       <h4>{{T "addons.guest_title"}}</h4>
       {{range .Addons}}
-      <div class="f">
+      <div class="f{{if .Multi}} addon-multi{{end}}"{{if .Multi}} data-max="{{.Max}}" data-base="addon-{{.Name}}"{{end}}>
         <label for="{{.Input}}">{{.Title}}{{if .Required}} *{{end}}</label>
+        {{if .Multi}}<div class="multi-rows"><div class="multi-row">{{end}}
         {{if .Options}}
         <select class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>
           <option value="">{{T "field.select_hint"}}</option>
@@ -102,6 +103,9 @@
         </div>
         {{else}}
         <input class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>
+        {{end}}
+        {{if .Multi}}</div></div>
+        <button type="button" class="btn quiet sm multi-add" data-remove="{{T "addons.multi_remove"}}">+ {{T "addons.multi_add"}}</button>
         {{end}}
       </div>
       {{end}}

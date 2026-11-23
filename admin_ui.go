@@ -729,6 +729,79 @@ type nEventVars struct {
 	AddonSummary   []nAddonSummaryRow
 	SurchargeRows  []nSurchargeRow
 	SurchargeTotal string
+	// MultiRows - wpisy z pól dokładanych przez gościa ("+", np. rodziny):
+	// liczenie "Kowalscy: 1" nic nie mówi, więc lista z zamawiającym
+	MultiRows []nAddonMultiRow
+}
+
+// nAddonMultiRow - jeden wpis gościa w polu "+" i kto go zamówił.
+type nAddonMultiRow struct {
+	Field string
+	Value string
+	Who   string
+	Seats int64
+}
+
+// addonMultiRows zbiera wpisy z pól dokładanych przez gościa ("+") we
+// wszystkich zamówieniach, które mają jeszcze jakieś miejsca. Kolejność:
+// pole, potem zamówienia po kolei.
+func addonMultiRows(db *DB, event Event) []nAddonMultiRow {
+	answers := addonAnswersByOrder(db, event)
+	if len(answers) == 0 {
+		return nil
+	}
+	rr, err := db.ReservationFullGetAll(event.UserID, event.ID)
+	if err != nil {
+		log.Printf("addonMultiRows: %v", err)
+		return nil
+	}
+	seats := map[int64]int64{}
+	who := map[int64]string{}
+	for _, r := range rr {
+		if !r.OrderID.Valid || r.OrderID.Int64 == 0 {
+			continue
+		}
+		seats[r.OrderID.Int64]++
+		if who[r.OrderID.Int64] == "" {
+			who[r.OrderID.Int64] = strings.TrimSpace(r.CustName.String + " " + r.CustSurname.String)
+		}
+	}
+	ids := make([]int64, 0, len(answers))
+	for id := range answers {
+		if seats[id] > 0 { // zamówienie anulowane - wpisy już nieaktualne
+			ids = append(ids, id)
+		}
+	}
+	sort.Slice(ids, func(a, b int) bool { return ids[a] < ids[b] })
+
+	var out []nAddonMultiRow
+	for _, f := range EventAddonFields(db, event) {
+		if !f.Multi {
+			continue
+		}
+		for _, id := range ids {
+			for _, l := range answers[id] {
+				if l.Field.Name != f.Name {
+					continue
+				}
+				for _, v := range l.Values {
+					out = append(out, nAddonMultiRow{Field: f.Label, Value: v, Who: who[id], Seats: seats[id]})
+				}
+			}
+		}
+	}
+	return out
+}
+
+// multiAddonLabels - etykiety pól "+"; w liście dla kuchni ich nie liczymy.
+func multiAddonLabels(db *DB, event Event) map[string]bool {
+	out := map[string]bool{}
+	for _, f := range EventAddonFields(db, event) {
+		if f.Multi {
+			out[f.Label] = true
+		}
+	}
+	return out
 }
 
 // nAddonSummaryRow - ile razy wybrano daną odpowiedź w polu dodatków.
@@ -1114,12 +1187,13 @@ func fillAddonSummary(db *DB, event Event, lang string, v *nEventVars) {
 		log.Printf("fillAddonSummary: answers: %v", err)
 	}
 	priced := pricedAddonLabels(db, event)
+	multi := multiAddonLabels(db, event)
 	for _, c := range counts {
 		if strings.TrimSpace(c.Value) == "" {
 			continue
 		}
-		if priced[plainLabel(c.Field)] {
-			continue // pola z ceną są niżej, w dopłatach
+		if priced[plainLabel(c.Field)] || multi[plainLabel(c.Field)] {
+			continue // pola z ceną są niżej, w dopłatach; pola "+" w MultiRows
 		}
 		v.AddonSummary = append(v.AddonSummary, nAddonSummaryRow{
 			Field: plainLabel(c.Field),
@@ -1127,6 +1201,8 @@ func fillAddonSummary(db *DB, event Event, lang string, v *nEventVars) {
 			Count: c.Count,
 		})
 	}
+
+	v.MultiRows = addonMultiRows(db, event)
 
 	items, err := db.OrderItemsGetByEvent(event.ID)
 	if err != nil {

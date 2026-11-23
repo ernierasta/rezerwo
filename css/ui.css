@@ -1763,6 +1763,9 @@ textarea.inp {
 .detail-pane .addon-list .kv-row.item {
   flex-wrap: wrap;
 }
+.detail-pane .addon-list .kv-row.answer span:last-child {
+  text-align: right;
+}
 .detail-pane .addon-list .item-actions {
   display: flex;
   gap: 10px;
@@ -3164,6 +3167,24 @@ h5.subhead a {
 }
 .order-step .addons .addon-amount .inp {
   width: 90px;
+}
+.order-step .addons .multi-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.order-step .addons .multi-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.order-step .addons .multi-row .inp {
+  flex: 1;
+  min-width: 0;
+}
+.order-step .addons .multi-add {
+  margin-top: 8px;
+  align-self: flex-start;
 }
 
 .free-text {

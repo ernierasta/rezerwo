@@ -313,7 +313,7 @@
         </p>
         {{end}}
 
-        {{if or .AddonSummary .SurchargeRows}}
+        {{if or .AddonSummary .SurchargeRows .MultiRows}}
         <h5 class="subhead">{{T "addons.summary_title"}}
           <a href="/api/events/{{.ID}}/addons.csv">{{T "addons.export"}}</a>
         </h5>
@@ -323,6 +323,12 @@
             <tr><th>{{T "addons.field"}}</th><th>{{T "addons.answer"}}</th><th class="r">{{T "addons.count"}}</th></tr>
             {{range .AddonSummary}}
             <tr><td>{{.Field}}</td><td>{{.Value}}</td><td class="r num">{{.Count}}</td></tr>
+            {{end}}
+            {{end}}
+            {{if .MultiRows}}
+            <tr><th>{{T "addons.multi_title"}}</th><th>{{T "addons.multi_who"}}</th><th class="r">{{T "addons.multi_seats"}}</th></tr>
+            {{range .MultiRows}}
+            <tr><td>{{.Value}} <span class="muted">({{.Field}})</span></td><td>{{.Who}}</td><td class="r num">{{.Seats}}</td></tr>
             {{end}}
             {{end}}
             {{if .SurchargeRows}}

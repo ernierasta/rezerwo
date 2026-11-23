@@ -45,6 +45,7 @@ var eventMailVars = []mailVar{
 	{".Email", "mail.var.email", false, false, "", "", false},
 	{".Phone", "mail.var.phone", false, false, "", "", false},
 	{".Notes", "mail.var.notes", false, false, "", "", false},
+	{".Addons", "mail.var.addons", false, false, "", "", false},
 	{".Sits", "mail.var.sits", true, false, "", "", false},
 	{".Rooms", "mail.var.rooms", true, false, "", "", false},
 	{".TotalPrice", "mail.var.total", true, false, "", "", false},
@@ -213,6 +214,9 @@ func orderFuncsFromOrder(o Order, db *DB, user User) *OrderFuncs {
 		DB:          db,
 		User:        user,
 		NameSurname: o.Surname + "_" + o.Name,
+	}
+	if o.OrderID != 0 {
+		of.OrderIDs = []int64{o.OrderID}
 	}
 	of.complete(db)
 	return of
@@ -500,6 +504,27 @@ type OrderFuncs struct {
 
 	// payPrefix - początek wiadomości dla odbiorcy z imprezy (complete)
 	payPrefix string
+
+	// OrderIDs - zamówienia, których dodatki wstawia .Addons (przy wysyłce
+	// z panelu jeden adres może mieć kilka zamówień)
+	OrderIDs []int64
+}
+
+// Addons wstawia dodatki zamówienia: odpowiedzi gościa (np. rodziny,
+// wybór obiadu) i dopłaty. W podglądzie pola dodatków imprezy z przykładem.
+func (o *OrderFuncs) Addons() template.HTML {
+	if o.DB == nil || o.EventID == 0 {
+		return ""
+	}
+	event, err := o.DB.EventGetByID(o.EventID)
+	if err != nil {
+		log.Printf("OrderFuncs.Addons: event %d: %v", o.EventID, err)
+		return ""
+	}
+	if o.Preview {
+		return sampleAddonsHTML(o.DB, event, o.Lang)
+	}
+	return orderAddonsHTML(o.DB, event, o.OrderIDs)
 }
 
 // qr generuje kod QR płatności za zamówienie

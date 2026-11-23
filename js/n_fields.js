@@ -227,6 +227,36 @@
     return tpl.innerHTML.replace(/&nbsp;/g, ' ').replace(/(\s|<br\s*\/?>)+$/i, '').trim();
   }
 
+  // isBold - cały tekst etykiety pogrubiony (każdy kawałek tekstu w <b>/<strong>)
+  function isBold(html) {
+    var tpl = document.createElement('template');
+    tpl.innerHTML = cleanHTML(html);
+    var any = false, all = true;
+    (function walk(node, bold) {
+      Array.prototype.forEach.call(node.childNodes, function (ch) {
+        if (ch.nodeType === 3) {
+          if (ch.nodeValue.trim()) { any = true; if (!bold) all = false; }
+        } else if (ch.nodeType === 1) {
+          var tag = ch.tagName.toLowerCase();
+          walk(ch, bold || tag === 'b' || tag === 'strong');
+        }
+      });
+    })(tpl.content, false);
+    return any && all;
+  }
+
+  // setBold - pogrubia całą etykietę albo zdejmuje z niej każde pogrubienie
+  function setBold(html, on) {
+    var tpl = document.createElement('template');
+    tpl.innerHTML = cleanHTML(html);
+    Array.prototype.slice.call(tpl.content.querySelectorAll('b, strong')).forEach(function (el) {
+      while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+      el.remove();
+    });
+    var inner = tpl.innerHTML;
+    return on && inner.trim() ? '<b>' + inner + '</b>' : inner;
+  }
+
   function plain(html) {
     var d = document.createElement('div');
     d.innerHTML = html || '';
@@ -966,6 +996,8 @@
     hsize: {ok: isType('header'),
       get: function (f) { return f.subtype === 'h3' ? 'h3' : (f.subtype === 'h4' || f.subtype === 'h5' || f.subtype === 'h6') ? 'h4' : 'h2'; },
       set: function (f, v) { f.subtype = v; }},
+    bold: {ok: function (f) { return f.type !== 'divider' && !!plain(f.label); },
+      get: function (f) { return isBold(f.label); }, set: function (f, v) { f.label = setBold(f.label, v); }},
     line: {ok: isType('header', 'divider'), get: function (f) { return f.type === 'header' ? (f.line || '') : lineOf(f); },
       set: function (f, v) { if (v) f.line = v; else delete f.line; }},
     line_color: {ok: function (f) { return BULK.line.ok(f) && lineOf(f) !== 'none'; }, get: lineColor,
@@ -1139,6 +1171,7 @@
     h += bulkCheck('required', t('fields.required'));
     h += bulkSeg('tkind', t('fields.text_kind'), [['text', esc(t('fields.type.text'))], ['email', esc(t('fields.role.email'))], ['tel', esc(t('fields.type.tel'))]]);
     h += bulkSeg('hsize', t('fields.header_size'), [['h2', esc(t('fields.size_l'))], ['h3', esc(t('fields.size_m'))], ['h4', esc(t('fields.size_s'))]]);
+    h += bulkCheck('bold', t('fields.bulk_bold'));
     var ls = bulkScope('line');
     if (ls.list.length) {
       var allHead = ls.list.every(isType('header'));

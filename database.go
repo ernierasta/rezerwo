@@ -149,6 +149,10 @@ type Event struct {
 	// PageHead - nagłówek strony gościa, JSON PageHead (pagehead.go,
 	// tools/migration-pagehead.sql)
 	PageHead string `db:"pagehead"`
+	// AddonsSection - dodatki w kroku zamówienia we własnej ramce z tytułem
+	// "Dodatki do zamówienia"; bez niej pola idą zaraz pod danymi osoby
+	// (tools/migration-addonsection.sql)
+	AddonsSection bool `db:"addons_section"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -786,6 +790,12 @@ func (db *DB) EventSetPageHead(eventID, userID int64, head string) error {
 
 // EventSetStatus ustawia stan imprezy: "draft" (szkic, niewidoczna dla gości)
 // albo "published". Osobna metoda, bo stare zapytania nie znają tej kolumny.
+// EventSetAddonsSection - dodatki we własnej sekcji z tytułem czy bez.
+func (db *DB) EventSetAddonsSection(eventID, userID int64, on bool) error {
+	_, err := db.DB.Exec(`UPDATE events SET addons_section=$1 WHERE id=$2 AND users_id_fk=$3`, on, eventID, userID)
+	return err
+}
+
 // EventSetPayMessage ustawia początek wiadomości dla odbiorcy przelewu.
 func (db *DB) EventSetPayMessage(eventID, userID int64, msg string) error {
 	_, err := db.DB.Exec(`UPDATE events SET pay_message=$1 WHERE id=$2 AND users_id_fk=$3`, msg, eventID, userID)

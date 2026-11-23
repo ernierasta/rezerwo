@@ -50,6 +50,11 @@ type AddonField struct {
 	// rodzin, dla których zamawia), najwyżej tyle, ile zarezerwował miejsc.
 	// Włącza je końcówka nazwy MULTISUFFIX. Tylko pola bez ceny.
 	Multi bool
+	// MultiEmpty - na start bez pola, tylko przycisk (gość dodaje pierwszy
+	// wpis sam); MultiButton - własny napis przycisku zamiast "Dodaj kolejną".
+	// W JSON pola: multi_empty, multi_btn.
+	MultiEmpty  bool
+	MultiButton string
 }
 
 // PERSEATSUFFIX - końcówka nazwy pola dodatków powtarzanego wg liczby miejsc.
@@ -106,6 +111,10 @@ func ParseAddonFields(content string) []AddonField {
 		// multiplierField: liczba razy cena, z tekstem przed i po
 		f.Price = intOf(m["multipl"])
 		f.Multi = strings.HasSuffix(strings.ToLower(f.Name), MULTISUFFIX) && !f.IsPriced()
+		if f.Multi {
+			f.MultiEmpty = boolOf(m["multi_empty"])
+			f.MultiButton = strings.TrimSpace(str(m["multi_btn"]))
+		}
 		// formBuilder i designer pól zapisują teksty jako "pre"/"post"
 		// (nawiasy z domyślnego "(" ... " Kč)" w kroku zamówienia są zbędne)
 		f.Before = strings.Trim(str(m["pre"]), "( ")

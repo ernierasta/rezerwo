@@ -1693,6 +1693,15 @@ h5.subhead {
     h4 { font-size: 16px; margin-bottom: 10px; }
     .f + .f { margin-top: 12px; }
 
+    // bez własnej sekcji (events.addons_section = 0): bez ramki i tytułu,
+    // pola po prostu dalej pod danymi osoby
+    &.plain {
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      margin: 14px 0 18px;
+    }
+
     .addon-amount {
       display: flex;
       align-items: center;

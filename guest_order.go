@@ -48,6 +48,8 @@ type nOrderVars struct {
 	// dodatki do zamówienia (rozdz. 9 HARMONIJKA.md)
 	Addons   []nOrderAddon
 	Currency string
+	// AddonsSection - dodatki we własnej ramce z tytułem (events.addons_section)
+	AddonsSection bool
 }
 
 // nOrderAddon to jedno pole dodatków gotowe do wyświetlenia: pola powtarzane
@@ -237,6 +239,7 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			HowTo:           template.HTML(event.OrderHowto),
 			NotesHelp:       event.OrderNotesDescription,
 			Addons:          orderAddonFields(EventAddonFields(db, event), int64(len(ss))),
+			AddonsSection:   event.AddonsSection,
 			Currency:        event.DefaultCurrency,
 		}
 

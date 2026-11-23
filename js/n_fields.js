@@ -911,6 +911,11 @@
         h += '<small class="fd-under muted">' + esc(t('fields.perseat_hint')) + '</small>';
         h += check('_multi', hasSuffix(f, MULTI), t('fields.multi'));
         h += '<small class="fd-under muted">' + esc(t('fields.multi_hint')) + '</small>';
+        if (hasSuffix(f, MULTI)) {
+          h += check('multi_empty', !!f.multi_empty, t('fields.multi_empty'));
+          h += '<small class="fd-under muted">' + esc(t('fields.multi_empty_hint')) + '</small>';
+          h += row(t('fields.multi_btn'), inp('multi_btn', f.multi_btn || '', 'maxlength="60" placeholder="' + esc(t('addons.multi_add')) + '"'), t('fields.multi_btn_hint'));
+        }
       }
 
       if (!isAddons) h += panelHTML(f);
@@ -1703,6 +1708,10 @@
         var base = baseName(f.name);
         var suf = prop === '_perseat' ? PERSEAT : MULTI;
         f.name = el.checked ? uniqueName(base + suf, f._id) : uniqueName(base, f._id);
+        if (!hasSuffix(f, MULTI)) { delete f.multi_empty; delete f.multi_btn; }
+        break;
+      case 'multi_empty':
+        if (el.checked) f.multi_empty = true; else delete f.multi_empty;
         break;
       case '_nr':
         f._nr = el.checked;

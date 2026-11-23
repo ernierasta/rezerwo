@@ -29,6 +29,41 @@ func TestParseAddonFieldsMulti(t *testing.T) {
 	if ff[2].Multi {
 		t.Errorf("pole z ceną nie może być dokładane (dopłata liczona raz): %+v", ff[2])
 	}
+	if ff[0].MultiEmpty || ff[0].MultiButton != "" {
+		t.Errorf("domyślnie pole widoczne i zwykły napis przycisku: %+v", ff[0])
+	}
+
+	ff = ParseAddonFields(`[{"type":"text","label":"Rodziny","name":"rodziny-multi","multi_empty":true,"multi_btn":" Dodaj rodzinę "},
+		{"type":"text","label":"X","name":"x","multi_empty":true,"multi_btn":"nie"}]`)
+	if !ff[0].MultiEmpty || ff[0].MultiButton != "Dodaj rodzinę" {
+		t.Errorf("ustawienia pola +: %+v", ff[0])
+	}
+	if ff[1].MultiEmpty || ff[1].MultiButton != "" {
+		t.Errorf("ustawienia pola + tylko przy polu +: %+v", ff[1])
+	}
+}
+
+// Dodatki we własnej sekcji: domyślnie tak (jak przed migracją), da się
+// wyłączyć i kopia imprezy ma to samo ustawienie (EventSetAddonsSection).
+func TestEventAddonsSection(t *testing.T) {
+	db := newTestDB(t)
+	userID := addUser(t, db, "org@example.com", "org")
+	eventID := addEvent(t, db, userID, "Bal")
+	if e, _ := db.EventGetByID(eventID); !e.AddonsSection {
+		t.Error("nowa impreza ma mieć dodatki we własnej sekcji")
+	}
+	if err := db.EventSetAddonsSection(eventID, userID+1, false); err != nil {
+		t.Fatal(err)
+	}
+	if e, _ := db.EventGetByID(eventID); !e.AddonsSection {
+		t.Error("cudza organizacja zmieniła ustawienie")
+	}
+	if err := db.EventSetAddonsSection(eventID, userID, false); err != nil {
+		t.Fatal(err)
+	}
+	if e, _ := db.EventGetByID(eventID); e.AddonsSection {
+		t.Error("ustawienie się nie zapisało")
+	}
 }
 
 // Puste wpisy wypadają, numeracja bez dziur, najwyżej tyle wpisów, ile miejsc

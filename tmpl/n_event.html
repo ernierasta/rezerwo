@@ -259,8 +259,11 @@
         {{else}}
         <p class="muted" style="margin-top:12px">{{T "addons.no_fields"}}</p>
         {{end}}
+        <div class="check" style="margin-top:14px"><input type="checkbox" id="f-addons-section" data-field="addons_section" {{if .AddonsSection}}checked{{end}}><label for="f-addons-section">{{T "addons.section"}}</label></div>
+        <small class="muted">{{T "addons.section_hint"}}</small>
         <div class="sec-f">
-          <button class="btn" id="addons-edit" data-template="{{.AddonsTemplateID}}">{{T "field.edit_fields"}}</button>
+          <button class="btn" data-save="addons">{{T "common.save"}}</button>
+          <button class="btn quiet" id="addons-edit" data-template="{{.AddonsTemplateID}}">{{T "field.edit_fields"}}</button>
           <small class="msg"></small>
         </div>
         {{else}}

@@ -3298,6 +3298,12 @@ h5.subhead a {
 .order-step .addons .f + .f {
   margin-top: 12px;
 }
+.order-step .addons.plain {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 14px 0 18px;
+}
 .order-step .addons .addon-amount {
   display: flex;
   align-items: center;

@@ -277,6 +277,9 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		if err := db.EventSetPreviousEdition(newEventID, user.ID, ToNI(src.ID)); err != nil {
 			log.Printf("EventCopyAPI: previous edition: %v", err)
 		}
+		if err := db.EventSetAddonsSection(newEventID, user.ID, src.AddonsSection); err != nil {
+			log.Printf("EventCopyAPI: addons section: %v", err)
+		}
 		if err := db.EventSetTheme(newEventID, user.ID, ThemeNorm(src.Theme.String)); err != nil {
 			log.Printf("EventCopyAPI: theme: %v", err)
 		}

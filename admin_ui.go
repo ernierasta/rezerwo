@@ -716,6 +716,7 @@ type nEventVars struct {
 
 	SumAddons        string
 	AddonsTemplateID int64
+	AddonsSection    bool
 	AddonFields      []nAddonField
 
 	// porównanie z poprzednią edycją (rozdz. 4.2 HARMONIJKA.md)
@@ -1084,6 +1085,7 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 
 	// dodatki do zamówienia (rozdz. 9 HARMONIJKA.md)
 	v.AddonsTemplateID = event.AddonsFormTemplateID.Int64
+	v.AddonsSection = event.AddonsSection
 	v.AddonFields = addonFields(db, event)
 	switch {
 	case v.AddonsTemplateID == 0:
@@ -1096,6 +1098,9 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 			names = append(names, f.Label)
 		}
 		v.SumAddons = T(lang, "form.fields_count", len(v.AddonFields)) + ": " + strings.Join(names, ", ")
+		if !event.AddonsSection {
+			v.SumAddons += " · " + T(lang, "addons.no_section")
+		}
 	}
 }
 
@@ -1608,6 +1613,12 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
 				return
 			}
+		case "addons":
+			event.AddonsSection = flag("addons_section")
+			if err := db.EventSetAddonsSection(event.ID, user.ID, event.AddonsSection); err != nil {
+				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
+				return
+			}
 		default:
 			jsonMsg(w, http.StatusBadRequest, nSectionResp{Msg: "unknown section " + msg.Section})
 			return
@@ -1646,6 +1657,8 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			resp.Summary = v.SumForms
 		case "settings":
 			resp.Summary = v.SumSettings
+		case "addons":
+			resp.Summary = v.SumAddons
 		}
 		jsonMsg(w, http.StatusOK, resp)
 	}

@@ -72,53 +72,72 @@
     recount();
   }
 
-  // Pola dokładane przez gościa ("+", np. nazwiska rodzin): kolejny wiersz to
-  // kopia pierwszego, najwyżej tyle wierszy, ile miejsc. Nazwy pól zawsze idą
-  // po kolei (addon-<pole>-1, -2, ...), także po usunięciu wiersza ze środka.
-  document.querySelectorAll('.addon-multi').forEach(function (box) {
+  // Pola dokładane przez gościa ("+", np. nazwiska rodzin): wiersze powstają
+  // z wzoru <template class="multi-proto">, najwyżej tyle, ile miejsc. Na
+  // start jeden wiersz bez "✕" albo (data-empty) żaden - wtedy tylko przycisk.
+  // Nazwy pól zawsze idą po kolei (addon-<pole>-1, -2, ...), także po
+  // usunięciu wiersza ze środka.
+  var multiBoxes = Array.prototype.slice.call(document.querySelectorAll('.addon-multi'));
+  multiBoxes.forEach(function (box) {
     var rows = box.querySelector('.multi-rows');
     var add = box.querySelector('.multi-add');
+    var proto = box.querySelector('template.multi-proto').content.firstElementChild;
     var max = Number(box.dataset.max) || 1;
     var base = box.dataset.base;
-    var proto = rows.querySelector('.multi-row');
+    var empty = box.hasAttribute('data-empty');
 
     function renumber() {
       var all = rows.querySelectorAll('.multi-row');
       all.forEach(function (row, i) {
-        var el = row.querySelector('input, select');
-        el.name = base + '-' + (i + 1);
-        if (i > 0) el.id = el.name;
+        row.querySelector('input, select').name = base + '-' + (i + 1);
       });
       add.hidden = all.length >= max;
     }
 
-    add.addEventListener('click', function () {
-      if (rows.querySelectorAll('.multi-row').length >= max) return;
+    function addRow(removable) {
       var row = proto.cloneNode(true);
       var el = row.querySelector('input, select');
-      el.value = '';
-      if (el.tagName === 'SELECT') el.selectedIndex = 0;
-      el.required = false; // obowiązkowy jest tylko pierwszy wpis
-      el.removeAttribute('aria-invalid');
-      var del = document.createElement('button');
-      del.type = 'button';
-      del.className = 'btn quiet sm multi-del';
-      del.textContent = '✕';
-      del.title = add.dataset.remove;
-      del.setAttribute('aria-label', add.dataset.remove);
-      del.addEventListener('click', function () {
-        row.remove();
-        renumber();
-        add.focus();
-      });
-      row.appendChild(del);
+      el.setAttribute('aria-labelledby', box.dataset.input + '-l');
+      if (removable) {
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn quiet sm multi-del';
+        del.textContent = '✕';
+        del.title = add.dataset.remove;
+        del.setAttribute('aria-label', add.dataset.remove);
+        del.addEventListener('click', function () {
+          row.remove();
+          renumber();
+          add.focus();
+        });
+        row.appendChild(del);
+      }
       rows.appendChild(row);
       renumber();
-      el.focus();
+      return el;
+    }
+
+    add.addEventListener('click', function () {
+      if (rows.querySelectorAll('.multi-row').length >= max) return;
+      if (empty) showError(add, '');
+      addRow(true).focus();
     });
 
+    if (!empty) {
+      // pierwszy wiersz stały; obowiązkowy jest tylko on
+      var first = addRow(false);
+      first.id = box.dataset.input;
+      first.required = box.hasAttribute('data-required');
+    }
     renumber();
   });
+
+  // pole "+" obowiązkowe, a na start puste: choć jeden wypełniony wpis
+  function multiMissing(box) {
+    if (!box.hasAttribute('data-required') || !box.hasAttribute('data-empty')) return false;
+    return !Array.prototype.some.call(box.querySelectorAll('.multi-row input, .multi-row select'),
+      function (el) { return el.value.trim() !== ''; });
+  }
 
   // walidacja z komunikatami w języku imprezy (form ma novalidate, bo natywne
   // dymki przeglądarki byłyby w jej języku, np. czeskim na polskiej imprezie)
@@ -158,6 +177,13 @@
       var text = RZ.inputError(el);
       showError(el, text);
       if (text && !first) first = el;
+    });
+    multiBoxes.forEach(function (box) {
+      if (!box.hasAttribute('data-empty')) return; // tu pilnuje required pierwszego wiersza
+      var add = box.querySelector('.multi-add');
+      var text = multiMissing(box) ? RZ.t('gform.err.required') : '';
+      showError(add, text);
+      if (text && !first) first = add;
     });
     if (first) {
       e.preventDefault();

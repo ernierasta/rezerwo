@@ -219,7 +219,11 @@ func guestRoom(db *DB, room Room, event Event, lang string) nGuestRoom {
 				title = seatTitle(lang, table, c.Number) + ", " + FormatMoney(c.Price, c.Currency)
 			}
 		case "taken":
-			title = seatTitle(lang, table, c.Number) + ", " + T(lang, "guest.taken")
+			if c.State == "marked" {
+				title = seatTitle(lang, table, c.Number) + ", " + T(lang, "guest.held")
+			} else {
+				title = seatTitle(lang, table, c.Number) + ", " + T(lang, "guest.taken")
+			}
 		default:
 			title = seatTitle(lang, table, c.Number) + ", " + T(lang, "guest.unavailable")
 		}

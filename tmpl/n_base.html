@@ -46,7 +46,7 @@
   <input type="hidden" data-field="theme" value="{{.Theme}}">
   <div class="theme-pick" role="radiogroup" aria-label="{{T "theme.label"}}">
     {{range .Themes}}<button type="button" role="radio" class="tp{{if eq .Key $.Theme}} on{{end}}" data-v="{{.Key}}"{{if .Logo}} data-logo="1"{{end}} aria-checked="{{if eq .Key $.Theme}}true{{else}}false{{end}}">
-      <span class="tp-prev" data-theme="{{.Key}}" aria-hidden="true"><span class="tp-card"><i></i><i></i><b></b></span></span>
+      <span class="tp-prev" data-theme="{{.Key}}" aria-hidden="true"><span class="tp-card"><i></i><i class="s"></i><i class="h"></i><i class="t"></i><i class="o"></i><b></b></span></span>
       <span class="tp-name">{{T (printf "theme.%s" .Key)}}</span><small>{{if .Dark}}{{T "theme.dark"}}{{else}}{{T "theme.light"}}{{end}}</small>
     </button>{{end}}
   </div>

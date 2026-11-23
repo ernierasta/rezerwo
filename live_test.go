@@ -76,7 +76,7 @@ func TestGuestRoomLive(t *testing.T) {
 				t.Errorf("seat 2 state %q, want marked", s.St)
 			}
 			// dymek w języku imprezy
-			if !strings.Contains(s.T, T("cs", "guest.taken")) {
+			if !strings.Contains(s.T, T("cs", "guest.held")) {
 				t.Errorf("seat 2 title %q not in Czech", s.T)
 			}
 		}

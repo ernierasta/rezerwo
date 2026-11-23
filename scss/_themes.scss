@@ -31,8 +31,17 @@
   --bar-done: #8FC19E;
   --table: #DCE3EA;      // plan sali: stoły
   --seat-line: #A9C0D6;  // obrys wolnego miejsca, pasek postępu
-  --seat-off: #CBD2D9;   // miejsce niedostępne
-  --seat-off-line: #B6BEC7;
+  // miejsca na planie: wybrane przez innych (held), zajęte (taken),
+  // niedostępne (off) - wyraźnie różne odcienie, -ink to numer na miejscu
+  --seat-held: #F3DB8B;
+  --seat-held-line: #D6B24A;
+  --seat-held-ink: #2C3440;
+  --seat-taken: #E5B0A6;
+  --seat-taken-line: #CC8F84;
+  --seat-taken-ink: #2C3440;
+  --seat-off: #6E7885;
+  --seat-off-line: #6E7885;
+  --seat-off-ink: #E1E7EE;
   --shade: 44, 52, 64;   // cienie i tło pod oknem: rgba(var(--shade), .1)
   color-scheme: light;
 }
@@ -61,8 +70,15 @@
   --bar-done: #A9C58F;
   --table: #E6DCCF;
   --seat-line: #D2B49C;
-  --seat-off: #D6CEC4;
-  --seat-off-line: #C4BAAF;
+  --seat-held: #F1D88C;
+  --seat-held-line: #D2AE48;
+  --seat-held-ink: #3A3029;
+  --seat-taken: #B3C4D6;
+  --seat-taken-line: #8EA4BB;
+  --seat-taken-ink: #3A3029;
+  --seat-off: #6F6359;
+  --seat-off-line: #6F6359;
+  --seat-off-ink: #EFE6DC;
   --shade: 58, 48, 41;
   color-scheme: light;
 }
@@ -91,8 +107,15 @@
   --bar-done: #8FC19E;
   --table: #D8E3DB;
   --seat-line: #9FC2AE;
-  --seat-off: #CAD3CD;
-  --seat-off-line: #B4BFB8;
+  --seat-held: #F2DA8C;
+  --seat-held-line: #D4B24A;
+  --seat-held-ink: #27332C;
+  --seat-taken: #E3B1A6;
+  --seat-taken-line: #CA8F83;
+  --seat-taken-ink: #27332C;
+  --seat-off: #5E6B64;
+  --seat-off-line: #5E6B64;
+  --seat-off-ink: #E0E7E2;
   --shade: 39, 51, 44;
   color-scheme: light;
 }
@@ -132,8 +155,15 @@ $macierz-wm: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewB
   --bar-done: #E4005E;
   --table: #F7E1EA;
   --seat-line: #EE8DB5;
-  --seat-off: #DDD3D8;
-  --seat-off-line: #C8BCC2;
+  --seat-held: #FFE08A;
+  --seat-held-line: #E6BC40;
+  --seat-held-ink: #1F2933;
+  --seat-taken: #B6C4D8;
+  --seat-taken-line: #8FA2BD;
+  --seat-taken-ink: #1F2933;
+  --seat-off: #5B6470;
+  --seat-off-line: #5B6470;
+  --seat-off-ink: #EEF0F3;
   --shade: 31, 41, 51;
   color-scheme: light;
 
@@ -178,8 +208,15 @@ $pzko-wm: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox=
   --bar-done: #DC143C;
   --table: #E7E4E0;
   --seat-line: #6F6A65;
-  --seat-off: #CFCAC5;
-  --seat-off-line: #B5AFA9;
+  --seat-held: #FFE08A;
+  --seat-held-line: #E3BA3E;
+  --seat-held-ink: #161616;
+  --seat-taken: #B3C1D2;
+  --seat-taken-line: #8A9BB1;
+  --seat-taken-ink: #161616;
+  --seat-off: #4A4643;
+  --seat-off-line: #4A4643;
+  --seat-off-ink: #E3E0DC;
   --shade: 22, 22, 22;
   color-scheme: light;
 
@@ -223,7 +260,9 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
 // Klasyczny: kolory dawnej strony rezerwacji (Bootstrap 4). Miejsca jak
 // kiedyś: wolne zielone, wybrane żółte, zamówione pomarańczowe, zapłacone
 // czerwone, niedostępne ciemnobrązowe - do tych kolorów odwołują się też
-// stare teksty organizatorów (.free-text itd.).
+// stare teksty organizatorów (.free-text itd.). Żółte są teraz tylko miejsca
+// wybrane przez innych gości; własny wybór gościa jest niebieski, żeby nie
+// mylił się z cudzym.
 [data-theme="klasyczny"] {
   --bg: #FFFFFF;
   --surface: #FFFFFF;
@@ -250,8 +289,15 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
   --bar-done: #28A745;
   --table: #808080;
   --seat-line: #28A745;
+  --seat-held: #FFC107;
+  --seat-held-line: #FFC107;
+  --seat-held-ink: #212529;
+  --seat-taken: #DC3545;
+  --seat-taken-line: #DC3545;
+  --seat-taken-ink: #FFFFFF;
   --seat-off: #403734;
   --seat-off-line: #403734;
+  --seat-off-ink: #D3D3D3;
   --shade: 0, 0, 0;
   color-scheme: light;
 
@@ -260,6 +306,7 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
   $ordered: #FD7E14;
   $payed: #DC3545;
   $off: #403734;
+  $mine: #007BFF;
 
   // body.n button { color: inherit } jest mocniejsze od samego .btn
   .btn:not(.quiet):not(.danger) { color: var(--btn-ink); }
@@ -270,8 +317,8 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
   .chair-free { fill: $free; stroke: $free; }
   .chair-free:hover { fill: #218838; stroke: #218838; }
   .chair-free ~ .f-num { fill: #FFFFFF; }
-  .chair-selected { fill: $marked; stroke: #D39E00; stroke-width: 2; }
-  .chair-selected ~ .f-num, .chair-selected + .f-num { fill: #212529; }
+  .chair-selected { fill: $mine; stroke: #004A99; stroke-width: 2; }
+  .chair-selected ~ .f-num, .chair-selected + .f-num { fill: #FFFFFF; }
   .chair-taken { fill: $payed; stroke: $payed; }
   .chair-taken ~ .f-num { fill: #FFFFFF; }
   .st-marked .chair-taken { fill: $marked; stroke: $marked; }
@@ -282,7 +329,8 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
 
   .legend {
     .sw { border-color: $free; background: $free; }
-    .sw.sel { background: $marked; border-color: $marked; }
+    .sw.sel { background: $mine; border-color: #004A99; }
+    .sw.held { background: $marked; border-color: $marked; }
     .sw.ordered { background: $ordered; border-color: $ordered; }
     .sw.payed { background: $payed; border-color: $payed; }
     .sw.off { background: $off; border-color: $off; }
@@ -299,7 +347,10 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
   // próbka w wyborze tematu
   .tp-card {
     i { background: $free; border-color: $free; }
-    i + i { background: $marked; border-color: $marked; }
+    i.s { background: $mine; border-color: #004A99; }
+    i.h { background: $marked; border-color: $marked; }
+    i.t { background: $payed; border-color: $payed; }
+    i.o { background: $off; border-color: $off; }
     b { background: var(--btn-bg); }
   }
 }
@@ -331,8 +382,15 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
   --bar-done: #5FA876;
   --table: #2A3643;
   --seat-line: #58799A;
+  --seat-held: #5C4E1E;
+  --seat-held-line: #8F7A35;
+  --seat-held-ink: #F0E2B0;
+  --seat-taken: #333D49;
+  --seat-taken-line: #333D49;
+  --seat-taken-ink: #93A0AF;
   --seat-off: #202830;
   --seat-off-line: #4A5461;
+  --seat-off-ink: #93A0AF;
   --shade: 0, 0, 0;
   color-scheme: dark;
 }
@@ -361,8 +419,15 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
   --bar-done: #6FAE7A;
   --table: #302E2C;
   --seat-line: #8A7552;
+  --seat-held: #5A4A1C;
+  --seat-held-line: #8C7432;
+  --seat-held-ink: #F0E2B4;
+  --seat-taken: #3A3836;
+  --seat-taken-line: #3A3836;
+  --seat-taken-ink: #A19A90;
   --seat-off: #1C1B1A;
   --seat-off-line: #4A4744;
+  --seat-off-ink: #A19A90;
   --shade: 0, 0, 0;
   color-scheme: dark;
 }
@@ -391,8 +456,15 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
   --bar-done: #6FAE7A;
   --table: #352B3B;
   --seat-line: #8A6690;
+  --seat-held: #5A4A22;
+  --seat-held-line: #8C7638;
+  --seat-held-ink: #F0E2B6;
+  --seat-taken: #3F3545;
+  --seat-taken-line: #3F3545;
+  --seat-taken-ink: #A895AA;
   --seat-off: #201A24;
   --seat-off-line: #4E4254;
+  --seat-off-ink: #A895AA;
   --shade: 0, 0, 0;
   color-scheme: dark;
 }
@@ -434,15 +506,18 @@ html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     height: 100%;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 5px;
     padding: 5px 6px;
 
-    i { display: block; width: 9px; height: 9px; border-radius: 2px; border: 1.5px solid var(--seat-line); background: var(--surface); }
-    i + i { background: var(--blue-deep); border-color: var(--blue-deep); }
+    i { display: block; width: 8px; height: 8px; border-radius: 2px; border: 1.5px solid var(--seat-line); background: var(--surface); }
+    i.s { background: var(--blue-deep); border-color: var(--blue-deep); }
+    i.h { background: var(--seat-held); border-color: var(--seat-held-line); }
+    i.t { background: var(--seat-taken); border-color: var(--seat-taken-line); }
+    i.o { background: var(--seat-off); border-color: var(--seat-off-line); }
     b { display: block; margin-left: auto; width: 30px; height: 11px; border-radius: 3px; background: var(--blue); }
   }
 

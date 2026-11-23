@@ -1296,8 +1296,15 @@ h5.subhead {
 
 .chair-free { fill: var(--surface); stroke: var(--seat-line); stroke-width: 1.5; cursor: pointer; }
 .chair-free:hover { fill: var(--blue-soft); }
-.chair-taken { fill: var(--taken); stroke: var(--taken); }
+// zajęte (zamówione/zapłacone), wybrane przez innych gości (rezerwacja
+// "marked", może się zwolnić) i niedostępne mają w każdym temacie inny odcień,
+// nie tylko jaśniejszy/ciemniejszy szary (--seat-* w _themes.scss)
+.chair-taken { fill: var(--seat-taken); stroke: var(--seat-taken-line); }
+.chair-taken ~ .f-num { fill: var(--seat-taken-ink); }
+.st-marked .chair-taken { fill: var(--seat-held); stroke: var(--seat-held-line); }
+.st-marked .chair-taken ~ .f-num { fill: var(--seat-held-ink); }
 .chair-disabled { fill: var(--seat-off); stroke: var(--seat-off-line); }
+.chair-disabled ~ .f-num { fill: var(--seat-off-ink); }
 .chair-selected { fill: var(--blue-deep); stroke: var(--blue-deep); cursor: pointer; }
 .chair-selected + .f-num, .chair-selected ~ .f-num { fill: var(--on-accent); }
 
@@ -1325,7 +1332,8 @@ h5.subhead {
   }
 
   .sw.sel { background: var(--blue-deep); border-color: var(--blue-deep); }
-  .sw.taken { background: var(--taken); border-color: var(--taken); }
+  .sw.held { background: var(--seat-held); border-color: var(--seat-held-line); }
+  .sw.taken { background: var(--seat-taken); border-color: var(--seat-taken-line); }
   .sw.off { background: var(--seat-off); border-color: var(--seat-off-line); }
 
   // zamówione/zapłacone osobno - tylko temat "klasyczny" (_themes.scss)

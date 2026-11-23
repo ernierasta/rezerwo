@@ -45,6 +45,9 @@ type nFormVars struct {
 	HowTo     template.HTML
 	InfoPanel template.HTML
 	ThankYou  template.HTML
+	// ThankYouVars - JSON dla pastylek w "Tekst po wysłaniu" (js/n_vars.js):
+	// dane gościa, pola formularza i konta, jak w mailu formularza
+	ThankYouVars string
 
 	MoneyField string
 	Fields     []FormField
@@ -180,6 +183,8 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 
 	v.PanelMode = panelMode(templ)
 	v.PanelFields = panelFieldsJSON(templ)
+	tv, _ := json.Marshal(map[string]interface{}{"vars": formMailVars(templ), "accounts": accountNames(db, user)})
+	v.ThankYouVars = string(tv)
 
 	v.FieldList = formFieldSummaries(templ, lang)
 	if len(v.FieldList) > 12 {

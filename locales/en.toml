@@ -915,6 +915,7 @@ bad_url = "The address may contain letters without accents, digits and dashes (2
 url_taken = "The address “%s” is already taken."
 
 [formpage]
+thankyou_hint = "The page a guest sees after sending the form. Insert guest data, form fields and the payment QR code with the “+ Form details” button."
 status = "Accepting answers"
 status_open = "Open"
 status_closed = "Closed"

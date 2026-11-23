@@ -9,13 +9,48 @@ document.addEventListener('DOMContentLoaded', function () {
   var formID = page.dataset.formId;
   var t = RZ.t;
   var panel = infoPanel();
+  var thanks = thankYou();
   var secs = RZ.sections(page, '/api/forms/' + formID + '/section', {
     draftKey: 'rezerwo.form.' + formID + '.draft',
-    editorToolbar: panel.toolbar,
-    editorIn: panel.toEditor,
-    editorOut: panel.fromEditor,
-    onEditor: panel.onEditor
+    editorToolbar: function (name, tb) { return name === thanks.NAME ? thanks.toolbar(tb) : panel.toolbar(name, tb); },
+    editorIn: function (name, html) { return name === thanks.NAME ? thanks.toEditor(html) : panel.toEditor(name, html); },
+    editorOut: function (name, q) { return name === thanks.NAME ? thanks.fromEditor(q) : panel.fromEditor(name, q); },
+    onEditor: function (name, q) { if (name === thanks.NAME) thanks.onEditor(q); else panel.onEditor(name, q); }
   });
+
+  // --- tekst po wysłaniu -------------------------------------------------------
+  //
+  // Wykonywany jako szablon z danymi zgłoszenia (FormFuncs, GuestFormDonePage),
+  // więc ma te same pastylki co mail formularza (n_vars.js) - kod QR jako
+  // zwykły obrazek na stronie (.QRPay). W bazie zostają akcje szablonu.
+  function thankYou() {
+    var NAME = 'thankyou';
+    var V = RZ.vars;
+    var el = page.querySelector('.ed[data-editor="' + NAME + '"]');
+    var on = !!(el && V && typeof Quill !== 'undefined');
+    if (on) {
+      var meta = {};
+      try { meta = JSON.parse(el.dataset.vars || '{}'); } catch (e) { meta = {}; }
+      V.setup(meta, '.QRPay');
+    }
+    return {
+      NAME: NAME,
+      toolbar: function (tb) {
+        if (!on) return tb;
+        return {
+          container: tb.concat([['mailvar']]),
+          handlers: {mailvar: V.toolbarHandler(function () { return secs.editors[NAME]; })}
+        };
+      },
+      toEditor: function (html) { return on ? V.toEditor(html).html : html; },
+      fromEditor: function (q) { return on ? V.fromEditor(q) : RZ.editorHTML(q); },
+      onEditor: function (q) {
+        if (!on) return;
+        var b = V.attach(q);
+        if (b) b.textContent = t('mail.insert_form');
+      }
+    };
+  }
   if (window.RZNew) RZNew.wire(page, secs); // przyciski "Nowy mail …" itd.
 
   RZ.loadLocale(document.documentElement.lang || 'pl').then(function () {

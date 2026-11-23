@@ -95,7 +95,7 @@
             <small><button class="link" type="button" id="gen-info">{{T "panel.insert_all"}}</button></small>
           </div>
         </div>
-        <div class="f" style="margin-top:16px"><label>{{T "field.thankyou_text"}}</label><div class="ed" data-editor="thankyou">{{.ThankYou}}</div></div>
+        <div class="f" style="margin-top:16px"><label>{{T "field.thankyou_text"}}</label><div class="ed" data-editor="thankyou" data-vars="{{.ThankYouVars}}">{{.ThankYou}}</div><small>{{T "formpage.thankyou_hint"}}</small></div>
         <div class="sec-f"><button class="btn" data-save="page">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
     </div>
@@ -217,5 +217,6 @@
 {{end}}
 {{define "scripts"}}
 <script src="{{asset "/js/n_new.js"}}"></script>
+<script src="{{asset "/js/n_vars.js"}}"></script>
 <script src="{{asset "/js/n_form.js"}}"></script>
 {{end}}

@@ -199,7 +199,7 @@ no_rooms = "Pořadatel zatím k této akci nepřiřadil sál. Podívejte se pros
 
 [mail]
 form = "Formulář"
-form_hint = "Mail patří k tomuto formuláři – tlačítko „+ Údaje z formuláře” nabízí jeho pole."
+form_hint = "Mail patří k tomuto formuláři – tlačítko „+ Údaje z formuláře“ nabízí jeho pole."
 form_needed = "Vyberte formulář, ke kterému mail patří."
 preview_hint_forms = "Místo odpovědí hosta jsou vidět názvy polí – ve skutečném mailu budou jeho odpovědi."
 subject = "Předmět"
@@ -212,7 +212,7 @@ images = "Obrázky"
 files_title = "Přílohy a obrázky"
 files_hint = "Názvy souborů z adresáře media/<organizace>/email/ na serveru, oddělené středníkem. Obrázek vložíte do textu jako CID:nazevsouborubeztecky@organizace."
 vars_hint = "Údaje zákazníka vložíte tlačítkem „+ Údaje objednávky”. V odeslaném mailu se nahradí skutečnými hodnotami."
-forms_hint = "Údaje hosta a jeho odpovědi vložíte tlačítkem „+ Údaje z formuláře”. Ostatní proměnné fungují jako dosud, např. {{.Sum \"pole\"}}."
+forms_hint = "Údaje hosta a jeho odpovědi vložíte tlačítkem „+ Údaje z formuláře“. Ostatní proměnné fungují jako dosud, např. {{.Sum \"pole\"}}."
 insert = "+ Údaje objednávky"
 insert_subject = "+ Údaje"
 insert_form = "+ Údaje z formuláře"
@@ -923,6 +923,7 @@ bad_url = "Adresa může obsahovat písmena bez diakritiky, číslice a pomlčky
 url_taken = "Adresa „%s“ je už obsazená."
 
 [formpage]
+thankyou_hint = "Stránka, kterou host uvidí po odeslání formuláře. Údaje hosta, pole formuláře a QR kód k platbě vložíte tlačítkem „+ Údaje z formuláře“."
 status = "Přijímá odpovědi"
 status_open = "Otevřený"
 status_closed = "Uzavřený"

@@ -925,6 +925,7 @@ bad_url = "Adres może mieć litery bez polskich znaków, cyfry i myślniki (2�
 url_taken = "Adres „%s” jest już zajęty."
 
 [formpage]
+thankyou_hint = "Strona, którą gość widzi po wysłaniu formularza. Dane gościa, pola formularza i kod QR do płatności wstawiasz przyciskiem „+ Dane z formularza”."
 status = "Przyjmuje odpowiedzi"
 status_open = "Otwarty"
 status_closed = "Zamknięty"

@@ -153,6 +153,10 @@ type Event struct {
 	// "Dodatki do zamówienia"; bez niej pola idą zaraz pod danymi osoby
 	// (tools/migration-addonsection.sql)
 	AddonsSection bool `db:"addons_section"`
+	// AddonsAfter - po którym polu danych osoby są dodatki: start, email,
+	// name, phone albo pusto = na końcu, po uwagach (AddonsPositions,
+	// tools/migration-addonsafter.sql)
+	AddonsAfter string `db:"addons_after"`
 }
 
 // TODO: would we ever use this type of stucts in go?
@@ -793,6 +797,12 @@ func (db *DB) EventSetPageHead(eventID, userID int64, head string) error {
 // EventSetAddonsSection - dodatki we własnej sekcji z tytułem czy bez.
 func (db *DB) EventSetAddonsSection(eventID, userID int64, on bool) error {
 	_, err := db.DB.Exec(`UPDATE events SET addons_section=$1 WHERE id=$2 AND users_id_fk=$3`, on, eventID, userID)
+	return err
+}
+
+// EventSetAddonsAfter - miejsce dodatków w formularzu zamówienia.
+func (db *DB) EventSetAddonsAfter(eventID, userID int64, after string) error {
+	_, err := db.DB.Exec(`UPDATE events SET addons_after=$1 WHERE id=$2 AND users_id_fk=$3`, AddonsAfterNorm(after), eventID, userID)
 	return err
 }
 

@@ -57,6 +57,22 @@ type AddonField struct {
 	MultiButton string
 }
 
+// AddonsPositions - gdzie w kroku zamówienia mogą stać dodatki: po którym
+// polu danych osoby (events.addons_after, tmpl/n_order.html). Pusty = na
+// końcu, po uwagach. Imię i nazwisko stoją w jednym wierszu, więc są jedną
+// pozycją.
+var AddonsPositions = []string{"start", "email", "name", "phone", ""}
+
+// AddonsAfterNorm zwraca znaną pozycję dodatków (nieznana = na końcu).
+func AddonsAfterNorm(s string) string {
+	for _, p := range AddonsPositions {
+		if s == p {
+			return p
+		}
+	}
+	return ""
+}
+
 // PERSEATSUFFIX - końcówka nazwy pola dodatków powtarzanego wg liczby miejsc.
 const PERSEATSUFFIX = "-perseat"
 

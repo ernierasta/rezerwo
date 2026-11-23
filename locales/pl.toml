@@ -451,7 +451,16 @@ multi_seats = "Miejsca"
 section = "Dodatki we własnej sekcji z tytułem „Dodatki do zamówienia”"
 section_hint = "Bez zaznaczenia pola dodatków są w formularzu zamówienia zaraz pod danymi osoby, bez ramki i tytułu."
 no_section = "bez własnej sekcji"
+after_label = "Gdzie w formularzu zamówienia"
 guest_item = "To dodatek zamówiony przez gościa — nie kasujemy go tutaj."
+
+
+[addons.after]
+start = "na początku, przed e-mailem"
+email = "po e-mailu"
+name = "po imieniu i nazwisku"
+phone = "po telefonie"
+end = "na końcu, po uwagach"
 
 [form]
 mgr_mail_off = "nie wysyłamy"

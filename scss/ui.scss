@@ -1726,6 +1726,14 @@ h5.subhead {
     }
     .multi-add { margin-top: 8px; align-self: flex-start; }
   }
+
+  // dodatki między danymi osoby (events.addons_after): cały wiersz siatki
+  .grid2 > .addons {
+    grid-column: 1 / -1;
+    margin: 6px 0;
+
+    &.plain { margin: 0; }
+  }
 }
 
 // Kolory legendy z tekstów admina. Te klasy wstawia edytor Quill (patrz

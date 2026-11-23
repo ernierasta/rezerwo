@@ -717,6 +717,8 @@ type nEventVars struct {
 	SumAddons        string
 	AddonsTemplateID int64
 	AddonsSection    bool
+	AddonsAfter      string
+	AddonsPositions  []nAddonsPos
 	AddonFields      []nAddonField
 
 	// porównanie z poprzednią edycją (rozdz. 4.2 HARMONIJKA.md)
@@ -1086,6 +1088,10 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 	// dodatki do zamówienia (rozdz. 9 HARMONIJKA.md)
 	v.AddonsTemplateID = event.AddonsFormTemplateID.Int64
 	v.AddonsSection = event.AddonsSection
+	v.AddonsAfter = AddonsAfterNorm(event.AddonsAfter)
+	for _, p := range AddonsPositions {
+		v.AddonsPositions = append(v.AddonsPositions, nAddonsPos{Value: p, Label: addonsAfterLabel(lang, p)})
+	}
 	v.AddonFields = addonFields(db, event)
 	switch {
 	case v.AddonsTemplateID == 0:
@@ -1101,7 +1107,23 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 		if !event.AddonsSection {
 			v.SumAddons += " · " + T(lang, "addons.no_section")
 		}
+		if v.AddonsAfter != "" {
+			v.SumAddons += " · " + addonsAfterLabel(lang, v.AddonsAfter)
+		}
 	}
+}
+
+// nAddonsPos - pozycja dodatków do wyboru w sekcji imprezy.
+type nAddonsPos struct {
+	Value, Label string
+}
+
+// addonsAfterLabel - nazwa pozycji dodatków w panelu ("po e-mailu").
+func addonsAfterLabel(lang, pos string) string {
+	if pos == "" {
+		pos = "end"
+	}
+	return T(lang, "addons.after."+pos)
 }
 
 // fillEventReport liczy rozliczenie imprezy po cenach miejsc.
@@ -1616,6 +1638,10 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 		case "addons":
 			event.AddonsSection = flag("addons_section")
 			if err := db.EventSetAddonsSection(event.ID, user.ID, event.AddonsSection); err != nil {
+				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
+				return
+			}
+			if err := db.EventSetAddonsAfter(event.ID, user.ID, val("addons_after")); err != nil {
 				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
 				return
 			}

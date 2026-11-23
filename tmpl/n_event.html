@@ -261,6 +261,11 @@
         {{end}}
         <div class="check" style="margin-top:14px"><input type="checkbox" id="f-addons-section" data-field="addons_section" {{if .AddonsSection}}checked{{end}}><label for="f-addons-section">{{T "addons.section"}}</label></div>
         <small class="muted">{{T "addons.section_hint"}}</small>
+        <div class="f" style="margin-top:12px;max-width:360px"><label for="f-addons-after">{{T "addons.after_label"}}</label>
+          <select class="inp" id="f-addons-after" data-field="addons_after">
+            {{range .AddonsPositions}}<option value="{{.Value}}"{{if eq .Value $.AddonsAfter}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+        </div>
         <div class="sec-f">
           <button class="btn" data-save="addons">{{T "common.save"}}</button>
           <button class="btn quiet" id="addons-edit" data-template="{{.AddonsTemplateID}}">{{T "field.edit_fields"}}</button>

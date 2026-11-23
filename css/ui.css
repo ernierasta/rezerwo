@@ -3331,6 +3331,13 @@ h5.subhead a {
   margin-top: 8px;
   align-self: flex-start;
 }
+.order-step .grid2 > .addons {
+  grid-column: 1/-1;
+  margin: 6px 0;
+}
+.order-step .grid2 > .addons.plain {
+  margin: 0;
+}
 
 .free-text {
   color: var(--ok-ink);

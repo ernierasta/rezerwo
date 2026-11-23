@@ -449,7 +449,16 @@ multi_seats = "Místa"
 section = "Doplňky ve vlastní sekci s nadpisem „Doplňky k objednávce“"
 section_hint = "Bez zaškrtnutí jsou pole doplňků ve formuláři objednávky hned pod údaji osoby, bez rámečku a nadpisu."
 no_section = "bez vlastní sekce"
+after_label = "Kde ve formuláři objednávky"
 guest_item = "Toto je doplněk objednaný hostem — tady ho nemažeme."
+
+
+[addons.after]
+start = "na začátku, před e-mailem"
+email = "po e-mailu"
+name = "po jménu a příjmení"
+phone = "po telefonu"
+end = "na konci, po poznámkách"
 
 [form]
 mgr_mail_off = "neposíláme"

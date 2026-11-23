@@ -50,6 +50,8 @@ type nOrderVars struct {
 	Currency string
 	// AddonsSection - dodatki we własnej ramce z tytułem (events.addons_section)
 	AddonsSection bool
+	// AddonsAfter - po którym polu danych osoby są dodatki (AddonsPositions)
+	AddonsAfter string
 }
 
 // nOrderAddon to jedno pole dodatków gotowe do wyświetlenia: pola powtarzane
@@ -240,6 +242,7 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			NotesHelp:       event.OrderNotesDescription,
 			Addons:          orderAddonFields(EventAddonFields(db, event), int64(len(ss))),
 			AddonsSection:   event.AddonsSection,
+			AddonsAfter:     AddonsAfterNorm(event.AddonsAfter),
 			Currency:        event.DefaultCurrency,
 		}
 

@@ -188,3 +188,39 @@ func TestOrderAddonsHTMLItems(t *testing.T) {
 		t.Errorf("orderAddonsHTML = %q", got)
 	}
 }
+
+// Miejsce dodatków w formularzu zamówienia: tylko znane pozycje (nieznana
+// = na końcu), zapis tylko dla swojej organizacji, etykiety w każdym języku.
+func TestEventAddonsAfter(t *testing.T) {
+	if err := LoadLocales(); err != nil {
+		t.Fatal(err)
+	}
+	db := newTestDB(t)
+	userID := addUser(t, db, "org@example.com", "org")
+	eventID := addEvent(t, db, userID, "Bal")
+	if e, _ := db.EventGetByID(eventID); e.AddonsAfter != "" {
+		t.Errorf("domyślnie na końcu, jest %q", e.AddonsAfter)
+	}
+	if err := db.EventSetAddonsAfter(eventID, userID, "email"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.EventSetAddonsAfter(eventID, userID+1, "phone"); err != nil {
+		t.Fatal(err)
+	}
+	if e, _ := db.EventGetByID(eventID); e.AddonsAfter != "email" {
+		t.Errorf("addons_after = %q, oczekiwano email", e.AddonsAfter)
+	}
+	if err := db.EventSetAddonsAfter(eventID, userID, "<script>"); err != nil {
+		t.Fatal(err)
+	}
+	if e, _ := db.EventGetByID(eventID); e.AddonsAfter != "" {
+		t.Errorf("nieznana pozycja zapisana: %q", e.AddonsAfter)
+	}
+	for _, lang := range []string{"pl", "cs", "en"} {
+		for _, p := range AddonsPositions {
+			if l := addonsAfterLabel(lang, p); l == "" || strings.Contains(l, "addons.after") {
+				t.Errorf("%s: brak etykiety pozycji %q: %q", lang, p, l)
+			}
+		}
+	}
+}

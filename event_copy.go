@@ -280,6 +280,9 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		if err := db.EventSetAddonsSection(newEventID, user.ID, src.AddonsSection); err != nil {
 			log.Printf("EventCopyAPI: addons section: %v", err)
 		}
+		if err := db.EventSetAddonsAfter(newEventID, user.ID, src.AddonsAfter); err != nil {
+			log.Printf("EventCopyAPI: addons after: %v", err)
+		}
 		if err := db.EventSetTheme(newEventID, user.ID, ThemeNorm(src.Theme.String)); err != nil {
 			log.Printf("EventCopyAPI: theme: %v", err)
 		}

@@ -447,7 +447,16 @@ multi_seats = "Seats"
 section = "Add-ons in their own section titled “Order add-ons”"
 section_hint = "When unticked, the add-on fields follow the person’s details in the order form, without a frame or title."
 no_section = "no own section"
+after_label = "Where in the order form"
 guest_item = "This add-on was ordered by the guest — it is not deleted here."
+
+
+[addons.after]
+start = "at the start, before e-mail"
+email = "after e-mail"
+name = "after name and surname"
+phone = "after phone"
+end = "at the end, after notes"
 
 [form]
 mgr_mail_off = "not sent"

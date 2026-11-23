@@ -68,13 +68,6 @@
         </svg>
       </div>
       {{end}}
-
-      {{if .HowTo}}
-      <details class="howto" open>
-        <summary>{{T "guest.how_to_order"}}</summary>
-        <div class="inner">{{.HowTo}}</div>
-      </details>
-      {{end}}
     </div>
 
     <div class="side">
@@ -95,6 +88,12 @@
           <li><i class="sw off"></i>{{T "guest.unavailable"}}</li>
         </ul>
       </div>
+      {{if .HowTo}}
+      <details class="howto" open>
+        <summary>{{T "guest.how_to_order"}}</summary>
+        <div class="inner">{{.HowTo}}</div>
+      </details>
+      {{end}}
     </div>
   </div>
 

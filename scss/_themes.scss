@@ -97,6 +97,124 @@
   color-scheme: light;
 }
 
+// Tematy organizacji: kolory i motyw z logo. Motyw (mały znak przed nazwą
+// imprezy/formularza, blady znak w rogu tła, pasek u góry) rysuje się tylko na
+// stronie gościa (html[data-theme]), nie w próbkach wyboru tematu.
+
+// Macierz Szkolna (macierz.cz): róż z logo, tulipan na otwartej książce.
+$macierz-mark: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%23E4005E'%3E%3Cpath d='M20 8l6 7 6-9 6 9 6-7v14a12 12 0 0 1-24 0z'/%3E%3Cpath d='M6 37l24 8v16L6 53zM58 37l-24 8v16l24-8z'/%3E%3C/svg%3E";
+$macierz-wm: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%23E4005E' fill-opacity='.06'%3E%3Cpath d='M20 8l6 7 6-9 6 9 6-7v14a12 12 0 0 1-24 0z'/%3E%3Cpath d='M6 37l24 8v16L6 53zM58 37l-24 8v16l24-8z'/%3E%3C/svg%3E";
+
+[data-theme="macierz"] {
+  --bg: #FDF3F7;
+  --surface: #FFFFFF;
+  --pane: #FEF8FB;
+  --ink: #1F2933;
+  --muted: #6B7280;
+  --line: #F2DCE6;
+  --line-strong: #F3A5C5;
+  --blue: #FBD5E4;
+  --blue-soft: #FDE8F0;
+  --blue-deep: #E4005E;
+  --on-accent: #FFFFFF;
+  --btn-bg: #E4005E;
+  --btn-ink: #FFFFFF;
+  --lemon: #FFF1C9;
+  --lemon-line: #F0D27A;
+  --leaf: #DDEFE0;
+  --taken: #EEE5E9;
+  --danger-ink: #A8323A;
+  --danger-soft: #FCF1F2;
+  --danger-line: #EBC0C4;
+  --ok-ink: #2F7A4A;
+  --warn-ink: #946B0E;
+  --bar-done: #E4005E;
+  --table: #F7E1EA;
+  --seat-line: #EE8DB5;
+  --seat-off: #DDD3D8;
+  --seat-off-line: #C8BCC2;
+  --shade: 31, 41, 51;
+  color-scheme: light;
+
+  .btn:not(.quiet):not(.danger) { color: var(--btn-ink); }
+  .btn:not(.quiet):not(.danger):hover { background: #B8004C; }
+  .tp-card b { background: var(--btn-bg); }
+  &.tp-prev { background: var(--bg) url($macierz-mark) no-repeat right 4px top 4px / 14px; }
+}
+
+html[data-theme="macierz"] body.n {
+  background: var(--bg) url($macierz-wm) no-repeat right -60px bottom -50px / 320px fixed;
+  border-top: 5px solid #E4005E;
+}
+
+// PZKO: czarny rysunek domu z biało-czerwoną flagą na dachu.
+$pzko-mark: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M23 3h19v6H23z' fill='%23fff' stroke='%23999' stroke-width='.6'/%3E%3Cpath d='M23 9h19v6H23z' fill='%23DC143C'/%3E%3Cpath d='M23 3v15' stroke='%23111' stroke-width='1.6'/%3E%3Cpath d='M5 33l27-15 27 15M11 30v29M53 30v29' fill='none' stroke='%23111' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='5' cy='33' r='2.6' fill='%23111'/%3E%3Ccircle cx='59' cy='33' r='2.6' fill='%23111'/%3E%3C/svg%3E";
+$pzko-wm: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' opacity='.07'%3E%3Cpath d='M23 9h19v6H23z' fill='%23DC143C'/%3E%3Cpath d='M23 3v15' stroke='%23111' stroke-width='1.6'/%3E%3Cpath d='M5 33l27-15 27 15M11 30v29M53 30v29' fill='none' stroke='%23111' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
+
+[data-theme="pzko"] {
+  --bg: #F6F5F3;
+  --surface: #FFFFFF;
+  --pane: #FAFAF9;
+  --ink: #161616;
+  --muted: #65605B;
+  --line: #E3E0DC;
+  --line-strong: #BDB7B0;
+  --blue: #F6DADF;
+  --blue-soft: #FCEEF0;
+  --blue-deep: #C8102E;
+  --on-accent: #FFFFFF;
+  --btn-bg: #DC143C;
+  --btn-ink: #FFFFFF;
+  --lemon: #FFF3CD;
+  --lemon-line: #F0D684;
+  --leaf: #DDEEDF;
+  --taken: #E9E6E2;
+  --danger-ink: #A3242F;
+  --danger-soft: #FCF1F2;
+  --danger-line: #EBC0C4;
+  --ok-ink: #2E7343;
+  --warn-ink: #8E6A0F;
+  --bar-done: #DC143C;
+  --table: #E7E4E0;
+  --seat-line: #6F6A65;
+  --seat-off: #CFCAC5;
+  --seat-off-line: #B5AFA9;
+  --shade: 22, 22, 22;
+  color-scheme: light;
+
+  .btn:not(.quiet):not(.danger) { color: var(--btn-ink); }
+  .btn:not(.quiet):not(.danger):hover { background: #B5102F; }
+  .tp-card b { background: var(--btn-bg); }
+  &.tp-prev { background: var(--bg) url($pzko-mark) no-repeat right 3px top 3px / 16px; }
+}
+
+html[data-theme="pzko"] body.n {
+  // flaga: biały i czerwony pas u góry strony
+  background:
+    linear-gradient(#FFFFFF 0 5px, #DC143C 5px 10px) no-repeat top / 100% 10px,
+    url($pzko-wm) no-repeat right -50px bottom -40px / 340px fixed,
+    var(--bg);
+}
+
+// znak organizacji przed nazwą imprezy/formularza
+html[data-theme="macierz"] .guest h1:not(.vh)::before,
+html[data-theme="pzko"] .guest h1:not(.vh)::before {
+  content: "";
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: .35em;
+  vertical-align: -.18em;
+  background: no-repeat center / contain;
+}
+html[data-theme="macierz"] .guest h1:not(.vh)::before { background-image: url($macierz-mark); }
+html[data-theme="pzko"] .guest h1:not(.vh)::before { background-image: url($pzko-mark); }
+
+@media (max-width: 700px) {
+  html[data-theme="macierz"] body.n { background-image: none; }
+  html[data-theme="pzko"] body.n { background: linear-gradient(#FFFFFF 0 5px, #DC143C 5px 10px) no-repeat top / 100% 10px, var(--bg); }
+}
+
 // Klasyczny: kolory dawnej strony rezerwacji (Bootstrap 4). Miejsca jak
 // kiedyś: wolne zielone, wybrane żółte, zamówione pomarańczowe, zapłacone
 // czerwone, niedostępne ciemnobrązowe - do tych kolorów odwołują się też

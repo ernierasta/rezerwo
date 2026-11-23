@@ -27,6 +27,8 @@ var guestThemes = []GuestTheme{
 	{Key: "pastel"},
 	{Key: "piasek"},
 	{Key: "szalwia"},
+	{Key: "macierz"},
+	{Key: "pzko"},
 	{Key: "noc", Dark: true},
 	{Key: "grafit", Dark: true},
 	{Key: "sliwka", Dark: true},

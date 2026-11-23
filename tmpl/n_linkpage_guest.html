@@ -1,0 +1,22 @@
+{{define "body"}}
+<div class="guest lpage-g">
+  {{template "guestwide" .Head}}
+  <header class="lpage-h">
+    {{template "guesthead" .Head}}
+    {{if .Text}}<div class="desc">{{.Text}}</div>{{end}}
+  </header>
+
+  {{if .Buttons}}
+  <nav class="lpage-btns" aria-label="{{.Head.Name}}">
+    {{range .Buttons}}
+    <a class="lpage-btn{{if .Draft}} draft{{end}}" href="{{.Href}}"{{if .Ext}} target="_blank" rel="noopener"{{end}}>
+      <b>{{.Label}}</b>{{if .Sub}}<small>{{.Sub}}</small>{{end}}
+      <span class="arr" aria-hidden="true">→</span>
+    </a>
+    {{end}}
+  </nav>
+  {{else}}
+  <p class="lpage-none">{{T "lpage.guest_empty"}}</p>
+  {{end}}
+</div>
+{{end}}

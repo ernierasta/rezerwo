@@ -109,12 +109,18 @@ func main() {
 	rtr.HandleFunc("/api/forms/{id:[0-9]+}/answers.csv", AnswersCSVAPI(db, cookieStore))
 	rtr.HandleFunc("/api/forms/{id:[0-9]+}/answers/status", AnswersStatusAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/forms/{id:[0-9]+}/answers/mail", AnswersMailAPI(db, mailConf, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/admin/pages/{id:[0-9]+}", LinkPagePage(db, cookieStore))
+	rtr.HandleFunc("/api/pages", LinkPageCreateAPI(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/pages/{id:[0-9]+}", LinkPageDeleteAPI(db, cookieStore)).Methods("DELETE")
+	rtr.HandleFunc("/api/pages/{id:[0-9]+}/section", LinkPageSectionSave(db, cookieStore)).Methods("POST")
+	rtr.HandleFunc("/api/pages/{id:[0-9]+}/qr.png", LinkPageQRAPI(db, cookieStore)).Methods("GET")
 	rtr.HandleFunc("/locales/{file}", LocalesJSONHandler())
 
 	// strony dla gości
 	rtr.HandleFunc("/res/{user}", GuestReservationPage(db, cookieStore))
 	rtr.HandleFunc("/res/{user}/live", GuestRoomLiveAPI(db, cookieStore)).Methods("GET")
 	rtr.HandleFunc("/order", GuestOrderPage(db, cookieStore))
+	rtr.HandleFunc("/p/{userurl}/{pageurl}", GuestLinkPage(db, cookieStore))
 	rtr.HandleFunc("/form/{userurl}/{formurl}", GuestFormPage(db, cookieStore))
 	rtr.HandleFunc("/form/{userurl}/{formurl}/send", GuestFormSendAPI(db, mailConf)).Methods("POST")
 	rtr.HandleFunc("/form/{userurl}/{formurl}/live", GuestFormLiveAPI(db, cookieStore)).Methods("GET")

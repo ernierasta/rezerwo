@@ -197,6 +197,9 @@ type nHomeVars struct {
 	Forms    []nHomeRow
 	// ile pozycji schowanych pod "Starsze"
 	OlderFinished, OlderForms int
+	// Pages - strony z linkami (linkpages.go), tylko z org_manage
+	Pages      []nHomeRow
+	OlderPages int
 	// Contacts - zapamiętane osoby menedżera (contacts.go)
 	Contacts nContacts
 	// Simple - uproszczony widok menedżera: nad listami wielki przycisk
@@ -352,6 +355,15 @@ func AdminStartPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 				vars.OlderForms++
 			}
 			vars.Forms = append(vars.Forms, row)
+		}
+
+		if login.CanOrg() {
+			vars.Pages = homeLinkPages(db, user, lang)
+			for _, p := range vars.Pages {
+				if p.Old {
+					vars.OlderPages++
+				}
+			}
 		}
 
 		if login.Manager {

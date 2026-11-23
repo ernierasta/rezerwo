@@ -1,0 +1,86 @@
+{{define "head"}}
+<link href="/css/quill2.snow.css" rel="stylesheet">
+<script src="/js/quill2.min.js"></script>
+{{end}}
+{{define "body"}}
+<div class="doc" id="lpage" data-page-id="{{.ID}}">
+  {{template "up" .}}
+  <div class="dh">
+    <h3>{{.Name}} <span class="kind">{{T "kind.page"}}</span></h3>
+    <div class="r">
+      <a class="btn quiet" id="lp-open" href="{{.PublicURL}}" target="_blank" rel="noopener">{{T "lpage.open"}}</a>
+    </div>
+  </div>
+  <p class="lp-link"><span id="lp-link">{{.FullURL}}</span> <button class="link" id="lp-copy" type="button">{{T "formpage.copy_link"}}</button></p>
+
+  <div class="secs">
+
+    <!-- Podstawowe -->
+    <div class="sec" data-sec="podstawowe">
+      <div class="sec-h"><b>{{T "form.sec.basic"}}</b><span>{{.SumBasic}}</span><a class="act" href="#podstawowe">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="grid2">
+          <div class="f"><label for="f-name">{{T "field.name"}}</label><input class="inp" id="f-name" data-field="name" value="{{.Name}}"><small>{{T "lpage.name_hint"}}</small></div>
+          <div class="f"><label for="f-url">{{T "lpage.url"}}</label><input class="inp" id="f-url" data-field="url" value="{{.URL}}" spellcheck="false"><small>{{T "lpage.url_hint"}}</small></div>
+          <div class="f"><label for="f-language">{{T "newform.language"}}</label>
+            <select class="inp" id="f-language" data-field="language">
+              <option value="pl" {{if eq .Language "pl"}}selected{{end}}>polski</option>
+              <option value="cs" {{if eq .Language "cs"}}selected{{end}}>čeština</option>
+              <option value="en" {{if eq .Language "en"}}selected{{end}}>english</option>
+            </select>
+            <small>{{T "lpage.lang_hint"}}</small>
+          </div>
+        </div>
+        <div class="sec-f"><button class="btn" data-save="basic">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small>
+          <button class="btn danger" type="button" style="margin-left:auto" data-delete="/api/pages/{{.ID}}" data-next="/admin"
+            data-title="{{T "lpage.del_title"}}" data-text="{{T "lpage.del_text" .Name}}"
+            data-draft-key="rezerwo.lpage.{{.ID}}.draft">{{T "lpage.del"}}</button></div>
+      </div>
+    </div>
+
+    <!-- Wygląd -->
+    <div class="sec" data-sec="wyglad">
+      <div class="sec-h"><b>{{T "lpage.sec_look"}}</b><span>{{.SumLook}}</span><a class="act" href="#wyglad">{{T "common.change"}}</a></div>
+      <div class="sec-b" hidden>
+        {{template "themepick" .}}
+        <div style="margin-top:18px">{{template "bannerpick" .Banner}}</div>
+        <div style="margin-top:16px">{{template "headpick" .Head}}</div>
+        <div class="f" style="margin-top:16px"><label>{{T "lpage.text"}}</label><div class="ed" data-editor="text">{{.Text}}</div><small>{{T "lpage.text_hint"}}</small></div>
+        <div class="sec-f"><button class="btn" data-save="look">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Przyciski (js/n_linkpage.js) -->
+    <div class="sec" data-sec="przyciski">
+      <div class="sec-h"><b>{{T "lpage.sec_buttons"}}</b><span{{if .MissButtons}} class="miss"{{end}}>{{.SumButtons}}</span><a class="act" href="#przyciski">{{if .MissButtons}}{{T "common.set"}}{{else}}{{T "common.change"}}{{end}}</a></div>
+      <div class="sec-b" hidden>
+        <p class="muted">{{T "lpage.buttons_hint"}}</p>
+        <input type="hidden" data-field="buttons" id="lp-buttons" value="{{.Buttons}}">
+        <div class="lp-btns" id="lp-rows" data-targets="{{.Targets}}" data-max="{{.Max}}"></div>
+        <p style="margin-top:10px"><button type="button" class="btn quiet sm" id="lp-add">+ {{T "lpage.add"}}</button></p>
+        <div class="sec-f"><button class="btn" data-save="buttons">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
+      </div>
+    </div>
+
+    <!-- Kod QR -->
+    <div class="sec" data-sec="qr">
+      <div class="sec-h"><b>{{T "lpage.sec_qr"}}</b><span>{{T "lpage.qr_sum"}}</span><a class="act" href="#qr">{{T "common.show"}}</a></div>
+      <div class="sec-b" hidden>
+        <div class="lp-qr">
+          <img id="lp-qr" src="/api/pages/{{.ID}}/qr.png" alt="{{T "lpage.sec_qr"}}" width="240" height="240">
+          <div>
+            <p>{{T "lpage.qr_hint"}}</p>
+            <p class="num muted" id="lp-qr-url">{{.FullURL}}</p>
+            <p style="margin-top:12px"><a class="btn" id="lp-qr-dl" href="/api/pages/{{.ID}}/qr.png?download=1">{{T "lpage.qr_download"}}</a></p>
+            <small class="muted">{{T "lpage.qr_url_hint"}}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{{end}}
+{{define "scripts"}}
+<script src="{{asset "/js/n_linkpage.js"}}"></script>
+{{end}}

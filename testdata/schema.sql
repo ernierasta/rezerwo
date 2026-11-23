@@ -203,3 +203,16 @@ CREATE TABLE manager_contacts (
 	used INTEGER NOT NULL,
 	UNIQUE (users_id_fk, admins_id, email)
 );
+CREATE TABLE linkpages (
+	id INTEGER NOT NULL PRIMARY KEY,
+	users_id_fk INTEGER NOT NULL REFERENCES users(id),
+	name TEXT NOT NULL,
+	url TEXT NOT NULL,
+	language TEXT NOT NULL DEFAULT 'pl',
+	theme TEXT NOT NULL DEFAULT '',
+	banner TEXT NOT NULL DEFAULT '',
+	pagehead TEXT NOT NULL DEFAULT '',
+	text TEXT NOT NULL DEFAULT '',
+	buttons TEXT NOT NULL DEFAULT '',
+	UNIQUE(users_id_fk, url)
+);

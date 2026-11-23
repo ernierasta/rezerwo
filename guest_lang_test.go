@@ -75,6 +75,8 @@ func newGuestFixture(t *testing.T) *guestFixture {
 	f.router.HandleFunc("/res/{user}", GuestReservationPage(db, cs))
 	f.router.HandleFunc("/order", GuestOrderPage(db, cs))
 	f.router.HandleFunc("/form/{userurl}/{formurl}", GuestFormPage(db, cs))
+	f.router.HandleFunc("/p/{userurl}/{pageurl}", GuestLinkPage(db, cs))
+	must(t)(db.LinkPageAdd(&LinkPage{UserID: f.userID, Name: "Linki", URL: "linki", Language: "pl"}))
 	return f
 }
 
@@ -84,6 +86,9 @@ func (f *guestFixture) setLang(t *testing.T, lang string) {
 		t.Fatal(err)
 	}
 	if _, err := f.db.DB.Exec(`UPDATE formtemplates SET language=$1, status='open'`, lang); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.db.DB.Exec(`UPDATE linkpages SET language=$1`, lang); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -147,6 +152,9 @@ func TestGuestPagesInEventLanguage(t *testing.T) {
 
 		r = httptest.NewRequest("GET", "/form/org/zgloszenie", nil)
 		wantLang(t, "form", f.do(t, r, lang), lang, "gform.submit", "gform.date_ph")
+
+		r = httptest.NewRequest("GET", "/p/org/linki", nil)
+		wantLang(t, "link page", f.do(t, r, lang), lang, "lpage.guest_empty")
 	}
 }
 
@@ -256,7 +264,7 @@ func TestGuestTextsInAllLanguages(t *testing.T) {
 var guestTemplates = []string{
 	"tmpl/n_guest_base.html", "tmpl/n_reservation.html", "tmpl/n_order.html",
 	"tmpl/n_formpage.html", "tmpl/n_formfield.html", "tmpl/n_form_done.html",
-	"tmpl/n_error.html",
+	"tmpl/n_error.html", "tmpl/n_linkpage_guest.html",
 }
 
 // guestScripts to skrypty ładowane przez szablony stron gościa.

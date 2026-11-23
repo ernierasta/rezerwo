@@ -35,6 +35,8 @@ func TestRouteNeed(t *testing.T) {
 		{"GET", "/admin/events/12/rooms/3", needOrg, "", 0},
 		{"POST", "/api/eventcopy", needOrg, "", 0},
 		{"GET", "/admin/something-new", needOrg, "", 0},
+		{"GET", "/admin/pages/3", needOrg, "", 0},
+		{"POST", "/api/pages/3/section", needOrg, "", 0},
 	} {
 		r := httptest.NewRequest(c.method, c.path, nil)
 		need, kind, id := routeNeed(r)

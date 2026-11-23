@@ -1383,6 +1383,96 @@ h5.subhead {
 
 .pre { white-space: pre-line; }
 
+// --- strona z linkami (linkpages.go) ----------------------------------------
+
+// strona gościa: wąska kolumna jak na telefonie - zwykle otwiera się ze
+// skanu kodu QR
+.lpage-g {
+  max-width: 640px;
+
+  .lpage-h .banner { margin-bottom: 16px; }
+  .lpage-h .desc { max-width: none; }
+}
+
+.lpage-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.lpage-g .lpage-btn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 14px;
+  padding: 16px 20px;
+  min-height: 64px;
+  border-radius: 14px;
+  background: var(--blue-deep);
+  color: var(--on-accent);
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: filter 0.15s, transform 0.15s;
+
+  b { font-size: 18px; font-weight: 600; line-height: 1.3; }
+  small { grid-column: 1; font-size: 14px; opacity: 0.85; margin-top: 2px; }
+  .arr { grid-column: 2; grid-row: 1 / span 2; font-size: 22px; }
+
+  &:hover { filter: brightness(1.08); }
+  &:active { transform: translateY(1px); }
+  &:focus-visible { outline: 3px solid var(--line-strong); outline-offset: 2px; }
+  // szkic imprezy w podglądzie admina
+  &.draft { opacity: 0.6; border: 2px dashed var(--on-accent); }
+}
+
+.lpage-none { margin-top: 26px; color: var(--muted); }
+
+// panel: adres strony pod tytułem, edytor przycisków, kod QR
+.lp-link { color: var(--muted); margin-top: 2px; word-break: break-all; }
+
+.lp-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.lp-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+
+  .lp-n { font-weight: 600; color: var(--muted); padding-top: 8px; text-align: center; }
+  .lp-url { grid-column: 2 / span 2; }
+  .lp-ctl { display: flex; gap: 4px; }
+  .lp-ctl button { min-width: 32px; }
+  small { display: block; color: var(--muted); margin-top: 3px; }
+  &.bad { border-color: var(--danger-line); }
+}
+
+@media (max-width: 700px) {
+  .lp-row { grid-template-columns: 26px minmax(0, 1fr); }
+  .lp-row .lp-label, .lp-row .lp-url { grid-column: 2; }
+  .lp-row .lp-ctl { grid-column: 2; }
+}
+
+.lp-qr {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+
+  img { width: 240px; height: 240px; border: 1px solid var(--line); border-radius: 8px; background: #fff; image-rendering: pixelated; }
+  > div { flex: 1 1 260px; }
+  p + p { margin-top: 6px; }
+}
+
 // logowanie admina
 .login {
   min-height: 100vh;

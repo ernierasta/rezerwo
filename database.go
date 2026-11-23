@@ -2265,3 +2265,74 @@ func (db *DB) FormTemplateSetMgrMail(tmplID, userID int64, on bool, notifID sql.
 	_, err := db.DB.Exec(`UPDATE formtemplates SET mgr_mail=$1, mgr_notifications_id_fk=$2 WHERE id=$3 AND users_id_fk=$4`, on, notifID, tmplID, userID)
 	return err
 }
+
+// --- strony z linkami (linkpages.go, tools/migration-linkpages.sql) --------
+
+type LinkPage struct {
+	ID       int64  `db:"id"`
+	UserID   int64  `db:"users_id_fk"`
+	Name     string `db:"name"`
+	URL      string `db:"url"`
+	Language string `db:"language"`
+	Theme    string `db:"theme"`
+	Banner   string `db:"banner"`
+	PageHead string `db:"pagehead"`
+	Text     string `db:"text"`
+	Buttons  string `db:"buttons"`
+}
+
+func (db *DB) LinkPageAdd(p *LinkPage) (int64, error) {
+	ret, err := db.DB.NamedExec(`INSERT INTO linkpages (users_id_fk, name, url, language, theme, banner, pagehead, text, buttons)
+	VALUES(:users_id_fk, :name, :url, :language, :theme, :banner, :pagehead, :text, :buttons)`, p)
+	if err != nil {
+		return -1, err
+	}
+	return ret.LastInsertId()
+}
+
+// LinkPageMod zapisuje wszystkie pola strony organizacji p.UserID.
+func (db *DB) LinkPageMod(p *LinkPage) error {
+	if p.UserID < 1 {
+		return fmt.Errorf("LinkPageMod: no userID given, update aborted")
+	}
+	_, err := db.DB.NamedExec(`UPDATE linkpages SET name=:name, url=:url, language=:language, theme=:theme, banner=:banner, pagehead=:pagehead, text=:text, buttons=:buttons WHERE id=:id AND users_id_fk=:users_id_fk`, p)
+	return err
+}
+
+func (db *DB) LinkPageGetByID(id, userID int64) (LinkPage, error) {
+	p := LinkPage{}
+	err := db.DB.Get(&p, `SELECT * FROM linkpages WHERE id=$1 AND users_id_fk=$2`, id, userID)
+	return p, err
+}
+
+func (db *DB) LinkPageGetByURL(url string, userID int64) (LinkPage, error) {
+	p := LinkPage{}
+	err := db.DB.Get(&p, `SELECT * FROM linkpages WHERE url=$1 AND users_id_fk=$2`, url, userID)
+	return p, err
+}
+
+// LinkPageGetAll - strony organizacji, od najnowszej.
+func (db *DB) LinkPageGetAll(userID int64) ([]LinkPage, error) {
+	pp := []LinkPage{}
+	err := db.DB.Select(&pp, `SELECT * FROM linkpages WHERE users_id_fk=$1 ORDER BY id DESC`, userID)
+	return pp, err
+}
+
+// LinkPageURLTaken mówi, czy organizacja ma już stronę pod tym adresem
+// (poza stroną exceptID).
+func (db *DB) LinkPageURLTaken(url string, userID, exceptID int64) bool {
+	var n int64
+	err := db.DB.Get(&n, `SELECT COUNT(id) FROM linkpages WHERE url=$1 AND users_id_fk=$2 AND id<>$3`, url, userID, exceptID)
+	return err != nil || n > 0
+}
+
+func (db *DB) LinkPageDelete(id, userID int64) error {
+	res, err := db.DB.Exec(`DELETE FROM linkpages WHERE id=$1 AND users_id_fk=$2`, id, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}

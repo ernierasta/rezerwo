@@ -107,7 +107,9 @@
            start jeden (albo żaden przy multi_empty), potem przyciskiem. */}}
       <div class="f addon-multi" data-max="{{.Max}}" data-base="addon-{{.Name}}" data-input="{{.Input}}"
            {{if .Required}}data-required{{end}} {{if .MultiEmpty}}data-empty{{end}}>
-        <label id="{{.Input}}-l">{{.Title}}{{if .Required}} *{{end}}</label>
+        {{/* przy multi_empty na start sam przycisk: nazwa pola ukryta (dla
+             czytników ekranu jest), pokazuje się nad pierwszym wpisem */}}
+        <label id="{{.Input}}-l"{{if .MultiEmpty}} class="vh"{{end}}>{{.Title}}{{if .Required}} *{{end}}</label>
         <div class="multi-rows" role="group" aria-labelledby="{{.Input}}-l"></div>
         <template class="multi-proto"><div class="multi-row">{{if .Options}}<select class="inp">
           <option value="">{{T "field.select_hint"}}</option>

@@ -92,6 +92,8 @@
         row.querySelector('input, select').name = base + '-' + (i + 1);
       });
       add.hidden = all.length >= max;
+      // tylko przycisk na start: nazwa pola dopiero nad pierwszym wpisem
+      if (empty) box.querySelector('#' + box.dataset.input + '-l').classList.toggle('vh', all.length === 0);
     }
 
     function addRow(removable) {

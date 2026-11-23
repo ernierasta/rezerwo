@@ -806,7 +806,7 @@ perseat_hint = "Host vyplní pole tolikrát, kolik míst rezervoval (např. výb
 multi = "Host přidává další položky („+“)"
 multi_hint = "Host vyplní jednu odpověď a tlačítkem „+“ přidá další, nejvýše tolik, kolik rezervoval míst (např. příjmení rodin, pro které objednává). V přehledech jsou odpovědi u objednávky."
 multi_empty = "Na začátku jen tlačítko"
-multi_empty_hint = "Host nevidí prázdné pole, jen tlačítko – první položku přidá sám. Povinné pole: aspoň jedna položka."
+multi_empty_hint = "Host vidí jen tlačítko, bez názvu pole – první položku přidá sám, název se ukáže nad položkami. Povinné pole: aspoň jedna položka."
 multi_btn = "Text tlačítka"
 multi_btn_hint = "Prázdné = „Přidat další“ v jazyce akce. Např. „Přidat rodinu“."
 width = "Šířka"

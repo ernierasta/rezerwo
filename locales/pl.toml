@@ -808,7 +808,7 @@ perseat_hint = "Gość wypełni pole tyle razy, ile zarezerwował miejsc (np. wy
 multi = "Gość dodaje kolejne wpisy („+”)"
 multi_hint = "Gość wpisuje jedną odpowiedź i przyciskiem „+” dokłada kolejne, najwyżej tyle, ile zarezerwował miejsc (np. nazwiska rodzin, dla których zamawia). W raportach odpowiedzi są przy zamówieniu."
 multi_empty = "Na start tylko przycisk"
-multi_empty_hint = "Gość nie widzi pustego pola, tylko przycisk – pierwszy wpis dodaje sam. Pole wymagane: choć jeden wpis."
+multi_empty_hint = "Gość widzi tylko przycisk, bez nazwy pola – pierwszy wpis dodaje sam, nazwa pokazuje się nad wpisami. Pole wymagane: choć jeden wpis."
 multi_btn = "Napis przycisku"
 multi_btn_hint = "Puste = „Dodaj kolejną” w języku imprezy. Np. „Dodaj rodzinę”."
 width = "Szerokość"

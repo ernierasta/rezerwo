@@ -798,7 +798,7 @@ perseat_hint = "Guests fill in the field once per reserved seat (e.g. meal choic
 multi = "Guests add more entries (“+”)"
 multi_hint = "Guests type one answer and add more with the “+” button, at most as many as seats they reserved (e.g. names of the families they order for). Reports show the answers with the order."
 multi_empty = "Start with the button only"
-multi_empty_hint = "Guests see no empty field, just the button – they add the first entry themselves. Required field: at least one entry."
+multi_empty_hint = "Guests see just the button, without the field name – they add the first entry themselves, the name then shows above the entries. Required field: at least one entry."
 multi_btn = "Button text"
 multi_btn_hint = "Empty = “Add another” in the event language. E.g. “Add family”."
 width = "Width"

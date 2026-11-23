@@ -922,7 +922,7 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		EventRooms:      evRooms,
 		MainDesc:        template.HTML(event.MainDesc.String),
 		MainBanner:      mainBannerPick(T(lang, "field.main_banner"), "mainbanner", event.MainBanner.String, user),
-		Head:            headPick(ParsePageHead(event.PageHead), event.Name, false),
+		Head:            eventHeadPick(event),
 		OrderHowto:      template.HTML(event.OrderHowto),
 		OrderNotesDesc:  event.OrderNotesDescription,
 		NoSitsTitle:     event.NoSitsSelectedTitle,

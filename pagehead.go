@@ -45,7 +45,8 @@ type PageHead struct {
 	OverItalic bool   `json:"over_italic,omitempty"`
 	OverUpper  bool   `json:"over_upper,omitempty"`
 	OverAlign  string `json:"over_align,omitempty"`
-	Width      string `json:"width,omitempty"` // tylko formularz, pageHeadWidths
+	Width      string `json:"width,omitempty"`     // tylko formularz, pageHeadWidths
+	HideDate   bool   `json:"hide_date,omitempty"` // tylko impreza: bez daty pod nazwą
 }
 
 // ParsePageHead czyta nagłówek zapisany w bazie; zepsuty JSON = domyślny.
@@ -112,6 +113,7 @@ func pageHeadFromPanel(val func(string) string, flag func(string) bool, name str
 		OverUpper:  flag("head_over_upper"),
 		OverAlign:  val("head_over_align"),
 		Width:      val("head_width"),
+		HideDate:   flag("head_hide_date"),
 	}.clean()
 	if h.Name == headText(name) {
 		h.Name = ""
@@ -124,6 +126,7 @@ type nHeadPick struct {
 	PageHead
 	Name   string // nazwa do pola: wyświetlana albo nazwa imprezy/formularza
 	Form   bool   // formularz: wybór szerokości nagłówka
+	Date   bool   // impreza: wybór, czy pokazać datę pod nazwą
 	Colors []string
 	Sizes  []string
 }
@@ -133,6 +136,13 @@ func headPick(h PageHead, name string, form bool) nHeadPick {
 	if p.Name == "" {
 		p.Name = name
 	}
+	return p
+}
+
+// eventHeadPick - nagłówek strony imprezy w panelu, z wyborem daty pod nazwą.
+func eventHeadPick(e Event) nHeadPick {
+	p := headPick(ParsePageHead(e.PageHead), e.Name, false)
+	p.Date = true
 	return p
 }
 
@@ -160,6 +170,9 @@ func guestHead(h PageHead, name, banner, userURL, when string) GuestHead {
 		HideName:   h.HideName,
 		Wide:       h.Width == "page",
 		When:       when,
+	}
+	if h.HideDate {
+		g.When = ""
 	}
 	if g.Name == "" {
 		g.Name = name

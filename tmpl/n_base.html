@@ -130,6 +130,9 @@
     </div>
     <small>{{T "head.name_hint"}}</small>
   </div>
+  {{if .Date}}<div class="f"><div class="check"><input type="checkbox" id="f-head-hide-date" data-field="head_hide_date"{{if .HideDate}} checked{{end}}><label for="f-head-hide-date">{{T "head.hide_date"}}</label></div>
+    <small>{{T "head.hide_date_hint"}}</small>
+  </div>{{end}}
   {{if .Form}}<div class="f"><label>{{T "head.width"}}</label>
     <input type="hidden" data-field="head_width" value="{{.Width}}">
     <div class="seg hp-seg" data-for="head_width" role="radiogroup" aria-label="{{T "head.width"}}">

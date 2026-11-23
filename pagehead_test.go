@@ -78,6 +78,15 @@ func TestGuestHead(t *testing.T) {
 	if g := guestHead(ParsePageHead(`{"hide_name":true}`), "Bal", "", "org", ""); !g.HideName || g.Name != "Bal" {
 		t.Errorf("hidden name: %+v", g)
 	}
+	if g := guestHead(ParsePageHead(`{"hide_date":true}`), "Bal", "", "org", "1.1.2027"); g.When != "" {
+		t.Errorf("hidden date: %+v", g)
+	}
+	if h := pageHeadFromPanel(func(string) string { return "" }, func(k string) bool { return k == "head_hide_date" }, "Bal"); !h.HideDate || h.String() != `{"hide_date":true}` {
+		t.Errorf("hide date from panel: %+v", h)
+	}
+	if p := eventHeadPick(Event{Name: "Bal"}); !p.Date {
+		t.Errorf("event head pick without date option")
+	}
 	if g := guestHead(PageHead{}, "Bal", ";full", "org", ""); g.BannerFull || g.Banner != "" {
 		t.Errorf("full without file: %+v", g)
 	}

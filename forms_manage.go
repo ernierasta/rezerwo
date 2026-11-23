@@ -170,7 +170,7 @@ func FormCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 		// kopia dostaje temat źródła, nowy formularz - domyślny
 		if msg.FromID > 0 {
 			if src, err := db.FormTemplateGetByID(msg.FromID, user.ID); err == nil {
-				if err := db.FormTemplateSetTheme(id, user.ID, ThemeKey(src.Theme)); err != nil {
+				if err := db.FormTemplateSetTheme(id, user.ID, ThemeNorm(src.Theme)); err != nil {
 					log.Printf("FormCreateAPI: theme: %v", err)
 				}
 				if err := db.FormTemplateSetDensity(id, user.ID, DensityKey(src.Density)); err != nil {

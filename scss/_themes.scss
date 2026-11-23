@@ -97,9 +97,10 @@
   color-scheme: light;
 }
 
-// Tematy organizacji: kolory i motyw z logo. Motyw (mały znak przed nazwą
-// imprezy/formularza, blady znak w rogu tła, pasek u góry) rysuje się tylko na
-// stronie gościa (html[data-theme]), nie w próbkach wyboru tematu.
+// Tematy organizacji: kolory, pasek u góry strony i znak z logo. Znak (mały
+// przed nazwą imprezy/formularza, blady w rogu tła) jest opcjonalny: tylko
+// z html[data-logo] (ptaszek przy wyborze tematu, themes.go); w próbkach
+// wyboru tematu widać go zawsze.
 
 // Macierz Szkolna (macierz.cz): róż z logo, tulipan na otwartej książce.
 $macierz-mark: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%23E4005E'%3E%3Cpath d='M20 8l6 7 6-9 6 9 6-7v14a12 12 0 0 1-24 0z'/%3E%3Cpath d='M6 37l24 8v16L6 53zM58 37l-24 8v16l24-8z'/%3E%3C/svg%3E";
@@ -142,9 +143,9 @@ $macierz-wm: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewB
   &.tp-prev { background: var(--bg) url($macierz-mark) no-repeat right 4px top 4px / 14px; }
 }
 
-html[data-theme="macierz"] body.n {
+html[data-theme="macierz"] body.n { border-top: 5px solid #E4005E; }
+html[data-theme="macierz"][data-logo] body.n {
   background: var(--bg) url($macierz-wm) no-repeat right -60px bottom -50px / 320px fixed;
-  border-top: 5px solid #E4005E;
 }
 
 // PZKO: czarny rysunek domu z biało-czerwoną flagą na dachu.
@@ -190,15 +191,19 @@ $pzko-wm: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox=
 
 html[data-theme="pzko"] body.n {
   // flaga: biały i czerwony pas u góry strony
+  background: linear-gradient(#FFFFFF 0 5px, #DC143C 5px 10px) no-repeat top / 100% 10px, var(--bg);
+}
+html[data-theme="pzko"][data-logo] body.n {
   background:
     linear-gradient(#FFFFFF 0 5px, #DC143C 5px 10px) no-repeat top / 100% 10px,
     url($pzko-wm) no-repeat right -50px bottom -40px / 340px fixed,
     var(--bg);
 }
 
-// znak organizacji przed nazwą imprezy/formularza
-html[data-theme="macierz"] .guest h1:not(.vh)::before,
-html[data-theme="pzko"] .guest h1:not(.vh)::before {
+// znak organizacji przed nazwą imprezy/formularza (tylko z data-logo,
+// ptaszek przy wyborze tematu, themes.go)
+html[data-theme="macierz"][data-logo] .guest h1:not(.vh)::before,
+html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before {
   content: "";
   display: inline-block;
   width: 1.15em;
@@ -207,12 +212,12 @@ html[data-theme="pzko"] .guest h1:not(.vh)::before {
   vertical-align: -.18em;
   background: no-repeat center / contain;
 }
-html[data-theme="macierz"] .guest h1:not(.vh)::before { background-image: url($macierz-mark); }
-html[data-theme="pzko"] .guest h1:not(.vh)::before { background-image: url($pzko-mark); }
+html[data-theme="macierz"][data-logo] .guest h1:not(.vh)::before { background-image: url($macierz-mark); }
+html[data-theme="pzko"][data-logo] .guest h1:not(.vh)::before { background-image: url($pzko-mark); }
 
 @media (max-width: 700px) {
-  html[data-theme="macierz"] body.n { background-image: none; }
-  html[data-theme="pzko"] body.n { background: linear-gradient(#FFFFFF 0 5px, #DC143C 5px 10px) no-repeat top / 100% 10px, var(--bg); }
+  html[data-theme="macierz"][data-logo] body.n { background-image: none; }
+  html[data-theme="pzko"][data-logo] body.n { background: linear-gradient(#FFFFFF 0 5px, #DC143C 5px 10px) no-repeat top / 100% 10px, var(--bg); }
 }
 
 // Klasyczny: kolory dawnej strony rezerwacji (Bootstrap 4). Miejsca jak

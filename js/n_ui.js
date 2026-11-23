@@ -212,14 +212,20 @@
 
   // Wybór tematu strony gościa (szablon "themepick" w n_base.html): próbki
   // zapisują klucz w ukrytym polu sekcji, input oznacza sekcję jako zmienioną.
+  // Ptaszek „znak organizacji” (.tp-logo) jest tylko przy tematach z logo
+  // (data-logo) i po zmianie tematu zawsze się odznacza.
   function syncThemePick(root) {
     root.querySelectorAll('.theme-pick').forEach(function (box) {
       var inp = box.parentNode.querySelector('input[data-field="theme"]');
+      var logo = false;
       box.querySelectorAll('.tp').forEach(function (b) {
         var on = b.dataset.v === inp.value;
         b.classList.toggle('on', on);
         b.setAttribute('aria-checked', on ? 'true' : 'false');
+        if (on && b.dataset.logo) logo = true;
       });
+      var lg = box.parentNode.querySelector('.tp-logo');
+      if (lg) lg.hidden = !logo;
     });
   }
 
@@ -229,6 +235,8 @@
     var inp = b.closest('.f').querySelector('input[data-field="theme"]');
     if (inp.value === b.dataset.v) return;
     inp.value = b.dataset.v;
+    var lg = b.closest('.f').querySelector('input[data-field="theme_logo"]');
+    if (lg) lg.checked = false;
     syncThemePick(b.closest('.f'));
     inp.dispatchEvent(new Event('input', {bubbles: true}));
   });

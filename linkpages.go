@@ -281,6 +281,7 @@ type nLinkPageVars struct {
 	FullURL   string // z adresem serwera - to koduje QR
 	Language  string
 	Theme     string
+	ThemeLogo bool
 	Themes    []GuestTheme
 	Banner    nBannerPick
 	Head      nHeadPick
@@ -364,6 +365,7 @@ func buildLinkPageVars(r *http.Request, db *DB, user User, p LinkPage, lang stri
 		PublicURL: linkPagePublicURL(user, p),
 		Language:  KnownLang(p.Language),
 		Theme:     ThemeKey(p.Theme),
+		ThemeLogo: ThemeLogo(p.Theme),
 		Themes:    guestThemes,
 		Banner:    mainBannerPick(T(lang, "field.main_banner"), "banner", p.Banner, user),
 		Head:      headPick(ParsePageHead(p.PageHead), p.Name, false),
@@ -522,7 +524,7 @@ func LinkPageSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseW
 			}
 			p.Language = KnownLang(val("language"))
 		case "look":
-			p.Theme = ThemeKey(val("theme"))
+			p.Theme = ThemeValue(val("theme"), flag("theme_logo"))
 			p.Banner = cleanBanner(val("banner"))
 			p.PageHead = pageHeadFromPanel(val, flag, p.Name).String()
 			if s, ok := msg.Values["text"].(string); ok {

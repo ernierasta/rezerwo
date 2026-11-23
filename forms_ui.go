@@ -59,8 +59,9 @@ type nFormVars struct {
 	AnswersCount int64
 
 	// Theme - temat strony gościa, Themes - lista do wyboru (themes.go)
-	Theme  string
-	Themes []GuestTheme
+	Theme     string
+	ThemeLogo bool
+	Themes    []GuestTheme
 	// Density - odstępy między polami (density.go), Densities - do wyboru
 	Density   string
 	Densities []string
@@ -168,6 +169,7 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		GuestURL:            fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
 		AnswersCount:        answers,
 		Theme:               ThemeKey(templ.Theme),
+		ThemeLogo:           ThemeLogo(templ.Theme),
 		Themes:              guestThemes,
 		Density:             DensityKey(templ.Density),
 		Densities:           densities,
@@ -494,7 +496,7 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 				}
 			}
 			templ.ThankYou = ToNS(html("thankyou"))
-			if err := db.FormTemplateSetTheme(templ.ID, user.ID, ThemeKey(val("theme"))); err != nil {
+			if err := db.FormTemplateSetTheme(templ.ID, user.ID, ThemeValue(val("theme"), flag("theme_logo"))); err != nil {
 				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 				return
 			}

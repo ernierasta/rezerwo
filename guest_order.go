@@ -237,6 +237,7 @@ type ReservationOrderStatusVars struct {
 	LBLStatusText template.HTML
 	BTNOk         string
 	Theme         string // atrybut data-theme (themes.go)
+	Logo          bool   // atrybut data-logo: znak organizacji tematu
 }
 
 // Order - dane zamówienia z formularza gościa (/order/status)
@@ -384,6 +385,7 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 			LBLStatusText: template.HTML(renderOrderTmpl(statusText, orderFuncsFromOrder(o, db, user))),
 			BTNOk:         "OK",
 			Theme:         themeAttr(event.Theme.String),
+			Logo:          ThemeLogo(event.Theme.String),
 		}
 		t, err := template.ParseFiles("tmpl/n_order_status.html")
 		if err != nil {

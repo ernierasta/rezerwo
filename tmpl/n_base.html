@@ -38,17 +38,20 @@
 {{/* Link do strony nadrzędnej nad tytułem strony (NPage.UpURL). */}}
 {{define "up"}}{{if .UpURL}}<a class="up" href="{{.UpURL}}">← {{.UpLabel}}</a>{{end}}{{end}}
 
-{{/* Wybór tematu strony gościa (themes.go). Wymaga .Theme i .Themes;
-     próbki malują zmienne CSS tematu (data-theme), obsługa w js/n_ui.js. */}}
+{{/* Wybór tematu strony gościa (themes.go). Wymaga .Theme, .ThemeLogo i
+     .Themes; próbki malują zmienne CSS tematu (data-theme), obsługa w
+     js/n_ui.js. Ptaszek znaku organizacji widać tylko przy tematach z logo. */}}
 {{define "themepick"}}
 <div class="f"><label>{{T "theme.label"}}</label>
   <input type="hidden" data-field="theme" value="{{.Theme}}">
   <div class="theme-pick" role="radiogroup" aria-label="{{T "theme.label"}}">
-    {{range .Themes}}<button type="button" role="radio" class="tp{{if eq .Key $.Theme}} on{{end}}" data-v="{{.Key}}" aria-checked="{{if eq .Key $.Theme}}true{{else}}false{{end}}">
+    {{range .Themes}}<button type="button" role="radio" class="tp{{if eq .Key $.Theme}} on{{end}}" data-v="{{.Key}}"{{if .Logo}} data-logo="1"{{end}} aria-checked="{{if eq .Key $.Theme}}true{{else}}false{{end}}">
       <span class="tp-prev" data-theme="{{.Key}}" aria-hidden="true"><span class="tp-card"><i></i><i></i><b></b></span></span>
       <span class="tp-name">{{T (printf "theme.%s" .Key)}}</span><small>{{if .Dark}}{{T "theme.dark"}}{{else}}{{T "theme.light"}}{{end}}</small>
     </button>{{end}}
   </div>
+  {{$logo := false}}{{range .Themes}}{{if and (eq .Key $.Theme) .Logo}}{{$logo = true}}{{end}}{{end}}
+  <div class="check tp-logo"{{if not $logo}} hidden{{end}}><input type="checkbox" id="f-theme-logo" data-field="theme_logo"{{if .ThemeLogo}} checked{{end}}><label for="f-theme-logo">{{T "theme.logo"}}</label></div>
   <small>{{T "theme.hint"}}</small>
 </div>
 {{end}}

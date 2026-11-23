@@ -693,8 +693,9 @@ type nEventVars struct {
 	OtherEvents     []Event
 
 	// Theme - temat strony gościa, Themes - lista do wyboru (themes.go)
-	Theme  string
-	Themes []GuestTheme
+	Theme     string
+	ThemeLogo bool
+	Themes    []GuestTheme
 
 	SumBasic, SumDates, SumRoom, SumGuest string
 	SumMailGuest, SumMailAdmin, SumBank   string
@@ -867,6 +868,7 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		Draft:           event.Status.String == "draft",
 		PreviousEventID: event.PreviousEventID.Int64,
 		Theme:           ThemeKey(event.Theme.String),
+		ThemeLogo:       ThemeLogo(event.Theme.String),
 		Themes:          guestThemes,
 	}
 
@@ -1471,7 +1473,7 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 				return
 			}
 			event.HowTo = html("how_to")
-			event.Theme = ToNS(ThemeKey(val("theme")))
+			event.Theme = ToNS(ThemeValue(val("theme"), flag("theme_logo")))
 			if err := db.EventSetTheme(event.ID, user.ID, event.Theme.String); err != nil {
 				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
 				return

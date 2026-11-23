@@ -20,6 +20,7 @@
   var draftKey = root.dataset.draft;
   var sent = false;
   var conds = null;
+  RZ.multiSelect(form);
 
   // --- liczby na żywo (live.go) ------------------------------------------
   // Co 30 s pytamy o panel informacyjny i liczby przy polach; zmienione
@@ -323,7 +324,7 @@
     });
     if (firstBad) {
       firstBad.scrollIntoView({behavior: 'smooth', block: 'center'});
-      var focusEl = firstBad.querySelector('input, select, textarea');
+      var focusEl = firstBad.querySelector('.msel-btn, input, select, textarea');
       if (focusEl) setTimeout(function () { focusEl.focus({preventScroll: true}); }, 250);
     }
     return !firstBad;
@@ -368,6 +369,7 @@
     }
     if (el.multiple) {
       Array.prototype.forEach.call(el.options, function (o) { o.selected = vals.indexOf(o.value) >= 0; });
+      RZ.multiSync(ff);
       return;
     }
     if (vals[0] !== undefined) el.value = vals[0];
@@ -472,6 +474,7 @@
   // applyConds przelicza pola warunkowe; ukryte pole nie pokazuje błędu
   function applyConds() {
     var changed = conds.apply();
+    RZ.multiSync(form);
     if (changed) {
       fields.forEach(function (ff) { if (ff.hidden && ff.classList.contains('bad')) showError(ff, ''); });
     }

@@ -26,6 +26,7 @@
   var confirm = null;
   var confirmTimer = 0;
   var busy = false;
+  RZ.multiSelect(form);
   var conds = RZ.formConds(form);
 
   function lower(s) { return String(s || '').toLowerCase(); }
@@ -98,6 +99,7 @@
       var sel = ff.querySelector('select');
       if (sel) {
         Array.prototype.forEach.call(sel.options, function (o) { o.selected = vals.indexOf(o.value) >= 0; });
+        RZ.multiSync(ff);
         return;
       }
       var el = ff.querySelector('input, textarea');
@@ -354,6 +356,7 @@
   form.addEventListener('change', function (e) {
     if (e.target.closest('.ff-people')) return;
     conds.apply();
+    RZ.multiSync(form);
     saveDraft();
   });
 

@@ -597,6 +597,13 @@
         h += '<textarea class="inp" rows="' + esc(f.rows || 3) + '" tabindex="-1" placeholder="' + esc(f.placeholder || '') + '"></textarea>';
         break;
       case 'select':
+        if (f.multiple && !live) {
+          // podgląd zwiniętej listy z ptaszkami (RZ.multiSelect u gościa)
+          var picked = (f.values || []).filter(function (o) { return o.selected; }).map(function (o) { return o.label; });
+          h += '<div class="msel"><span class="inp msel-btn"><span class="msel-txt' + (picked.length ? '' : ' ph') + '">' +
+            esc(picked.length ? picked.join(', ') : t('field.select_hint')) + '</span></span></div>';
+          break;
+        }
         h += '<select class="inp" tabindex="-1"' + (f.multiple ? ' multiple' : '') + '>';
         if (!f.multiple) h += '<option value="">' + esc(t('field.select_hint')) + '</option>';
         (f.values || []).forEach(function (o) {
@@ -687,6 +694,7 @@
       h += '</div>';
     });
     canvas.innerHTML = h + '</div>';
+    RZ.multiSelect(canvas);
     tryConds = RZ.formConds(canvas.querySelector('.gform-form'));
   }
 
@@ -1996,7 +2004,7 @@
   document.addEventListener('mouseup', function () { setTimeout(function () { ptrDown = false; }, 0); });
 
   canvas.addEventListener('change', function () {
-    if (trying && tryConds) tryConds.apply();
+    if (trying && tryConds) { tryConds.apply(); RZ.multiSync(canvas); }
   });
 
   canvas.addEventListener('dblclick', function (e) {

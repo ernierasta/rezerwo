@@ -1110,7 +1110,148 @@
     schedule(every);
   }
 
+  // --- lista wielokrotnego wyboru ------------------------------------------
+  // multiSelect(root) zamienia każdy <select multiple> w root na rozwijaną
+  // listę z ptaszkami (natywna lista wymaga Ctrl+klik, a na telefonie
+  // rysuje ją przeglądarka w swoim języku). <select> zostaje ukryty i dalej
+  // trzyma wybór, więc odczyt wartości, warunki i szkice działają bez zmian.
+  // Elementy listy to przyciski, nie <input>, żeby nie myliły kodu, który
+  // szuka w polu inputów. Po zmianie wyboru z kodu wołamy multiSync(root).
+
+  var mselOpen = null;
+
+  function mselClose(focusBtn) {
+    if (!mselOpen) return;
+    var m = mselOpen;
+    mselOpen = null;
+    m.querySelector('.msel-pop').hidden = true;
+    var btn = m.querySelector('.msel-btn');
+    btn.setAttribute('aria-expanded', 'false');
+    if (focusBtn) btn.focus();
+  }
+
+  function optLabel(o) { return o.getAttribute('data-label') || o.textContent.trim(); }
+
+  function mselRefresh(m) {
+    var sel = m.querySelector('select');
+    var picked = Array.prototype.filter.call(sel.options, function (o) { return o.selected && o.value !== ''; });
+    var txt = m.querySelector('.msel-txt');
+    txt.textContent = picked.length ? picked.map(optLabel).join(', ') : t('field.select_hint');
+    txt.classList.toggle('ph', !picked.length);
+    m.querySelector('.msel-btn').disabled = sel.disabled;
+    var pop = m.querySelector('.msel-pop');
+    if (!pop.hidden) mselFill(m);
+  }
+
+  function mselFill(m) {
+    var sel = m.querySelector('select');
+    var pop = m.querySelector('.msel-pop');
+    var focused = document.activeElement && pop.contains(document.activeElement) ? document.activeElement.dataset.v : null;
+    pop.textContent = '';
+    Array.prototype.forEach.call(sel.options, function (o) {
+      if (o.value === '') return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'msel-o';
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', o.selected ? 'true' : 'false');
+      b.dataset.v = o.value;
+      var box = document.createElement('i');
+      box.className = 'msel-box';
+      box.setAttribute('aria-hidden', 'true');
+      var s = document.createElement('span');
+      s.textContent = o.textContent.trim();
+      b.appendChild(box);
+      b.appendChild(s);
+      pop.appendChild(b);
+      if (focused === o.value) b.focus();
+    });
+  }
+
+  function mselToggle(m, v) {
+    var sel = m.querySelector('select');
+    Array.prototype.some.call(sel.options, function (o) {
+      if (o.value !== v) return false;
+      o.selected = !o.selected;
+      return true;
+    });
+    sel.dispatchEvent(new Event('change', {bubbles: true}));
+    mselRefresh(m);
+  }
+
+  function multiSelect(root) {
+    Array.prototype.forEach.call((root || document).querySelectorAll('select[multiple]'), function (sel) {
+      if (sel.closest('.msel')) return;
+      var m = document.createElement('div');
+      m.className = 'msel';
+      sel.parentNode.insertBefore(m, sel);
+      m.appendChild(sel);
+      sel.hidden = true;
+      sel.tabIndex = -1;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'inp msel-btn';
+      btn.setAttribute('aria-haspopup', 'listbox');
+      btn.setAttribute('aria-expanded', 'false');
+      btn.innerHTML = '<span class="msel-txt"></span>';
+      var pop = document.createElement('div');
+      pop.className = 'msel-pop';
+      pop.setAttribute('role', 'listbox');
+      pop.setAttribute('aria-multiselectable', 'true');
+      pop.hidden = true;
+      m.appendChild(btn);
+      m.appendChild(pop);
+      if (sel.id) {
+        var lab = document.querySelector('label[for="' + sel.id + '"]');
+        if (lab) {
+          lab.addEventListener('click', function (e) { e.preventDefault(); btn.focus(); });
+          var lid = lab.id || (lab.id = sel.id + '-l');
+          btn.setAttribute('aria-labelledby', lid + ' ' + (btn.id = sel.id + '-b'));
+        }
+      }
+      btn.addEventListener('click', function () {
+        if (mselOpen === m) { mselClose(false); return; }
+        mselClose(false);
+        mselFill(m);
+        pop.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        mselOpen = m;
+      });
+      pop.addEventListener('click', function (e) {
+        var o = e.target.closest('.msel-o');
+        if (o) mselToggle(m, o.dataset.v);
+      });
+      m.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && mselOpen === m) { e.preventDefault(); mselClose(true); return; }
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        if (mselOpen !== m) { btn.click(); }
+        var items = Array.prototype.slice.call(pop.querySelectorAll('.msel-o'));
+        if (!items.length) return;
+        var i = items.indexOf(document.activeElement);
+        i = e.key === 'ArrowDown' ? Math.min(i + 1, items.length - 1) : Math.max(i - 1, 0);
+        items[i].focus();
+      });
+      m.addEventListener('focusout', function (e) {
+        if (mselOpen === m && !m.contains(e.relatedTarget) && e.relatedTarget) mselClose(false);
+      });
+      mselRefresh(m);
+      ready.then(function () { mselRefresh(m); }); // tekst "-- wybierz --" z katalogu
+    });
+  }
+
+  function multiSync(root) {
+    Array.prototype.forEach.call((root || document).querySelectorAll('.msel'), mselRefresh);
+  }
+
+  document.addEventListener('click', function (e) {
+    // kliknięta opcja mogła już zniknąć z DOM (lista przebudowana po wyborze)
+    if (mselOpen && e.target.isConnected && !mselOpen.contains(e.target)) mselClose(false);
+  });
+
   global.RZ = {
+    multiSelect: multiSelect,
+    multiSync: multiSync,
     live: live,
     morph: morph,
     setText: setText,

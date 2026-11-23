@@ -3650,6 +3650,105 @@ h5.subhead a {
     border-radius: 12px;
   }
 
+  .msel {
+    position: relative;
+  }
+  .msel .msel-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .msel .msel-btn::after {
+    content: "";
+    flex: none;
+    margin-left: auto;
+    width: 7px;
+    height: 7px;
+    border: solid var(--muted);
+    border-width: 0 2px 2px 0;
+    transform: translateY(-2px) rotate(45deg);
+  }
+  .msel .msel-btn[aria-expanded=true]::after {
+    transform: translateY(2px) rotate(-135deg);
+  }
+  .msel .msel-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .msel .msel-txt {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .msel .msel-txt.ph {
+    color: var(--muted);
+  }
+  .msel .msel-pop {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 4px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 6px 20px rgba(var(--shade), 0.14);
+  }
+  .msel .msel-o {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 40px;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    line-height: 1.3;
+    cursor: pointer;
+  }
+  .msel .msel-o:hover, .msel .msel-o:focus-visible {
+    background: var(--pane);
+    outline: none;
+  }
+  .msel .msel-o[aria-selected=true] {
+    background: var(--blue-soft);
+  }
+  .msel .msel-box {
+    flex: none;
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+  .msel [aria-selected=true] .msel-box {
+    background: var(--blue-deep);
+    border-color: var(--blue-deep);
+  }
+  .msel [aria-selected=true] .msel-box::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 5px;
+    height: 10px;
+    border: solid var(--on-accent);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
   .gform-foot {
     margin-inline: -16px;
     padding: 12px 16px;

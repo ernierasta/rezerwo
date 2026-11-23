@@ -3,8 +3,11 @@
 // i odświeżanie kodu QR po zmianie adresu.
 //
 // Przyciski są w ukrytym polu sekcji (data-field="buttons") jako JSON
-// [{kind: "event"|"form"|"url", id, url, label}]; rzędy edytora rysujemy
-// z niego i po każdej zmianie zapisujemy z powrotem.
+// [{kind: "event"|"form"|"url", id, url, label, color, size, nodate, img,
+// imgonly}]; rzędy edytora rysujemy z niego i po każdej zmianie zapisujemy
+// z powrotem. Wygląd przycisku (kolor, wielkość, data, obrazek) jest pod
+// rozwijanym "Wygląd przycisku"; obrazek wybiera ten sam wybór co banner
+// (n_ui.js, .bpick).
 
 document.addEventListener('DOMContentLoaded', function () {
   'use strict';
@@ -17,6 +20,11 @@ document.addEventListener('DOMContentLoaded', function () {
   var rowsBox = document.getElementById('lp-rows');
   var addBtn = document.getElementById('lp-add');
   var max = parseInt(rowsBox.dataset.max, 10) || 8;
+  var media = rowsBox.dataset.media || '/';
+  // linkpages.go: linkButtonColors, linkButtonSizes
+  var COLORS = ['', 'outline', 'ink', 'red', 'orange', 'green', 'blue', 'purple'];
+  var SIZES = ['s', '', 'l'];
+  var opened = []; // rozwinięty "Wygląd przycisku" w rzędzie i
   var targets = {events: [], forms: []};
   try { targets = JSON.parse(rowsBox.dataset.targets || '{}'); } catch (e) { /* brak list */ }
   targets.events = targets.events || [];
@@ -39,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('lp-link').textContent = resp.full_url;
     document.getElementById('lp-qr-url').textContent = resp.full_url;
     document.getElementById('lp-open').href = resp.url;
-    document.getElementById('lp-qr').src = '/api/pages/' + id + '/qr.png?v=' + Date.now();
+    document.getElementById('lp-qr').src = '/api/pages/' + id + '/qr.svg?v=' + Date.now();
   }
 
   document.getElementById('lp-copy').addEventListener('click', function () {
@@ -145,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function () {
           var l = read();
           var j = i + m[2];
           var x = l[i]; l[i] = l[j]; l[j] = x;
+          var o = opened[i]; opened[i] = opened[j]; opened[j] = o;
           write(l);
           render();
         });
@@ -157,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
       del.addEventListener('click', function () {
         var l = read();
         l.splice(i, 1);
+        opened.splice(i, 1);
         write(l);
         render();
       });
@@ -180,15 +190,21 @@ document.addEventListener('DOMContentLoaded', function () {
         row.appendChild(u);
       }
 
+      if (b.kind) row.appendChild(lookBox(b, i));
+
       sel.addEventListener('change', function () {
         var l = read();
         var v = sel.value;
-        if (v === 'url') l[i] = {kind: 'url', url: l[i].url || '', label: l[i].label || ''};
-        else if (v === '') l[i] = {kind: '', label: l[i].label || ''};
+        var old = l[i];
+        if (v === 'url') l[i] = {kind: 'url', url: old.url || '', label: old.label || ''};
+        else if (v === '') l[i] = {kind: '', label: old.label || ''};
         else {
           var p = v.split(':');
-          l[i] = {kind: p[0], id: parseInt(p[1], 10), label: l[i].label || ''};
+          l[i] = {kind: p[0], id: parseInt(p[1], 10), label: old.label || ''};
         }
+        // wygląd zostaje przy zmianie celu
+        ['color', 'size', 'img', 'imgonly'].forEach(function (k) { if (old[k]) l[i][k] = old[k]; });
+        if (old.nodate && l[i].kind === 'event') l[i].nodate = true;
         write(l);
         render();
       });
@@ -201,12 +217,158 @@ document.addEventListener('DOMContentLoaded', function () {
       rowsBox.appendChild(row);
     });
     addBtn.disabled = list.length >= max;
+    RZ.bannerPicks(rowsBox);
+  }
+
+  // --- wygląd przycisku ------------------------------------------------------
+
+  function update(i, fn, again) {
+    var l = read();
+    if (!l[i]) return;
+    fn(l[i]);
+    write(l);
+    if (again) render();
+  }
+
+  function seg(cls, label) {
+    var s = el('div', 'seg ' + cls);
+    s.setAttribute('role', 'radiogroup');
+    s.setAttribute('aria-label', label);
+    return s;
+  }
+
+  function lookBox(b, i) {
+    var box = el('div', 'lp-look');
+    var custom = !!(b.color || b.size || b.nodate || b.img);
+    var open = opened[i] === undefined ? false : opened[i];
+    var tog = el('button', 'link lp-more', t('lpage.look') + (custom && !open ? ' · ' + t('lpage.look_custom') : ''));
+    tog.type = 'button';
+    tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+    tog.addEventListener('click', function () {
+      opened[i] = !open;
+      render();
+    });
+    box.appendChild(tog);
+    if (!open) return box;
+
+    var body = el('div', 'lp-look-b');
+
+    // kolor i wielkość nie mają znaczenia, gdy przycisk to sam obrazek
+    var plain = el('div', 'lp-o-row' + (b.imgonly && b.img ? ' off' : ''));
+    var cbox = el('div', 'lp-o');
+    cbox.appendChild(el('span', 'lp-o-l', t('lpage.color')));
+    var colors = seg('lp-colors', t('lpage.color'));
+    COLORS.forEach(function (c) {
+      var cb = el('button', 'lp-sw c-' + (c || 'def'));
+      cb.type = 'button';
+      cb.appendChild(el('i'));
+      var name = t('lpage.color_' + (c || 'def'));
+      cb.title = name;
+      cb.setAttribute('aria-label', name);
+      cb.setAttribute('role', 'radio');
+      var on = (b.color || '') === c;
+      cb.classList.toggle('on', on);
+      cb.setAttribute('aria-checked', on ? 'true' : 'false');
+      cb.addEventListener('click', function () { update(i, function (x) { if (c) x.color = c; else delete x.color; }, true); });
+      colors.appendChild(cb);
+    });
+    cbox.appendChild(colors);
+    plain.appendChild(cbox);
+
+    var sbox = el('div', 'lp-o');
+    sbox.appendChild(el('span', 'lp-o-l', t('lpage.size')));
+    var sizes = seg('lp-sizes', t('lpage.size'));
+    SIZES.forEach(function (z) {
+      var zb = el('button', '', t('lpage.size_' + (z || 'm')));
+      zb.type = 'button';
+      zb.setAttribute('role', 'radio');
+      var on = (b.size || '') === z;
+      zb.classList.toggle('on', on);
+      zb.setAttribute('aria-checked', on ? 'true' : 'false');
+      zb.addEventListener('click', function () { update(i, function (x) { if (z) x.size = z; else delete x.size; }, true); });
+      sizes.appendChild(zb);
+    });
+    sbox.appendChild(sizes);
+    plain.appendChild(sbox);
+    body.appendChild(plain);
+
+    if (b.kind === 'event') {
+      body.appendChild(check(t('lpage.show_date'), !b.nodate, function (on) {
+        update(i, function (x) { if (on) delete x.nodate; else x.nodate = true; });
+      }));
+    }
+
+    // obrazek: ten sam wybór co banner, bez szerokości
+    var ibox = el('div', 'lp-o lp-o-img');
+    ibox.appendChild(el('span', 'lp-o-l', t('lpage.image')));
+    var pick = el('div', 'bpick lp-bpick');
+    pick.dataset.base = media;
+    var hid = el('input');
+    hid.type = 'hidden';
+    hid.dataset.field = 'lp_img'; // n_ui.js szuka input[data-field]; serwer to pole pomija
+    hid.value = b.img || '';
+    pick.appendChild(hid);
+    var bb = el('div', 'bp-box');
+    var th = el('div', 'bp-thumb');
+    var im = el('img');
+    im.alt = '';
+    im.hidden = true;
+    th.appendChild(im);
+    th.appendChild(el('span', 'bp-none', t('banner.none')));
+    bb.appendChild(th);
+    var ctl = el('div', 'bp-ctl');
+    var btns = el('div', 'bp-btns');
+    [['btn quiet sm bp-up', 'banner.upload'], ['btn quiet sm bp-choose', 'banner.choose'], ['link bp-del', 'banner.remove']].forEach(function (x) {
+      var k = el('button', x[0], t(x[1]));
+      k.type = 'button';
+      btns.appendChild(k);
+    });
+    ctl.appendChild(btns);
+    ctl.appendChild(el('small', 'bp-name'));
+    var only = check(t('lpage.image_only'), !!b.imgonly, function (on) {
+      update(i, function (x) { if (on) x.imgonly = true; else delete x.imgonly; }, true);
+    });
+    only.hidden = !b.img;
+    ctl.appendChild(only);
+    ctl.appendChild(el('small', 'bp-hint', t('lpage.image_hint')));
+    bb.appendChild(ctl);
+    pick.appendChild(bb);
+    var file = el('input', 'bp-file');
+    file.type = 'file';
+    file.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    file.hidden = true;
+    pick.appendChild(file);
+    hid.addEventListener('input', function () {
+      var f = hid.value.split(';')[0].trim();
+      update(i, function (x) {
+        if (f) x.img = f;
+        else { delete x.img; delete x.imgonly; }
+      }, !f && b.imgonly);
+      only.hidden = !f;
+    });
+    ibox.appendChild(pick);
+    body.appendChild(ibox);
+
+    box.appendChild(body);
+    return box;
+  }
+
+  function check(text, on, fn) {
+    var l = el('label', 'lp-chk');
+    var c = el('input');
+    c.type = 'checkbox';
+    c.checked = on;
+    c.addEventListener('change', function () { fn(c.checked); });
+    l.appendChild(c);
+    l.appendChild(el('span', '', text));
+    return l;
   }
 
   addBtn.addEventListener('click', function () {
     var l = read();
     if (l.length >= max) return;
     l.push({kind: '', label: ''});
+    opened[l.length - 1] = false;
     write(l);
     render();
     var sels = rowsBox.querySelectorAll('select');

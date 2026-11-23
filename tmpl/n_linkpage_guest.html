@@ -9,9 +9,10 @@
   {{if .Buttons}}
   <nav class="lpage-btns" aria-label="{{.Head.Name}}">
     {{range .Buttons}}
-    <a class="lpage-btn{{if .Draft}} draft{{end}}" href="{{.Href}}"{{if .Ext}} target="_blank" rel="noopener"{{end}}>
-      <b>{{.Label}}</b>{{if .Sub}}<small>{{.Sub}}</small>{{end}}
-      <span class="arr" aria-hidden="true">→</span>
+    <a class="lpage-btn{{.Class}}{{if .Draft}} draft{{end}}" href="{{.Href}}"{{if .Ext}} target="_blank" rel="noopener"{{end}}>
+      {{if .Img}}<img class="lpage-img" src="{{.Img}}" alt="{{if .ImgOnly}}{{.Label}}{{if .Sub}} – {{.Sub}}{{end}}{{end}}">{{end}}
+      {{if not .ImgOnly}}<span class="lpage-t"><b>{{.Label}}</b>{{if .Sub}}<small>{{.Sub}}</small>{{end}}</span>
+      <span class="arr" aria-hidden="true">→</span>{{end}}
     </a>
     {{end}}
   </nav>

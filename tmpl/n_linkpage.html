@@ -56,7 +56,7 @@
       <div class="sec-b" hidden>
         <p class="muted">{{T "lpage.buttons_hint"}}</p>
         <input type="hidden" data-field="buttons" id="lp-buttons" value="{{.Buttons}}">
-        <div class="lp-btns" id="lp-rows" data-targets="{{.Targets}}" data-max="{{.Max}}"></div>
+        <div class="lp-btns" id="lp-rows" data-targets="{{.Targets}}" data-max="{{.Max}}" data-media="{{.Banner.Base}}"></div>
         <p style="margin-top:10px"><button type="button" class="btn quiet sm" id="lp-add">+ {{T "lpage.add"}}</button></p>
         <div class="sec-f"><button class="btn" data-save="buttons">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small></div>
       </div>
@@ -67,11 +67,13 @@
       <div class="sec-h"><b>{{T "lpage.sec_qr"}}</b><span>{{T "lpage.qr_sum"}}</span><a class="act" href="#qr">{{T "common.show"}}</a></div>
       <div class="sec-b" hidden>
         <div class="lp-qr">
-          <img id="lp-qr" src="/api/pages/{{.ID}}/qr.png" alt="{{T "lpage.sec_qr"}}" width="240" height="240">
+          <img id="lp-qr" src="/api/pages/{{.ID}}/qr.svg" alt="{{T "lpage.sec_qr"}}" width="240" height="240">
           <div>
             <p>{{T "lpage.qr_hint"}}</p>
             <p class="num muted" id="lp-qr-url">{{.FullURL}}</p>
-            <p style="margin-top:12px"><a class="btn" id="lp-qr-dl" href="/api/pages/{{.ID}}/qr.png?download=1">{{T "lpage.qr_download"}}</a></p>
+            <p class="lp-qr-dl" style="margin-top:12px"><a class="btn" href="/api/pages/{{.ID}}/qr.png?download=1">{{T "lpage.qr_download"}}</a>
+              <a class="btn quiet" href="/api/pages/{{.ID}}/qr.svg?download=1">{{T "lpage.qr_download_svg"}}</a></p>
+            <small class="muted" style="display:block;margin-bottom:6px">{{T "lpage.qr_svg_hint"}}</small>
             <small class="muted">{{T "lpage.qr_url_hint"}}</small>
           </div>
         </div>

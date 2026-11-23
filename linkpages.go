@@ -20,6 +20,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -45,11 +46,37 @@ const LINKLABELMAX = 120
 
 // LinkButton - przycisk strony (linkpages.buttons, JSON). Pusty napis =
 // nazwa imprezy/formularza, więc zmiana nazwy zmienia też przycisk.
+// Wygląd: Color z linkButtonColors ("" = kolor tematu), Size z
+// linkButtonSizes ("" = zwykły), NoDate - bez daty imprezy pod napisem,
+// Img - obrazek z media/<organizacja>/ (jak banner) nad napisem albo,
+// z ImgOnly, zamiast napisu (napis zostaje tekstem alternatywnym).
 type LinkButton struct {
-	Kind  string `json:"kind"`
-	ID    int64  `json:"id,omitempty"`
-	URL   string `json:"url,omitempty"`
-	Label string `json:"label,omitempty"`
+	Kind    string `json:"kind"`
+	ID      int64  `json:"id,omitempty"`
+	URL     string `json:"url,omitempty"`
+	Label   string `json:"label,omitempty"`
+	Color   string `json:"color,omitempty"`
+	Size    string `json:"size,omitempty"`
+	NoDate  bool   `json:"nodate,omitempty"`
+	Img     string `json:"img,omitempty"`
+	ImgOnly bool   `json:"imgonly,omitempty"`
+}
+
+// linkButtonColors - kolory przycisku: "" = kolor tematu, "outline" = sama
+// ramka w kolorze tematu, reszta jak kolory linijki nad nazwą (pagehead.go).
+var linkButtonColors = []string{"", "outline", "ink", "red", "orange", "green", "blue", "purple"}
+
+// linkButtonSizes - "s" mały, "" zwykły, "l" duży (na najważniejsze sprawy).
+var linkButtonSizes = []string{"s", "", "l"}
+
+// linkButtonImg - obrazek przycisku: ścieżka w katalogu organizacji bez
+// wychodzenia z niego, tylko rozszerzenia obrazków; "" = brak.
+func linkButtonImg(s string) string {
+	f := ParseBanner(cleanBanner(s)).File
+	if f == "" || !bannerExts[strings.ToLower(path.Ext(f))] {
+		return ""
+	}
+	return f
 }
 
 // ParseLinkButtons czyta przyciski z bazy; zepsuty JSON = brak przycisków.
@@ -113,6 +140,11 @@ func cleanLinkButtons(db *DB, user User, lang string, in []LinkButton) ([]LinkBu
 	for i, b := range in {
 		n := i + 1
 		b.Label = linkLabel(b.Label)
+		b.Color = oneOf(b.Color, linkButtonColors)
+		b.Size = oneOf(b.Size, linkButtonSizes)
+		b.Img = linkButtonImg(b.Img)
+		b.ImgOnly = b.ImgOnly && b.Img != ""
+		b.NoDate = b.NoDate && b.Kind == LINKEVENT
 		switch b.Kind {
 		case LINKEVENT:
 			e, err := db.EventGetByID(b.ID)
@@ -165,18 +197,35 @@ func uniqueLinkPageURL(db *DB, userID int64, base string) string {
 
 // nLinkButton - przycisk gotowy do pokazania.
 type nLinkButton struct {
-	Label string
-	Href  string
-	Sub   string // druga linijka: data imprezy, "zapisy zamknięte"
-	Ext   bool   // adres poza tym serwerem - otwiera się w nowej karcie
-	Draft bool   // szkic imprezy - widzi tylko admin (podgląd)
-	Off   bool   // impreza/formularz nie istnieje - przycisk pomijamy
+	Label   string
+	Href    string
+	Sub     string // druga linijka: data imprezy, "zapisy zamknięte"
+	Ext     bool   // adres poza tym serwerem - otwiera się w nowej karcie
+	Draft   bool   // szkic imprezy - widzi tylko admin (podgląd)
+	Off     bool   // impreza/formularz nie istnieje - przycisk pomijamy
+	Class   string // klasy wyglądu: " c-red sz-l img-only"
+	Img     string // adres obrazka
+	ImgOnly bool   // sam obrazek, napis jako alt
 }
 
 // resolveLinkButton zamienia zapisany przycisk na adres i napis w języku
 // lang (strony gościa albo panelu).
 func resolveLinkButton(db *DB, user User, b LinkButton, lang string) nLinkButton {
 	out := nLinkButton{Label: b.Label}
+	if c := oneOf(b.Color, linkButtonColors); c != "" {
+		out.Class += " c-" + c
+	}
+	if sz := oneOf(b.Size, linkButtonSizes); sz != "" {
+		out.Class += " sz-" + sz
+	}
+	if f := linkButtonImg(b.Img); f != "" {
+		out.Img = path.Join("/", MEDIAROOT, user.URL, f)
+		out.ImgOnly = b.ImgOnly
+		out.Class += " with-img"
+		if b.ImgOnly {
+			out.Class += " img-only"
+		}
+	}
 	switch b.Kind {
 	case LINKEVENT:
 		e, err := db.EventGetByID(b.ID)
@@ -189,7 +238,7 @@ func resolveLinkButton(db *DB, user User, b LinkButton, lang string) nLinkButton
 		}
 		out.Href = fmt.Sprintf("/res/%s?event-id=%d", user.URL, e.ID)
 		out.Draft = e.Status.String == "draft"
-		if e.Date > 0 {
+		if e.Date > 0 && !b.NoDate {
 			out.Sub = FormatDate(lang, e.Date)
 		}
 	case LINKFORM:
@@ -527,13 +576,22 @@ func emptyHTML(s string) bool {
 // wystarczający do druku na plakacie A3.
 const LINKQRMODULE = 24
 
-// LinkPageQRAPI - GET /api/pages/{id}/qr.png[?download=1]: kod QR z pełnym
-// adresem strony (adres serwera z żądania, jak linki w mailach).
+// LINKQRQUIET - cisza wokół kodu w modułach (norma wymaga 4).
+const LINKQRQUIET = 4
+
+// LinkPageQRAPI - GET /api/pages/{id}/qr.png|qr.svg[?download=1]: kod QR
+// z pełnym adresem strony (adres serwera z żądania, jak linki w mailach).
+// PNG ma białe tło, SVG jest przezroczysty (na kolorowe plakaty, skaluje
+// się bez utraty ostrości).
 func LinkPageQRAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, p, ok := adminLinkPage(w, r, db, cs, false)
 		if !ok {
 			return
+		}
+		ext := mux.Vars(r)["ext"]
+		if ext != "svg" {
+			ext = "png"
 		}
 		full := requestBase(r) + linkPagePublicURL(user, p)
 		qrc, err := qrcode.NewWith(full, qrcode.WithErrorCorrectionLevel(qrcode.ErrorCorrectionQuart))
@@ -542,20 +600,56 @@ func LinkPageQRAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter,
 			http.Error(w, "qr error", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Cache-Control", "no-store")
 		if r.URL.Query().Get("download") != "" {
-			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="qr-%s-%s.png"`, user.URL, p.URL))
+			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="qr-%s-%s.%s"`, user.URL, p.URL, ext))
 		}
-		wr := standard.NewWithWriter(nopCloser{w},
-			standard.WithBuiltinImageEncoder(standard.PNG_FORMAT),
-			standard.WithFgColorRGBHex("#000000"), // domyślny szary słabo wychodzi w druku
-			standard.WithQRWidth(LINKQRMODULE), standard.WithBorderWidth(LINKQRMODULE*2))
+		var wr qrcode.Writer
+		if ext == "svg" {
+			w.Header().Set("Content-Type", "image/svg+xml")
+			wr = qrSVGWriter{w}
+		} else {
+			w.Header().Set("Content-Type", "image/png")
+			wr = standard.NewWithWriter(nopCloser{w},
+				standard.WithBuiltinImageEncoder(standard.PNG_FORMAT),
+				standard.WithFgColorRGBHex("#000000"), // domyślny szary słabo wychodzi w druku
+				standard.WithQRWidth(LINKQRMODULE), standard.WithBorderWidth(LINKQRMODULE*2))
+		}
 		if err := qrc.Save(wr); err != nil {
 			log.Printf("LinkPageQRAPI: save: %v", err)
 		}
 	}
 }
+
+// qrSVGWriter rysuje kod QR jako SVG: czarne moduły na przezroczystym tle,
+// jeden moduł = 1 jednostka, sąsiednie moduły w rzędzie sklejone w jeden
+// prostokąt (mniejszy plik, bez szczelin przy skalowaniu).
+type qrSVGWriter struct{ w io.Writer }
+
+func (q qrSVGWriter) Write(mat qrcode.Matrix) error {
+	bm := mat.Bitmap()
+	size := len(bm) + 2*LINKQRQUIET
+	var d strings.Builder
+	for y, row := range bm {
+		for x := 0; x < len(row); {
+			if !row[x] {
+				x++
+				continue
+			}
+			start := x
+			for x < len(row) && row[x] {
+				x++
+			}
+			fmt.Fprintf(&d, "M%d %dh%dv1h-%dz", start+LINKQRQUIET, y+LINKQRQUIET, x-start, x-start)
+		}
+	}
+	_, err := fmt.Fprintf(q.w, `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" width="%d" height="%d" shape-rendering="crispEdges"><path fill="#000" d="%s"/></svg>
+`, size, size, size*LINKQRMODULE/2, size*LINKQRMODULE/2, d.String())
+	return err
+}
+
+func (qrSVGWriter) Close() error { return nil }
 
 type nopCloser struct{ io.Writer }
 

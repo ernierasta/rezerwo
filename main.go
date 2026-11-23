@@ -113,7 +113,7 @@ func main() {
 	rtr.HandleFunc("/api/pages", LinkPageCreateAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/pages/{id:[0-9]+}", LinkPageDeleteAPI(db, cookieStore)).Methods("DELETE")
 	rtr.HandleFunc("/api/pages/{id:[0-9]+}/section", LinkPageSectionSave(db, cookieStore)).Methods("POST")
-	rtr.HandleFunc("/api/pages/{id:[0-9]+}/qr.png", LinkPageQRAPI(db, cookieStore)).Methods("GET")
+	rtr.HandleFunc("/api/pages/{id:[0-9]+}/qr.{ext:png|svg}", LinkPageQRAPI(db, cookieStore)).Methods("GET")
 	rtr.HandleFunc("/locales/{file}", LocalesJSONHandler())
 
 	// strony dla gości

@@ -1260,6 +1260,7 @@
     tN: tN,
     ready: ready,
     sections: sections,
+    bannerPicks: syncBannerPicks,
     loadLocale: loadLocale,
     toast: toast,
     postJSON: postJSON,

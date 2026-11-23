@@ -58,7 +58,7 @@ func TestLinkPages(t *testing.T) {
 	rtr.HandleFunc("/api/pages", LinkPageCreateAPI(db, cs)).Methods("POST")
 	rtr.HandleFunc("/api/pages/{id:[0-9]+}", LinkPageDeleteAPI(db, cs)).Methods("DELETE")
 	rtr.HandleFunc("/api/pages/{id:[0-9]+}/section", LinkPageSectionSave(db, cs)).Methods("POST")
-	rtr.HandleFunc("/api/pages/{id:[0-9]+}/qr.png", LinkPageQRAPI(db, cs)).Methods("GET")
+	rtr.HandleFunc("/api/pages/{id:[0-9]+}/qr.{ext:png|svg}", LinkPageQRAPI(db, cs)).Methods("GET")
 	rtr.HandleFunc("/p/{userurl}/{pageurl}", GuestLinkPage(db, cs))
 	rtr.HandleFunc("/api/managers", ManagerCreateAPI(db, cs)).Methods("POST")
 	rtr.HandleFunc("/api/login", LoginAPI(db, cs))
@@ -133,14 +133,33 @@ func TestLinkPages(t *testing.T) {
 			t.Errorf("%s: %d %s", name, rec.Code, rec.Body)
 		}
 	}
+	if _, err := db.DB.Exec(`UPDATE events SET date=$1 WHERE id IN ($2, $3)`, 1893456000, ev, draft); err != nil {
+		t.Fatal(err)
+	}
 	rec := section("buttons", buttons(
-		LinkButton{Kind: LINKEVENT, ID: ev},
-		LinkButton{Kind: LINKFORM, ID: form, Label: "Zapisz się"},
-		LinkButton{Kind: LINKEVENT, ID: draft},
-		LinkButton{Kind: LINKURL, URL: "www.zori.cz", Label: "Strona Zori"},
+		LinkButton{Kind: LINKEVENT, ID: ev, Color: "red", Size: "l", NoDate: true},
+		LinkButton{Kind: LINKFORM, ID: form, Label: "Zapisz się", Color: "#f00", Size: "xxl", NoDate: true, ImgOnly: true},
+		LinkButton{Kind: LINKEVENT, ID: draft, Img: "../../etc/passwd"},
+		LinkButton{Kind: LINKURL, URL: "www.zori.cz", Label: "Strona Zori", Img: "plakaty/zori.png;50%", ImgOnly: true},
 	))
 	if rec.Code != 200 {
 		t.Fatalf("buttons: %d %s", rec.Code, rec.Body)
+	}
+	// wygląd: tylko znane kolory i wielkości, obrazek w katalogu organizacji,
+	// "bez daty" tylko przy imprezie, "sam obrazek" tylko z obrazkiem
+	p, _ = db.LinkPageGetByID(id, orgID)
+	saved := ParseLinkButtons(p.Buttons)
+	if b := saved[0]; b.Color != "red" || b.Size != "l" || !b.NoDate {
+		t.Errorf("button 1 look: %+v", b)
+	}
+	if b := saved[1]; b.Color != "" || b.Size != "" || b.NoDate || b.ImgOnly {
+		t.Errorf("button 2 look not cleaned: %+v", b)
+	}
+	if b := saved[2]; b.Img != "" {
+		t.Errorf("button 3 image outside media accepted: %+v", b)
+	}
+	if b := saved[3]; b.Img != "plakaty/zori.png" || !b.ImgOnly {
+		t.Errorf("button 4 image: %+v", b)
 	}
 	rec = section("look", map[string]interface{}{"theme": "noc", "banner": "../../etc/passwd", "text": "<p>Zapraszamy!</p>", "head_name": "Bal"})
 	if rec.Code != 200 {
@@ -168,6 +187,18 @@ func TestLinkPages(t *testing.T) {
 	if strings.Contains(body, "Piknik") {
 		t.Errorf("guest page shows draft event")
 	}
+	for _, want := range []string{`class="lpage-btn c-red sz-l"`, `class="lpage-btn with-img img-only"`,
+		`src="/media/org/plakaty/zori.png" alt="Strona Zori"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("guest page look: missing %q", want)
+		}
+	}
+	if strings.Contains(body, FormatDate("cs", 1893456000)) {
+		t.Errorf("guest page shows date of a button with nodate")
+	}
+	if strings.Contains(body, "<b>Strona Zori</b>") {
+		t.Errorf("image-only button shows its label")
+	}
 	// admin widzi szkic z dopiskiem
 	r = httptest.NewRequest("GET", "/p/org/bal", nil)
 	for _, c := range owner {
@@ -191,6 +222,16 @@ func TestLinkPages(t *testing.T) {
 	}
 	if rec := do("GET", "/api/pages/"+pid+"/qr.png", "", owner); rec.Code != 200 || !bytes.HasPrefix(rec.Body.Bytes(), []byte("\x89PNG")) {
 		t.Errorf("qr: %d %q", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	rec = do("GET", "/api/pages/"+pid+"/qr.svg?download=1", "", owner)
+	svg := rec.Body.String()
+	if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/svg+xml" || !strings.Contains(svg, "<svg") ||
+		!strings.Contains(svg, `<path fill="#000" d="M4 4h7`) || strings.Contains(svg, "<rect") ||
+		!strings.Contains(rec.Header().Get("Content-Disposition"), `qr-org-bal.svg`) {
+		t.Errorf("qr svg: %d %q %.200s", rec.Code, rec.Header(), svg)
+	}
+	if rec := do("GET", "/api/pages/"+pid+"/qr.svg", "", nil); rec.Code == 200 {
+		t.Errorf("qr svg without login: %d", rec.Code)
 	}
 
 	// usunięta impreza znika z przycisków gościa

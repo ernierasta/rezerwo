@@ -215,6 +215,7 @@ files_title = "Załączniki i obrazki"
 files_hint = "Nazwy plików z katalogu media/<organizacja>/email/ na serwerze, rozdzielone średnikiem. Obrazek wstawiasz do treści jako CID:nazwaplikubezkropki@organizacja."
 vars_hint = "Dane klienta wstawisz przyciskiem „+ Dane zamówienia”. W wysłanym mailu zamienią się na prawdziwe wartości."
 forms_hint = "Dane gościa i jego odpowiedzi wstawisz przyciskiem „+ Dane z formularza”. Inne zmienne działają jak dotąd, np. {{.Sum \"pole\"}}."
+conds_hint = "Pola warunkowe filtrują się same: linijka z polem, którego gość nie widział (inna sekcja, inny wybór), znika z maila razem z listą tuż pod nią. „Wszystkie odpowiedzi” wstawia tylko pola, które gość widział i wypełnił."
 insert = "+ Dane zamówienia"
 insert_subject = "+ Dane"
 insert_form = "+ Dane z formularza"
@@ -251,6 +252,7 @@ pay_account = "Numer konta"
 pay_iban = "IBAN"
 pay_vs = "Variabilní symbol"
 pay_message = "Wiadomość dla odbiorcy"
+answers = "Wszystkie odpowiedzi (tylko widoczne pola)"
 
 [mail.sample]
 name = "Jan"
@@ -262,6 +264,7 @@ event = "Impreza"
 
 [newmail]
 form_hint = "Mail formularza należy do jednego formularza i podpowiada jego pola."
+conds_hint = "Pola warunkowe filtrują się same: linijka z polem, którego gość nie widział (inna sekcja, inny wybór), znika z maila razem z listą tuż pod nią. „Wszystkie odpowiedzi” wstawia tylko pola, które gość widział i wypełnił."
 from_form = "Z polami formularza „%s”"
 other = "Inne"
 draft_guest = "Potwierdzenie dla gościa"

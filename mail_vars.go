@@ -66,6 +66,8 @@ func formMailVars(templ FormTemplate) []mailVar {
 		{Code: ".Surname", Label: "mail.var.surname", InSubject: true},
 		{Code: ".Email", Label: "mail.var.email"},
 		{Code: ".TotalPrice", Label: "mail.var.total", InSubject: true},
+		// odpowiedzi tylko z pól, które gość widział (form_conds_mail.go)
+		{Code: ".Answers", Label: "mail.var.answers"},
 		// stare maile biorą dane gościa z pól: {{.Field "name-REQUIRED"}}
 		{Code: ".Field", Arg: ROLENAME, Label: "mail.var.name", InSubject: true, Hidden: true},
 		{Code: ".Field", Arg: ROLESURNAME, Label: "mail.var.surname", InSubject: true, Hidden: true},

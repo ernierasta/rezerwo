@@ -213,6 +213,7 @@ files_title = "Přílohy a obrázky"
 files_hint = "Názvy souborů z adresáře media/<organizace>/email/ na serveru, oddělené středníkem. Obrázek vložíte do textu jako CID:nazevsouborubeztecky@organizace."
 vars_hint = "Údaje zákazníka vložíte tlačítkem „+ Údaje objednávky”. V odeslaném mailu se nahradí skutečnými hodnotami."
 forms_hint = "Údaje hosta a jeho odpovědi vložíte tlačítkem „+ Údaje z formuláře“. Ostatní proměnné fungují jako dosud, např. {{.Sum \"pole\"}}."
+conds_hint = "Podmíněná pole se filtrují sama: řádek s polem, které host neviděl (jiná sekce, jiná volba), z mailu zmizí i se seznamem hned pod ním. „Všechny odpovědi“ vloží jen pole, která host viděl a vyplnil."
 insert = "+ Údaje objednávky"
 insert_subject = "+ Údaje"
 insert_form = "+ Údaje z formuláře"
@@ -249,6 +250,7 @@ pay_account = "Číslo účtu"
 pay_iban = "IBAN"
 pay_vs = "Variabilní symbol"
 pay_message = "Zpráva pro příjemce"
+answers = "Všechny odpovědi (jen viditelná pole)"
 
 [mail.sample]
 name = "Jan"
@@ -260,6 +262,7 @@ event = "Akce"
 
 [newmail]
 form_hint = "Mail formuláře patří k jednomu formuláři a nabízí jeho pole."
+conds_hint = "Podmíněná pole se filtrují sama: řádek s polem, které host neviděl (jiná sekce, jiná volba), z mailu zmizí i se seznamem hned pod ním. „Všechny odpovědi“ vloží jen pole, která host viděl a vyplnil."
 from_form = "S poli formuláře „%s”"
 other = "Další"
 draft_guest = "Potvrzení pro hosta"

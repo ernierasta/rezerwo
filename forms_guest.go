@@ -696,7 +696,7 @@ func GuestFormDonePage(db *DB) func(w http.ResponseWriter, r *http.Request) {
 				nsn := form.Surname.String + "_" + form.Name.String
 				funcs := &FormFuncs{DB: db, User: user, Template: templ, FormID: formID, NameSurname: nsn}
 				var buf bytes.Buffer
-				if t, err := template.New("thankyou").Parse(templ.ThankYou.String); err != nil {
+				if t, err := parseFormMail("thankyou", templ.ThankYou.String); err != nil {
 					log.Printf("GuestFormDonePage: parse: %v", err)
 				} else if err := t.Execute(&buf, funcs); err != nil {
 					log.Printf("GuestFormDonePage: exec: %v", err)

@@ -213,6 +213,7 @@ files_title = "Attachments and images"
 files_hint = "File names from media/<organization>/email/ on the server, separated by semicolons. Put an image into the text as CID:filenamewithoutdot@organization."
 vars_hint = "Insert customer details with the “+ Order details” button. The sent mail will contain the real values."
 forms_hint = "Insert guest details and answers with the “+ Form details” button. Other variables work as before, e.g. {{.Sum \"field\"}}."
+conds_hint = "Conditional fields are filtered automatically: a line with a field the guest did not see (another section, another choice) is left out of the mail, together with the list right below it. “All answers” inserts only the fields the guest saw and filled in."
 insert = "+ Order details"
 insert_subject = "+ Details"
 insert_form = "+ Form details"
@@ -249,6 +250,7 @@ pay_account = "Account number"
 pay_iban = "IBAN"
 pay_vs = "Variabilní symbol"
 pay_message = "Message for recipient"
+answers = "All answers (visible fields only)"
 
 [mail.sample]
 name = "John"
@@ -260,6 +262,7 @@ event = "Event"
 
 [newmail]
 form_hint = "A form mail belongs to one form and offers its fields."
+conds_hint = "Conditional fields are filtered automatically: a line with a field the guest did not see (another section, another choice) is left out of the mail, together with the list right below it. “All answers” inserts only the fields the guest saw and filled in."
 from_form = "With the fields of “%s”"
 other = "Other"
 draft_guest = "Confirmation for the guest"

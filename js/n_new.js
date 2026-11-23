@@ -236,7 +236,7 @@
           sel.addEventListener('change', function () { formID = Number(sel.value) || 0; rerender(); });
           f.appendChild(l);
           f.appendChild(sel);
-          f.appendChild(el('small', '', RZ.t('newmail.form_hint')));
+          f.appendChild(el('small', '', RZ.t('newmail.form_hint') + ' ' + RZ.t('newmail.conds_hint')));
           return f;
         },
         check: function (kind) {

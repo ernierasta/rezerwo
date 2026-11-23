@@ -15,7 +15,7 @@ import (
 // i obrazki QR do wstawienia w mail
 func parseFormMailTemplate(name, surname, mtext string, formID int64, user User, formTempl FormTemplate, db *DB) (string, []string) {
 	ff := &FormFuncs{DB: db, User: user, Template: formTempl, FormID: formID, NameSurname: surname + "_" + name}
-	tmpl, err := template.New("thankyou").Parse(mtext)
+	tmpl, err := parseFormMail("thankyou", mtext)
 	if err != nil {
 		log.Printf("parseFormMailTemplate: parse: %v", err)
 		return "", nil
@@ -47,6 +47,8 @@ type FormFuncs struct {
 	answers formAnswers
 	// form - wiersz odpowiedzi wczytany raz dla .Name, .Surname, .Email
 	form *Form
+	// cv - widoczność pól dla .Shown i .Answers (form_conds_mail.go)
+	cv *condView
 }
 
 // row - odpowiedź (imię, nazwisko, e-mail gościa)

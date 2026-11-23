@@ -119,13 +119,20 @@ func formMailDraft(db *DB, user User, templ FormTemplate, admin bool, lang strin
 	gap()
 	line(T(lang, "mailgen.name"), "{{.Name}} {{.Surname}}")
 	line(T(lang, "mail.var.email"), "{{.Email}}")
-	for _, d := range formMailFields(templ) {
-		if d.S("type") == "header" {
-			gap()
-			p("<strong>" + esc(fieldLabel(d)) + "</strong>")
-			continue
+	if formHasConds(templ) {
+		// nagłówki sekcji warunkowych nie mają pastylek, więc zostałyby
+		// w mailu każdego gościa - odpowiedzi wstawia .Answers
+		gap()
+		p("{{.Answers}}")
+	} else {
+		for _, d := range formMailFields(templ) {
+			if d.S("type") == "header" {
+				gap()
+				p("<strong>" + esc(fieldLabel(d)) + "</strong>")
+				continue
+			}
+			line(fieldLabel(d), fieldAction(d.S("name")))
 		}
-		line(fieldLabel(d), fieldAction(d.S("name")))
 	}
 
 	if templ.MoneyAmountFieldName.String != "" {

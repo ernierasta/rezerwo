@@ -104,6 +104,16 @@ func TestManagers(t *testing.T) {
 		t.Fatal("last login not stored")
 	}
 
+	// logowanie na konto organizacji w przeglądarce z ciasteczkiem
+	// menedżera (bez wylogowania) - nowa sesja nie dziedziczy "manager"/"pv"
+	rec := do("POST", "/api/login", `{"email":"org@example.com","password":"owner-pass"}`, mgr)
+	if rec.Code != 200 {
+		t.Fatalf("org login over manager session: %d", rec.Code)
+	}
+	if !canAdmin(rec.Result().Cookies()) {
+		t.Fatal("org login over manager session does not open the panel")
+	}
+
 	// menedżer nie zarządza loginami
 	if rec := do("POST", "/api/managers", `{"email":"x@example.com","password":"dlugiehaslo"}`, mgr); rec.Code != http.StatusForbidden {
 		t.Fatalf("manager created manager: %d", rec.Code)

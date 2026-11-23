@@ -164,12 +164,11 @@ func LoginAPI(db *DB, cookieStore *sessions.CookieStore) func(w http.ResponseWri
 			return
 		}
 
-		// nowa sesja zamiast istniejącej (ochrona przed podrzuceniem sesji)
-		session, err := cookieStore.New(r, AUTHCOOKIE)
-		if err != nil && session == nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		// zupełnie nowa, pusta sesja zamiast istniejącej (ochrona przed
+		// podrzuceniem sesji). Nie cookieStore.New: ten wczytuje wartości z
+		// ciasteczka, więc po sesji menedżera zostawały "manager"/"pv" i
+		// konto organizacji było brane za menedżera - logowanie bez skutku.
+		session := sessions.NewSession(cookieStore, AUTHCOOKIE)
 		session.Options = sessionOptions(m.Remember == "on")
 		session.Values["email"] = m.Email
 		session.Values["role"] = "admin"

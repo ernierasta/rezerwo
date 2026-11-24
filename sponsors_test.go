@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/png"
 	"net/http/httptest"
@@ -116,5 +117,34 @@ func TestSponsorsMail(t *testing.T) {
 	out := renderOrderTmpl("<p>Dziękujemy</p>{{.Sponsors}}", &OrderFuncs{EventID: eventID, DB: db, User: user, Lang: "pl"})
 	if !strings.Contains(out, "cid:logo.png") {
 		t.Errorf("template: %s", out)
+	}
+}
+
+func TestSplitSponsorRow(t *testing.T) {
+	for _, c := range []struct {
+		ws   []int
+		maxW int
+		want string
+	}{
+		{[]int{100, 100, 100}, 400, "[[0 3]]"},                       // mieści się
+		{[]int{100, 100, 100, 100, 100, 100}, 500, "[[0 3] [3 6]]"},  // 3+3, nie 4+2
+		{[]int{100, 100, 100, 100, 100}, 300, "[[0 1] [1 3] [3 5]]"}, // 1+2+2
+		{[]int{300, 100, 100, 100}, 400, "[[0 1] [1 4]]"},            // szerokie logo samo
+		{[]int{900, 100}, 500, "[[0 1] [1 2]]"},                      // nie mieści się nawet jedno
+		{nil, 500, "[[0 0]]"},
+	} {
+		if got := fmt.Sprint(splitSponsorRow(c.ws, 20, c.maxW)); got != c.want {
+			t.Errorf("splitSponsorRow(%v, %d) = %s, want %s", c.ws, c.maxW, got, c.want)
+		}
+	}
+}
+
+func TestSponsorSeatsHeight(t *testing.T) {
+	if h := sponsorSeatsHeight([]int{200, 200}, 48); h != 48 {
+		t.Errorf("fitting row shrunk to %d", h)
+	}
+	// 8 logo, razem 1328 px: na 1128 - 7*32 = 904 px zostaje 48*904/1328
+	if h := sponsorSeatsHeight([]int{212, 143, 142, 198, 142, 119, 177, 195}, 48); h != 32 {
+		t.Errorf("wide row height %d, want 32", h)
 	}
 }

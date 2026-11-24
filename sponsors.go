@@ -144,7 +144,13 @@ func (sp Sponsors) TitleOr(lang string) string {
 type nGuestSponsors struct {
 	Title  string
 	Height int
-	Rows   [][]nGuestSponsor
+	Rows   []nGuestSponsorRow
+}
+
+// nGuestSponsorRow - wiersz logo; Height (px) > 0 nadpisuje wysokość sekcji.
+type nGuestSponsorRow struct {
+	Height int
+	Logos  []nGuestSponsor
 }
 
 type nGuestSponsor struct {
@@ -160,19 +166,136 @@ func guestSponsors(event Event, userURL, lang, where string) *nGuestSponsors {
 	if !on || sp.Count() == 0 {
 		return nil
 	}
-	return sponsorsView(sp, userURL, lang)
+	return sponsorsView(sp, userURL, lang, sponsorsPageWidth[where])
 }
 
-func sponsorsView(sp Sponsors, userURL, lang string) *nGuestSponsors {
-	v := &nGuestSponsors{Title: sp.TitleOr(lang), Height: sp.Height()}
+// sponsorsPageWidth - szerokość treści strony gościa (px, scss/ui.scss:
+// .guest, .order-step, .order-status bez paddingu). Na stronie wyboru miejsc
+// zostaje układ administratora (za szeroki wiersz zwęża flex); na dalszych
+// stronach logo mają tę samą wielkość co tam, a wiersze, które się przy niej
+// nie mieszczą, są dzielone na kilka (splitSponsorRow).
+const SPONSORSSEATSWIDTH = 1128
+
+var sponsorsPageWidth = map[string]int{"order": 608, "done": 648}
+
+// SPONSORSGAP - odstęp między logo w wierszu na stronie (scss: .sp-row gap).
+const SPONSORSGAP = 32
+
+func sponsorsView(sp Sponsors, userURL, lang string, maxW int) *nGuestSponsors {
+	h := sp.Height()
+	v := &nGuestSponsors{Title: sp.TitleOr(lang), Height: h}
+	dir := filepath.Join(MEDIAROOT, userURL)
 	for _, row := range sp.Rows {
 		var r []nGuestSponsor
+		var ws []int
 		for _, l := range row {
 			r = append(r, nGuestSponsor{Src: sponsorSrc(userURL, l.File), Link: l.Link})
+			ws = append(ws, sponsorWidth(filepath.Join(dir, filepath.FromSlash(l.File)), h))
 		}
-		v.Rows = append(v.Rows, r)
+		if maxW <= 0 { // strona wyboru miejsc
+			v.Rows = append(v.Rows, nGuestSponsorRow{Logos: r})
+			continue
+		}
+		// wysokość jak na stronie wyboru miejsc: flex zwęża logo proporcjonalnie
+		// do szerokości, odstępy zostają
+		rh := sponsorSeatsHeight(ws, h)
+		if rh < h {
+			for i := range ws {
+				ws[i] = ws[i] * rh / h
+			}
+		}
+		for _, part := range splitSponsorRow(ws, SPONSORSGAP, maxW) {
+			row := nGuestSponsorRow{Logos: r[part[0]:part[1]]}
+			if rh < h {
+				row.Height = rh
+			}
+			v.Rows = append(v.Rows, row)
+		}
 	}
 	return v
+}
+
+// sponsorSeatsHeight - wysokość logo wiersza o szerokościach ws (przy
+// wysokości h) na stronie wyboru miejsc.
+func sponsorSeatsHeight(ws []int, h int) int {
+	sum := 0
+	for _, w := range ws {
+		sum += w
+	}
+	room := SPONSORSSEATSWIDTH - SPONSORSGAP*(len(ws)-1)
+	if sum <= room || sum == 0 {
+		return h
+	}
+	if room < sum/10 {
+		room = sum / 10
+	}
+	return max(h*room/sum, 1)
+}
+
+// sponsorWidth - szerokość logo o wysokości h; gdy wymiarów nie da się
+// odczytać (np. SVG), zgadujemy typowe szerokie logo 2:1.
+func sponsorWidth(p string, h int) int {
+	if iw, ih := imageSize(p); iw > 0 && ih > 0 {
+		return iw * h / ih
+	}
+	return 2 * h
+}
+
+// splitSponsorRow dzieli wiersz logo o szerokościach ws (odstęp gap), który
+// nie mieści się w maxW, na najmniej wierszy, w których się mieści,
+// zachowując kolejność i wyrównując ich szerokości (najszerszy wiersz
+// możliwie wąski), żeby wszystkie logo zostały w podobnej wielkości
+// zamiast zmniejszać się w jednym długim wierszu. Wynik: przedziały [od, do).
+// Gdy nie mieści się nawet jedno logo, każde idzie w osobny wiersz.
+func splitSponsorRow(ws []int, gap, maxW int) [][2]int {
+	n := len(ws)
+	pre := make([]int, n+1)
+	for i, w := range ws {
+		pre[i+1] = pre[i] + w
+	}
+	width := func(i, j int) int { return pre[j] - pre[i] + gap*(j-i-1) }
+	if n == 0 || maxW <= 0 || width(0, n) <= maxW {
+		return [][2]int{{0, n}}
+	}
+	for k := 2; k <= n; k++ {
+		// best[p][j] - najmniejsza szerokość najszerszego wiersza przy
+		// podziale pierwszych j logo na p wierszy; cut - gdzie zaczyna się
+		// ostatni z nich.
+		best := make([][]int, k+1)
+		cut := make([][]int, k+1)
+		for p := range best {
+			best[p] = make([]int, n+1)
+			cut[p] = make([]int, n+1)
+		}
+		for j := 1; j <= n; j++ {
+			best[1][j] = width(0, j)
+		}
+		for p := 2; p <= k; p++ {
+			for j := p; j <= n; j++ {
+				best[p][j] = -1
+				for i := p - 1; i < j; i++ {
+					m := max(best[p-1][i], width(i, j))
+					if best[p][j] < 0 || m < best[p][j] {
+						best[p][j], cut[p][j] = m, i
+					}
+				}
+			}
+		}
+		if best[k][n] <= maxW || k == n {
+			parts := make([][2]int, k)
+			j := n
+			for p := k; p >= 1; p-- {
+				i := 0
+				if p > 1 {
+					i = cut[p][j]
+				}
+				parts[p-1] = [2]int{i, j}
+				j = i
+			}
+			return parts
+		}
+	}
+	return [][2]int{{0, n}}
 }
 
 func sponsorSrc(userURL, file string) string {
@@ -229,13 +352,13 @@ func (o *OrderFuncs) Sponsors() template.HTML {
 	b.WriteString(`<div style="margin:28px 0 8px;text-align:center">`)
 	fmt.Fprintf(&b, `<p style="margin:0 0 12px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6e7885">%s</p>`,
 		template.HTMLEscapeString(sp.TitleOr(lang)))
+	type cell struct {
+		src, link string
+		w         int
+	}
 	for _, row := range sp.Rows {
-		type cell struct {
-			src, link string
-			w         int
-		}
-		var cells []cell
-		total := 0
+		var all []cell
+		var ws []int
 		for _, l := range row {
 			p := filepath.Join(dir, filepath.FromSlash(l.File))
 			if _, err := os.Stat(p); err != nil {
@@ -247,6 +370,11 @@ func (o *OrderFuncs) Sponsors() template.HTML {
 				w = iw * h / ih
 			}
 			c := cell{link: l.Link, w: w}
+			if w > 0 {
+				ws = append(ws, w)
+			} else {
+				ws = append(ws, 2*h)
+			}
 			if o.Preview || o.Web {
 				c.src = sponsorSrc(o.User.URL, l.File)
 			} else {
@@ -255,32 +383,41 @@ func (o *OrderFuncs) Sponsors() template.HTML {
 					o.EmbeddedImgs = append(o.EmbeddedImgs, p)
 				}
 			}
-			cells = append(cells, c)
-			total += w + 24
+			all = append(all, c)
 		}
-		if len(cells) == 0 {
-			continue
-		}
-		rh := h
-		if total > SPONSORSMAILWIDTH {
-			rh = h * SPONSORSMAILWIDTH / total
-			for i := range cells {
-				cells[i].w = cells[i].w * SPONSORSMAILWIDTH / total
+		// za szeroki wiersz dzielimy jak na stronie (splitSponsorRow), a co
+		// i tak się nie mieści, proporcjonalnie zmniejszamy (komórka ma
+		// 24 px paddingu, stąd węższa miara do podziału)
+		for _, part := range splitSponsorRow(ws, 24, SPONSORSMAILWIDTH-24) {
+			cells := all[part[0]:part[1]]
+			if len(cells) == 0 {
+				continue
 			}
-		}
-		b.WriteString(`<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 8px;border-collapse:collapse"><tr>`)
-		for _, c := range cells {
-			size := fmt.Sprintf(`height="%d" style="display:block;border:0;height:%dpx`, rh, rh)
-			if c.w > 0 {
-				size = fmt.Sprintf(`width="%d" height="%d" style="display:block;border:0;width:%dpx;height:%dpx`, c.w, rh, c.w, rh)
+			total := 0
+			for _, c := range cells {
+				total += c.w + 24
 			}
-			img := fmt.Sprintf(`<img src="%s" alt="" %s">`, template.HTMLEscapeString(c.src), size)
-			if c.link != "" {
-				img = fmt.Sprintf(`<a href="%s" target="_blank">%s</a>`, template.HTMLEscapeString(c.link), img)
+			rh := h
+			if total > SPONSORSMAILWIDTH {
+				rh = h * SPONSORSMAILWIDTH / total
+				for i := range cells {
+					cells[i].w = cells[i].w * SPONSORSMAILWIDTH / total
+				}
 			}
-			fmt.Fprintf(&b, `<td style="padding:6px 12px;vertical-align:middle">%s</td>`, img)
+			b.WriteString(`<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 8px;border-collapse:collapse"><tr>`)
+			for _, c := range cells {
+				size := fmt.Sprintf(`height="%d" style="display:block;border:0;height:%dpx`, rh, rh)
+				if c.w > 0 {
+					size = fmt.Sprintf(`width="%d" height="%d" style="display:block;border:0;width:%dpx;height:%dpx`, c.w, rh, c.w, rh)
+				}
+				img := fmt.Sprintf(`<img src="%s" alt="" %s">`, template.HTMLEscapeString(c.src), size)
+				if c.link != "" {
+					img = fmt.Sprintf(`<a href="%s" target="_blank">%s</a>`, template.HTMLEscapeString(c.link), img)
+				}
+				fmt.Fprintf(&b, `<td style="padding:6px 12px;vertical-align:middle">%s</td>`, img)
+			}
+			b.WriteString(`</tr></table>`)
 		}
-		b.WriteString(`</tr></table>`)
 	}
 	b.WriteString(`</div>`)
 	return template.HTML(b.String())

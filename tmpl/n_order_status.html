@@ -14,7 +14,7 @@
     {{with .Sponsors}}
     <section class="sponsors" style="--sp-h:{{.Height}}px" aria-label="{{.Title}}">
       <h4>{{.Title}}</h4>
-      {{range .Rows}}<div class="sp-row">{{range .}}{{if .Link}}<a href="{{.Link}}" target="_blank" rel="noopener"><img src="{{.Src}}" alt="" loading="lazy"></a>{{else}}<span><img src="{{.Src}}" alt="" loading="lazy"></span>{{end}}{{end}}</div>
+      {{range .Rows}}<div class="sp-row"{{with .Height}} style="--sp-h:{{.}}px"{{end}}>{{range .Logos}}{{if .Link}}<a href="{{.Link}}" target="_blank" rel="noopener"><img src="{{.Src}}" alt="" loading="lazy"></a>{{else}}<span><img src="{{.Src}}" alt="" loading="lazy"></span>{{end}}{{end}}</div>
       {{end}}
     </section>
     {{end}}

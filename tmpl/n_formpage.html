@@ -60,6 +60,11 @@
     <div class="dlg dlg-wide" role="dialog" aria-labelledby="gform-resubmit-h">
       <h3 id="gform-resubmit-h">{{T "gform.resubmit_title"}}</h3>
       <p>{{T "gform.resubmit_text"}}</p>
+      <!-- zastąpić poprzednie odpowiedzi czy dopisać do nich (mergeAnswers) -->
+      <div class="gform-mode" id="gform-mode" hidden>
+        <label class="opt"><input type="radio" name="gform-mode" value="add" checked><span><b>{{T "gform.mode_add"}}</b> {{T "gform.mode_add_hint"}}</span></label>
+        <label class="opt"><input type="radio" name="gform-mode" value="replace"><span><b>{{T "gform.mode_replace"}}</b> {{T "gform.mode_replace_hint"}}</span></label>
+      </div>
       <table class="gform-diff">
         <thead><tr><th>{{T "gform.resubmit_field"}}</th><th>{{T "gform.resubmit_old"}}</th><th>{{T "gform.resubmit_new"}}</th></tr></thead>
         <tbody id="gform-diff-rows"></tbody>

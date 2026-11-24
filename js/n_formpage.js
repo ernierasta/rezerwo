@@ -598,7 +598,9 @@
   var dlgDiff = document.getElementById('gform-resubmit');
   var dlgSame = document.getElementById('gform-same');
 
-  function send(confirm) {
+  var diffResp = null; // ostatnia odpowiedź z listą zmian (oba tryby)
+
+  function send(confirm, mode) {
     var uniq = document.getElementById('uniqid');
     submit.disabled = true;
     var label = submit.textContent;
@@ -608,11 +610,11 @@
       submit.textContent = label;
     };
 
-    RZ.postJSON(root.dataset.send, {uniqid: uniq ? uniq.textContent : '', data: collect(), confirm: confirm, edit: root.dataset.edit || ''})
+    RZ.postJSON(root.dataset.send, {uniqid: uniq ? uniq.textContent : '', data: collect(), confirm: confirm, mode: mode || '', edit: root.dataset.edit || ''})
       .then(function (resp) {
         if (resp.confirm) {
           done();
-          showDiff(resp.changes || []);
+          showDiff(resp);
           return;
         }
         if (resp.same) {
@@ -651,7 +653,14 @@
     return td;
   }
 
-  function showDiff(changes) {
+  function modeValue() {
+    var on = document.querySelector('input[name="gform-mode"]:checked');
+    return on ? on.value : 'add';
+  }
+
+  // tabela zmian dla wybranego trybu: zastąp (changes) / dopisz (add)
+  function renderDiff() {
+    var changes = (modeValue() === 'add' && diffResp.add ? diffResp.add : diffResp.changes) || [];
     var body = document.getElementById('gform-diff-rows');
     body.textContent = '';
     changes.forEach(function (c) {
@@ -661,6 +670,22 @@
       tr.appendChild(cell(c.new, 'new'));
       body.appendChild(tr);
     });
+    if (!changes.length) {
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      td.colSpan = 3;
+      td.className = 'none';
+      td.textContent = t('gform.resubmit_none');
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+  }
+
+  function showDiff(resp) {
+    diffResp = resp;
+    document.getElementById('gform-mode').hidden = !resp.add;
+    document.querySelector('input[name="gform-mode"][value="add"]').checked = true; // domyślnie dopisz
+    renderDiff();
     dlgDiff.hidden = false;
     document.getElementById('gform-resubmit-save').focus();
   }
@@ -668,7 +693,10 @@
   if (dlgDiff) {
     document.getElementById('gform-resubmit-save').addEventListener('click', function () {
       dlgDiff.hidden = true;
-      send(true);
+      send(true, diffResp && diffResp.add ? modeValue() : 'replace');
+    });
+    document.querySelectorAll('input[name="gform-mode"]').forEach(function (el) {
+      el.addEventListener('change', renderDiff);
     });
     document.getElementById('gform-resubmit-back').addEventListener('click', function () { dlgDiff.hidden = true; });
     document.getElementById('gform-same-back').addEventListener('click', function () { dlgSame.hidden = true; });

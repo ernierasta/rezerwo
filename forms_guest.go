@@ -233,6 +233,9 @@ type gformSendMsg struct {
 	Confirm bool `json:"confirm"`
 	// Edit - token z linku do poprawiania (form_edit.go)
 	Edit string `json:"edit"`
+	// Mode - przy poprawce: "add" = dopisz do poprzednich odpowiedzi
+	// (mergeAnswers), inaczej zastąp je
+	Mode string `json:"mode"`
 }
 
 // GuestFormSendAPI - POST /form/{userurl}/{formurl}/send
@@ -275,8 +278,8 @@ func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r
 			return
 		}
 
-		// poprawka własnego zgłoszenia tylko z dowodem (ciasteczko, link z maila);
-		// sam znany adres e-mail nie wystarczy do zobaczenia odpowiedzi
+		// poprawka własnego zgłoszenia: z dowodem (ciasteczko, link z maila)
+		// albo - jeśli formularz go nie wymaga (edit_proof) - po samym adresie e-mail
 		prev, refuse, err := ownSubmission(db, user, templ, msg, cookieFormID(r, templ), nowUnix())
 		if err != nil {
 			log.Printf("GuestFormSendAPI: earlier submissions: %v", err)
@@ -287,17 +290,30 @@ func GuestFormSendAPI(db *DB, mailConf MailConfig) func(w http.ResponseWriter, r
 			jsonMsg(w, http.StatusConflict, map[string]string{"msg": refuseText(lang, refuse, user), "field": ROLEEMAIL})
 			return
 		}
-		if prev != nil && !msg.Confirm {
-			changes := resubmitDiff(db, defs, *prev, msg.Data)
-			if len(changes) == 0 {
-				jsonMsg(w, http.StatusOK, map[string]interface{}{"same": true, "done": doneURL(user, templ, prev.ID)})
+		data := msg.Data
+		if prev != nil {
+			old := prevAnswers(db, *prev)
+			merged := mergeAnswers(defs, vis, old, msg.Data)
+			if !msg.Confirm {
+				changes := resubmitDiff(defs, old, msg.Data)
+				if len(changes) == 0 {
+					jsonMsg(w, http.StatusOK, map[string]interface{}{"same": true, "done": doneURL(user, templ, prev.ID)})
+					return
+				}
+				resp := map[string]interface{}{"confirm": true, "changes": changes}
+				// wybór "zastąp / dopisz" tylko, gdy daje różny wynik
+				if add := resubmitDiff(defs, old, merged); !sameChanges(changes, add) {
+					resp["add"] = add
+				}
+				jsonMsg(w, http.StatusOK, resp)
 				return
 			}
-			jsonMsg(w, http.StatusOK, map[string]interface{}{"confirm": true, "changes": changes})
-			return
+			if msg.Mode == "add" {
+				data = merged
+			}
 		}
 
-		formID, name, surname, err := SaveFormAnswers(db, user, templ, msg.Data, msg.UniqID, prev)
+		formID, name, surname, err := SaveFormAnswers(db, user, templ, data, msg.UniqID, prev)
 		if err != nil {
 			log.Printf("GuestFormSendAPI: %v", err)
 			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": T(lang, "gform.save_error")})
@@ -436,9 +452,11 @@ func doneURL(user User, templ FormTemplate, formID int64) string {
 
 // ownSubmission rozstrzyga, czy to poprawka wcześniejszego zgłoszenia:
 //   - link z maila (msg.Edit) wskazuje zgłoszenie wprost;
-//   - adres e-mail już użyty w tym formularzu: poprawka tylko wtedy, gdy ta
-//     przeglądarka wysłała to zgłoszenie (ciasteczko), inaczej odmowa;
-//   - poprawiać można przez EDITDAYS dni od pierwszego wysłania.
+//   - adres e-mail już użyty w tym formularzu: z dowodem - ta przeglądarka
+//     wysłała to zgłoszenie (ciasteczko) - to poprawka;
+//   - poprawiać z dowodem można przez EDITDAYS dni od pierwszego wysłania;
+//   - bez dowodu: gdy formularz go wymaga (templ.EditProof) - odmowa,
+//     inaczej poprawka ostatniego zgłoszenia z tym adresem.
 //
 // refuse: "" (można zapisać), "edit_expired" (link po terminie), "email_used"
 // (adres zajęty, można poprawić linkiem z maila), "email_used_late" (adres
@@ -448,13 +466,12 @@ func ownSubmission(db *DB, user User, templ FormTemplate, msg gformSendMsg, cook
 	var target *Form
 	if id := parseEditToken(msg.Edit); id != 0 {
 		f, err := db.FormGet(id, templ.ID)
-		if err != nil {
+		switch {
+		case err == nil && editable(f, now):
+			target = &f
+		case templ.EditProof:
 			return nil, "edit_expired", nil
 		}
-		if !editable(f, now) {
-			return nil, "edit_expired", nil
-		}
-		target = &f
 	}
 	if strings.TrimSpace(email) == "" {
 		return target, "", nil
@@ -474,6 +491,9 @@ func ownSubmission(db *DB, user User, templ FormTemplate, msg gformSendMsg, cook
 		}
 	}
 	if target == nil && len(ff) > 0 {
+		if !templ.EditProof {
+			return &ff[len(ff)-1], "", nil // najnowsze (ORDER BY id)
+		}
 		for _, f := range ff {
 			if editable(f, now) {
 				return nil, "email_used", nil
@@ -511,12 +531,11 @@ type answerChange struct {
 	New   string `json:"new"`
 }
 
-// resubmitDiff porównuje nowe odpowiedzi z zapisanymi w prev, w kolejności
-// pól formularza; wartości opcji zamienia na ich etykiety.
-func resubmitDiff(db *DB, defs []FormDefField, prev Form, data []FormAnswersJson) []answerChange {
+// prevAnswers - zapisane odpowiedzi zgłoszenia: nazwa pola -> wartość
+func prevAnswers(db *DB, prev Form) map[string]string {
 	fields, err := db.FormFieldGetAllForTmpl(prev.FormTemplateID)
 	if err != nil {
-		log.Printf("resubmitDiff: fields of %d: %v", prev.FormTemplateID, err)
+		log.Printf("prevAnswers: fields of %d: %v", prev.FormTemplateID, err)
 	}
 	fieldName := map[int64]string{}
 	for _, f := range fields {
@@ -525,32 +544,94 @@ func resubmitDiff(db *DB, defs []FormDefField, prev Form, data []FormAnswersJson
 	old := map[string]string{}
 	answers, err := db.FormAnswerGetAll(prev.ID)
 	if err != nil {
-		log.Printf("resubmitDiff: answers of %d: %v", prev.ID, err)
+		log.Printf("prevAnswers: answers of %d: %v", prev.ID, err)
 	}
 	for _, a := range answers {
 		if n, ok := fieldName[a.FormFieldID]; ok {
 			old[n] = a.Value.String
 		}
 	}
+	return old
+}
+
+// resubmitDiff porównuje odpowiedzi, które zapiszemy (result), z zapisanymi
+// (old), w kolejności pól formularza; wartości opcji zamienia na ich etykiety.
+func resubmitDiff(defs []FormDefField, old map[string]string, result []FormAnswersJson) []answerChange {
 	cur := map[string]string{}
-	sent := map[string]bool{}
-	for _, d := range data {
-		cur[d.Name] = strings.Join(d.UserData, ", ")
-		sent[d.Name] = true
+	for _, d := range result {
+		cur[d.Name] = strings.Join(nonEmpty(d.UserData), ", ")
 	}
 
-	var out []answerChange
+	out := []answerChange{}
 	for _, d := range defs {
 		name := d.S("name")
-		if name == "" || !isInputType(d.S("type")) || !sent[name] {
+		n, ok := cur[name]
+		if name == "" || !isInputType(d.S("type")) || !ok {
 			continue
 		}
-		o, n := strings.TrimSpace(old[name]), strings.TrimSpace(cur[name])
-		if o == n {
+		o := strings.TrimSpace(old[name])
+		if o == strings.TrimSpace(n) {
 			continue
 		}
 		labels := optionLabels(d)
-		out = append(out, answerChange{Label: plainLabel(d.S("label")), Old: labels(o), New: labels(n)})
+		out = append(out, answerChange{Label: plainLabel(d.S("label")), Old: labels(o), New: labels(strings.TrimSpace(n))})
+	}
+	return out
+}
+
+func sameChanges(a, b []answerChange) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// mergeAnswers - poprawka w trybie "dopisz do poprzednich": niczego nie
+// czyścimy. Puste pole zostawia poprzednią odpowiedź, w polach wielokrotnego
+// wyboru nowe opcje dochodzą do poprzednich, pozostałe pola zmieniamy.
+// Pola ukryte warunkiem (vis) zostają puste jak przy zwykłym zapisie.
+func mergeAnswers(defs []FormDefField, vis []bool, old map[string]string, data []FormAnswersJson) []FormAnswersJson {
+	multi, hidden := map[string]bool{}, map[string]bool{}
+	for i, d := range defs {
+		name := d.S("name")
+		typ := d.S("type")
+		if typ == "checkbox-group" || (typ == "select" && d.B("multiple")) {
+			multi[name] = true
+		}
+		if i < len(vis) && !vis[i] {
+			hidden[name] = true
+		}
+	}
+	out := make([]FormAnswersJson, len(data))
+	for i, d := range data {
+		out[i] = d
+		o := strings.TrimSpace(old[d.Name])
+		if o == "" || hidden[d.Name] {
+			continue
+		}
+		vals := nonEmpty(d.UserData)
+		switch {
+		case len(vals) == 0:
+			out[i].UserData = []string{o}
+		case multi[d.Name]:
+			merged := strings.Split(o, ", ")
+			have := map[string]bool{}
+			for _, v := range merged {
+				have[v] = true
+			}
+			for _, v := range vals {
+				if !have[v] {
+					merged = append(merged, v)
+					have[v] = true
+				}
+			}
+			out[i].UserData = merged
+		}
 	}
 	return out
 }

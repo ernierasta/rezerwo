@@ -305,6 +305,9 @@ type FormTemplate struct {
 	// (tools/migration-managerperms.sql)
 	MgrMail           bool          `db:"mgr_mail"`
 	MgrNotificationID sql.NullInt64 `db:"mgr_notifications_id_fk"`
+	// EditProof - ponowne wysłanie z tym samym e-mailem tylko z linku z maila
+	// albo z tej samej przeglądarki (ownSubmission, tools/migration-editproof.sql)
+	EditProof bool `db:"edit_proof"`
 }
 
 // IsOpen mówi, czy formularz przyjmuje teraz odpowiedzi.
@@ -1526,6 +1529,12 @@ func (db *DB) FormTemplateSetPayMessage(tmplID, userID int64, msg string) error 
 // FormTemplateSetTheme ustawia temat graficzny strony formularza.
 func (db *DB) FormTemplateSetTheme(tmplID, userID int64, theme string) error {
 	_, err := db.DB.Exec(`UPDATE formtemplates SET theme=$1 WHERE id=$2 AND users_id_fk=$3`, theme, tmplID, userID)
+	return err
+}
+
+// FormTemplateSetEditProof - poprawki zgłoszeń tylko z dowodem (ownSubmission).
+func (db *DB) FormTemplateSetEditProof(tmplID, userID int64, on bool) error {
+	_, err := db.DB.Exec(`UPDATE formtemplates SET edit_proof=$1 WHERE id=$2 AND users_id_fk=$3`, on, tmplID, userID)
 	return err
 }
 

@@ -56,6 +56,7 @@ type nFormVars struct {
 	Language     string
 	Status       string
 	CloseDateVal string
+	EditProof    bool
 	GuestURL     string
 	FieldList    []nFieldSummary
 	MoreFields   int
@@ -169,6 +170,7 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 		Language:            formLang(templ),
 		Status:              templ.Status,
 		CloseDateVal:        dateInputValue(templ.CloseDate.Int64),
+		EditProof:           templ.EditProof,
 		GuestURL:            fmt.Sprintf("/form/%s/%s", user.URL, templ.URL),
 		AnswersCount:        answers,
 		Theme:               ThemeKey(templ.Theme),
@@ -193,6 +195,9 @@ func buildFormVars(db *DB, user User, templ FormTemplate, lang string) nFormVars
 	}
 
 	v.SumBasic = formStatusLabel(templ, lang) + " · " + languageName(lang, v.Language)
+	if templ.EditProof {
+		v.SumBasic += " · " + T(lang, "formpage.edit_proof_sum")
+	}
 
 	v.SumFields = T(lang, "form.fields_count", len(fields))
 	if templ.MoneyAmountFieldName.String != "" {
@@ -481,6 +486,10 @@ func FormSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrite
 				closeDate = ToNI(day.Add(24*time.Hour - time.Second).Unix())
 			}
 			if err := db.FormTemplateSetAccess(templ.ID, user.ID, KnownLang(val("language")), status, closeDate); err != nil {
+				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
+				return
+			}
+			if err := db.FormTemplateSetEditProof(templ.ID, user.ID, flag("edit_proof")); err != nil {
 				jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 				return
 			}

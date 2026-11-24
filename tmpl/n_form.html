@@ -41,6 +41,10 @@
           </div>
           <div class="f"><label for="f-close">{{T "formpage.close_date"}}</label><input type="date" class="inp" id="f-close" data-field="close_date" value="{{.CloseDateVal}}"><small>{{T "formpage.close_date_hint"}}</small></div>
         </div>
+        <div class="f" style="margin-top:12px">
+          <div class="check"><input type="checkbox" id="f-edit-proof" data-field="edit_proof" {{if .EditProof}}checked{{end}}><label for="f-edit-proof">{{T "formpage.edit_proof"}}</label></div>
+          <small>{{T "formpage.edit_proof_hint"}}</small>
+        </div>
         <div class="sec-f"><button class="btn" data-save="basic">{{T "common.save"}}</button><button class="btn quiet" data-cancel>{{T "common.cancel"}}</button><small class="msg"></small>
           <button class="btn danger" type="button" id="form-delete" style="margin-left:auto">{{T "formpage.delete"}}</button></div>
       </div>

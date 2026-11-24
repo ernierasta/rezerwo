@@ -77,11 +77,19 @@ func TestCSVCell(t *testing.T) {
 
 // Wcześniejsze odpowiedzi widzi tylko ten, kto udowodni, że to jego
 // zgłoszenie: ciasteczko z przeglądarki albo link z maila, przez EDITDAYS dni.
-func TestGuestFormResubmit(t *testing.T) {
+type resubmitSub struct {
+	name, surname, email, pomoc, ile, edit, mode string
+	confirm, withCookie                          bool
+}
+
+// resubmitSetup - formularz "dekl" z polami pomoc (checkboxy) i ile;
+// proof - formtemplates.edit_proof
+func resubmitSetup(t *testing.T, proof bool) (db *DB, router *mux.Router, send func(resubmitSub) (int, map[string]interface{}), value func(int64, string) string, cookie **http.Cookie) {
+	t.Helper()
 	if err := LoadLocales(); err != nil {
 		t.Fatal(err)
 	}
-	db := newTestDB(t)
+	db = newTestDB(t)
 	userID := addUser(t, db, "org@example.com", "org")
 	content := `[
 	 {"type":"text","name":"name-REQUIRED","label":"Imię"},
@@ -91,51 +99,56 @@ func TestGuestFormResubmit(t *testing.T) {
 	 {"type":"number","name":"ile","label":"Ile"}
 	]`
 	templID := must(t)(db.FormTemplateAdd(&FormTemplate{Name: "Deklaracja", URL: "dekl", Content: ToNS(content), UserID: userID, CreatedDate: 1}))
+	if err := db.FormTemplateSetEditProof(templID, userID, proof); err != nil {
+		t.Fatal(err)
+	}
 	for _, f := range []string{"name-REQUIRED", "surname-REQUIRED", "email-REQUIRED", "pomoc", "ile"} {
 		must(t)(db.FormFieldAdd(&FormField{Name: f, Display: f, Type: "text", FormTemplateID: templID}))
 	}
 	cs := sessions.NewCookieStore([]byte("0123456789abcdef0123456789abcdef"))
-	router := mux.NewRouter()
+	router = mux.NewRouter()
 	router.HandleFunc("/form/{userurl}/{formurl}/send", GuestFormSendAPI(db, MailConfig{}))
 	router.HandleFunc("/form/{userurl}/{formurl}", GuestFormPage(db, cs))
 
-	var cookie *http.Cookie // ciasteczko przeglądarki gościa
-	type sub struct {
-		name, surname, email, pomoc, ile, edit string
-		confirm, withCookie                    bool
-	}
-	send := func(x sub) (int, map[string]interface{}) {
+	cookie = new(*http.Cookie) // ciasteczko przeglądarki gościa
+	send = func(x resubmitSub) (int, map[string]interface{}) {
 		t.Helper()
-		body, _ := json.Marshal(gformSendMsg{Confirm: x.confirm, Edit: x.edit, Data: []FormAnswersJson{
+		body, _ := json.Marshal(gformSendMsg{Confirm: x.confirm, Edit: x.edit, Mode: x.mode, Data: []FormAnswersJson{
 			{Name: "name-REQUIRED", UserData: []string{x.name}}, {Name: "surname-REQUIRED", UserData: []string{x.surname}},
 			{Name: "email-REQUIRED", UserData: []string{x.email}}, {Name: "pomoc", UserData: strings.Split(x.pomoc, ",")},
 			{Name: "ile", UserData: []string{x.ile}},
 		}})
 		r := httptest.NewRequest("POST", "/form/org/dekl/send", bytes.NewReader(body))
-		if x.withCookie && cookie != nil {
-			r.AddCookie(cookie)
+		if x.withCookie && *cookie != nil {
+			r.AddCookie(*cookie)
 		}
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, r)
 		for _, c := range w.Result().Cookies() {
-			cookie = c
+			*cookie = c
 		}
 		var resp map[string]interface{}
 		json.Unmarshal(w.Body.Bytes(), &resp)
 		return w.Code, resp
 	}
-	count := func() (n int) {
-		db.DB.Get(&n, `SELECT count(*) FROM forms`)
+	value = func(formID int64, field string) (v string) {
+		db.DB.Get(&v, `SELECT fa.value FROM formanswers fa JOIN formfields ff ON ff.id=fa.formfields_id_fk WHERE ff.name=$1 AND fa.forms_id_fk=$2`, field, formID)
 		return
 	}
-	value := func(formID int64, field string) (v string) {
-		db.DB.Get(&v, `SELECT fa.value FROM formanswers fa JOIN formfields ff ON ff.id=fa.formfields_id_fk WHERE ff.name=$1 AND fa.forms_id_fk=$2`, field, formID)
+	return
+}
+
+func TestGuestFormResubmit(t *testing.T) {
+	db, router, send, value, cookiep := resubmitSetup(t, true)
+	type sub = resubmitSub
+	count := func() (n int) {
+		db.DB.Get(&n, `SELECT count(*) FROM forms`)
 		return
 	}
 	jan := sub{name: "Jan", surname: "Kowalski", email: "jan@example.com", pomoc: "bufet", ile: "2"}
 
 	code, r := send(jan)
-	if code != 200 || cookie == nil || !strings.HasPrefix(cookie.Path, "/form/org/dekl") {
+	if cookie := *cookiep; code != 200 || cookie == nil || !strings.HasPrefix(cookie.Path, "/form/org/dekl") {
 		t.Fatalf("first submit: %d %v cookie %v", code, r, cookie)
 	}
 	id := int64(r["id"].(float64))
@@ -208,6 +221,48 @@ func TestGuestFormResubmit(t *testing.T) {
 	x.edit = editToken(id)
 	if code, _ := send(x); code != 409 || value(id, "ile") != "4" {
 		t.Fatalf("late, edit link: %d", code)
+	}
+}
+
+// domyślnie (edit_proof wyłączone) sam adres e-mail wystarczy do poprawki;
+// tryb "add" niczego nie czyści, opcje dochodzą do poprzednich
+func TestGuestFormResubmitNoProof(t *testing.T) {
+	db, _, send, value, cookiep := resubmitSetup(t, false)
+	count := func() (n int) {
+		db.DB.Get(&n, `SELECT count(*) FROM forms`)
+		return
+	}
+	jan := resubmitSub{name: "Jan", surname: "Kowalski", email: "jan@example.com", pomoc: "bufet", ile: "2"}
+	_, r := send(jan)
+	id := int64(r["id"].(float64))
+	*cookiep = nil
+
+	if _, r := send(jan); r["same"] != true || r["done"] == nil {
+		t.Fatalf("same, no proof: %v", r)
+	}
+	// zmiany w obu trybach, z poprzednimi odpowiedziami
+	x := jan
+	x.pomoc, x.ile = "nic", ""
+	_, r = send(x)
+	got, _ := json.Marshal([]interface{}{r["changes"], r["add"]})
+	if want := `[[{"label":"Pomoc","new":"Nic","old":"Bufet"},{"label":"Ile","new":"","old":"2"}],[{"label":"Pomoc","new":"Bufet, Nic","old":"Bufet"}]]`; r["confirm"] != true || string(got) != want {
+		t.Fatalf("no proof, changes: %v %s", r, got)
+	}
+	// dopisz: opcje dochodzą, puste "ile" zostaje
+	x.confirm, x.mode = true, "add"
+	if code, r := send(x); code != 200 || count() != 1 || value(id, "pomoc") != "bufet, nic" || value(id, "ile") != "2" {
+		t.Fatalf("add: %d %v pomoc %q ile %q", code, r, value(id, "pomoc"), value(id, "ile"))
+	}
+	// zastąp: puste pole czyści odpowiedź
+	x.mode = "replace"
+	if code, _ := send(x); code != 200 || value(id, "pomoc") != "nic" || value(id, "ile") != "" {
+		t.Fatalf("replace: %d pomoc %q ile %q", code, value(id, "pomoc"), value(id, "ile"))
+	}
+	// po EDITDAYS dniach też można (poprawki ogranicza tylko edit_proof)
+	db.DB.Exec(`UPDATE forms SET created_date=$1`, nowUnix()-(EDITDAYS+1)*24*3600)
+	x.ile = "7"
+	if code, _ := send(x); code != 200 || count() != 1 || value(id, "ile") != "7" {
+		t.Fatalf("late, no proof: %d ile %q", code, value(id, "ile"))
 	}
 }
 

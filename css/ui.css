@@ -4219,6 +4219,38 @@ h5.subhead a {
   font-weight: 400;
   text-decoration: none;
 }
+.gform-diff td.none {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.gform-mode {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.gform-mode label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.gform-mode label:has(input:checked) {
+  border-color: var(--blue-deep);
+  box-shadow: inset 0 0 0 1px var(--blue-deep);
+}
+.gform-mode input {
+  margin-top: 3px;
+  flex: none;
+}
+.gform-mode b {
+  display: block;
+}
 
 .ff.w1 .opt, .ff.w2 .opt, .ff.w3 .opt {
   padding: 7px 8px;

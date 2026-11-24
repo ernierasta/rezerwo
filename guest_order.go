@@ -42,16 +42,14 @@ type nOrderVars struct {
 	Lock      string
 	HideCosts bool
 
-	HowTo     template.HTML
-	NotesHelp string
+	HowTo template.HTML
 
-	// dodatki do zamówienia (rozdz. 9 HARMONIJKA.md)
+	// Rows - formularz zamówienia w wierszach (orderform.go): dane osoby,
+	// dodatki, nagłówki i teksty w kolejności z designera pól
+	Rows []nOrderRow
+	// Addons - wszystkie pola dodatków po kolei, do podsumowania dopłat
 	Addons   []nOrderAddon
 	Currency string
-	// AddonsSection - dodatki we własnej ramce z tytułem (events.addons_section)
-	AddonsSection bool
-	// AddonsAfter - po którym polu danych osoby są dodatki (AddonsPositions)
-	AddonsAfter string
 
 	// Sponsors - sekcja "Sponsorzy" pod formularzem albo nil (sponsors.go)
 	Sponsors *nGuestSponsors
@@ -66,6 +64,8 @@ type nOrderAddon struct {
 	Title  string // etykieta z numerem powtórzenia
 	// Max - pole dokładane przez gościa ("+"): ile wpisów najwyżej (= miejsca)
 	Max int64
+	// Width - szerokość w wierszu formularza (1-12, jak col-md-N)
+	Width int
 }
 
 // orderAddonFields rozwija definicję dodatków na pola do wyświetlenia.
@@ -242,15 +242,13 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			Lock:            orderLock(event.ID, resIDs),
 			HideCosts:       event.HideCosts.Bool,
 			HowTo:           template.HTML(event.OrderHowto),
-			NotesHelp:       event.OrderNotesDescription,
-			Addons:          orderAddonFields(EventAddonFields(db, event), int64(len(ss))),
-			AddonsSection:   event.AddonsSection,
-			AddonsAfter:     AddonsAfterNorm(event.AddonsAfter),
 			Currency:        event.DefaultCurrency,
 			Sponsors:        guestSponsors(event, user.URL, lng, "order"),
 		}
 
-		guestRenderTheme(w, lng, event.Theme.String, vars, "tmpl/n_order.html")
+		vars.Rows, vars.Addons = orderFormRows(OrderFormDef(db, event), int64(len(ss)))
+
+		guestRenderTheme(w, lng, event.Theme.String, vars, "tmpl/n_order.html", "tmpl/n_formfield.html")
 	}
 }
 
@@ -294,11 +292,11 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 			Prices:     r.FormValue("prices"),
 			Rooms:      r.FormValue("rooms"),
 			TotalPrice: r.FormValue("total-price"),
-			Email:      r.FormValue("email"),
-			Name:       r.FormValue("name"),
-			Surname:    r.FormValue("surname"),
-			Phone:      r.FormValue("phone"),
-			Notes:      r.FormValue("notes"),
+			Email:      strings.TrimSpace(r.FormValue("email")),
+			Name:       strings.TrimSpace(r.FormValue("name")),
+			Surname:    strings.TrimSpace(r.FormValue("surname")),
+			Phone:      strings.TrimSpace(r.FormValue("phone")),
+			Notes:      strings.TrimSpace(r.FormValue("notes")),
 		}
 		var err error
 		if o.EventID, err = strconv.ParseInt(r.FormValue("event-id"), 10, 64); err != nil {
@@ -350,6 +348,14 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 			prices = append(prices, strconv.FormatInt(res.Price.Int64, 10))
 		}
 		o.Prices = strings.Join(prices, ",")
+
+		// e-mail jest zawsze obowiązkowy (orderform.go): na niego idzie
+		// potwierdzenie; strona sprawdza go już w przeglądarce
+		if !emailRe.MatchString(o.Email) {
+			log.Printf("ReservationOrderStatusHTML: bad e-mail %q (event %d)", o.Email, o.EventID)
+			ErrorHTML(T(lng, "order.err_email_title"), T(lng, "gform.err.email"), lng, w, r)
+			return
+		}
 
 		cID, err := db.CustomerAdd(&Customer{
 			Email:   o.Email,

@@ -31,6 +31,10 @@
   var SUMMABLE = ['number', 'multiplierField', 'select', 'radio-group', 'checkbox-group'];
 
   var ROLE = {name: 'name-REQUIRED', surname: 'surname-REQUIRED', email: 'email-REQUIRED'};
+  // formularz zamówienia (orderform.go): dane osoby to pola systemowe; e-mail,
+  // imię i nazwisko są zawsze (LOCKED), telefon i uwagi można usunąć
+  var LOCKED = ['email', 'name', 'surname'];
+  if (isAddons) { ROLE.phone = 'phone-ROLE'; ROLE.notes = 'notes-ROLE'; }
   var PERSEAT = '-perseat';
   var MULTI = '-multi'; // gość dokłada kolejne wpisy "+" (MULTISUFFIX w addons.go)
   function hasSuffix(f, suf) { return !!(f.name && f.name.slice(-suf.length) === suf); }
@@ -74,6 +78,9 @@
     for (var k in ROLE) if (f.name === ROLE[k]) return k;
     return '';
   }
+  // locked - pole formularza zamówienia, którego nie da się usunąć
+  function locked(f) { return isAddons && LOCKED.indexOf(roleOf(f)) >= 0; }
+  function isReserved(name) { for (var k in ROLE) if (name === ROLE[k]) return true; return false; }
   // inPanel - czy pole trafi do panelu informacyjnego (fieldInPanel w
   // form_stats.go): w trybie automatycznym domyślnie pola z liczbami i opcjami,
   // w pozostałych tylko te z włączonym przełącznikiem.
@@ -469,9 +476,12 @@
         RZ.toast(t('fields.role_exists', t('fields.role.' + role)));
         return null;
       }
+      if (!ROLE[role]) return null;
       f = mk({type: 'text', subtype: role === 'email' ? 'email' : 'text', required: true,
         label: t('fields.role.' + role), className: 'form-control', name: ROLE[role], maxlength: 60});
       f._w = role === 'email' ? 12 : 6;
+      if (role === 'phone') { f.subtype = 'tel'; f.required = false; f.maxlength = 30; }
+      if (role === 'notes') { f = mk({type: 'textarea', subtype: 'textarea', label: t('fields.role.notes'), className: 'form-control', name: ROLE.notes, rows: 3}); f._w = 12; }
     } else {
       switch (kind) {
         case 'tel':
@@ -712,7 +722,7 @@
           '<button type="button" data-act="up" title="' + esc(t('fields.move_up')) + ' (Alt+↑)">↑</button>' +
           '<button type="button" data-act="down" title="' + esc(t('fields.move_down')) + ' (Alt+↓)">↓</button>' +
           '<button type="button" data-act="dup" title="' + esc(t('fields.duplicate')) + '">⧉</button>' +
-          '<button type="button" data-act="del" title="' + esc(t('common.delete')) + '">✕</button>' +
+          (locked(f) ? '' : '<button type="button" data-act="del" title="' + esc(t('common.delete')) + '">✕</button>') +
           '</div>' + badges(f) + '<div class="fd-inert">' + fieldHTML(f) + '</div></div>';
       });
       h += '</div>';
@@ -797,7 +807,12 @@
         (moneyId ? ': ' + esc(plain(byId(moneyId).label)) : '') + '</li></ul>';
       h += '<p class="muted small">' + esc(have.surname ? t('fields.roles_hint') : t('fields.anon_hint')) + '</p>';
     } else {
-      h += '<p class="muted small">' + esc(t('fields.addons_hint')) + '</p>';
+      h += '<ul class="fd-checklist">';
+      ['email', 'name', 'surname', 'phone', 'notes'].forEach(function (r) {
+        h += '<li class="' + (have[r] ? 'ok' : '') + '"><span>' + (have[r] ? '✓' : '–') + '</span>' + esc(t('fields.role.' + r)) +
+          (have[r] ? '' : ' <button class="link" data-add="role:' + r + '">' + esc(t('fields.add')) + '</button>') + '</li>';
+      });
+      h += '</ul><p class="muted small">' + esc(t('fields.addons_hint')) + '</p>';
     }
     h += bulkStartHTML();
     h += '<h5>' + esc(t('fields.shortcuts')) + '</h5><p class="muted small">' + esc(t('fields.shortcuts_text')) + '</p>';
@@ -848,7 +863,8 @@
     if (isInput(type)) {
       h += row(t('fields.description'), inp('description', f.description || ''), t('fields.description_hint'));
       var role = roleOf(f);
-      h += check('required', f.required || !!role, t('fields.required'), role ? 'disabled' : '');
+      var reqFixed = role && (!isAddons || locked(f));
+      h += check('required', f.required || !!reqFixed, t('fields.required'), reqFixed ? 'disabled' : '');
 
       if (type === 'text' && !isAddons) {
         var ro = '<option value="">' + esc(t('fields.role.none')) + '</option>';
@@ -906,7 +922,7 @@
         h += '<small class="fd-under muted">' + esc(t('fields.is_money_hint')) + '</small>';
       }
 
-      if (isAddons && type !== 'multiplierField') {
+      if (isAddons && type !== 'multiplierField' && !role) {
         h += check('_perseat', hasSuffix(f, PERSEAT), t('fields.perseat'));
         h += '<small class="fd-under muted">' + esc(t('fields.perseat_hint')) + '</small>';
         h += check('_multi', hasSuffix(f, MULTI), t('fields.multi'));
@@ -942,7 +958,8 @@
     h += condHTML(f);
 
     h += '<div class="fd-actions"><button class="btn quiet sm" data-act-sel="dup">' + esc(t('fields.duplicate')) + '</button>' +
-      '<button class="btn danger sm" data-act-sel="del">' + esc(t('fields.delete_field')) + '</button></div>';
+      (locked(f) ? '<small class="muted">' + esc(t('fields.sys_locked')) + '</small>' :
+        '<button class="btn danger sm" data-act-sel="del">' + esc(t('fields.delete_field')) + '</button>') + '</div>';
     props.innerHTML = h;
   }
 
@@ -1262,7 +1279,8 @@
   }
 
   function bulkDelete() {
-    var list = bulkFields();
+    var list = bulkFields().filter(function (f) { return !locked(f); });
+    if (!list.length) { RZ.toast(t('fields.sys_locked')); return; }
     var n = list.reduce(function (s, f) { return s + answersOf(f); }, 0);
     var doDelete = function () {
       list.forEach(function (f) {
@@ -1564,7 +1582,7 @@
     var msg = '';
     if (!ok) msg = t('fields.key_bad');
     else if (nameTaken(value, f._id)) msg = t('fields.key_taken');
-    else if (value === ROLE.name || value === ROLE.surname || value === ROLE.email) msg = t('fields.key_role_reserved');
+    else if (isReserved(value)) msg = t('fields.key_role_reserved');
     if (errEl) { errEl.textContent = msg; errEl.hidden = !msg; }
     if (msg) return false;
     renameRefs(f.name, value);
@@ -1989,6 +2007,7 @@
         changed('', true);
         break;
       case 'del':
+        if (locked(f)) { RZ.toast(t('fields.sys_locked')); break; }
         var n = answersOf(f);
         var doDelete = function () {
           fields.splice(i, 1);

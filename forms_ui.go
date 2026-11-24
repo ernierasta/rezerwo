@@ -353,56 +353,17 @@ func EventAddonsCreateAPI(db *DB, cs *sessions.CookieStore) func(w http.Response
 			return
 		}
 
-		// adres nie jest używany (dodatki nie mają własnej strony), ale musi
-		// być unikatowy w obrębie organizacji
-		url := fmt.Sprintf("dodatki-%d", event.ID)
-		id, err := db.FormTemplateAdd(&FormTemplate{
-			Name:        T(PanelLang(r), "addons.template_name", event.Name),
-			URL:         url,
-			CreatedDate: time.Now().Unix(),
-			UserID:      user.ID,
-			EventID:     ToNI(event.ID),
-		})
+		// od razu z danymi osoby i tym, co dotąd było w stałym formularzu
+		// (orderform.go)
+		id, err := newOrderTemplate(db, user, event, T(PanelLang(r), "addons.template_name", event.Name),
+			NormalizeOrderDef(nil, event))
 		if err != nil {
 			log.Printf("EventAddonsCreateAPI: %v", err)
 			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
 			return
 		}
-		if err := db.FormTemplateSetKind(id, user.ID, ADDONSKIND); err != nil {
-			log.Printf("EventAddonsCreateAPI: set kind: %v", err)
-		}
-		if err := db.EventSetAddonsTemplate(event.ID, user.ID, ToNI(id)); err != nil {
-			log.Printf("EventAddonsCreateAPI: link to event: %v", err)
-			jsonMsg(w, http.StatusTeapot, map[string]string{"msg": err.Error()})
-			return
-		}
 		jsonMsg(w, http.StatusOK, map[string]interface{}{"msg": "created", "id": id})
 	}
-}
-
-// nAddonField to jedno pole dodatków w podsumowaniu sekcji.
-type nAddonField struct {
-	Label string
-	Kind  string // opis rodzaju: wybór, ilość × cena, tekst
-}
-
-// addonFields zwraca pola definicji dodatków imprezy.
-func addonFields(db *DB, event Event) []nAddonField {
-	if !event.AddonsFormTemplateID.Valid || event.AddonsFormTemplateID.Int64 == 0 {
-		return nil
-	}
-	ff, err := db.FormFieldGetAllForTmpl(event.AddonsFormTemplateID.Int64)
-	if err != nil {
-		log.Printf("addonFields: %v", err)
-		return nil
-	}
-	ff = filterFormFields(ff)
-
-	out := make([]nAddonField, 0, len(ff))
-	for _, f := range ff {
-		out = append(out, nAddonField{Label: plainLabel(f.Display), Kind: f.Type})
-	}
-	return out
 }
 
 func fieldDisplay(ff []FormField, name string) string {

@@ -133,7 +133,7 @@ guest_page = "Appearance"
 mail_guest = "Mail to the customer"
 mail_admin = "Mail to the administrator"
 bank = "Bank account"
-addons = "Order add-ons"
+addons = "Order form"
 forms = "Forms"
 reservations = "Reservations"
 reports = "Reports"
@@ -168,6 +168,7 @@ err_expired_title = "Order time ended."
 err_expired = "Order timed out. Please select chairs again and make new order."
 err_status_title = "Error changing order status."
 err_status = "Order status can not be changed. Contact: admin (at) zori.cz"
+err_email_title = "Invalid e-mail"
 
 [guest]
 free_seats = "free seats"
@@ -265,7 +266,6 @@ notes = "Seats close to the stage, please."
 addons = "Meal: vegetarian"
 room = "Main hall"
 event = "Event"
-
 
 [newmail]
 form_hint = "A form mail belongs to one form and offers its fields."
@@ -422,10 +422,7 @@ hint = "Rooms, mails and accounts are often used by several events at once. A ch
 
 [addons]
 guest_title = "Order add-ons"
-template_name = "Add-ons: %s"
-create = "Enable add-ons"
-create_hint = "Add-ons are fields the guest fills in with the order: dinner choice, extra portion, parking. They are built with the same designer as forms."
-hint = "Add-on fields are filled in during the personal details step. A \"Multiplier\" field works as a surcharge: amount times price."
+template_name = "Order form: %s"
 no_fields = "no fields"
 field = "Field"
 type = "Kind"
@@ -446,19 +443,7 @@ multi_remove = "Remove"
 multi_title = "Guest entries"
 multi_who = "Ordered by"
 multi_seats = "Seats"
-section = "Add-ons in their own section titled “Order add-ons”"
-section_hint = "When unticked, the add-on fields follow the person’s details in the order form, without a frame or title."
-no_section = "no own section"
-after_label = "Where in the order form"
 guest_item = "This add-on was ordered by the guest — it is not deleted here."
-
-
-[addons.after]
-start = "at the start, before e-mail"
-email = "after e-mail"
-name = "after name and surname"
-phone = "after phone"
-end = "at the end, after notes"
 
 [form]
 mgr_mail_off = "not sent"
@@ -511,7 +496,6 @@ room_banner = "Room %d banner"
 no_sits_title = "No seats selected – title"
 no_sits_text = "No seats selected – text"
 order_howto = "How to order"
-order_notes_desc = "Hint in the order form"
 ordered_title = "After ordering – title"
 ordered_text = "After ordering – text"
 howto_legend = "Text below the legend"
@@ -690,7 +674,7 @@ people_slots = "Show empty places up to the goal"
 people_slots_hint = "With a goal of e.g. 3 people and 1 signed up, 2 empty places are shown; anyone beyond the goal is simply added to the list."
 people_slots_nogoal = "Works with the field goal – set it in the info panel section."
 title = "Form fields"
-title_addons = "Add-on fields"
+title_addons = "Order form"
 undo = "Undo"
 redo = "Redo"
 view = "View"
@@ -724,7 +708,7 @@ overview_count = "Fields to fill in: %d"
 add = "Add"
 roles_hint = "First name, last name and e-mail make up the list of people in answers, and the confirmation mail goes to the e-mail. The same person sending the form again updates their answers."
 anon_hint = "Without a “Last name” field the form is anonymous: every submission gets its own number."
-addons_hint = "Guests fill in these fields when ordering seats. “Quantity × price” adds a surcharge to the order."
+addons_hint = "The person’s details (e-mail, first name, last name) are always in the form – you can change their description, width and position. Phone and notes can be removed. Other fields are add-ons: “Quantity × price” adds a surcharge to the order."
 shortcuts = "Shortcuts"
 shortcuts_text = "Ctrl+S save, Ctrl+Z undo, Alt+↑/↓ move the selected field, Delete remove, Esc deselect. Ctrl+click and Shift+click select several fields at once (Ctrl+A all). Fields can also be dragged."
 bulk_title = "Selected fields: %d"
@@ -889,6 +873,7 @@ panel_hint_auto = "The form panel is automatic: fields with numbers and options 
 panel_hint_fields = "The panel only shows fields with this switch."
 panel_hint_text = "The panel currently has custom text – these settings apply in “Automatic” or “Chosen fields” mode (form page, “Page” section)."
 panel_hint_none = "The panel is off – turn it on on the form page, “Page” section."
+sys_locked = "This field cannot be removed – the order needs it."
 
 [fields.pal]
 person = "Person"
@@ -916,6 +901,8 @@ name = "First name"
 surname = "Last name"
 email = "E-mail"
 money = "Amount to pay"
+phone = "Phone"
+notes = "Notes"
 
 [fields.new]
 text = "New field"
@@ -1379,3 +1366,8 @@ preview_empty = "Sponsor logos will be here (the event has no logos yet)."
 [count.logo]
 one = "%d logo"
 other = "%d logos"
+
+[orderform]
+hint = "Guests fill in this form after choosing seats. You can add headings, texts and add-ons (dinner choice, surcharges), and change the order and descriptions of the fields. Fields with an asterisk are required."
+edit = "Edit form"
+fields_where = "The order form fields (including the description of the “Notes” field) are edited in the section"

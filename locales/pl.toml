@@ -135,7 +135,7 @@ guest_page = "Wygląd"
 mail_guest = "Mail do zamawiającego"
 mail_admin = "Mail do administratora"
 bank = "Konto bankowe"
-addons = "Dodatki do zamówienia"
+addons = "Formularz zamówienia"
 forms = "Formularze"
 reservations = "Rezerwacje"
 reports = "Raporty"
@@ -170,6 +170,7 @@ err_expired_title = "Zamówienie wygasło!"
 err_expired = "Zamówienie wygasło (wygasa po 5 minutach od kliknięcia na \"Zamów\"). Należy na nowo wybrać krzesła i ponowić zamówienie."
 err_status_title = "Nie można zmienić statusu zamówienia!"
 err_status = "Wystąpił problem ze zmianą statusu zamówienia, przepraszamy za kłopot i prosimy o informację na mail: admin (at) zori.cz. Prosimy o przesłanie info: email zamawiającego, numery zamawianych siedzeń, nazwa sali/imprezy."
+err_email_title = "Niepoprawny e-mail"
 
 [guest]
 free_seats = "wolne miejsca"
@@ -267,7 +268,6 @@ notes = "Prosimy o miejsca blisko sceny."
 addons = "Obiad: wegetariański"
 room = "Sala główna"
 event = "Impreza"
-
 
 [newmail]
 form_hint = "Mail formularza należy do jednego formularza i podpowiada jego pola."
@@ -426,10 +426,7 @@ hint = "Sale, maile i konta bywają używane przez kilka imprez naraz. Zmiana tu
 
 [addons]
 guest_title = "Dodatki do zamówienia"
-template_name = "Dodatki: %s"
-create = "Włącz dodatki"
-create_hint = "Dodatki to pola, które gość wypełnia przy zamówieniu: wybór obiadu, dodatkowa porcja, parking. Tworzy się je tym samym designerem co formularze."
-hint = "Pola dodatków gość wypełnia w kroku z danymi osoby. Pole typu „Wielokrotność” działa jak dopłata: ilość razy cena."
+template_name = "Formularz zamówienia: %s"
 no_fields = "brak pól"
 field = "Pole"
 type = "Rodzaj"
@@ -450,19 +447,7 @@ multi_remove = "Usuń"
 multi_title = "Wpisy gości"
 multi_who = "Zamawiający"
 multi_seats = "Miejsca"
-section = "Dodatki we własnej sekcji z tytułem „Dodatki do zamówienia”"
-section_hint = "Bez zaznaczenia pola dodatków są w formularzu zamówienia zaraz pod danymi osoby, bez ramki i tytułu."
-no_section = "bez własnej sekcji"
-after_label = "Gdzie w formularzu zamówienia"
 guest_item = "To dodatek zamówiony przez gościa — nie kasujemy go tutaj."
-
-
-[addons.after]
-start = "na początku, przed e-mailem"
-email = "po e-mailu"
-name = "po imieniu i nazwisku"
-phone = "po telefonie"
-end = "na końcu, po uwagach"
 
 [form]
 mgr_mail_off = "nie wysyłamy"
@@ -515,7 +500,6 @@ room_banner = "Banner sali %d"
 no_sits_title = "Gdy nie wybrano miejsc – tytuł"
 no_sits_text = "Gdy nie wybrano miejsc – tekst"
 order_howto = "Jak zamówić"
-order_notes_desc = "Podpowiedź w formularzu zamówienia"
 ordered_title = "Po zamówieniu – tytuł"
 ordered_text = "Po zamówieniu – tekst"
 howto_legend = "Tekst pod legendą"
@@ -700,7 +684,7 @@ people_slots = "Pokaż puste miejsca do celu"
 people_slots_hint = "Przy celu np. 3 osoby i 1 zapisanej widać jeszcze 2 puste miejsca; kolejne osoby ponad cel po prostu dochodzą do listy."
 people_slots_nogoal = "Działa z celem pola – ustaw go w sekcji panelu informacyjnego."
 title = "Pola formularza"
-title_addons = "Pola dodatków"
+title_addons = "Formularz zamówienia"
 undo = "Cofnij"
 redo = "Ponów"
 view = "Widok"
@@ -734,7 +718,7 @@ overview_count = "Pól do wypełnienia: %d"
 add = "Dodaj"
 roles_hint = "Imię, nazwisko i e-mail trafiają do listy odpowiedzi, a na e-mail idzie mail po wysłaniu. Ta sama osoba wysyłająca formularz drugi raz poprawia swoje odpowiedzi."
 anon_hint = "Bez pola „Nazwisko” formularz jest anonimowy: każde zgłoszenie dostaje własny numer."
-addons_hint = "Gość wypełnia te pola przy zamówieniu miejsc. „Ilość × cena” dolicza dopłatę do zamówienia."
+addons_hint = "Dane osoby (e-mail, imię, nazwisko) są zawsze w formularzu – można zmienić ich opis, szerokość i miejsce. Telefon i uwagi można usunąć. Pozostałe pola są dodatkami: „Ilość × cena” dolicza dopłatę do zamówienia."
 shortcuts = "Skróty"
 shortcuts_text = "Ctrl+S zapis, Ctrl+Z cofnij, Alt+↑/↓ przesuń zaznaczone pole, Delete usuń, Esc odznacz. Ctrl+klik i Shift+klik zaznaczają kilka pól naraz (Ctrl+A wszystkie). Pola można też przeciągać."
 bulk_title = "Zaznaczone pola: %d"
@@ -899,6 +883,7 @@ panel_hint_auto = "Panel formularza jest automatyczny: pola z liczbami i opcjami
 panel_hint_fields = "Panel pokazuje tylko pola z tym przełącznikiem."
 panel_hint_text = "Panel ma teraz własny tekst – te ustawienia zadziałają w trybie „Automatycznie” lub „Wybrane pola” (strona formularza, sekcja „Strona”)."
 panel_hint_none = "Panel jest wyłączony – włączysz go na stronie formularza, w sekcji „Strona”."
+sys_locked = "Tego pola nie da się usunąć – zamówienie go potrzebuje."
 
 [fields.pal]
 person = "Dane osoby"
@@ -926,6 +911,8 @@ name = "Imię"
 surname = "Nazwisko"
 email = "E-mail"
 money = "Kwota do zapłaty"
+phone = "Telefon"
+notes = "Uwagi"
 
 [fields.new]
 text = "Nowe pole"
@@ -1395,3 +1382,8 @@ preview_empty = "Tu będą logo sponsorów (impreza nie ma jeszcze ustawionych l
 one = "%d logo"
 few = "%d logo"
 many = "%d logo"
+
+[orderform]
+hint = "Gość wypełnia ten formularz po wybraniu miejsc. Można dodać nagłówki, teksty i dodatki (wybór obiadu, dopłaty), zmienić kolejność i opisy pól. Pola z gwiazdką są obowiązkowe."
+edit = "Edytuj formularz"
+fields_where = "Pola formularza zamówienia (także opis pola „Uwagi”) zmienia się w sekcji"

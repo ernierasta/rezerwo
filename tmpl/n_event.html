@@ -111,7 +111,7 @@
         <div class="grp">
           <h5 class="grp-h">{{T "event.grp.order"}}</h5>
           <div class="f"><label>{{T "field.order_howto"}}</label><div class="ed" data-editor="order_howto">{{.OrderHowto}}</div></div>
-          <div class="f"><label for="f-ondesc">{{T "field.order_notes_desc"}}</label><input class="inp" id="f-ondesc" data-field="order_notes_desc" value="{{.OrderNotesDesc}}"></div>
+          <p class="muted small">{{T "orderform.fields_where"}} <a href="#dodatki">{{T "event.sec.addons"}}</a>.</p>
         </div>
 
         <div class="grp">
@@ -287,43 +287,27 @@
       </div>
     </div>
 
-    <!-- Dodatki do zamówienia -->
+    <!-- Formularz zamówienia (orderform.go): dane osoby, dodatki, teksty -->
     <div class="sec" data-sec="dodatki" data-cfg>
       <div class="sec-h"><b>{{T "event.sec.addons"}}</b><span>{{.SumAddons}}</span><a class="act" href="#dodatki">{{T "common.change"}}</a></div>
       <div class="sec-b" hidden>
-        {{if .AddonsTemplateID}}
-        <p class="muted">{{T "addons.hint"}}</p>
-        {{if .AddonFields}}
+        <p class="muted">{{T "orderform.hint"}}</p>
         <div class="wide" style="margin-top:12px">
-          <table class="tbl">
+          <table class="tbl fields-sum">
             <tr><th>{{T "addons.field"}}</th><th>{{T "addons.type"}}</th></tr>
-            {{range .AddonFields}}
-            <tr><td>{{.Label}}</td><td class="m">{{.Kind}}</td></tr>
+            {{range .OrderFields}}
+            <tr><td>{{.Label}}{{if .Req}} <span class="miss">*</span>{{end}}</td><td class="m">{{if .Sys}}<span class="st">{{.Kind}}</span>{{else}}{{.Kind}}{{end}}</td></tr>
             {{end}}
           </table>
         </div>
-        {{else}}
-        <p class="muted" style="margin-top:12px">{{T "addons.no_fields"}}</p>
-        {{end}}
-        <div class="check" style="margin-top:14px"><input type="checkbox" id="f-addons-section" data-field="addons_section" {{if .AddonsSection}}checked{{end}}><label for="f-addons-section">{{T "addons.section"}}</label></div>
-        <small class="muted">{{T "addons.section_hint"}}</small>
-        <div class="f" style="margin-top:12px;max-width:360px"><label for="f-addons-after">{{T "addons.after_label"}}</label>
-          <select class="inp" id="f-addons-after" data-field="addons_after">
-            {{range .AddonsPositions}}<option value="{{.Value}}"{{if eq .Value $.AddonsAfter}} selected{{end}}>{{.Label}}</option>{{end}}
-          </select>
-        </div>
         <div class="sec-f">
-          <button class="btn" data-save="addons">{{T "common.save"}}</button>
-          <button class="btn quiet" id="addons-edit" data-template="{{.AddonsTemplateID}}">{{T "field.edit_fields"}}</button>
+          {{if .AddonsTemplateID}}
+          <button class="btn" id="addons-edit" data-template="{{.AddonsTemplateID}}">{{T "orderform.edit"}}</button>
+          {{else}}
+          <button class="btn" id="addons-create">{{T "orderform.edit"}}</button>
+          {{end}}
           <small class="msg"></small>
         </div>
-        {{else}}
-        <p class="muted">{{T "addons.create_hint"}}</p>
-        <div class="sec-f">
-          <button class="btn" id="addons-create">{{T "addons.create"}}</button>
-          <small class="msg"></small>
-        </div>
-        {{end}}
       </div>
     </div>
 

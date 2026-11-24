@@ -124,7 +124,7 @@ type EventCopyMsg struct {
 }
 
 // EventCopyAPI creates copy of event, with rooms (linked or copied), prices,
-// addons and optionally copies of notifications. Reservation ends day after event date.
+// the order form (orderform.go) and optionally copies of notifications. Reservation ends day after event date.
 func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := adminUser(w, r, db, cs)
@@ -288,6 +288,15 @@ func EventCopyAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		}
 		if err := db.EventSetSponsors(newEventID, user.ID, src.Sponsors); err != nil {
 			log.Printf("EventCopyAPI: sponsors: %v", err)
+		}
+		// formularz zamówienia (orderform.go) - tylko zmieniony przez
+		// organizatora; bez szablonu kopia też ma formularz domyślny
+		if src.AddonsFormTemplateID.Valid && src.AddonsFormTemplateID.Int64 != 0 {
+			if ne, err := db.EventGetByID(newEventID); err != nil {
+				log.Printf("EventCopyAPI: order form: %v", err)
+			} else if _, err := newOrderTemplate(db, user, ne, T(PanelLang(r), "addons.template_name", ne.Name), OrderFormDef(db, src)); err != nil {
+				log.Printf("EventCopyAPI: order form: %v", err)
+			}
 		}
 		// wygląd nagłówka przechodzi, nazwa idzie za nazwą kopii
 		head := ParsePageHead(src.PageHead)

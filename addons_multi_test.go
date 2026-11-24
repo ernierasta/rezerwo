@@ -189,8 +189,9 @@ func TestOrderAddonsHTMLItems(t *testing.T) {
 	}
 }
 
-// Miejsce dodatków w formularzu zamówienia: tylko znane pozycje (nieznana
-// = na końcu), zapis tylko dla swojej organizacji, etykiety w każdym języku.
+// Miejsce dodatków w dawnym formularzu zamówienia (dziś tylko dla
+// LegacyOrderDef): tylko znane pozycje (nieznana = na końcu), zapis tylko dla
+// swojej organizacji.
 func TestEventAddonsAfter(t *testing.T) {
 	if err := LoadLocales(); err != nil {
 		t.Fatal(err)
@@ -215,12 +216,5 @@ func TestEventAddonsAfter(t *testing.T) {
 	}
 	if e, _ := db.EventGetByID(eventID); e.AddonsAfter != "" {
 		t.Errorf("nieznana pozycja zapisana: %q", e.AddonsAfter)
-	}
-	for _, lang := range []string{"pl", "cs", "en"} {
-		for _, p := range AddonsPositions {
-			if l := addonsAfterLabel(lang, p); l == "" || strings.Contains(l, "addons.after") {
-				t.Errorf("%s: brak etykiety pozycji %q: %q", lang, p, l)
-			}
-		}
 	}
 }

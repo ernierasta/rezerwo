@@ -66,7 +66,7 @@
     {{else}}
     <input class="inp" type="{{.Subtype}}" id="{{.ID}}" name="{{.Name}}" {{if .Required}}required{{end}}
       {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}} {{if .Value}}value="{{.Value}}"{{end}}
-      {{if eq .Name "name-REQUIRED"}}autocomplete="given-name"{{else if eq .Name "surname-REQUIRED"}}autocomplete="family-name"{{else if or (eq .Subtype "email") (eq .Name "email-REQUIRED")}}autocomplete="email"{{else if eq .Subtype "tel"}}autocomplete="tel"{{end}}>
+      {{if or (eq .Name "name-REQUIRED") (eq .ID "name")}}autocomplete="given-name"{{else if or (eq .Name "surname-REQUIRED") (eq .ID "surname")}}autocomplete="family-name"{{else if or (eq .Subtype "email") (eq .Name "email-REQUIRED")}}autocomplete="email"{{else if eq .Subtype "tel"}}autocomplete="tel"{{end}}>
     {{end}}
     {{with .Stat}}{{template "ffstat" .}}{{end}}
     {{if .Desc}}<small class="ff-d">{{.Desc}}</small>{{end}}

@@ -3279,74 +3279,49 @@ h5.subhead a {
   font-weight: 600;
   border-bottom: 0;
 }
-.order-step .order-form .grid2 {
+.order-step .order-fields .ff-row {
   gap: 14px 18px;
-}
-.order-step .order-form .ff-err {
-  display: block;
-  color: var(--danger-ink);
-  font-size: 13.5px;
-  margin-top: 6px;
-}
-.order-step .order-form .f.bad .inp {
-  border-color: var(--danger-ink);
-  background: var(--danger-soft);
+  margin-bottom: 14px;
 }
 .order-step .sec-f {
   margin-top: 20px;
 }
-.order-step .addons {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px 18px;
-  margin: 22px 0 18px;
-}
-.order-step .addons h4 {
-  font-size: 16px;
-  margin-bottom: 10px;
-}
-.order-step .addons .f + .f {
-  margin-top: 12px;
-}
-.order-step .addons.plain {
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  margin: 14px 0 18px;
-}
-.order-step .addons .addon-amount {
+.order-step .addon-amount {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
-.order-step .addons .addon-amount .inp {
+.order-step .addon-amount .inp {
   width: 90px;
 }
-.order-step .addons .multi-rows {
+.order-step .addon-multi {
+  display: flex;
+  flex-direction: column;
+}
+.order-step .addon-multi .ff-d {
+  margin: 6px 0 0;
+}
+.order-step .multi-rows {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.order-step .addons .multi-row {
+.order-step .multi-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.order-step .addons .multi-row .inp {
+.order-step .multi-row .inp {
   flex: 1;
   min-width: 0;
 }
-.order-step .addons .multi-add {
+.order-step .multi-add {
   margin-top: 8px;
   align-self: flex-start;
 }
-.order-step .grid2 > .addons {
-  grid-column: 1/-1;
-  margin: 6px 0;
-}
-.order-step .grid2 > .addons.plain {
-  margin: 0;
+.order-step .ff.addon .ff-d {
+  margin: 6px 0 0;
 }
 
 .free-text {

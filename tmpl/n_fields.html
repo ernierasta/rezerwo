@@ -40,8 +40,8 @@
       {{end}}
       <h5>{{T "fields.pal.fields"}}</h5>
       <button class="pal" draggable="true" data-add="text"><i>T</i>{{T "fields.type.text"}}</button>
-      {{if not .IsAddons}}
       <button class="pal" draggable="true" data-add="textarea"><i>¶</i>{{T "fields.type.textarea"}}</button>
+      {{if not .IsAddons}}
       <button class="pal" draggable="true" data-add="number"><i>12</i>{{T "fields.type.number"}}</button>
       <button class="pal" draggable="true" data-add="date"><i>▦</i>{{T "fields.type.date"}}</button>
       {{end}}
@@ -51,12 +51,10 @@
       <button class="pal" draggable="true" data-add="checkbox-group"><i>☑</i>{{T "fields.type.checkbox-group"}}</button>
       {{end}}
       <button class="pal" draggable="true" data-add="multiplierField"><i>×</i>{{T "fields.type.multiplierField"}}</button>
-      {{if not .IsAddons}}
       <h5>{{T "fields.pal.layout"}}</h5>
       <button class="pal" draggable="true" data-add="header"><i>H</i>{{T "fields.type.header"}}</button>
       <button class="pal" draggable="true" data-add="paragraph"><i>≡</i>{{T "fields.type.paragraph"}}</button>
       <button class="pal" draggable="true" data-add="divider"><i>―</i>{{T "fields.type.divider"}}</button>
-      {{end}}
       <p class="pal-hint muted">{{T "fields.pal.hint"}}</p>
     </aside>
 

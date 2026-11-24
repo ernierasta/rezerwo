@@ -657,17 +657,16 @@ type nEventVars struct {
 	UserRooms  []Room
 	EventRooms []Room
 
-	MainDesc       template.HTML
-	MainBanner     nBannerPick
-	Head           nHeadPick
-	RoomTexts      []nRoomText
-	OrderHowto     template.HTML
-	OrderNotesDesc string
-	NoSitsTitle    string
-	NoSitsText     template.HTML
-	OrderedTitle   string
-	OrderedText    template.HTML
-	HowTo          template.HTML
+	MainDesc     template.HTML
+	MainBanner   nBannerPick
+	Head         nHeadPick
+	RoomTexts    []nRoomText
+	OrderHowto   template.HTML
+	NoSitsTitle  string
+	NoSitsText   template.HTML
+	OrderedTitle string
+	OrderedText  template.HTML
+	HowTo        template.HTML
 	// OrderVars - zmienne zamówienia dla pastylek w "Po zamówieniu – tekst"
 	// (JSON jak w edytorze maila, mailEditorVars)
 	OrderVars string
@@ -718,12 +717,10 @@ type nEventVars struct {
 	Sponsors    nSponsorsPick
 	SumSponsors string
 
+	// formularz zamówienia (orderform.go)
 	SumAddons        string
 	AddonsTemplateID int64
-	AddonsSection    bool
-	AddonsAfter      string
-	AddonsPositions  []nAddonsPos
-	AddonFields      []nAddonField
+	OrderFields      []nOrderFieldSum
 
 	// porównanie z poprzednią edycją (rozdz. 4.2 HARMONIJKA.md)
 	CompareName  string
@@ -929,7 +926,6 @@ func buildEventVars(db *DB, user User, event Event, lang string) nEventVars {
 		Head:            eventHeadPick(event),
 		Sponsors:        sponsorsPick(event, user),
 		OrderHowto:      template.HTML(event.OrderHowto),
-		OrderNotesDesc:  event.OrderNotesDescription,
 		NoSitsTitle:     event.NoSitsSelectedTitle,
 		NoSitsText:      template.HTML(event.NoSitsSelectedText),
 		OrderedTitle:    event.OrderedNoteTitle,
@@ -1091,45 +1087,14 @@ func fillEventSummaries(db *DB, user User, event Event, lang string, v *nEventVa
 	fillReservationSummary(db, user, event, lang, v)
 	fillEventReport(db, user, event, lang, v)
 
-	// dodatki do zamówienia (rozdz. 9 HARMONIJKA.md)
+	// formularz zamówienia: dane osoby, dodatki, nagłówki (orderform.go)
 	v.AddonsTemplateID = event.AddonsFormTemplateID.Int64
-	v.AddonsSection = event.AddonsSection
-	v.AddonsAfter = AddonsAfterNorm(event.AddonsAfter)
-	for _, p := range AddonsPositions {
-		v.AddonsPositions = append(v.AddonsPositions, nAddonsPos{Value: p, Label: addonsAfterLabel(lang, p)})
+	v.OrderFields = orderFieldSummaries(OrderFormDef(db, event), lang)
+	names := make([]string, 0, len(v.OrderFields))
+	for _, f := range v.OrderFields {
+		names = append(names, f.Label)
 	}
-	v.AddonFields = addonFields(db, event)
-	switch {
-	case v.AddonsTemplateID == 0:
-		v.SumAddons = T(lang, "common.none")
-	case len(v.AddonFields) == 0:
-		v.SumAddons = T(lang, "addons.no_fields")
-	default:
-		names := make([]string, 0, len(v.AddonFields))
-		for _, f := range v.AddonFields {
-			names = append(names, f.Label)
-		}
-		v.SumAddons = T(lang, "form.fields_count", len(v.AddonFields)) + ": " + strings.Join(names, ", ")
-		if !event.AddonsSection {
-			v.SumAddons += " · " + T(lang, "addons.no_section")
-		}
-		if v.AddonsAfter != "" {
-			v.SumAddons += " · " + addonsAfterLabel(lang, v.AddonsAfter)
-		}
-	}
-}
-
-// nAddonsPos - pozycja dodatków do wyboru w sekcji imprezy.
-type nAddonsPos struct {
-	Value, Label string
-}
-
-// addonsAfterLabel - nazwa pozycji dodatków w panelu ("po e-mailu").
-func addonsAfterLabel(lang, pos string) string {
-	if pos == "" {
-		pos = "end"
-	}
-	return T(lang, "addons.after."+pos)
+	v.SumAddons = T(lang, "form.fields_count", len(v.OrderFields)) + ": " + strings.Join(names, ", ")
 }
 
 // fillEventReport liczy rozliczenie imprezy po cenach miejsc.
@@ -1570,7 +1535,8 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			event.Room4Desc = ToNS(html("room4desc"))
 			event.Room4Banner = ToNS(cleanBanner(val("room4banner")))
 			event.OrderHowto = html("order_howto")
-			event.OrderNotesDescription = val("order_notes_desc")
+			// opis pola "Uwagi" jest w formularzu zamówienia (orderform.go);
+			// order_notes_desc zostaje tylko dla formularza złożonego z dawnego układu
 			event.NoSitsSelectedTitle = val("no_sits_selected_title")
 			event.NoSitsSelectedText = html("no_sits_selected_text")
 			event.OrderedNoteTitle = val("ordered_note_title")
@@ -1651,16 +1617,6 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
 				return
 			}
-		case "addons":
-			event.AddonsSection = flag("addons_section")
-			if err := db.EventSetAddonsSection(event.ID, user.ID, event.AddonsSection); err != nil {
-				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
-				return
-			}
-			if err := db.EventSetAddonsAfter(event.ID, user.ID, val("addons_after")); err != nil {
-				jsonMsg(w, http.StatusTeapot, nSectionResp{Msg: err.Error()})
-				return
-			}
 		default:
 			jsonMsg(w, http.StatusBadRequest, nSectionResp{Msg: "unknown section " + msg.Section})
 			return
@@ -1699,8 +1655,6 @@ func EventSectionSave(db *DB, cs *sessions.CookieStore) func(w http.ResponseWrit
 			resp.Summary = v.SumForms
 		case "settings":
 			resp.Summary = v.SumSettings
-		case "addons":
-			resp.Summary = v.SumAddons
 		case "sponsors":
 			resp.Summary = v.SumSponsors
 		}

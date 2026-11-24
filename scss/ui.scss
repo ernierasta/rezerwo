@@ -1687,63 +1687,42 @@ h5.subhead {
     .seat.sum { font-weight: 600; border-bottom: 0; }
   }
 
-  .order-form .grid2 { gap: 14px 18px; }
-  .order-form .ff-err { display: block; color: var(--danger-ink); font-size: 13.5px; margin-top: 6px; }
-  .order-form .f.bad .inp { border-color: var(--danger-ink); background: var(--danger-soft); }
+  // formularz zamówienia (orderform.go): wiersze .ff-row jak formularze
+  // gości, z odstępami dawnego stałego formularza
+  .order-fields .ff-row { gap: 14px 18px; margin-bottom: 14px; }
   .sec-f { margin-top: 20px; }
 
-  // Dodatki do zamówienia - pod danymi osoby, bo pola z ceną powtarzają się
-  // wg liczby miejsc i przy dużym zamówieniu zasłaniałyby pola wymagane.
-  .addons {
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 16px 18px;
-    margin: 22px 0 18px;
+  // dopłata: ilość × cena
+  .addon-amount {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 
-    h4 { font-size: 16px; margin-bottom: 10px; }
-    .f + .f { margin-top: 12px; }
-
-    // bez własnej sekcji (events.addons_section = 0): bez ramki i tytułu,
-    // pola po prostu dalej pod danymi osoby
-    &.plain {
-      border: 0;
-      border-radius: 0;
-      padding: 0;
-      margin: 14px 0 18px;
-    }
-
-    .addon-amount {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-
-      .inp { width: 90px; }
-    }
-
-    // pole dokładane przez gościa ("+"): wiersze jeden pod drugim
-    .multi-rows {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .multi-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-
-      .inp { flex: 1; min-width: 0; }
-    }
-    .multi-add { margin-top: 8px; align-self: flex-start; }
+    .inp { width: 90px; }
   }
 
-  // dodatki między danymi osoby (events.addons_after): cały wiersz siatki
-  .grid2 > .addons {
-    grid-column: 1 / -1;
-    margin: 6px 0;
+  // pole dokładane przez gościa ("+"): wiersze jeden pod drugim
+  .addon-multi {
+    display: flex;
+    flex-direction: column;
 
-    &.plain { margin: 0; }
+    .ff-d { margin: 6px 0 0; }
   }
+  .multi-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .multi-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .inp { flex: 1; min-width: 0; }
+  }
+  .multi-add { margin-top: 8px; align-self: flex-start; }
+  .ff.addon .ff-d { margin: 6px 0 0; }
 }
 
 // Kolory legendy z tekstów admina. Te klasy wstawia edytor Quill (patrz

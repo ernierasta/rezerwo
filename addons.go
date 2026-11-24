@@ -34,6 +34,9 @@ type AddonField struct {
 	Label    string
 	Required bool
 	Options  []AddonOption
+	// Desc - opis pod polem, Placeholder - podpowiedź w pustym polu
+	Desc        string
+	Placeholder string
 
 	// Pola typu "Wielokrotność" (multiplierField) działają jak dopłata:
 	// gość podaje liczbę sztuk, cena jednej sztuki jest w definicji.
@@ -105,9 +108,11 @@ func ParseAddonFields(content string) []AddonField {
 			Label:    plainLabel(str(m["label"])),
 			Required: boolOf(m["required"]),
 		}
-		if isTypeIgnored(f.Type) || f.Name == "" {
-			continue // nagłówki, akapity, przyciski
+		if isTypeIgnored(f.Type) || f.Name == "" || isOrderSys(f.Name) {
+			continue // nagłówki, akapity, przyciski; dane osoby (orderform.go)
 		}
+		f.Desc = plainLabel(str(m["description"]))
+		f.Placeholder = str(m["placeholder"])
 		f.PerSeat = strings.HasSuffix(strings.ToLower(f.Name), PERSEATSUFFIX)
 
 		if vals, ok := m["values"].([]interface{}); ok {

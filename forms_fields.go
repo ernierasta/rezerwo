@@ -80,6 +80,15 @@ func FormFieldsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			log.Printf("FormFieldsPage: form %d: %v", templ.ID, err)
 			defs = []FormDefField{}
 		}
+		// formularz zamówienia: dawną listę dodatków designer pokazuje od razu
+		// z danymi osoby (orderform.go), zapisze się przy pierwszym zapisie
+		var orderEvent *Event
+		if isAddonsTemplate(templ) && templ.EventID.Valid {
+			if ev, err := db.EventGetByID(templ.EventID.Int64); err == nil && ev.UserID == user.ID {
+				orderEvent = &ev
+				defs = NormalizeOrderDef(defs, ev)
+			}
+		}
 		content, _ := json.Marshal(defs)
 
 		counts, err := db.FormFieldAnswerCounts(templ.ID)
@@ -110,9 +119,10 @@ func FormFieldsPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 		}
 		if v.IsAddons && templ.EventID.Valid {
 			v.BackURL = fmt.Sprintf("/admin/events/%d#dodatki", templ.EventID.Int64)
-			if ev, err := db.EventGetByID(templ.EventID.Int64); err == nil && ev.UserID == user.ID {
-				v.Crumb = ev.Name
-				v.Currency = ev.DefaultCurrency
+			if orderEvent != nil {
+				v.Crumb = orderEvent.Name
+				v.Currency = orderEvent.DefaultCurrency
+				v.FormLang = KnownLang(orderEvent.Language.String)
 			}
 		}
 		if back := r.URL.Query().Get("back"); strings.HasPrefix(back, "/admin/") {
@@ -157,6 +167,12 @@ func FormFieldsSaveAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWri
 		if err != nil {
 			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "fields.err.invalid", err.Error())})
 			return
+		}
+		// formularz zamówienia zawsze z e-mailem, imieniem i nazwiskem
+		if isAddonsTemplate(templ) && templ.EventID.Valid {
+			if ev, err := db.EventGetByID(templ.EventID.Int64); err == nil && ev.UserID == user.ID {
+				defs = NormalizeOrderDef(defs, ev)
+			}
 		}
 		names := map[string]bool{}
 		for _, d := range defs {

@@ -149,6 +149,10 @@ type Event struct {
 	// PageHead - nagłówek strony gościa, JSON PageHead (pagehead.go,
 	// tools/migration-pagehead.sql)
 	PageHead string `db:"pagehead"`
+	// AddonsSection, AddonsAfter i OrderNotesDescription czyta już tylko
+	// LegacyOrderDef (orderform.go): formularz zamówienia imprezy, która nie
+	// ma jeszcze zapisanego formularza w designerze pól.
+	//
 	// AddonsSection - dodatki w kroku zamówienia we własnej ramce z tytułem
 	// "Dodatki do zamówienia"; bez niej pola idą zaraz pod danymi osoby
 	// (tools/migration-addonsection.sql)

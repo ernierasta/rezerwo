@@ -221,6 +221,96 @@ func OrderFormDef(db *DB, event Event) []FormDefField {
 	return NormalizeOrderDef(defs, event)
 }
 
+// --- pola obowiązkowe od liczby miejsc ---------------------------------------
+//
+// Każde pole formularza zamówienia (oprócz e-maila, imienia i nazwiska, które
+// są obowiązkowe zawsze, i dopłat) może być obowiązkowe dopiero od pewnej
+// liczby zamówionych miejsc: required_from w definicji pola, np. nazwiska
+// rodzin przy zamówieniu od 3 miejsc. Liczba miejsc jest znana już przy
+// wyświetlaniu kroku /order, więc pole po prostu wychodzi jako obowiązkowe,
+// a required_msg (albo domyślny tekst "od N miejsc") pokazuje się zamiast
+// ogólnego "To pole jest wymagane". /order/status sprawdza to samo
+// (orderMissing).
+
+// reqFromOf czyta required_from z definicji pola (0 = wyłączone).
+func reqFromOf(m map[string]interface{}) int64 {
+	if n := intOf(m["required_from"]); n > 0 {
+		return n
+	}
+	return 0
+}
+
+// orderReq mówi, czy pole jest obowiązkowe przy tej liczbie miejsc.
+func orderReq(required bool, from, seats int64) bool {
+	return required || (from > 0 && seats >= from)
+}
+
+// orderReqMsg - komunikat pustego obowiązkowego pola: własny z definicji,
+// a gdy pole jest obowiązkowe tylko przez liczbę miejsc, tekst, który to
+// wyjaśnia; "" = ogólny komunikat strony.
+func orderReqMsg(lang, custom string, required bool, from, seats int64) string {
+	if !orderReq(required, from, seats) {
+		return ""
+	}
+	if custom != "" {
+		return custom
+	}
+	if !required {
+		return T(lang, "order.req_from", from)
+	}
+	return ""
+}
+
+// orderMissing sprawdza na serwerze obowiązkowe pola formularza zamówienia
+// (strona robi to już w przeglądarce, to tylko na formularz wysłany z jej
+// pominięciem). Zwraca komunikat pierwszego pustego pola albo "".
+func orderMissing(defs []FormDefField, form map[string][]string, seats int64, lang string) string {
+	filled := func(name string) bool { return strings.TrimSpace(first(form[name])) != "" }
+	msg := func(custom string, required bool, from int64) string {
+		if m := orderReqMsg(lang, custom, required, from, seats); m != "" {
+			return m
+		}
+		return T(lang, "gform.err.required")
+	}
+	for _, d := range defs {
+		s, ok := orderSys(d.S("name"))
+		if !ok || s.Name == ROLEEMAIL { // e-mail sprawdza handler (emailRe)
+			continue
+		}
+		req, from := d.B("required") || s.Locked, reqFromOf(d)
+		if orderReq(req, from, seats) && !filled(s.Input) {
+			return msg(strings.TrimSpace(d.S("required_msg")), req, from)
+		}
+	}
+	content, err := json.Marshal(defs)
+	if err != nil {
+		return ""
+	}
+	for _, f := range ParseAddonFields(string(content)) {
+		if f.IsPriced() || !orderReq(f.Required, f.RequiredFrom, seats) {
+			continue
+		}
+		ok := false
+		switch {
+		case f.Multi: // choć jeden wpis
+			for i := int64(1); i <= seats && !ok; i++ {
+				ok = filled(AddonInputName(f, i))
+			}
+		case f.PerSeat && seats > 0: // każde powtórzenie
+			ok = true
+			for i := int64(1); i <= seats && ok; i++ {
+				ok = filled(AddonInputName(f, i))
+			}
+		default:
+			ok = filled(AddonInputName(f, 0))
+		}
+		if !ok {
+			return msg(f.RequiredMsg, f.Required, f.RequiredFrom)
+		}
+	}
+	return ""
+}
+
 // --- strona gościa ---------------------------------------------------------
 
 // nOrderItem to jedna komórka wiersza formularza zamówienia: pole danych
@@ -239,14 +329,26 @@ type nOrderRow struct {
 // orderFormRows układa formularz zamówienia w wiersze dla strony gościa
 // i zwraca też płaską listę pól dodatków (do podsumowania dopłat). Pola
 // powtarzane wg liczby miejsc stają w wierszu swojego pola, jedno po drugim.
-func orderFormRows(defs []FormDefField, seats int64) ([]nOrderRow, []nOrderAddon) {
+// Pola obowiązkowe od pewnej liczby miejsc (required_from) wychodzą jako
+// obowiązkowe, gdy zamówiono ich dość; lang - język imprezy (komunikaty).
+func orderFormRows(defs []FormDefField, seats int64, lang string) ([]nOrderRow, []nOrderAddon) {
 	content, err := json.Marshal(defs)
 	if err != nil {
 		log.Printf("orderFormRows: %v", err)
 	}
 	addons := map[string]AddonField{}
 	for _, f := range ParseAddonFields(string(content)) {
+		if !f.IsPriced() {
+			f.ReqMsg = orderReqMsg(lang, f.RequiredMsg, f.Required, f.RequiredFrom, seats)
+			f.Required = orderReq(f.Required, f.RequiredFrom, seats)
+		}
 		addons[f.Name] = f
+	}
+	sysDefs := map[string]FormDefField{}
+	for _, d := range defs {
+		if isOrderSys(d.S("name")) {
+			sysDefs[d.S("name")] = d
+		}
 	}
 
 	var rows []nOrderRow
@@ -257,10 +359,11 @@ func orderFormRows(defs []FormDefField, seats int64) ([]nOrderRow, []nOrderAddon
 			f := f
 			f.ShowIf, f.DependsOn = "", "" // warunków formularz zamówienia nie ma
 			if s, ok := orderSys(f.Name); ok {
+				d := sysDefs[f.Name]
+				req, from := f.Required || s.Locked, reqFromOf(d)
+				f.ReqMsg = orderReqMsg(lang, strings.TrimSpace(d.S("required_msg")), req, from, seats)
+				f.Required = orderReq(req, from, seats)
 				f.Name, f.ID = s.Input, s.Input
-				if s.Locked {
-					f.Required = true
-				}
 				row.Items = append(row.Items, nOrderItem{Field: &f})
 				continue
 			}
@@ -337,6 +440,8 @@ type nOrderFieldSum struct {
 	Kind  string
 	Sys   bool // dane osoby
 	Req   bool
+	// ReqFrom - obowiązkowe dopiero od tylu miejsc (required_from), 0 = nie
+	ReqFrom int64
 }
 
 // orderFieldSummaries opisuje pola formularza zamówienia (bez nagłówków
@@ -349,9 +454,15 @@ func orderFieldSummaries(defs []FormDefField, lang string) []nOrderFieldSum {
 			continue
 		}
 		s := nOrderFieldSum{Label: plainLabel(d.S("label")), Req: d.B("required")}
+		if t != "multiplierField" {
+			s.ReqFrom = reqFromOf(d)
+		}
 		if sys, ok := orderSys(d.S("name")); ok {
 			s.Sys = true
 			s.Req = s.Req || sys.Locked
+			if sys.Locked {
+				s.ReqFrom = 0
+			}
 			s.Kind = T(lang, "fields.role."+strings.TrimSuffix(strings.TrimSuffix(sys.Name, "-REQUIRED"), "-ROLE"))
 		} else {
 			s.Kind = T(lang, "fields.type."+t)

@@ -246,7 +246,7 @@ func GuestOrderPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter
 			Sponsors:        guestSponsors(event, user.URL, lng, "order"),
 		}
 
-		vars.Rows, vars.Addons = orderFormRows(OrderFormDef(db, event), int64(len(ss)))
+		vars.Rows, vars.Addons = orderFormRows(OrderFormDef(db, event), int64(len(ss)), lng)
 
 		guestRenderTheme(w, lng, event.Theme.String, vars, "tmpl/n_order.html", "tmpl/n_formfield.html")
 	}
@@ -354,6 +354,14 @@ func ReservationOrderStatusHTML(db *DB, mailConf MailConfig) func(w http.Respons
 		if !emailRe.MatchString(o.Email) {
 			log.Printf("ReservationOrderStatusHTML: bad e-mail %q (event %d)", o.Email, o.EventID)
 			ErrorHTML(T(lng, "order.err_email_title"), T(lng, "gform.err.email"), lng, w, r)
+			return
+		}
+
+		// pola obowiązkowe (także od liczby miejsc, orderform.go); strona
+		// sprawdza je już w przeglądarce
+		if msg := orderMissing(OrderFormDef(db, event), r.Form, int64(len(marked)), lng); msg != "" {
+			log.Printf("ReservationOrderStatusHTML: missing required field (event %d, %d seats): %s", o.EventID, len(marked), msg)
+			ErrorHTML(T(lng, "order.err_required_title"), msg, lng, w, r)
 			return
 		}
 

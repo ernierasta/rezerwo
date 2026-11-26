@@ -3801,6 +3801,11 @@ h5.subhead a {
 .ff.bad .opt {
   border-color: var(--danger-line);
 }
+.ff.bad .multi-add[aria-invalid] {
+  border-color: var(--danger-ink);
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
 .ff.ff-header h2, .ff.ff-header h3, .ff.ff-header h4 {
   font-family: var(--display);
   font-weight: 500;

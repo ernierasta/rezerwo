@@ -42,7 +42,7 @@
     <small class="ff-err" role="alert" hidden></small>
   </fieldset>
 {{else}}
-  <div class="ff ff-{{.Type}} w{{.Width}}{{if .IsMoney}} money{{end}}" data-name="{{.Name}}" data-type="{{.Type}}" {{if .Required}}data-required{{end}}{{with .ShowIf}} data-show="{{.}}"{{end}}{{with .DependsOn}} data-dep="{{.}}"{{end}}>
+  <div class="ff ff-{{.Type}} w{{.Width}}{{if .IsMoney}} money{{end}}" data-name="{{.Name}}" data-type="{{.Type}}" {{if .Required}}data-required{{end}}{{with .ReqMsg}} data-req-msg="{{.}}"{{end}}{{with .ShowIf}} data-show="{{.}}"{{end}}{{with .DependsOn}} data-dep="{{.}}"{{end}}>
     <label class="ff-l" for="{{.ID}}">{{.Label}}{{if .Required}}<i class="req" aria-hidden="true">*</i>{{end}}</label>
     {{if eq .Type "textarea"}}
     <textarea class="inp" id="{{.ID}}" name="{{.Name}}" rows="{{if .Rows}}{{.Rows}}{{else}}3{{end}}" {{if .Required}}required{{end}} {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}} {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}>{{.Value}}</textarea>

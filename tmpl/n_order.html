@@ -81,7 +81,7 @@
       {{/* Pole "+": wiersze tworzy js/n_order.js z wzoru <template> - na
            start jeden (albo żaden przy multi_empty), potem przyciskiem. */}}
       <div class="ff addon-multi w{{.Width}}" data-max="{{.Max}}" data-base="addon-{{.Name}}" data-input="{{.Input}}"
-           {{if .Required}}data-required{{end}} {{if .MultiEmpty}}data-empty{{end}}>
+           {{if .Required}}data-required{{end}} {{if .MultiEmpty}}data-empty{{end}}{{with .ReqMsg}} data-req-msg="{{.}}"{{end}}>
         {{/* przy multi_empty na start sam przycisk: nazwa pola ukryta (dla
              czytników ekranu jest), pokazuje się nad pierwszym wpisem */}}
         <label class="ff-l{{if .MultiEmpty}} vh{{end}}" id="{{.Input}}-l">{{.Title}}{{if .Required}}<i class="req" aria-hidden="true">*</i>{{end}}</label>
@@ -94,7 +94,7 @@
         {{if .Desc}}<small class="ff-d">{{.Desc}}</small>{{end}}
       </div>
       {{else}}
-      <div class="ff addon w{{.Width}}">
+      <div class="ff addon w{{.Width}}"{{with .ReqMsg}} data-req-msg="{{.}}"{{end}}>
         <label class="ff-l" for="{{.Input}}">{{.Title}}{{if .Required}}<i class="req" aria-hidden="true">*</i>{{end}}</label>
         {{if .Options}}
         <select class="inp" id="{{.Input}}" name="{{.Input}}" {{if .Required}}required{{end}}>

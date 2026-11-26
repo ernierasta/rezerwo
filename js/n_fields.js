@@ -674,6 +674,12 @@
     return h + statHTML(f) + desc + '</div>';
   }
 
+  // pole formularza zamówienia, które może być obowiązkowe od liczby miejsc:
+  // nie e-mail/imię/nazwisko (zawsze obowiązkowe) i nie dopłata
+  function reqFromOk(f) {
+    return isAddons && isInput(f.type) && !locked(f) && f.type !== 'multiplierField';
+  }
+
   function badges(f) {
     var b = [];
     var role = roleOf(f);
@@ -683,6 +689,7 @@
       b.push('<b class="panel">' + esc(t(atField(f) ? 'fields.panel_badge_field' : 'fields.panel_badge')) + (f.panel_goal ? ' / ' + esc(f.panel_goal) : '') + '</b>');
     }
     if (isAddons && hasSuffix(f, PERSEAT)) b.push('<b>' + esc(t('fields.perseat_badge')) + '</b>');
+    if (reqFromOk(f) && !f.required && f.required_from > 0) b.push('<b>' + esc(t('fields.required_from_badge', f.required_from)) + '</b>');
     if (isAddons && hasSuffix(f, MULTI) && f.type !== 'multiplierField') b.push('<b>' + esc(t('fields.multi_badge')) + '</b>');
     if (!isAddons && f.people_list && f.type === 'checkbox-group') b.push('<b class="mgr">✓ ' + esc(t('fields.people_list_badge')) + '</b>');
     if (!isAddons && f.mgr_people && f.type === 'checkbox-group') b.push('<b class="mgr">' + esc(t('fields.mgr_people_badge')) + '</b>');
@@ -865,6 +872,14 @@
       var role = roleOf(f);
       var reqFixed = role && (!isAddons || locked(f));
       h += check('required', f.required || !!reqFixed, t('fields.required'), reqFixed ? 'disabled' : '');
+      if (reqFromOk(f)) {
+        // formularz zamówienia: obowiązkowe dopiero od N miejsc i własny
+        // komunikat pustego pola (orderform.go, orderReq)
+        if (!f.required) {
+          h += row(t('fields.required_from'), inp('required_from', f.required_from || '', 'type="number" min="2" step="1" inputmode="numeric"'), t('fields.required_from_hint'));
+        }
+        h += row(t('fields.required_msg'), inp('required_msg', f.required_msg || '', 'maxlength="200" placeholder="' + esc(t('fields.required_msg_ph')) + '"'), t('fields.required_msg_hint'));
+      }
 
       if (type === 'text' && !isAddons) {
         var ro = '<option value="">' + esc(t('fields.role.none')) + '</option>';

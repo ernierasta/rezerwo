@@ -181,6 +181,9 @@ type RenderField struct {
 	Desc    string
 
 	Required bool
+	// ReqMsg - własny komunikat pustego obowiązkowego pola (data-req-msg);
+	// tylko formularz zamówienia (orderFormRows)
+	ReqMsg   string
 	Inline   bool
 	Other    bool
 	Multiple bool

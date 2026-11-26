@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -113,7 +114,7 @@ func TestOrderFormRows(t *testing.T) {
 		{"type": "multiplierField", "name": "parking", "label": "Parking", "multipl": "100"},
 		{"type": "textarea", "name": ROLENOTES, "label": "Uwagi", "required": true},
 	}
-	rows, flat := orderFormRows(defs, 2)
+	rows, flat := orderFormRows(defs, 2, "pl")
 	if len(rows) != 6 {
 		t.Fatalf("rows: %d, want 6", len(rows))
 	}
@@ -223,5 +224,104 @@ func TestOrderFormGuestFlow(t *testing.T) {
 	}
 	if strings.Join(answers, " ") != "obiad-perseat=ryba obiad-perseat=mięso" {
 		t.Errorf("answers: %v", answers)
+	}
+}
+
+// Pole obowiązkowe dopiero od liczby miejsc (required_from): na stronie
+// gościa i przy sprawdzaniu na serwerze.
+func TestOrderRequiredFrom(t *testing.T) {
+	defs := []FormDefField{
+		{"type": "text", "subtype": "email", "name": ROLEEMAIL, "label": "E-mail"},
+		{"type": "text", "name": ROLENAME, "label": "Imię"},
+		{"type": "text", "name": ROLESURNAME, "label": "Nazwisko"},
+		{"type": "text", "name": "rodziny-multi", "label": "Rodziny", "required_from": float64(3), "required_msg": "Podaj nazwiska rodzin"},
+		{"type": "textarea", "name": ROLENOTES, "label": "Uwagi", "required_from": float64(5)},
+	}
+	_, flat := orderFormRows(defs, 2, "pl")
+	if flat[0].Required || flat[0].ReqMsg != "" {
+		t.Errorf("2 seats: not required: %+v", flat[0])
+	}
+	rows, flat := orderFormRows(defs, 3, "pl")
+	if !flat[0].Required || flat[0].ReqMsg != "Podaj nazwiska rodzin" {
+		t.Errorf("3 seats: required with msg: %+v", flat[0])
+	}
+	if f := rows[len(rows)-1].Items[0].Field; f.Required {
+		t.Errorf("notes from 5 seats, 3 ordered: %+v", f)
+	}
+	form := url.Values{"name": {"A"}, "surname": {"B"}}
+	if m := orderMissing(defs, form, 2, "pl"); m != "" {
+		t.Errorf("2 seats: %q", m)
+	}
+	if m := orderMissing(defs, form, 3, "pl"); m != "Podaj nazwiska rodzin" {
+		t.Errorf("3 seats, empty: %q", m)
+	}
+	form.Set("addon-rodziny-multi-2", "Nowak")
+	if m := orderMissing(defs, form, 3, "pl"); m != "" {
+		t.Errorf("3 seats, filled: %q", m)
+	}
+	if m := orderMissing(defs, form, 5, "pl"); !strings.Contains(m, "5") {
+		t.Errorf("5 seats, notes default msg: %q", m)
+	}
+	form.Del("surname")
+	if m := orderMissing(defs, form, 1, "pl"); m == "" {
+		t.Error("missing surname not caught")
+	}
+}
+
+// Nazwiska rodzin obowiązkowe od 2 miejsc: strona gościa wymaga pola
+// z własnym komunikatem, /order/status bez nich zamówienia nie przyjmuje.
+func TestOrderRequiredFromGuestFlow(t *testing.T) {
+	f := newGuestFixture(t)
+	f.router.HandleFunc("/order/status", ReservationOrderStatusHTML(f.db, MailConfig{}))
+	user, err := f.db.UserGetByID(f.userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev, _ := f.db.EventGetByID(f.eventID)
+	defs := []FormDefField{
+		{"type": "text", "subtype": "email", "name": ROLEEMAIL, "label": "E-mail"},
+		{"type": "text", "name": ROLENAME, "label": "Imię"},
+		{"type": "text", "name": ROLESURNAME, "label": "Nazwisko"},
+		{"type": "text", "name": "rodziny-multi", "label": "Rodziny", "multi_empty": true,
+			"required_from": float64(2), "required_msg": "Podaj nazwiska rodzin"},
+	}
+	if _, err := newOrderTemplate(f.db, user, ev, "Formularz", NormalizeOrderDef(defs, ev)); err != nil {
+		t.Fatal(err)
+	}
+
+	// jedno miejsce: pole nieobowiązkowe
+	body := f.post(t, "/order", url.Values{"event-id": {fmt.Sprint(f.eventID)}, "sits": {"3"}, "rooms": {fmt.Sprint(f.roomID)}})
+	if strings.Contains(body, "data-req-msg") {
+		t.Error("1 seat: field should not be required")
+	}
+	if _, err := f.db.DB.Exec(`DELETE FROM reservations`); err != nil {
+		t.Fatal(err)
+	}
+
+	body = f.post(t, "/order", url.Values{"event-id": {fmt.Sprint(f.eventID)}, "sits": {"1,2"}, "rooms": {fmt.Sprintf("%d,%d", f.roomID, f.roomID)}})
+	m := regexp.MustCompile(`name="lock" id="lock" value="([^"]*)"`).FindStringSubmatch(body)
+	if m == nil {
+		t.Fatal("seats not locked")
+	}
+	lock := m[1]
+	if !strings.Contains(body, `data-req-msg="Podaj nazwiska rodzin"`) || !strings.Contains(body, "data-required") {
+		t.Error("2 seats: field not required with own message")
+	}
+
+	order := url.Values{
+		"event-id": {fmt.Sprint(f.eventID)}, "sits": {"1,2"}, "rooms": {fmt.Sprintf("%d,%d", f.roomID, f.roomID)},
+		"lock": {lock}, "email": {"jan@example.com"}, "name": {"Jan"}, "surname": {"Nowak"},
+		"addon-rodziny-multi-1": {"  "},
+	}
+	if body := f.post(t, "/order/status", order); !strings.Contains(body, "Podaj nazwiska rodzin") {
+		t.Error("no message on missing families")
+	}
+	if st, _ := f.seatStatus(t, 1); st != "marked" {
+		t.Fatalf("seat 1 without families: %q, want marked", st)
+	}
+	order.Set("addon-rodziny-multi-1", "Kowalscy")
+	f.post(t, "/order/status", order)
+	if st, _ := f.seatStatus(t, 1); st != "ordered" {
+		t.Fatalf("seat 1: %q, want ordered", st)
 	}
 }

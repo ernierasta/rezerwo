@@ -58,6 +58,16 @@ type AddonField struct {
 	// W JSON pola: multi_empty, multi_btn.
 	MultiEmpty  bool
 	MultiButton string
+
+	// RequiredFrom - pole obowiązkowe dopiero od tylu zamówionych miejsc
+	// (np. nazwiska rodzin przy większym zamówieniu), 0 = wyłączone;
+	// RequiredMsg - własny komunikat, gdy obowiązkowe pole jest puste.
+	// W JSON pola: required_from, required_msg (orderReq, orderform.go).
+	RequiredFrom int64
+	RequiredMsg  string
+	// ReqMsg - komunikat dla strony gościa, gdy pole jest puste (data-req-msg),
+	// liczony przy wyświetlaniu wg liczby miejsc (orderFormRows)
+	ReqMsg string
 }
 
 // AddonsPositions - gdzie w kroku zamówienia mogą stać dodatki: po którym
@@ -114,6 +124,7 @@ func ParseAddonFields(content string) []AddonField {
 		f.Desc = plainLabel(str(m["description"]))
 		f.Placeholder = str(m["placeholder"])
 		f.PerSeat = strings.HasSuffix(strings.ToLower(f.Name), PERSEATSUFFIX)
+		f.RequiredFrom, f.RequiredMsg = reqFromOf(m), strings.TrimSpace(str(m["required_msg"]))
 
 		if vals, ok := m["values"].([]interface{}); ok {
 			for _, v := range vals {

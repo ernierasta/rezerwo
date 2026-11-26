@@ -296,7 +296,7 @@
           <table class="tbl fields-sum">
             <tr><th>{{T "addons.field"}}</th><th>{{T "addons.type"}}</th></tr>
             {{range .OrderFields}}
-            <tr><td>{{.Label}}{{if .Req}} <span class="miss">*</span>{{end}}</td><td class="m">{{if .Sys}}<span class="st">{{.Kind}}</span>{{else}}{{.Kind}}{{end}}</td></tr>
+            <tr><td>{{.Label}}{{if .Req}} <span class="miss">*</span>{{else if .ReqFrom}} <span class="miss">*</span> <small class="muted">{{T "fields.required_from_badge" .ReqFrom}}</small>{{end}}</td><td class="m">{{if .Sys}}<span class="st">{{.Kind}}</span>{{else}}{{.Kind}}{{end}}</td></tr>
             {{end}}
           </table>
         </div>

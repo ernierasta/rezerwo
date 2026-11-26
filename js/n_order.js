@@ -161,28 +161,36 @@
     else el.removeAttribute('aria-invalid');
   }
 
+  // błąd pola; puste obowiązkowe pole z własnym komunikatem (data-req-msg:
+  // required_msg albo "od N miejsc", orderform.go) mówi go zamiast ogólnego
+  function errorOf(el) {
+    var text = RZ.inputError(el);
+    var box = el.closest('[data-req-msg]');
+    return text && box && el.value.trim() === '' ? box.dataset.reqMsg : text;
+  }
+
   form.addEventListener('focusout', function (e) {
     var el = e.target;
     if (fields.indexOf(el) < 0) return;
-    if (el.value !== '' || el.closest('.ff').classList.contains('bad')) showError(el, RZ.inputError(el));
+    if (el.value !== '' || el.closest('.ff').classList.contains('bad')) showError(el, errorOf(el));
   });
 
   form.addEventListener('input', function (e) {
     var el = e.target;
-    if (fields.indexOf(el) >= 0 && el.closest('.ff').classList.contains('bad')) showError(el, RZ.inputError(el));
+    if (fields.indexOf(el) >= 0 && el.closest('.ff').classList.contains('bad')) showError(el, errorOf(el));
   });
 
   form.addEventListener('submit', function (e) {
     var first = null;
     fields.forEach(function (el) {
-      var text = RZ.inputError(el);
+      var text = errorOf(el);
       showError(el, text);
       if (text && !first) first = el;
     });
     multiBoxes.forEach(function (box) {
       if (!box.hasAttribute('data-empty')) return; // tu pilnuje required pierwszego wiersza
       var add = box.querySelector('.multi-add');
-      var text = multiMissing(box) ? RZ.t('gform.err.required') : '';
+      var text = multiMissing(box) ? (box.dataset.reqMsg || RZ.t('gform.err.required')) : '';
       showError(add, text);
       if (text && !first) first = add;
     });

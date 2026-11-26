@@ -2010,6 +2010,8 @@ h5.subhead {
   &.bad {
     .inp { border-color: var(--danger-ink); background: var(--danger-soft); }
     .opt { border-color: var(--danger-line); }
+    // pole "+" bez wpisów (multi_empty): świeci sam przycisk
+    .multi-add[aria-invalid] { border-color: var(--danger-ink); background: var(--danger-soft); color: var(--danger-ink); }
   }
 
   &.ff-header {

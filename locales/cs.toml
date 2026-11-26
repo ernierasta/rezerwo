@@ -400,6 +400,9 @@ owner_only = "Účty manažerů spravuje jen účet organizace."
 del = "Smazat účet"
 del_title = "Smazat účet manažera?"
 del_text = "%s se už nebude moci přihlásit (pokud je přihlášen/a, bude odhlášen/a). Data organizace zůstanou."
+alt_email = "Adresa pro e-maily organizace"
+alt_hint = "Z této adresy odcházejí e-maily hostům (potvrzení, vstupenky), na ni chodí oznámení o přihláškách z formulářů a tuto adresu vidí hosté jako kontakt. Nechte prázdné, aby se používal e-mail účtu organizace. Adresa musí být v doméně, ze které náš poštovní server smí odesílat - jinak mohou e-maily končit ve spamu."
+alt_saved = "Uloženo."
 
 [catalog]
 mail_form = "formulář „%s”"

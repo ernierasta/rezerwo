@@ -65,6 +65,8 @@ type nPermItem struct {
 type nManagersVars struct {
 	NPage
 	OwnerEmail string
+	// AltEmail - adres nadawcy/kontaktowy organizacji (users.alt_email)
+	AltEmail string
 	// CanEdit - zalogowane konto organizacji (menedżer tylko ogląda)
 	CanEdit  bool
 	Managers []nManager
@@ -87,6 +89,7 @@ func ManagersPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 		vars := nManagersVars{
 			NPage:      NPage{Title: T(lang, "managers.title"), OrgName: orgName(user), NoOrg: !login.CanOrg()},
 			OwnerEmail: user.Email,
+			AltEmail:   user.AltEmail.String,
 			CanEdit:    !login.Manager,
 		}
 		mm, err := db.ManagerGetAll(user.ID)
@@ -110,6 +113,42 @@ func ManagersPage(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, 
 			vars.Events, vars.Forms = permItems(db, user, lang)
 		}
 		nRender(w, r, lang, vars, "tmpl/n_managers.html")
+	}
+}
+
+// OrgAltEmailAPI - POST /api/org/altemail {"email": "..."}: adres, z którego
+// idą maile do gości i na który przychodzą powiadomienia z formularzy
+// (users.alt_email, chooseEmail w mail.go). Pusty = e-mail konta organizacji.
+// Zmienia tylko konto organizacji.
+func OrgAltEmailAPI(db *DB, cs *sessions.CookieStore) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := adminOwner(w, r, db, cs)
+		if !ok {
+			return
+		}
+		lang := PanelLang(r)
+		var m struct {
+			Email string `json:"email"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&m); err != nil {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": "bad request"})
+			return
+		}
+		alt := strings.TrimSpace(m.Email)
+		if strings.EqualFold(alt, user.Email) {
+			alt = ""
+		}
+		if alt != "" && !validEmail(alt) {
+			jsonMsg(w, http.StatusBadRequest, map[string]string{"msg": T(lang, "managers.bad_email"), "field": "alt_email"})
+			return
+		}
+		if err := db.UserSetAltEmail(user.ID, alt); err != nil {
+			log.Printf("OrgAltEmailAPI: %v", err)
+			jsonMsg(w, http.StatusInternalServerError, map[string]string{"msg": T(lang, "common.save_error")})
+			return
+		}
+		log.Printf("OrgAltEmailAPI: org %d alt_email %q -> %q", user.ID, user.AltEmail.String, alt)
+		jsonMsg(w, http.StatusOK, map[string]string{"msg": T(lang, "managers.alt_saved"), "email": alt})
 	}
 }
 

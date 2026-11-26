@@ -402,6 +402,9 @@ owner_only = "Loginami menedżerów zarządza tylko konto organizacji."
 del = "Usuń login"
 del_title = "Usunąć login menedżera?"
 del_text = "%s nie będzie mógł/mogła się już zalogować (jeśli jest zalogowany/a, zostanie wylogowany/a). Dane organizacji zostaną."
+alt_email = "Adres do maili organizacji"
+alt_hint = "Z tego adresu idą maile do gości (potwierdzenia, bilety), na niego przychodzą powiadomienia o zgłoszeniach z formularzy i ten adres widzą goście jako kontakt. Zostaw puste, żeby używać e-maila konta organizacji. Adres musi być w domenie, z której nasz serwer pocztowy może wysyłać - inaczej maile mogą trafiać do spamu."
+alt_saved = "Zapisano."
 
 [catalog]
 mail_form = "formularz „%s”"

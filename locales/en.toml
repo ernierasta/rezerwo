@@ -398,6 +398,9 @@ owner_only = "Only the organisation account manages manager logins."
 del = "Delete login"
 del_title = "Delete manager login?"
 del_text = "%s will no longer be able to log in (and will be logged out if logged in). The organisation's data stays."
+alt_email = "Address for organisation e-mails"
+alt_hint = "E-mails to guests (confirmations, tickets) are sent from this address, form submission notifications arrive at it, and guests see it as the contact. Leave empty to use the organisation account's e-mail. The address must be in a domain our mail server may send from - otherwise e-mails may end up in spam."
+alt_saved = "Saved."
 
 [catalog]
 mail_form = "form “%s”"

@@ -5375,6 +5375,30 @@ ul.sum-list.compact b {
 #managers .manager-form h4 {
   margin-top: 14px;
 }
+#managers .alt-email-form {
+  margin-top: 12px;
+  max-width: 640px;
+}
+#managers .alt-email-form .alt-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#managers .alt-email-form .alt-row .inp {
+  flex: 1;
+  min-width: 0;
+}
+#managers .alt-email-form .msg {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+#managers .alt-email-form .msg.bad {
+  color: var(--danger-ink);
+}
+#managers .alt-email-form > .f > small {
+  display: block;
+  margin-top: 4px;
+}
 #managers .pass-row {
   display: flex;
   gap: 8px;

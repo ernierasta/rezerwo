@@ -26,6 +26,7 @@ func managersRouter(db *DB, cs *sessions.CookieStore) http.Handler {
 	rtr.HandleFunc("/api/managers", ManagerCreateAPI(db, cs)).Methods("POST")
 	rtr.HandleFunc("/api/managers/{id:[0-9]+}", ManagerSaveAPI(db, cs)).Methods("POST")
 	rtr.HandleFunc("/api/managers/{id:[0-9]+}", ManagerDeleteAPI(db, cs)).Methods("DELETE")
+	rtr.HandleFunc("/api/org/altemail", OrgAltEmailAPI(db, cs)).Methods("POST")
 	rtr.HandleFunc("/api/login", LoginAPI(db, cs))
 	return rtr
 }
@@ -87,6 +88,25 @@ func TestManagers(t *testing.T) {
 		t.Fatalf("duplicate e-mail accepted: %d", rec.Code)
 	}
 
+	// adres nadawcy/kontaktowy organizacji (users.alt_email)
+	altOf := func() string { u, _ := db.UserGetByID(orgID); return u.AltEmail.String }
+	if rec := do("POST", "/api/org/altemail", `{"email":"zly adres"}`, owner); rec.Code != http.StatusBadRequest {
+		t.Errorf("bad alt e-mail: %d, want 400", rec.Code)
+	}
+	if rec := do("POST", "/api/org/altemail", `{"email":" Biuro@Example.org "}`, owner); rec.Code != 200 || altOf() != "Biuro@Example.org" {
+		t.Errorf("set alt e-mail: %d %s, stored %q", rec.Code, rec.Body, altOf())
+	}
+	if u, _ := db.UserGetByID(orgID); chooseEmail(u.Email, u.AltEmail.String) != "Biuro@Example.org" {
+		t.Errorf("chooseEmail ignores alt_email")
+	}
+	if rec := do("POST", "/api/org/altemail", `{"email":"ORG@example.com"}`, owner); rec.Code != 200 || altOf() != "" {
+		t.Errorf("own e-mail should clear alt_email: %d, stored %q", rec.Code, altOf())
+	}
+	do("POST", "/api/org/altemail", `{"email":"biuro@example.org"}`, owner)
+	if rec := do("POST", "/api/org/altemail", `{"email":""}`, owner); rec.Code != 200 || altOf() != "" {
+		t.Errorf("clear alt e-mail: %d, stored %q", rec.Code, altOf())
+	}
+
 	// menedżer nie dostaje powiadomień o zamówieniach
 	if emails, _ := db.AdminGetEmails(orgID); len(emails) != 0 {
 		t.Fatalf("manager in order notification recipients: %v", emails)
@@ -102,6 +122,9 @@ func TestManagers(t *testing.T) {
 	}
 	if a, _ := db.ManagerGetByID(mid, orgID); !a.LastLogin.Valid {
 		t.Fatal("last login not stored")
+	}
+	if rec := do("POST", "/api/org/altemail", `{"email":"hack@example.org"}`, mgr); rec.Code != http.StatusForbidden {
+		t.Errorf("manager changed alt e-mail: %d, want 403", rec.Code)
 	}
 
 	// logowanie na konto organizacji w przeglądarce z ciasteczkiem

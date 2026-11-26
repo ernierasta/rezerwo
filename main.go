@@ -85,6 +85,7 @@ func main() {
 	rtr.HandleFunc("/api/accounts/{id:[0-9]+}", AccountSaveAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/accounts/{id:[0-9]+}", AccountDeleteAPI(db, cookieStore)).Methods("DELETE")
 	rtr.HandleFunc("/admin/managers", ManagersPage(db, cookieStore))
+	rtr.HandleFunc("/api/org/altemail", OrgAltEmailAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/managers", ManagerCreateAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/managers/{id:[0-9]+}", ManagerSaveAPI(db, cookieStore)).Methods("POST")
 	rtr.HandleFunc("/api/managers/{id:[0-9]+}", ManagerDeleteAPI(db, cookieStore)).Methods("DELETE")

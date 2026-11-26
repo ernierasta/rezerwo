@@ -3,6 +3,32 @@
 (function () {
   'use strict';
 
+  // adres nadawcy/kontaktowy organizacji (users.alt_email, OrgAltEmailAPI)
+  var altForm = document.getElementById('alt-email-form');
+  if (altForm) {
+    altForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var inp = altForm.elements.alt_email;
+      var amsg = altForm.querySelector('.msg');
+      var btn = altForm.querySelector('[type=submit]');
+      btn.disabled = true;
+      amsg.classList.remove('bad');
+      amsg.textContent = '';
+      RZ.postJSON('/api/org/altemail', {email: inp.value})
+        .then(function (res) {
+          btn.disabled = false;
+          inp.value = res.email || '';
+          amsg.textContent = res.msg;
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          amsg.textContent = err.message;
+          amsg.classList.add('bad');
+          inp.focus();
+        });
+    });
+  }
+
   var form = document.getElementById('manager-form');
   if (!form) return;
   var email = form.elements.email;

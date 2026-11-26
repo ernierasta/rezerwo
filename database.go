@@ -473,6 +473,13 @@ func (db *DB) UserSetPass(email, hash string) error {
 	return err
 }
 
+// UserSetAltEmail zapisuje adres nadawcy/kontaktowy organizacji (pusty = NULL,
+// wtedy używany jest users.email - chooseEmail w mail.go).
+func (db *DB) UserSetAltEmail(id int64, alt string) error {
+	_, err := db.DB.Exec(`UPDATE users SET alt_email=$1 WHERE id=$2`, ToNS(alt), id)
+	return err
+}
+
 func (db *DB) UserGetAll() ([]User, error) {
 	users := []User{}
 	err := db.DB.Select(&users, `SELECT * FROM users`)

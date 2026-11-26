@@ -10,6 +10,20 @@
       <small class="muted">{{T "managers.owner_desc"}}</small>
     </div>
   </div>
+  {{if .CanEdit}}
+  <form class="alt-email-form" id="alt-email-form" novalidate>
+    <div class="f"><label for="alt-email">{{T "managers.alt_email"}}</label>
+      <div class="alt-row">
+        <input class="inp" id="alt-email" name="alt_email" value="{{.AltEmail}}" placeholder="{{.OwnerEmail}}" autocomplete="off" spellcheck="false">
+        <button class="btn sm" type="submit">{{T "common.save"}}</button>
+        <small class="msg"></small>
+      </div>
+      <small class="muted">{{T "managers.alt_hint"}}</small>
+    </div>
+  </form>
+  {{else if .AltEmail}}
+  <p class="muted small">{{T "managers.alt_email"}}: {{.AltEmail}}</p>
+  {{end}}
 
   <h4>{{T "managers.list"}}
     {{if .CanEdit}}<button class="btn sm" id="new-manager" type="button">{{T "managers.new"}}</button>{{end}}
